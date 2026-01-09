@@ -13,6 +13,17 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
     }
   },
   
+  // Emma's Hate Mail (Hostile Takeover)
+  "mail_emma_hate": {
+    id: "mail_emma_hate",
+    sender: "艾玛",
+    subject: "你毁了一切",
+    body: `我以为你会帮我... 结果你和其他吸血鬼没什么两样。\n\n因为没有电脑，我错过了入职提交材料的截止日期。工作没了，还要背负你的违约金债务。\n\n我要离开这座城市了。拿着我的电脑烂在手里吧。我诅咒你，诅咒这家店永远不得安宁。`,
+    attachments: {
+        cash: 0
+    }
+  },
+  
   // Generic Example
   "mail_welcome": {
     id: "mail_welcome",

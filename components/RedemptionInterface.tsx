@@ -7,6 +7,7 @@ import { Item, ItemStatus } from '../types';
 import { Button } from './ui/Button';
 import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, XCircle, CheckCircle2, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { CustomerView } from './CustomerView';
+import { EMMA_EVENTS } from '../services/storyData';
 
 // --- TYPES ---
 type RedemptionMode = 'OBLIGATION' | 'COMPENSATION' | 'NEGOTIATION';
@@ -329,7 +330,7 @@ const SettlementPanel: React.FC<{
 export const RedemptionInterface: React.FC = () => {
     const { state, dispatch } = useGame();
     const { calculateRedemptionCost, calculatePenalty, processRedemption, processExtension, processHostileTakeover } = usePawnShop();
-    const { commitTransaction } = useGameEngine();
+    const { commitTransaction, applyChainEffects } = useGameEngine();
     
     const customer = state.currentCustomer;
     const item = customer?.item;
@@ -388,7 +389,29 @@ export const RedemptionInterface: React.FC = () => {
     };
 
     const handleHostileTakeover = () => {
+        // 1. Business Logic Update (Status -> FORFEIT, Cash penalty)
         processHostileTakeover(item);
+        
+        // 2. Narrative Logic Update (Apply specific hostile flow effects)
+        if (customer.chainId && customer.eventId) {
+            const event = EMMA_EVENTS.find(e => e.id === customer.eventId);
+            const hostileFlow = event?.dynamicFlows?.['hostile_takeover'];
+            
+            if (hostileFlow) {
+                 // Use specific narrative logic if defined
+                 applyChainEffects(customer.chainId, hostileFlow.outcome, undefined, customer);
+            } else {
+                 // Fallback: Just kill the chain if no specific outcome defined
+                const updatedChains = state.activeChains.map(chain => {
+                    if (chain.id === customer.chainId) {
+                        return { ...chain, isActive: false };
+                    }
+                    return chain;
+                });
+                dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
+            }
+        }
+
         setTimeout(() => {
             dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: {}, item: null, log: '', customerName: customer.name } });
         }, 500);

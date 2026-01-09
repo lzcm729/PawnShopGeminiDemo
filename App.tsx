@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState } from 'react';
 import { GameProvider, useGame } from './store/GameContext';
 import { useGameEngine } from './hooks/useGameEngine';
@@ -33,7 +32,7 @@ const GameContent: React.FC = () => {
     }
   }, [state.phase, state.isLoading, generateDailyEvent]);
 
-  // Sync Patience/Mood back to global state for CustomerView updates
+  // Sync Patience/Mood back to global state for CustomerView updates (used in Redemption)
   useEffect(() => {
     if (state.currentCustomer && state.currentCustomer.interactionType === 'PAWN') {
         const needsUpdate = 
@@ -144,7 +143,6 @@ const GameContent: React.FC = () => {
       
       <InventoryModal />
       <MailModal />
-      <DebugPanel />
 
       <main className="flex-1 overflow-hidden relative">
         {state.isLoading && (
@@ -165,17 +163,17 @@ const GameContent: React.FC = () => {
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 bg-black/20">
             
             {isRedemption ? (
-                // REDEMPTION LAYOUT (Replaces standard 3 columns)
+                // REDEMPTION LAYOUT (Replaces standard columns)
                 <RedemptionInterface />
             ) : (
                 // STANDARD PAWN LAYOUT
                 <>
-                    {/* Column 1: Customer (25%) */}
-                    <div className="lg:col-span-3 h-full border-r border-white/10 overflow-hidden">
-                        <CustomerView />
+                    {/* Column 1: Dev/Debug Panel (20%) */}
+                    <div className="lg:col-span-2 h-full border-r border-white/10 overflow-hidden relative z-50">
+                        <DebugPanel />
                     </div>
 
-                    {/* Column 2: Item & Intel (45%) */}
+                    {/* Column 2: Item & Intel (40%) */}
                     <div className="lg:col-span-5 h-full border-r border-white/10 overflow-hidden relative">
                         {isNegotiating ? (
                         <ItemPanel 
@@ -190,8 +188,8 @@ const GameContent: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Column 3: Player Controls (30%) */}
-                    <div className="lg:col-span-4 h-full overflow-hidden">
+                    {/* Column 3: Negotiation (40%) - Now contains Customer Info */}
+                    <div className="lg:col-span-5 h-full overflow-hidden">
                         {isNegotiating ? (
                         <NegotiationPanel negotiation={negotiation} />
                         ) : (

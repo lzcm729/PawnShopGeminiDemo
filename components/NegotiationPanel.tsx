@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines } from '../types';
 import { DealSuccessModal } from './DealSuccessModal';
 import { ActionLog } from '../hooks/useNegotiation';
@@ -31,6 +31,111 @@ interface LogEntry {
     sentiment?: 'neutral' | 'negative' | 'positive';
 }
 
+// --- SUB-COMPONENT: Customer Header ---
+const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: string }> = ({ customer, patience, mood }) => {
+    const [expanded, setExpanded] = useState(false);
+
+    // Color/Visual Logic
+    const isAngry = mood === 'Angry';
+    const isHappy = mood === 'Happy';
+    
+    let borderColor = "border-[#44403c]";
+    let shadowColor = "";
+    
+    if (isAngry) {
+        borderColor = "border-red-600";
+        shadowColor = "shadow-[0_0_10px_rgba(220,38,38,0.5)]";
+    } else if (isHappy) {
+        borderColor = "border-pawn-green";
+        shadowColor = "shadow-[0_0_10px_rgba(16,185,129,0.3)]";
+    }
+
+    const resolveText: Record<string, string> = {
+        Strong: '坚决', Medium: '犹豫', Weak: '动摇', None: '放弃'
+    };
+    const resolveColor: Record<string, string> = {
+        Strong: 'text-red-500 border-red-900 bg-red-950/20',
+        Medium: 'text-yellow-500 border-yellow-900 bg-yellow-950/20',
+        Weak: 'text-stone-500 border-stone-800 bg-stone-900/20',
+        None: 'text-stone-700 border-stone-800'
+    };
+
+    return (
+        <div className="bg-[#141211] border-b border-[#292524] p-4 flex flex-col gap-3 flex-shrink-0">
+             <div className="flex gap-4 items-center">
+                 {/* Avatar */}
+                 <div className={`w-14 h-14 rounded-full border-2 overflow-hidden flex-shrink-0 bg-stone-800 transition-colors duration-300 ${borderColor} ${shadowColor}`}>
+                     <img 
+                        src={`https://picsum.photos/seed/${customer.avatarSeed}/200`} 
+                        alt="Customer" 
+                        className={`w-full h-full object-cover transition-all duration-700 ${isAngry ? 'grayscale-0 contrast-125' : 'grayscale opacity-90'}`}
+                     />
+                 </div>
+                 
+                 {/* Basic Info */}
+                 <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-1">
+                          <div>
+                              <h2 className="text-base font-bold text-stone-200 leading-none truncate pr-2">{customer.name}</h2>
+                              <span className="text-[10px] font-mono text-stone-500 tracking-widest">{customer.id.slice(0,8)}</span>
+                          </div>
+                          <div className={`text-[10px] font-bold border px-1.5 py-0.5 rounded ${resolveColor[customer.redemptionResolve]}`}>
+                              {resolveText[customer.redemptionResolve]}
+                          </div>
+                      </div>
+                      
+                      {/* Patience / Mood Meter */}
+                      <div className="flex items-center gap-2">
+                           <div className="flex gap-0.5">
+                               {Array.from({length: 5}).map((_, i) => (
+                                  <Flame 
+                                    key={i} 
+                                    className={`w-3 h-3 transition-all duration-300 ${
+                                        i < patience 
+                                            ? (isAngry ? 'text-red-600 fill-red-600 animate-pulse' : 'text-orange-500 fill-orange-500') 
+                                            : 'text-stone-800'
+                                    }`} 
+                                  />
+                               ))}
+                           </div>
+                           <span className={`text-[9px] uppercase font-bold tracking-wider ${isAngry ? 'text-red-500' : 'text-stone-600'}`}>
+                                {isAngry ? "ANGRY" : "PATIENCE"}
+                           </span>
+                      </div>
+                 </div>
+             </div>
+             
+             {/* Expandable Intel Toggle */}
+             <button 
+                onClick={() => setExpanded(!expanded)} 
+                className="flex items-center justify-between text-[10px] text-stone-500 bg-stone-900/40 border border-stone-800 px-2 py-1.5 rounded hover:bg-stone-800 hover:text-stone-300 transition-colors w-full"
+             >
+                  <span className="flex items-center gap-2 uppercase tracking-wider font-bold"><AlertCircle className="w-3 h-3"/> 客户档案 (INTEL)</span>
+                  {expanded ? <ChevronUp className="w-3 h-3"/> : <ChevronDown className="w-3 h-3"/>}
+             </button>
+             
+             {/* Expanded Intel Content */}
+             {expanded && (
+                 <div className="text-xs text-stone-400 space-y-2 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <div className="bg-black/20 p-2 rounded border-l-2 border-stone-600">
+                          <span className="block text-[9px] uppercase text-stone-600 mb-0.5 font-bold">Pawn Reason</span>
+                          <span className="font-serif italic">"{customer.dialogue.pawnReason}"</span>
+                      </div>
+                      <div className="bg-black/20 p-2 rounded border-l-2 border-stone-600">
+                          <span className="block text-[9px] uppercase text-stone-600 mb-0.5 font-bold">Redemption Plea</span>
+                          <span className="font-serif italic">"{customer.dialogue.redemptionPlea}"</span>
+                      </div>
+                      <div className="bg-black/20 p-2 rounded border-l-2 border-stone-600">
+                          <span className="block text-[9px] uppercase text-stone-600 mb-0.5 font-bold">Negotiation Dynamic</span>
+                          <span className="font-serif italic">"{customer.dialogue.negotiationDynamic}"</span>
+                      </div>
+                 </div>
+             )}
+        </div>
+    )
+}
+
+// --- MAIN COMPONENT ---
 export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation }) => {
   const { state } = useGame();
   const { evaluateTransaction, commitTransaction, rejectCustomer } = useGameEngine();
@@ -269,6 +374,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   return (
     <div className="flex flex-col h-full relative bg-[#1c1917] border-l border-[#44403c]">
       
+      {/* HEADER WITH INTEGRATED CUSTOMER INFO */}
+      <CustomerHeader customer={currentCustomer} patience={patience} mood={mood} />
+
       {/* Deal Success Modal */}
       {successModalData && (
           <DealSuccessModal 

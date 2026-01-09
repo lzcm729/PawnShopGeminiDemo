@@ -1,9 +1,7 @@
 
-
 import { useGame } from '../store/GameContext';
-import { getDailyEvent } from '../services/contentGenerator'; 
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../services/chainEngine';
-import { EMMA_EVENTS } from '../services/storyData';
+import { ALL_STORY_EVENTS } from '../services/storyData';
 import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect } from '../types';
 import { usePawnShop } from './usePawnShop';
 
@@ -45,8 +43,8 @@ export const useGameEngine = () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     
     try {
-      // Step A: Priority Check - Narrative Chains (Emma)
-      const narrativeEvent = findEligibleEvent(state.activeChains, EMMA_EVENTS);
+      // Step A: Priority Check - Narrative Chains (All Characters)
+      const narrativeEvent = findEligibleEvent(state.activeChains, ALL_STORY_EVENTS);
       
       if (narrativeEvent) {
           console.log("Triggering Narrative Event:", narrativeEvent.id);
@@ -79,19 +77,8 @@ export const useGameEngine = () => {
           return;
       }
 
-      // Step B: Check for Scripted Preset (Days 1-5 tutorial flow)
-      const presetCustomer = getDailyEvent(state.stats.day, state.customersServedToday, state.completedScenarioIds);
-      
-      if (presetCustomer) {
-        setTimeout(() => {
-          dispatch({ type: 'SET_CUSTOMER', payload: presetCustomer });
-          dispatch({ type: 'SET_LOADING', payload: false });
-        }, 800);
-        return;
-      }
-
-      // Step C: Fallback REMOVED
-      // If no customer is found (preset exhausted or blocked), we close the shop.
+      // Step B: Fallback (Closed)
+      // Since all presets are now Chains, if no chain event triggers, we have no content.
       console.log("No customers available today.");
       setTimeout(() => {
           dispatch({ type: 'SET_LOADING', payload: false });
@@ -196,145 +183,153 @@ export const useGameEngine = () => {
     };
   };
 
+  // EXTRACTED LOGIC: Can be used by Commit or manually by UI (e.g. Hostile Takeover)
+  const applyChainEffects = (chainId: string, effects: ChainUpdateEffect[], transactionResult?: TransactionResult, customer?: Customer) => {
+        const chainEvent = customer?.eventId ? ALL_STORY_EVENTS.find(e => e.id === customer.eventId) : null;
+
+        const updatedChains = state.activeChains.map(chain => {
+             if (chain.id === chainId) {
+                 let newChain = { ...chain, variables: { ...chain.variables } };
+                 
+                 let itemsToRedeem: string[] = [];
+                 let itemsToAbandon: string[] = [];
+
+                 effects.forEach(effect => {
+                     switch (effect.type) {
+                         case 'ADD_FUNDS_DEAL':
+                             if (transactionResult) {
+                                newChain.variables.funds = (newChain.variables.funds || 0) + Math.abs(transactionResult.cashDelta);
+                             }
+                             break;
+                         case 'ADD_FUNDS': 
+                             if (effect.value) newChain.variables.funds = (newChain.variables.funds || 0) + effect.value;
+                             break;
+                         case 'SET_STAGE':
+                             if (effect.value !== undefined) newChain.stage = effect.value;
+                             break;
+                         case 'MODIFY_VAR':
+                             if (effect.variable && effect.value !== undefined) {
+                                 newChain.variables[effect.variable] = effect.value;
+                             }
+                             break;
+                         case 'DEACTIVATE':
+                         case 'DEACTIVATE_CHAIN':
+                             newChain.isActive = false;
+                             break;
+                         case 'SCHEDULE_MAIL':
+                             if (effect.templateId) {
+                                 dispatch({ 
+                                    type: 'SCHEDULE_MAIL', 
+                                    payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0 } 
+                                 });
+                             }
+                             break;
+                         case 'MODIFY_REP':
+                             if (effect.value) {
+                                 dispatch({ 
+                                     type: 'RESOLVE_TRANSACTION', 
+                                     payload: { 
+                                         cashDelta: 0, 
+                                         reputationDelta: { [ReputationType.CREDIBILITY]: effect.value }, 
+                                         item: null, 
+                                         log: "声誉发生变化", 
+                                         customerName: customer?.name || "Event" 
+                                     } 
+                                 });
+                             }
+                             break;
+                         case 'REDEEM_ALL':
+                             state.inventory.forEach(i => {
+                                 if (i.relatedChainId === chain.id && i.status !== ItemStatus.REDEEMED && i.status !== ItemStatus.SOLD) {
+                                     itemsToRedeem.push(i.id);
+                                 }
+                             });
+                             break;
+                         case 'REDEEM_TARGET_ONLY':
+                             if (chainEvent?.targetItemId) itemsToRedeem.push(chainEvent.targetItemId);
+                             break;
+                         case 'ABANDON_OTHERS':
+                             state.inventory.forEach(i => {
+                                 if (i.relatedChainId === chain.id && i.id !== chainEvent?.targetItemId && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) {
+                                     itemsToAbandon.push(i.id);
+                                 }
+                             });
+                             break;
+                         case 'ABANDON_ALL':
+                             state.inventory.forEach(i => {
+                                 if (i.relatedChainId === chain.id && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) {
+                                     itemsToAbandon.push(i.id);
+                                 }
+                             });
+                             break;
+                         case 'TRIGGER_NEWS':
+                             console.log("News Triggered:", effect.id);
+                             break;
+                     }
+                 });
+                 
+                 if (itemsToRedeem.length > 0) {
+                     itemsToRedeem.forEach(id => {
+                        const item = state.inventory.find(i => i.id === id);
+                        if (item && item.pawnInfo) {
+                            const cost = item.pawnInfo.principal * (1 + item.pawnInfo.interestRate); 
+                            dispatch({ type: 'REDEEM_ITEM', payload: { itemId: id, paymentAmount: Math.floor(cost), name: item.name } });
+                        }
+                     });
+                 }
+                 
+                 if (itemsToAbandon.length > 0) {
+                     dispatch({ type: 'EXPIRE_ITEMS', payload: { expiredItemIds: itemsToAbandon, logs: [`${itemsToAbandon.length} 件物品已被原主放弃，归店铺所有。`] } });
+                 }
+
+                 return newChain;
+             }
+             return chain;
+         });
+         
+         dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
+  };
+
   const commitTransaction = (result: TransactionResult) => {
     const currentCust = state.currentCustomer;
 
     if (result.success && currentCust?.chainId && currentCust?.eventId) {
-        const chainEvent = EMMA_EVENTS.find(e => e.id === currentCust.eventId);
+        const chainEvent = ALL_STORY_EVENTS.find(e => e.id === currentCust.eventId);
         if (chainEvent) {
-             const updatedChains = state.activeChains.map(chain => {
-                 if (chain.id === currentCust.chainId) {
-                     let newChain = { ...chain, variables: { ...chain.variables } };
-                     
-                     let effectsToRun: ChainUpdateEffect[] = (currentCust as any)._dynamicEffects || [];
+             let effectsToRun: ChainUpdateEffect[] = (currentCust as any)._dynamicEffects || [];
 
-                     if (effectsToRun.length === 0 && chainEvent.outcomes) {
-                         const { principal, rate } = result.terms || { principal: 0, rate: 0.05 };
-                         
-                         let outcomeKey = 'deal_standard';
-                         if (rate === 0) outcomeKey = 'deal_charity';
-                         else if (rate === 0.05) outcomeKey = 'deal_aid';
-                         else if (rate === 0.10) outcomeKey = 'deal_standard';
-                         else if (rate >= 0.20) outcomeKey = 'deal_shark';
+             if (effectsToRun.length === 0 && chainEvent.outcomes) {
+                 const { principal, rate } = result.terms || { principal: 0, rate: 0.05 };
+                 
+                 let outcomeKey = 'deal_standard';
+                 if (rate === 0) outcomeKey = 'deal_charity';
+                 else if (rate === 0.05) outcomeKey = 'deal_aid';
+                 else if (rate === 0.10) outcomeKey = 'deal_standard';
+                 else if (rate >= 0.20) outcomeKey = 'deal_shark';
 
-                         effectsToRun = chainEvent.outcomes[outcomeKey] || chainEvent.outcomes['deal_standard'] || [];
+                 effectsToRun = chainEvent.outcomes[outcomeKey] || chainEvent.outcomes['deal_standard'] || [];
 
-                         const realValue = result.item?.realValue || 0;
-                         const isPremium = principal >= 2000 || (realValue > 0 && principal >= realValue * 1.5);
+                 const realValue = result.item?.realValue || 0;
+                 const isPremium = principal >= 2000 || (realValue > 0 && principal >= realValue * 1.5);
 
-                         if (isPremium) {
-                             console.log("Premium Override Triggered!");
-                             effectsToRun = [
-                                 ...effectsToRun,
-                                 { type: 'MODIFY_VAR', variable: 'job_chance', value: 100 } // FIXED: Guarantee success for premium players
-                             ];
-                         }
-                     }
-                     
-                     if (effectsToRun.length === 0 && chainEvent.onComplete) {
-                         effectsToRun = chainEvent.onComplete;
-                     }
-
-                     let itemsToRedeem: string[] = [];
-                     let itemsToAbandon: string[] = [];
-
-                     effectsToRun.forEach(effect => {
-                         switch (effect.type) {
-                             case 'ADD_FUNDS_DEAL':
-                                 newChain.variables.funds = (newChain.variables.funds || 0) + Math.abs(result.cashDelta);
-                                 break;
-                             case 'ADD_FUNDS': 
-                                 if (effect.value) newChain.variables.funds = (newChain.variables.funds || 0) + effect.value;
-                                 break;
-                             case 'SET_STAGE':
-                                 if (effect.value !== undefined) newChain.stage = effect.value;
-                                 break;
-                             case 'MODIFY_VAR':
-                                 if (effect.variable && effect.value !== undefined) {
-                                     newChain.variables[effect.variable] = effect.value;
-                                 }
-                                 break;
-                             case 'DEACTIVATE':
-                             case 'DEACTIVATE_CHAIN':
-                                 newChain.isActive = false;
-                                 break;
-                             case 'SCHEDULE_MAIL':
-                                 if (effect.templateId) {
-                                     dispatch({ 
-                                        type: 'SCHEDULE_MAIL', 
-                                        payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0 } 
-                                     });
-                                 }
-                                 break;
-                             case 'MODIFY_REP':
-                                 if (effect.value) {
-                                     dispatch({ 
-                                         type: 'RESOLVE_TRANSACTION', 
-                                         payload: { 
-                                             cashDelta: 0, 
-                                             reputationDelta: { [ReputationType.CREDIBILITY]: effect.value }, 
-                                             item: null, 
-                                             log: "声誉发生变化", 
-                                             customerName: currentCust.name 
-                                         } 
-                                     });
-                                 }
-                                 break;
-                             case 'REDEEM_ALL':
-                                 state.inventory.forEach(i => {
-                                     if (i.relatedChainId === chain.id && i.status !== ItemStatus.REDEEMED && i.status !== ItemStatus.SOLD) {
-                                         itemsToRedeem.push(i.id);
-                                     }
-                                 });
-                                 break;
-                             case 'REDEEM_TARGET_ONLY':
-                                 if (chainEvent.targetItemId) itemsToRedeem.push(chainEvent.targetItemId);
-                                 break;
-                             case 'ABANDON_OTHERS':
-                                 state.inventory.forEach(i => {
-                                     if (i.relatedChainId === chain.id && i.id !== chainEvent.targetItemId && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) {
-                                         itemsToAbandon.push(i.id);
-                                     }
-                                 });
-                                 break;
-                             case 'ABANDON_ALL':
-                                 state.inventory.forEach(i => {
-                                     if (i.relatedChainId === chain.id && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) {
-                                         itemsToAbandon.push(i.id);
-                                     }
-                                 });
-                                 break;
-                             case 'TRIGGER_NEWS':
-                                 console.log("News Triggered:", effect.id);
-                                 break;
-                         }
-                     });
-                     
-                     if (itemsToRedeem.length > 0) {
-                         itemsToRedeem.forEach(id => {
-                            const item = state.inventory.find(i => i.id === id);
-                            if (item && item.pawnInfo) {
-                                const cost = item.pawnInfo.principal * (1 + item.pawnInfo.interestRate); 
-                                dispatch({ type: 'REDEEM_ITEM', payload: { itemId: id, paymentAmount: Math.floor(cost), name: item.name } });
-                            }
-                         });
-                     }
-                     
-                     if (itemsToAbandon.length > 0) {
-                         dispatch({ type: 'EXPIRE_ITEMS', payload: { expiredItemIds: itemsToAbandon, logs: [`${itemsToAbandon.length} 件物品已被原主放弃，归店铺所有。`] } });
-                     }
-
-                     return newChain;
+                 if (isPremium) {
+                     effectsToRun = [
+                         ...effectsToRun,
+                         { type: 'MODIFY_VAR', variable: 'job_chance', value: 100 }
+                     ];
                  }
-                 return chain;
-             });
+             }
              
-             dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
+             if (effectsToRun.length === 0 && chainEvent.onComplete) {
+                 effectsToRun = chainEvent.onComplete;
+             }
+
+             // Apply Logic
+             applyChainEffects(currentCust.chainId, effectsToRun, result, currentCust);
         }
     }
 
     if (result.success && result.item) {
-        // FIXED: Using 'isVirtual' flag instead of hardcoded IDs to determine if item should skip inventory
         if (result.item.isVirtual) { 
             dispatch({ 
                 type: 'RESOLVE_TRANSACTION', 
@@ -376,34 +371,10 @@ export const useGameEngine = () => {
      const currentCust = state.currentCustomer;
      
      if (currentCust?.chainId && currentCust?.eventId) {
-         const chainEvent = EMMA_EVENTS.find(e => e.id === currentCust.eventId);
+         const chainEvent = ALL_STORY_EVENTS.find(e => e.id === currentCust.eventId);
          
          if (chainEvent && chainEvent.onReject) {
-             const updatedChains = state.activeChains.map(chain => {
-                 if (chain.id === currentCust.chainId) {
-                     let newChain = { ...chain, variables: { ...chain.variables } };
-                     
-                     chainEvent.onReject!.forEach(effect => {
-                         if (effect.type === 'SET_STAGE' && effect.value !== undefined) {
-                             newChain.stage = effect.value;
-                         } else if (effect.type === 'MODIFY_VAR' && effect.variable && effect.value !== undefined) {
-                             newChain.variables[effect.variable] = effect.value;
-                         } else if (effect.type === 'DEACTIVATE') {
-                             newChain.isActive = false;
-                         } else if (effect.type === 'SCHEDULE_MAIL' && effect.templateId && effect.delayDays !== undefined) {
-                             dispatch({ 
-                                type: 'SCHEDULE_MAIL', 
-                                payload: { templateId: effect.templateId, delayDays: effect.delayDays } 
-                             });
-                         }
-                     });
-                     
-                     return newChain;
-                 }
-                 return chain;
-             });
-             
-             dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
+             applyChainEffects(currentCust.chainId, chainEvent.onReject, undefined, currentCust);
          }
      }
 
@@ -424,6 +395,7 @@ export const useGameEngine = () => {
     evaluateTransaction,
     commitTransaction,
     rejectCustomer,
-    liquidateItem
+    liquidateItem,
+    applyChainEffects
   };
 };

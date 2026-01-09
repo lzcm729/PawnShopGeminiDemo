@@ -2,75 +2,48 @@
 import { StoryEvent, EventChainState, ItemStatus } from '../types';
 import { generateValuationRange } from './contentGenerator';
 
-// UPDATED INIT WITH SIMULATION RULES
-export const EMMA_CHAIN_INIT: EventChainState = {
-  id: "chain_emma",
-  npcName: "艾玛",
-  isActive: true, 
-  stage: 0,
-  variables: { 
-      funds: 0, 
-      hope: 50, 
-      job_chance: 0, // FIXED: Start at 0 to prevent off-screen "winning" before story develops
-      has_laptop: 0 
-      // 'dailyCost' removed from simple var list, now handled by Rules
-  },
-  simulationRules: [
-      // Rule 1: Cost of Living (Fixed Delta)
-      { 
-          type: 'DELTA', 
-          targetVar: 'funds', 
-          value: -150 
-      },
-      // Rule 2: Job Hunting (Chance)
-      {
-          type: 'CHANCE',
-          chanceVar: 'job_chance', // Uses the variable 'job_chance' as probability
-          onSuccess: [
-              { type: 'MOD_VAR', target: 'funds', value: 3000, op: 'ADD' }, // Get signing bonus
-              { type: 'MOD_VAR', target: 'job_chance', value: 0, op: 'SET' }, // Stop searching (prob becomes 0)
-              { type: 'MOD_VAR', target: 'hope', value: 50, op: 'ADD' }
-          ]
-      },
-      // Rule 3: Bankruptcy despair (Threshold) - Optional example
-      {
-          type: 'THRESHOLD',
-          targetVar: 'funds',
-          operator: '<',
-          value: -500,
-          onTrigger: [
-              { type: 'MOD_VAR', target: 'hope', value: -5, op: 'ADD' } // Despair grows if in debt
-          ]
-      }
-  ]
-};
-
-// Helper to quickly generate ranges for story items
-const makeItem = (base: any, chainId: string = "chain_emma") => {
+// =========================================================
+// HELPER
+// =========================================================
+const makeItem = (base: any, chainId: string) => {
     const range = generateValuationRange(base.realValue, base.perceivedValue, base.uncertainty || 0.2);
     return {
         ...base,
-        condition: base.condition || "正常", // Default condition to prevent UI errors
+        condition: base.condition || "正常",
         pawnAmount: 0,
         currentRange: range,
         initialRange: range,
         uncertainty: base.uncertainty || 0.2,
         revealedTraits: base.revealedTraits || [],
-        hiddenTraits: base.hiddenTraits || [], // Default hiddenTraits to prevent filter errors
-        relatedChainId: chainId // Link item to chain for redemption tracking
+        hiddenTraits: base.hiddenTraits || [],
+        relatedChainId: chainId
     };
 };
 
+// =========================================================
+// CHAIN 1: EMMA (The Job Hunter)
+// =========================================================
+export const EMMA_CHAIN_INIT: EventChainState = {
+  id: "chain_emma",
+  npcName: "艾玛",
+  isActive: true, 
+  stage: 0,
+  variables: { funds: 0, hope: 50, job_chance: 0, has_laptop: 0 },
+  simulationRules: [
+      { type: 'DELTA', targetVar: 'funds', value: -150 },
+      { type: 'CHANCE', chanceVar: 'job_chance', onSuccess: [
+          { type: 'MOD_VAR', target: 'funds', value: 3000, op: 'ADD' }, 
+          { type: 'MOD_VAR', target: 'job_chance', value: 0, op: 'SET' }, 
+          { type: 'MOD_VAR', target: 'hope', value: 50, op: 'ADD' }
+      ]},
+  ]
+};
+
 export const EMMA_EVENTS: StoryEvent[] = [
-  // ---------------------------------------------------------
-  // Stage 0: 起点 - 名牌职业套装
-  // ---------------------------------------------------------
   {
     id: "emma_01_clothes",
     chainId: "chain_emma",
     triggerConditions: [{ variable: "stage", operator: "==", value: 0 }],
-    
-    // We define 'item' here which will be merged into the template by the engine
     item: makeItem({
       id: "emma_item_clothes",
       name: "名牌职业套装",
@@ -80,21 +53,17 @@ export const EMMA_EVENTS: StoryEvent[] = [
       appraisalNote: "做工精良，硬通货。",
       archiveSummary: "艾玛为了应对失业危机，典当了她的战袍。",
       realValue: 1200, 
-      uncertainty: 0.2,
       hiddenTraits: [
         { id: "t_emma_01_tag", name: "干洗标签", type: 'STORY', description: "领口挂着干洗标签。", valueImpact: 0, discoveryDifficulty: 0.3 },
         { id: "t_emma_01_stain", name: "墨水渍", type: 'FLAW', description: "袖口有墨水划痕。", valueImpact: -0.1, discoveryDifficulty: 0.5 }
       ],
       isStolen: false, isFake: false, sentimentalValue: true, appraised: false, status: ItemStatus.ACTIVE
-    }),
-
+    }, "chain_emma"),
     template: {
       name: "艾玛",
       description: "年轻女性，穿着精致。",
       avatarSeed: "emma_optimistic",
-      desiredAmount: 1000,
-      minimumAmount: 800,
-      maxRepayment: 1500,
+      desiredAmount: 1000, minimumAmount: 800, maxRepayment: 1500,
       dialogue: {
         greeting: "你好，老板。这些衣服还要吗？",
         pawnReason: "刚收到裁员通知，不过别担心，我很快就能找到下家。",
@@ -104,50 +73,20 @@ export const EMMA_EVENTS: StoryEvent[] = [
         rejected: "好吧，我再去别家问问。",
         rejectionLines: { standard: "谢谢。", angry: "...", desperate: "..." }
       },
-      redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 3, mood: 'Neutral',
-      tags: ["Story", "LowRisk"]
+      redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 3, mood: 'Neutral', tags: ["Story", "LowRisk"]
     },
-
     outcomes: {
-      // FIX: Add immediate negative funds to simulate paying rent immediately. 
-      // This ensures she drops to low funds quickly to trigger the next event.
-      "deal_charity":  [
-          { type: "ADD_FUNDS_DEAL" }, 
-          { type: "ADD_FUNDS", value: -900 }, 
-          { type: "SET_STAGE", value: 1 }, 
-          { type: "MODIFY_VAR", variable: "hope", value: 70 }
-      ],
-      "deal_aid":      [
-          { type: "ADD_FUNDS_DEAL" }, 
-          { type: "ADD_FUNDS", value: -900 }, 
-          { type: "SET_STAGE", value: 1 }, 
-          { type: "MODIFY_VAR", variable: "hope", value: 65 }
-      ],
-      "deal_standard": [
-          { type: "ADD_FUNDS_DEAL" }, 
-          { type: "ADD_FUNDS", value: -900 }, 
-          { type: "SET_STAGE", value: 1 }, 
-          { type: "MODIFY_VAR", variable: "hope", value: 60 }
-      ],
-      "deal_shark":    [
-          { type: "ADD_FUNDS_DEAL" }, 
-          { type: "ADD_FUNDS", value: -900 }, 
-          { type: "SET_STAGE", value: 1 }, 
-          { type: "MODIFY_VAR", variable: "hope", value: 50 }
-      ]
+      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 70 }],
+      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 65 }],
+      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 60 }],
+      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 50 }]
     },
     onReject: [{ type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 40 }]
   },
-
-  // ---------------------------------------------------------
-  // Stage 1: 下滑 - 高级护肤品
-  // ---------------------------------------------------------
   {
     id: "emma_02_skincare",
     chainId: "chain_emma",
-    // Relaxed condition: funds <= 200 (was 100) to ensure it triggers even if she has a little pocket money
     triggerConditions: [{ variable: "stage", operator: "==", value: 1 }, { variable: "funds", operator: "<=", value: 200 }],
-
     item: makeItem({
       id: "emma_item_skincare",
       name: "贵妇面霜礼盒",
@@ -162,15 +101,12 @@ export const EMMA_EVENTS: StoryEvent[] = [
         { id: "t_emma_02_spoon", name: "破损", type: 'STORY', description: "包装有撕扯痕迹，勺子丢失。", valueImpact: 0, discoveryDifficulty: 0.1 }
       ],
       isStolen: false, isFake: false, sentimentalValue: false, appraised: false, status: ItemStatus.ACTIVE
-    }),
-
+    }, "chain_emma"),
     template: {
       name: "艾玛",
       description: "妆容精致，但难掩疲惫。",
       avatarSeed: "emma_anxious",
-      desiredAmount: 400,
-      minimumAmount: 250,
-      maxRepayment: 600,
+      desiredAmount: 400, minimumAmount: 250, maxRepayment: 600,
       dialogue: {
         greeting: "老板，又见面了。",
         pawnReason: "房东又在催了，这可是全新的。",
@@ -180,26 +116,20 @@ export const EMMA_EVENTS: StoryEvent[] = [
         rejected: "求你了，我真的急用。",
         rejectionLines: { standard: "行吧。", angry: "...", desperate: "求你了..." }
       },
-      redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 3, mood: 'Neutral',
-      tags: ["Story"]
+      redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 3, mood: 'Neutral', tags: ["Story"]
     },
-
     outcomes: {
-      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -5 }],
+      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 0 }],
+      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -2 }],
       "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -5 }],
       "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -10 }]
     },
     onReject: [{ type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -20 }]
   },
-
-  // ---------------------------------------------------------
-  // Stage 2: 转折点 - 笔记本电脑
-  // ---------------------------------------------------------
   {
     id: "emma_03_laptop",
     chainId: "chain_emma",
     triggerConditions: [{ variable: "stage", operator: "==", value: 2 }, { variable: "funds", operator: "<=", value: 50 }],
-
     item: makeItem({
       id: "emma_item_laptop",
       name: "MacBook Pro",
@@ -214,15 +144,12 @@ export const EMMA_EVENTS: StoryEvent[] = [
         { id: "t_emma_03_sticker", name: "贴纸", type: 'STORY', description: "贴着 'Dream Big' 贴纸。", valueImpact: 0, discoveryDifficulty: 0.1 }
       ],
       isStolen: false, isFake: false, sentimentalValue: true, appraised: false, status: ItemStatus.ACTIVE
-    }),
-
+    }, "chain_emma"),
     template: {
       name: "艾玛",
       description: "没有化妆，发丝凌乱。",
       avatarSeed: "emma_desperate",
-      desiredAmount: 1500,
-      minimumAmount: 1000,
-      maxRepayment: 3000, // 愿意背高利贷
+      desiredAmount: 1500, minimumAmount: 1000, maxRepayment: 3000,
       dialogue: {
         greeting: "这台电脑... 帮我看个价。",
         pawnReason: "这是我最后的生产力工具，没了它我没法投简历。",
@@ -232,12 +159,8 @@ export const EMMA_EVENTS: StoryEvent[] = [
         rejected: "那我怎么办... 我完了。",
         rejectionLines: { standard: "再见。", angry: "...", desperate: "我不走！" }
       },
-      redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 2, mood: 'Annoyed',
-      tags: ["Story", "HighMoralStake"]
+      redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 2, mood: 'Annoyed', tags: ["Story", "HighMoralStake"]
     },
-
-    // 关键逻辑：合同影响 Job Chance
-    // UPDATE: Charity deal gives 100% job chance to guarantee progression
     outcomes: {
       "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "has_laptop", value: 1 }, { type: "MODIFY_VAR", variable: "job_chance", value: 100 }],
       "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "has_laptop", value: 1 }, { type: "MODIFY_VAR", variable: "job_chance", value: 80 }],
@@ -246,30 +169,22 @@ export const EMMA_EVENTS: StoryEvent[] = [
     },
     onReject: [{ type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "job_chance", value: 0 }, { type: "MODIFY_VAR", variable: "hope", value: -50 }]
   },
-
-  // ---------------------------------------------------------
-  // Stage 3-A: 赎回日 (动态库存检查)
-  // ---------------------------------------------------------
   {
     id: "emma_redeem_attempt",
     chainId: "chain_emma",
-    type: "REDEMPTION_CHECK", // 特殊类型：需要检查库存状态
+    type: "REDEMPTION_CHECK",
     triggerConditions: [
       { variable: "stage", operator: "==", value: 3 },
       { variable: "has_laptop", operator: "==", value: 1 },
-      // UPDATE: Lowered threshold to 1500 to prevent 'Limbo' if player gives ~2000 and she spends daily costs
       { variable: "funds", operator: ">=", value: 1500 }, 
       { variable: "hope", operator: ">=", value: 40 }
     ],
-    
-    // 核心物品 ID
     targetItemId: "emma_item_laptop",
-
     template: {
         name: "艾玛",
         description: "她气色红润，眼神明亮。",
         avatarSeed: "emma_optimistic", 
-        interactionType: 'REDEEM', // THIS IS KEY for the UI
+        interactionType: 'REDEEM',
         dialogue: {
             greeting: "老板！我回来了！",
             pawnReason: "我拿到Offer了！我是来赎回电脑的。",
@@ -281,48 +196,27 @@ export const EMMA_EVENTS: StoryEvent[] = [
         },
         redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 5, mood: "Happy",
         desiredAmount: 0, minimumAmount: 0, maxRepayment: 10000,
-        // DUMMY ITEM required for type safety, will be replaced by actual logic
-        item: makeItem({
-            id: "redemption_dummy", name: "赎回单", realValue: 0, isVirtual: true
-        })
+        item: makeItem({ id: "redemption_dummy", name: "赎回单", realValue: 0, isVirtual: true }, "chain_emma")
     },
-
-    // 动态对话分支
     dynamicFlows: {
-      // 情况 1: 完美 (所有东西都在)
       "all_safe": {
         dialogue: "老板！我被录取了！预支了安家费，我来把所有东西都赎回去！",
-        outcome: [
-          { type: "REDEEM_ALL" }, 
-          { type: "DEACTIVATE_CHAIN" }, 
-          { type: "SCHEDULE_MAIL", templateId: "mail_emma_success", delayDays: 2 }
-        ]
+        outcome: [{ type: "REDEEM_ALL" }, { type: "DEACTIVATE_CHAIN" }, { type: "SCHEDULE_MAIL", templateId: "mail_emma_success", delayDays: 2 }]
       },
-      // 情况 2: 核心在，其他不在 (部分损失)
       "core_safe": {
         dialogue: "笔记本还在就好... 至于那些衣服和护肤品，(叹气) 算了，反正我现在也买得起新的了。我就赎电脑。",
-        outcome: [
-          { type: "REDEEM_TARGET_ONLY" }, // 只赎回电脑
-          { type: "ABANDON_OTHERS" },     // 放弃其他物品 (变为绝当/归玩家)
-          { type: "DEACTIVATE_CHAIN" },
-          { type: "SCHEDULE_MAIL", templateId: "mail_welcome", delayDays: 3 } // Placeholder mail
-        ]
+        outcome: [{ type: "REDEEM_TARGET_ONLY" }, { type: "ABANDON_OTHERS" }, { type: "DEACTIVATE_CHAIN" }, { type: "SCHEDULE_MAIL", templateId: "mail_welcome", delayDays: 3 }]
       },
-      // 情况 3: 核心已售 (彻底决裂)
       "core_lost": {
         dialogue: "我是来赎电脑的... 什么？你卖了？那里面有我所有的资料！... 算了，其他的我也不要了。我再也不想看到这家店。",
-        outcome: [
-          { type: "ABANDON_ALL" },        // 艾玛放弃所有物品，离开
-          { type: "DEACTIVATE_CHAIN" },
-          { type: "MODIFY_REP", value: -30 }   // 声誉重创
-        ]
+        outcome: [{ type: "ABANDON_ALL" }, { type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_REP", value: -30 }]
+      },
+      "hostile_takeover": {
+        dialogue: "你... 你怎么能这样？那里面是我的人生！... 好，钱我拿走。但我诅咒你，诅咒这家店永远不得安宁！",
+        outcome: [{ type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_VAR", variable: "hope", value: -999 }, { type: "MODIFY_REP", value: -50 }, { type: "SCHEDULE_MAIL", templateId: "mail_emma_hate", delayDays: 1 }]
       }
     }
   },
-
-  // ---------------------------------------------------------
-  // Stage 3-B: 悲剧线 - 婚戒
-  // ---------------------------------------------------------
   {
     id: "emma_04_ring",
     chainId: "chain_emma",
@@ -338,7 +232,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
         realValue: 2000, 
         hiddenTraits: [{ id: "t_emma_04", name: "划痕", type: 'STORY', description: "刻字被划花。", valueImpact: -0.2, discoveryDifficulty: 0.1 }],
         isStolen: false, isFake: false, sentimentalValue: true, appraised: false, status: ItemStatus.ACTIVE
-    }),
+    }, "chain_emma"),
     template: {
       name: "艾玛",
       description: "眼神空洞。",
@@ -347,18 +241,19 @@ export const EMMA_EVENTS: StoryEvent[] = [
       dialogue: { greeting: "......", pawnReason: "电脑也没了，工作也没了，他也走了。", redemptionPlea: "无所谓了。", negotiationDynamic: "...", accepted: { fair: "...", fleeced: "...", premium: "..." }, rejected: "你要逼死我吗？", rejectionLines: { standard: "...", angry: "...", desperate: "..." } },
       redemptionResolve: "None", negotiationStyle: "Desperate", patience: 1, mood: "Neutral", tags: ["Tragedy"]
     },
-    outcomes: { "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }] },
+    outcomes: { 
+        "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", value: 5 }], 
+        "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", value: 0 }],
+        "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", value: -5 }],
+        "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", value: -15 }]
+    },
     onReject: [{ type: "SET_STAGE", value: 4 }]
   },
-
-  // ---------------------------------------------------------
-  // Stage 4: 终局 - 芯片
-  // ---------------------------------------------------------
   {
     id: "emma_05_chip",
     chainId: "chain_emma",
     triggerConditions: [{ variable: "stage", operator: "==", value: 4 }, { variable: "funds", operator: "<=", value: 0 }],
-    item: makeItem({ id: "emma_item_chip", name: "身份芯片", category: "其他", visualDescription: "人体植入式身份芯片。", historySnippet: "卖了这个我就不是黑户了。", appraisalNote: "私自摘除是违法的。", archiveSummary: "艾玛的身份证明。", realValue: 5000, isStolen: false, isFake: false, sentimentalValue: false, appraised: false, status: ItemStatus.ACTIVE }),
+    item: makeItem({ id: "emma_item_chip", name: "身份芯片", category: "其他", visualDescription: "人体植入式身份芯片。", historySnippet: "卖了这个我就不是黑户了。", appraisalNote: "私自摘除是违法的。", archiveSummary: "艾玛的身份证明。", realValue: 5000, isStolen: false, isFake: false, sentimentalValue: false, appraised: false, status: ItemStatus.ACTIVE }, "chain_emma"),
     template: {
       name: "无名氏",
       description: "看不清面容。",
@@ -369,4 +264,211 @@ export const EMMA_EVENTS: StoryEvent[] = [
     },
     onComplete: [{ type: "DEACTIVATE_CHAIN" }, { type: "TRIGGER_NEWS", id: "news_body_found" }]
   }
+];
+
+// =========================================================
+// CHAIN 2: SUSAN (The Fake Bag / Gambling Debt)
+// =========================================================
+
+export const SUSAN_CHAIN_INIT: EventChainState = {
+    id: "chain_susan",
+    npcName: "苏珊",
+    isActive: true,
+    stage: 0,
+    variables: { debt: 50000, suspicion: 0 },
+    simulationRules: [
+        { type: 'DELTA', targetVar: 'debt', value: 1000 } // Interest grows
+    ]
+};
+
+export const SUSAN_EVENTS: StoryEvent[] = [
+    {
+        id: "susan_01_bag",
+        chainId: "chain_susan",
+        triggerConditions: [{ variable: "stage", operator: "==", value: 0 }], // Trigger early
+        item: makeItem({
+            id: "susan_item_bag",
+            name: "鳄鱼皮铂金包",
+            category: "奢侈品",
+            condition: "99新",
+            visualDescription: "色泽光亮，五金件闪耀。",
+            historySnippet: "上个月在巴黎买的，我老公送的。",
+            appraisalNote: "高仿A货。",
+            archiveSummary: "一只精仿的奢侈品包。",
+            realValue: 200,
+            perceivedValue: 80000,
+            uncertainty: 0.4,
+            isStolen: false, isFake: true, sentimentalValue: false, appraised: false, status: ItemStatus.ACTIVE,
+            hiddenTraits: [
+                { id: "trait-susan-fake", name: "走线歪斜", type: 'FAKE', description: "底部缝线不够直，非专柜品质。", valueImpact: -0.99, discoveryDifficulty: 0.5 },
+                { id: "trait-susan-smell", name: "胶水气味", type: 'FAKE', description: "刺鼻的工业胶水味。", valueImpact: -0.5, discoveryDifficulty: 0.3 }
+            ]
+        }, "chain_susan"),
+        template: {
+            name: "苏珊",
+            description: "浑身名牌，香水味很浓，但神色慌张。",
+            avatarSeed: "lady_susan",
+            desiredAmount: 20000, minimumAmount: 5000, maxRepayment: 30000,
+            dialogue: {
+                greeting: "亲爱的，帮个忙，我急需周转。",
+                pawnReason: "打牌输了一点点，不想让老公知道。",
+                redemptionPlea: "过两天赢回来就赎，这可是限量版。",
+                negotiationDynamic: "你什么眼光？这可是专柜货！",
+                accepted: { fair: "钱打我卡上。", fleeced: "行吧行吧，烦死了。", premium: "亲爱的你太好了！" },
+                rejected: "你给我等着！",
+                rejectionLines: { standard: "没眼光。", angry: "破店！", desperate: "帮帮姐妹..." }
+            },
+            redemptionResolve: "Strong", negotiationStyle: "Deceptive", patience: 3, mood: 'Neutral', tags: ["Scam", "Fake"]
+        },
+        outcomes: {
+            "deal_charity": [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_REP", value: -5 }], // She thinks you're stupid
+            "deal_aid":     [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }],
+            "deal_standard":[{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }],
+            "deal_shark":   [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_REP", value: 2 }] // You caught her logic
+        },
+        onReject: [{ type: "DEACTIVATE_CHAIN" }]
+    }
+];
+
+// =========================================================
+// CHAIN 3: ELDER ZHAO (Medical Emergency)
+// =========================================================
+
+export const ZHAO_CHAIN_INIT: EventChainState = {
+    id: "chain_zhao",
+    npcName: "赵大爷",
+    isActive: true,
+    stage: 0,
+    variables: { wife_health: 50, funds: 0 },
+    simulationRules: [
+        { type: 'DELTA', targetVar: 'wife_health', value: -5 }
+    ]
+};
+
+export const ZHAO_EVENTS: StoryEvent[] = [
+    {
+        id: "zhao_01_ring",
+        chainId: "chain_zhao",
+        triggerConditions: [{ variable: "stage", operator: "==", value: 0 }],
+        item: makeItem({
+            id: "zhao_item_ring",
+            name: "金婚对戒",
+            category: "珠宝",
+            condition: "磨损严重",
+            visualDescription: "一对老式的足金戒指，样式古朴。",
+            historySnippet: "结婚那年攒了半年粮票换来的。",
+            appraisalNote: "含金量高，有极高的情感溢价风险。",
+            archiveSummary: "一枚承载着老人一生回忆的戒指。",
+            realValue: 420,
+            uncertainty: 0.25,
+            isStolen: false, isFake: false, sentimentalValue: true, appraised: false, status: ItemStatus.ACTIVE,
+            hiddenTraits: [
+                { id: "trait-elder-story", name: "内圈刻字 '1965'", type: 'STORY', description: "刻着 '1965' 字样。", valueImpact: 0, discoveryDifficulty: 0.2 },
+                { id: "trait-elder-flaw", name: "圈口变形", type: 'FLAW', description: "指环不再正圆。", valueImpact: -0.05, discoveryDifficulty: 0.1 }
+            ]
+        }, "chain_zhao"),
+        template: {
+            name: "赵大爷",
+            description: "穿着褪色的中山装，双手微微颤抖。",
+            avatarSeed: "elder_zhao",
+            desiredAmount: 800, minimumAmount: 300, maxRepayment: 1000,
+            dialogue: {
+                greeting: "老板... 还在营业吗？",
+                pawnReason: "老伴还在ICU躺着，医生说今天再不交费就停药了。",
+                redemptionPlea: "这金戒指是我们当年结婚时的... 我一定会赎回来的。",
+                negotiationDynamic: "这... 这不够啊，救命钱不能少啊。",
+                accepted: { fair: "谢谢活菩萨！", fleeced: "唉... 谢谢了。", premium: "你是好人啊！" },
+                rejected: "唉... 难道这就是命吗...",
+                rejectionLines: { standard: "打扰了。", angry: "心真狠。", desperate: "求求你了..." }
+            },
+            redemptionResolve: "Strong", negotiationStyle: "Desperate", patience: 4, mood: 'Neutral', tags: ["Emotional"]
+        },
+        outcomes: {
+            "deal_charity": [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_VAR", variable: "wife_health", value: 100 }, { type: "MODIFY_REP", value: 10 }],
+            "deal_aid":     [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_VAR", variable: "wife_health", value: 80 }],
+            "deal_standard":[{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_VAR", variable: "wife_health", value: 50 }],
+            "deal_shark":   [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_VAR", variable: "wife_health", value: 20 }]
+        },
+        onReject: [{ type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_VAR", variable: "wife_health", value: 0 }]
+    }
+];
+
+// =========================================================
+// CHAIN 4: STUDENT LIN (The Antique Watch)
+// =========================================================
+
+export const LIN_CHAIN_INIT: EventChainState = {
+    id: "chain_lin",
+    npcName: "小林",
+    isActive: true,
+    stage: 0,
+    variables: { tuition: 0 },
+    simulationRules: []
+};
+
+export const LIN_EVENTS: StoryEvent[] = [
+    {
+        id: "lin_01_watch",
+        chainId: "chain_lin",
+        triggerConditions: [{ variable: "stage", operator: "==", value: 0 }],
+        item: makeItem({
+            id: "lin_item_watch",
+            name: "古董机械表",
+            category: "钟表",
+            condition: "需保养",
+            visualDescription: "表盘泛黄，看起来像地摊货。",
+            historySnippet: "爷爷留下的，我也不懂表。",
+            appraisalNote: "劳力士'保罗纽曼'迪通拿，极品捡漏！",
+            archiveSummary: "价值连城的古董表。",
+            realValue: 150000,
+            perceivedValue: 300, // Looks cheap initially
+            uncertainty: 0.5,
+            isStolen: false, isFake: false, sentimentalValue: false, appraised: false, status: ItemStatus.ACTIVE,
+            hiddenTraits: [
+                { id: "trait-lin-rare", name: "保罗纽曼盘面", type: 'STORY', description: "独特的'Exotic'表盘设计。", valueImpact: 500.0, discoveryDifficulty: 0.9 },
+                { id: "trait-lin-flaw", name: "表蒙划痕", type: 'FLAW', description: "划痕。", valueImpact: -0.01, discoveryDifficulty: 0.1 }
+            ]
+        }, "chain_lin"),
+        template: {
+            name: "小林",
+            description: "背着书包的大学生，眼神清澈。",
+            avatarSeed: "student_lin",
+            desiredAmount: 2000, minimumAmount: 800, maxRepayment: 4000,
+            dialogue: {
+                greeting: "你好，请问这里收旧东西吗？",
+                pawnReason: "想买显卡，拿爷爷的旧表换点钱。",
+                redemptionPlea: "应该没人要了吧，不赎了。",
+                negotiationDynamic: "啊？这破表这么值钱吗？",
+                accepted: { fair: "太棒了！", fleeced: "够买入门卡了，谢谢！", premium: "老板你是大善人！" },
+                rejected: "哦，那我再去问问。",
+                rejectionLines: { standard: "那我拿回家吧。", angry: "怎么这样...", desperate: "少给点也行啊..." }
+            },
+            redemptionResolve: "Weak", negotiationStyle: "Deceptive", patience: 5, mood: 'Neutral', tags: ["Opportunity"]
+        },
+        outcomes: {
+            "deal_charity": [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }], // You pay him a lot (fair)
+            "deal_aid":     [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }],
+            "deal_standard":[{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }],
+            "deal_shark":   [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }] // You scam him (standard/shark)
+        },
+        onReject: [{ type: "DEACTIVATE_CHAIN" }]
+    }
+];
+
+// =========================================================
+// EXPORTS
+// =========================================================
+
+export const INITIAL_CHAINS: EventChainState[] = [
+    EMMA_CHAIN_INIT,
+    SUSAN_CHAIN_INIT,
+    ZHAO_CHAIN_INIT,
+    LIN_CHAIN_INIT
+];
+
+export const ALL_STORY_EVENTS: StoryEvent[] = [
+    ...EMMA_EVENTS,
+    ...SUSAN_EVENTS,
+    ...ZHAO_EVENTS,
+    ...LIN_EVENTS
 ];

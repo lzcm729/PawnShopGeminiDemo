@@ -1,25 +1,59 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { X, Activity, Database } from 'lucide-react';
+import { Activity, Database, PlayCircle, Bug } from 'lucide-react';
+import { validateEvents, ValidationIssue } from '../services/eventValidator';
+import { EMMA_EVENTS } from '../services/storyData';
+import { ValidationModal } from './ValidationModal';
 
 export const DebugPanel: React.FC = () => {
-  const { state, dispatch } = useGame();
+  const { state } = useGame();
   
-  if (!state.showDebug) return null;
+  const [showValidation, setShowValidation] = useState(false);
+  const [validationLogs, setValidationLogs] = useState<string[]>([]);
+  const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
+
+  const handleValidate = () => {
+        const result = validateEvents([...EMMA_EVENTS]);
+        setValidationLogs(result.logs);
+        setValidationIssues(result.issues);
+        setShowValidation(true);
+  };
 
   return (
-    <div className="fixed top-20 right-4 z-[200] w-80 bg-[#0a0a0a] border border-green-500/30 shadow-[0_0_20px_rgba(0,255,0,0.1)] rounded-md p-4 font-mono text-xs text-green-500 overflow-y-auto max-h-[80vh] backdrop-blur-md">
-      <div className="flex justify-between items-center mb-4 border-b border-green-900/50 pb-2">
+    <div className="h-full w-full bg-[#0a0a0a] font-mono text-xs text-green-500 flex flex-col border-r border-green-500/10">
+      
+      <ValidationModal 
+            isOpen={showValidation} 
+            onClose={() => setShowValidation(false)} 
+            logs={validationLogs} 
+            issues={validationIssues}
+      />
+
+      {/* Header */}
+      <div className="flex justify-between items-center p-3 border-b border-green-900/50 bg-[#050505]">
         <h3 className="font-bold flex items-center gap-2 tracking-widest text-green-400">
-            <Activity className="w-4 h-4" /> DEBUG_CONSOLE
+            <Activity className="w-4 h-4" /> DEV_CONSOLE
         </h3>
-        <button onClick={() => dispatch({ type: 'TOGGLE_DEBUG' })} className="hover:text-green-200 transition-colors">
-            <X className="w-4 h-4" />
-        </button>
+      </div>
+      
+      {/* Controls */}
+      <div className="p-3 border-b border-green-900/50 grid grid-cols-2 gap-2">
+           <button 
+                onClick={handleValidate}
+                className="bg-green-900/20 border border-green-700/50 hover:bg-green-900/40 text-green-400 px-2 py-2 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
+           >
+               <PlayCircle className="w-3 h-3" />
+               VALIDATE STORY
+           </button>
+           <div className="bg-green-900/10 border border-green-900/30 text-green-600 px-2 py-2 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase cursor-not-allowed opacity-50">
+               <Bug className="w-3 h-3" />
+               (MORE TOOLS)
+           </div>
       </div>
 
-      <div className="space-y-4">
+      {/* Content Scroll */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
         {state.activeChains.map(chain => (
             <div key={chain.id} className="bg-green-950/10 p-3 rounded border border-green-900/30 relative overflow-hidden group">
                  {/* Scanline effect */}
@@ -63,10 +97,11 @@ export const DebugPanel: React.FC = () => {
         )}
       </div>
       
-      <div className="mt-4 pt-4 border-t border-green-900/50 text-[10px] text-green-600 space-y-1">
+      {/* Footer Stats */}
+      <div className="p-3 border-t border-green-900/50 bg-[#050505] text-[10px] text-green-600 space-y-1">
           <p className="font-bold mb-1">[ SYSTEM_STATE ]</p>
           <div className="flex justify-between"><span>Global Day:</span> <span className="text-green-400">{state.stats.day}</span></div>
-          <div className="flex justify-between"><span>Reputation (H/C/U):</span> <span className="text-green-400">{Object.values(state.reputation).join('/')}</span></div>
+          <div className="flex justify-between"><span>Reputation:</span> <span className="text-green-400">{Object.values(state.reputation).map(Math.round).join('/')}</span></div>
           <div className="flex justify-between"><span>Completed IDs:</span> <span className="text-green-400">{state.completedScenarioIds.length}</span></div>
       </div>
     </div>

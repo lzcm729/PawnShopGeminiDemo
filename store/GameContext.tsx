@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren } from 'react';
 import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance } from '../types';
-import { EMMA_CHAIN_INIT } from '../services/storyData';
+import { INITIAL_CHAINS } from '../services/storyData';
 import { getMailTemplate } from '../services/mailData';
 import { generateValuationRange } from '../services/contentGenerator';
 
@@ -32,7 +32,7 @@ const initialState: GameState = {
   showMail: false,
   showDebug: false,
   
-  activeChains: [EMMA_CHAIN_INIT],
+  activeChains: INITIAL_CHAINS,
   
   inbox: [],
   pendingMails: [],
