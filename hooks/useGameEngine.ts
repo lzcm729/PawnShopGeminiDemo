@@ -1,0 +1,429 @@
+
+
+import { useGame } from '../store/GameContext';
+import { getDailyEvent } from '../services/contentGenerator'; 
+import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../services/chainEngine';
+import { EMMA_EVENTS } from '../services/storyData';
+import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect } from '../types';
+import { usePawnShop } from './usePawnShop';
+
+export const useGameEngine = () => {
+  const { state, dispatch } = useGame();
+  const { checkDailyExpirations } = usePawnShop();
+
+  const startNewDay = () => {
+    // 1. Simulate active chains (NPCs spending money)
+    const simulatedChains = runDailySimulation(state.activeChains);
+    dispatch({ type: 'UPDATE_CHAINS', payload: simulatedChains });
+
+    // 2. Deliver Mail
+    dispatch({ type: 'PROCESS_DAILY_MAIL' });
+
+    // 3. Check for expired pawn items (Core Business Lifecycle)
+    checkDailyExpirations();
+
+    const isRentDue = state.stats.day > 0 && state.stats.day % 5 === 0;
+    
+    if (isRentDue && state.stats.cash < state.stats.rentDue) {
+       dispatch({ 
+         type: 'GAME_OVER', 
+         payload: "资金链断裂。你交不起房租，被房东赶了出去。" 
+       });
+       return;
+    }
+
+    if (isRentDue) {
+       dispatch({ type: 'PAY_RENT' });
+    }
+
+    dispatch({ type: 'START_DAY' });
+  };
+
+  const generateDailyEvent = async () => {
+    if (state.isLoading) return;
+
+    dispatch({ type: 'SET_LOADING', payload: true });
+    
+    try {
+      // Step A: Priority Check - Narrative Chains (Emma)
+      const narrativeEvent = findEligibleEvent(state.activeChains, EMMA_EVENTS);
+      
+      if (narrativeEvent) {
+          console.log("Triggering Narrative Event:", narrativeEvent.id);
+          
+          let storyCustomer = instantiateStoryCustomer(narrativeEvent);
+
+          // --- DYNAMIC REDEMPTION CHECK ---
+          if (narrativeEvent.type === 'REDEMPTION_CHECK') {
+              const flowResult = resolveRedemptionFlow(narrativeEvent, state.inventory);
+              if (flowResult) {
+                  console.log(`Dynamic Redemption Flow: ${flowResult.flowKey}`);
+                  storyCustomer.dialogue.greeting = flowResult.flow.dialogue;
+                  storyCustomer.dialogue.accepted.fair = "谢谢。";
+                  (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
+                  
+                  if (narrativeEvent.targetItemId) {
+                      const realItem = state.inventory.find(i => i.id === narrativeEvent.targetItemId);
+                      if (realItem) {
+                           storyCustomer.item = { ...realItem };
+                           storyCustomer.interactionType = 'REDEEM';
+                      }
+                  }
+              }
+          }
+
+          setTimeout(() => {
+              dispatch({ type: 'SET_CUSTOMER', payload: storyCustomer });
+              dispatch({ type: 'SET_LOADING', payload: false });
+          }, 800);
+          return;
+      }
+
+      // Step B: Check for Scripted Preset (Days 1-5 tutorial flow)
+      const presetCustomer = getDailyEvent(state.stats.day, state.customersServedToday, state.completedScenarioIds);
+      
+      if (presetCustomer) {
+        setTimeout(() => {
+          dispatch({ type: 'SET_CUSTOMER', payload: presetCustomer });
+          dispatch({ type: 'SET_LOADING', payload: false });
+        }, 800);
+        return;
+      }
+
+      // Step C: Fallback REMOVED
+      // If no customer is found (preset exhausted or blocked), we close the shop.
+      console.log("No customers available today.");
+      setTimeout(() => {
+          dispatch({ type: 'SET_LOADING', payload: false });
+          // Transition to SHOP_CLOSED to prevent infinite loop in App.tsx
+          dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
+      }, 500);
+
+    } catch (error) {
+      console.error("Event generation error:", error);
+      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
+    }
+  };
+
+  const evaluateTransaction = (offer: number, rate: number = 0.05): TransactionResult => {
+    const customer = state.currentCustomer;
+    if (!customer) throw new Error("No customer to evaluate");
+
+    const item = customer.item;
+    const { minimumAmount, desiredAmount } = customer;
+    
+    let isAccepted = false;
+    let refuseReason = "";
+
+    if (offer >= minimumAmount) {
+      isAccepted = true;
+    } else {
+      isAccepted = false;
+      refuseReason = "出价太低了。";
+    }
+
+    if (!isAccepted) {
+       return {
+         success: false,
+         message: refuseReason || customer.dialogue.rejected,
+         cashDelta: 0,
+         reputationDelta: { [ReputationType.CREDIBILITY]: -1 }
+       };
+    }
+
+    const repDelta: any = {
+      [ReputationType.HUMANITY]: 0,
+      [ReputationType.CREDIBILITY]: 0,
+      [ReputationType.UNDERWORLD]: 0
+    };
+
+    if (offer >= desiredAmount) {
+      repDelta[ReputationType.HUMANITY] += 3;
+      repDelta[ReputationType.CREDIBILITY] -= 1; 
+    } else {
+      repDelta[ReputationType.CREDIBILITY] += 1;
+    }
+    
+    if (rate === 0) {
+        repDelta[ReputationType.HUMANITY] += 5;
+    } else if (rate >= 0.20) {
+        repDelta[ReputationType.HUMANITY] -= 3;
+        repDelta[ReputationType.UNDERWORLD] += 2;
+        repDelta[ReputationType.CREDIBILITY] -= 2;
+    }
+
+    if (item.isStolen) {
+      repDelta[ReputationType.UNDERWORLD] += 5;
+      repDelta[ReputationType.CREDIBILITY] -= 2; 
+    }
+    if (item.isFake) {
+       repDelta[ReputationType.CREDIBILITY] -= 5; 
+    }
+
+    const valuationBasis = item.perceivedValue !== undefined ? item.perceivedValue : item.realValue;
+    const termDays = 7;
+    const pawnInfo = {
+        principal: offer,
+        interestRate: rate,
+        startDate: state.stats.day,
+        termDays: termDays,
+        dueDate: state.stats.day + termDays,
+        valuation: valuationBasis
+    };
+
+    const finalizedItem: Item = {
+      ...item,
+      pawnAmount: offer,
+      pawnInfo: pawnInfo, 
+      pawnDate: state.stats.day,
+      status: ItemStatus.ACTIVE 
+    };
+
+    let quality: 'fair' | 'fleeced' | 'premium' = 'fair';
+    const ratio = offer / desiredAmount;
+    if (ratio < 0.85) quality = 'fleeced';
+    if (ratio > 1.05) quality = 'premium';
+
+    return {
+      success: true,
+      message: customer.dialogue.accepted[quality],
+      cashDelta: -offer,
+      reputationDelta: repDelta,
+      item: finalizedItem,
+      dealQuality: quality,
+      terms: { principal: offer, rate: rate }
+    };
+  };
+
+  const commitTransaction = (result: TransactionResult) => {
+    const currentCust = state.currentCustomer;
+
+    if (result.success && currentCust?.chainId && currentCust?.eventId) {
+        const chainEvent = EMMA_EVENTS.find(e => e.id === currentCust.eventId);
+        if (chainEvent) {
+             const updatedChains = state.activeChains.map(chain => {
+                 if (chain.id === currentCust.chainId) {
+                     let newChain = { ...chain, variables: { ...chain.variables } };
+                     
+                     let effectsToRun: ChainUpdateEffect[] = (currentCust as any)._dynamicEffects || [];
+
+                     if (effectsToRun.length === 0 && chainEvent.outcomes) {
+                         const { principal, rate } = result.terms || { principal: 0, rate: 0.05 };
+                         
+                         let outcomeKey = 'deal_standard';
+                         if (rate === 0) outcomeKey = 'deal_charity';
+                         else if (rate === 0.05) outcomeKey = 'deal_aid';
+                         else if (rate === 0.10) outcomeKey = 'deal_standard';
+                         else if (rate >= 0.20) outcomeKey = 'deal_shark';
+
+                         effectsToRun = chainEvent.outcomes[outcomeKey] || chainEvent.outcomes['deal_standard'] || [];
+
+                         const realValue = result.item?.realValue || 0;
+                         const isPremium = principal >= 2000 || (realValue > 0 && principal >= realValue * 1.5);
+
+                         if (isPremium) {
+                             console.log("Premium Override Triggered!");
+                             effectsToRun = [
+                                 ...effectsToRun,
+                                 { type: 'MODIFY_VAR', variable: 'job_chance', value: 100 } // FIXED: Guarantee success for premium players
+                             ];
+                         }
+                     }
+                     
+                     if (effectsToRun.length === 0 && chainEvent.onComplete) {
+                         effectsToRun = chainEvent.onComplete;
+                     }
+
+                     let itemsToRedeem: string[] = [];
+                     let itemsToAbandon: string[] = [];
+
+                     effectsToRun.forEach(effect => {
+                         switch (effect.type) {
+                             case 'ADD_FUNDS_DEAL':
+                                 newChain.variables.funds = (newChain.variables.funds || 0) + Math.abs(result.cashDelta);
+                                 break;
+                             case 'ADD_FUNDS': 
+                                 if (effect.value) newChain.variables.funds = (newChain.variables.funds || 0) + effect.value;
+                                 break;
+                             case 'SET_STAGE':
+                                 if (effect.value !== undefined) newChain.stage = effect.value;
+                                 break;
+                             case 'MODIFY_VAR':
+                                 if (effect.variable && effect.value !== undefined) {
+                                     newChain.variables[effect.variable] = effect.value;
+                                 }
+                                 break;
+                             case 'DEACTIVATE':
+                             case 'DEACTIVATE_CHAIN':
+                                 newChain.isActive = false;
+                                 break;
+                             case 'SCHEDULE_MAIL':
+                                 if (effect.templateId) {
+                                     dispatch({ 
+                                        type: 'SCHEDULE_MAIL', 
+                                        payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0 } 
+                                     });
+                                 }
+                                 break;
+                             case 'MODIFY_REP':
+                                 if (effect.value) {
+                                     dispatch({ 
+                                         type: 'RESOLVE_TRANSACTION', 
+                                         payload: { 
+                                             cashDelta: 0, 
+                                             reputationDelta: { [ReputationType.CREDIBILITY]: effect.value }, 
+                                             item: null, 
+                                             log: "声誉发生变化", 
+                                             customerName: currentCust.name 
+                                         } 
+                                     });
+                                 }
+                                 break;
+                             case 'REDEEM_ALL':
+                                 state.inventory.forEach(i => {
+                                     if (i.relatedChainId === chain.id && i.status !== ItemStatus.REDEEMED && i.status !== ItemStatus.SOLD) {
+                                         itemsToRedeem.push(i.id);
+                                     }
+                                 });
+                                 break;
+                             case 'REDEEM_TARGET_ONLY':
+                                 if (chainEvent.targetItemId) itemsToRedeem.push(chainEvent.targetItemId);
+                                 break;
+                             case 'ABANDON_OTHERS':
+                                 state.inventory.forEach(i => {
+                                     if (i.relatedChainId === chain.id && i.id !== chainEvent.targetItemId && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) {
+                                         itemsToAbandon.push(i.id);
+                                     }
+                                 });
+                                 break;
+                             case 'ABANDON_ALL':
+                                 state.inventory.forEach(i => {
+                                     if (i.relatedChainId === chain.id && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) {
+                                         itemsToAbandon.push(i.id);
+                                     }
+                                 });
+                                 break;
+                             case 'TRIGGER_NEWS':
+                                 console.log("News Triggered:", effect.id);
+                                 break;
+                         }
+                     });
+                     
+                     if (itemsToRedeem.length > 0) {
+                         itemsToRedeem.forEach(id => {
+                            const item = state.inventory.find(i => i.id === id);
+                            if (item && item.pawnInfo) {
+                                const cost = item.pawnInfo.principal * (1 + item.pawnInfo.interestRate); 
+                                dispatch({ type: 'REDEEM_ITEM', payload: { itemId: id, paymentAmount: Math.floor(cost), name: item.name } });
+                            }
+                         });
+                     }
+                     
+                     if (itemsToAbandon.length > 0) {
+                         dispatch({ type: 'EXPIRE_ITEMS', payload: { expiredItemIds: itemsToAbandon, logs: [`${itemsToAbandon.length} 件物品已被原主放弃，归店铺所有。`] } });
+                     }
+
+                     return newChain;
+                 }
+                 return chain;
+             });
+             
+             dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
+        }
+    }
+
+    if (result.success && result.item) {
+        // FIXED: Using 'isVirtual' flag instead of hardcoded IDs to determine if item should skip inventory
+        if (result.item.isVirtual) { 
+            dispatch({ 
+                type: 'RESOLVE_TRANSACTION', 
+                payload: { 
+                  cashDelta: result.cashDelta, 
+                  reputationDelta: result.reputationDelta, 
+                  item: null, 
+                  log: `交易完成: ${result.item.name}。`,
+                  customerName: state.currentCustomer?.name || "Customer"
+                } 
+            });
+        } else {
+             dispatch({ 
+                type: 'RESOLVE_TRANSACTION', 
+                payload: { 
+                  cashDelta: result.cashDelta, 
+                  reputationDelta: result.reputationDelta, 
+                  item: result.item,
+                  log: `收购了 ${result.item.name} (支出 $${Math.abs(result.cashDelta)})。`,
+                  customerName: state.currentCustomer?.name || "Customer"
+                } 
+            });
+        }
+    } else {
+      dispatch({ 
+        type: 'RESOLVE_TRANSACTION', 
+        payload: { 
+          cashDelta: 0, 
+          reputationDelta: result.reputationDelta, 
+          item: null, 
+          log: `与 ${state.currentCustomer?.name} 的交易告吹: ${result.message}`,
+          customerName: state.currentCustomer?.name || "Customer"
+        } 
+      });
+    }
+  };
+
+  const rejectCustomer = () => {
+     const currentCust = state.currentCustomer;
+     
+     if (currentCust?.chainId && currentCust?.eventId) {
+         const chainEvent = EMMA_EVENTS.find(e => e.id === currentCust.eventId);
+         
+         if (chainEvent && chainEvent.onReject) {
+             const updatedChains = state.activeChains.map(chain => {
+                 if (chain.id === currentCust.chainId) {
+                     let newChain = { ...chain, variables: { ...chain.variables } };
+                     
+                     chainEvent.onReject!.forEach(effect => {
+                         if (effect.type === 'SET_STAGE' && effect.value !== undefined) {
+                             newChain.stage = effect.value;
+                         } else if (effect.type === 'MODIFY_VAR' && effect.variable && effect.value !== undefined) {
+                             newChain.variables[effect.variable] = effect.value;
+                         } else if (effect.type === 'DEACTIVATE') {
+                             newChain.isActive = false;
+                         } else if (effect.type === 'SCHEDULE_MAIL' && effect.templateId && effect.delayDays !== undefined) {
+                             dispatch({ 
+                                type: 'SCHEDULE_MAIL', 
+                                payload: { templateId: effect.templateId, delayDays: effect.delayDays } 
+                             });
+                         }
+                     });
+                     
+                     return newChain;
+                 }
+                 return chain;
+             });
+             
+             dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
+         }
+     }
+
+     dispatch({ type: 'REJECT_DEAL' });
+  };
+  
+  const liquidateItem = (item: Item) => {
+      const amount = Math.floor(item.realValue * 0.8);
+      dispatch({ 
+          type: 'LIQUIDATE_ITEM', 
+          payload: { itemId: item.id, amount, name: item.name } 
+      });
+  };
+
+  return {
+    startNewDay,
+    generateDailyEvent,
+    evaluateTransaction,
+    commitTransaction,
+    rejectCustomer,
+    liquidateItem
+  };
+};

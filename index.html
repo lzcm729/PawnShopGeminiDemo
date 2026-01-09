@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Pawn's Dilemma</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['"Courier Prime"', 'monospace'],
+            },
+            colors: {
+              pawn: {
+                dark: '#1a1a1a',
+                panel: '#262626',
+                accent: '#d97706', // Amber 600
+                text: '#e5e5e5',
+                green: '#10b981',
+                red: '#ef4444',
+                muted: '#737373'
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #121212;
+        color: #e5e5e5;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1a1a1a; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #404040; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #525252; 
+      }
+
+      /* Range Slider Styling */
+      input[type=range] {
+        -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
+        background: transparent; /* Otherwise white in Chrome */
+      }
+
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 24px;
+        width: 24px;
+        border-radius: 50%;
+        background: #d97706;
+        border: 2px solid #fff;
+        cursor: pointer;
+        margin-top: -6px; /* Adjust based on track height (12px track, 24px thumb -> -6px top margin to center) */
+        box-shadow: 0 0 10px rgba(217,119,6,0.5);
+        transition: transform 0.1s;
+      }
+
+      input[type=range]:hover::-webkit-slider-thumb {
+        transform: scale(1.1);
+      }
+
+      input[type=range]:disabled::-webkit-slider-thumb {
+        background: #57534e;
+        border-color: #a8a29e;
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+
+      input[type=range]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 12px;
+        cursor: pointer;
+        background: #292524;
+        border-radius: 6px;
+      }
+      
+      /* Firefox Styles */
+      input[type=range]::-moz-range-thumb {
+        height: 24px;
+        width: 24px;
+        border-radius: 50%;
+        background: #d97706;
+        border: 2px solid #fff;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(217,119,6,0.5);
+      }
+      
+      input[type=range]::-moz-range-track {
+        width: 100%;
+        height: 12px;
+        cursor: pointer;
+        background: #292524;
+        border-radius: 6px;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

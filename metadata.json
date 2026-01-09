@@ -1,0 +1,5 @@
+{
+  "name": "The Pawn's Dilemma",
+  "description": "A narrative-driven pawn shop simulation where players balance financial survival against moral conscience. Features a tri-layer value system, multi-axis reputation, and AI-generated customers.",
+  "requestFramePermissions": []
+}

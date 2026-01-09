@@ -1,0 +1,134 @@
+import React from 'react';
+import { useGame } from '../store/GameContext';
+import { User, MessageSquareQuote, AlertCircle, Flame } from 'lucide-react';
+
+export const CustomerView: React.FC = () => {
+  const { state } = useGame();
+  const { currentCustomer } = state;
+
+  if (!currentCustomer) return (
+    <div className="h-full flex flex-col items-center justify-center text-stone-600 font-mono animate-pulse bg-stone-950">
+      <User className="w-12 h-12 mb-4 opacity-20" />
+      <span className="tracking-widest">等待顾客光临...</span>
+    </div>
+  );
+
+  const { dialogue, mood, patience } = currentCustomer;
+
+  // Resolve color mapping
+  const resolveColor = {
+    Strong: 'text-red-500',
+    Medium: 'text-yellow-500',
+    Weak: 'text-stone-500',
+    None: 'text-stone-700'
+  };
+
+  const resolveText = {
+    Strong: '坚决',
+    Medium: '犹豫',
+    Weak: '动摇',
+    None: '放弃'
+  };
+  
+  // Mood Styles
+  const isAngry = mood === 'Angry';
+  const isAnnoyed = mood === 'Annoyed';
+  const isHappy = mood === 'Happy';
+  
+  let borderColor = "border-[#292524]";
+  let shadowColor = "shadow-inner";
+  let animationClass = "";
+  
+  if (isAngry) {
+      borderColor = "border-red-600";
+      shadowColor = "shadow-[0_0_15px_rgba(220,38,38,0.5)]";
+      animationClass = "animate-[shake_0.5s_ease-in-out_infinite]";
+  } else if (isAnnoyed) {
+      borderColor = "border-orange-500";
+  } else if (isHappy) {
+      borderColor = "border-pawn-green";
+      shadowColor = "shadow-[0_0_15px_rgba(16,185,129,0.3)]";
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-[#1c1917] border-r border-[#44403c] relative overflow-hidden">
+      {/* Texture Overlay */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-noise.png')] opacity-10 pointer-events-none"></div>
+      
+      {/* Avatar Section */}
+      <div className={`relative z-10 bg-gradient-to-b from-stone-900 to-[#1c1917] p-6 border-b border-[#44403c] shadow-lg transition-colors duration-500 ${isAngry ? 'bg-red-950/20' : ''}`}>
+        <div className={`w-32 h-32 mx-auto bg-stone-800 rounded-full mb-4 overflow-hidden border-4 transition-all duration-300 relative group ${borderColor} ${shadowColor} ${animationClass}`}>
+          <img 
+            src={`https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`} 
+            alt="Customer" 
+            className="w-full h-full object-cover grayscale opacity-90 group-hover:grayscale-0 transition-all duration-700"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+        </div>
+        
+        <div className="text-center">
+          <h2 className="text-2xl font-bold font-serif text-[#e7e5e4] tracking-wider mb-1">
+            {currentCustomer.name}
+          </h2>
+          <p className="text-xs font-mono text-stone-500 uppercase tracking-widest mb-3">
+            ID: {currentCustomer.id.slice(0, 8)}
+          </p>
+
+          <div className="flex justify-center gap-2 mb-2">
+             {/* Patience/Mood Meter */}
+             <div className="flex flex-col items-center">
+                <span className={`text-[10px] uppercase mb-1 ${isAngry ? 'text-red-500 font-bold' : 'text-stone-500'}`}>
+                    {isAngry ? "情绪失控 (ANGRY)" : "谈判耐心 (PATIENCE)"}
+                </span>
+                <div className="flex gap-1">
+                   {Array.from({length: 5}).map((_, i) => (
+                      <Flame 
+                        key={i} 
+                        className={`w-4 h-4 transition-all duration-300 ${
+                            i < patience 
+                                ? (isAngry ? 'text-red-600 fill-red-600 animate-pulse' : 'text-orange-500 fill-orange-500') 
+                                : 'text-stone-800'
+                        }`} 
+                      />
+                   ))}
+                </div>
+             </div>
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#292524] rounded-full border border-[#44403c] mt-2">
+            <span className="text-xs text-stone-400">赎回意愿:</span>
+            <span className={`text-xs font-bold ${resolveColor[currentCustomer.redemptionResolve]}`}>
+              {resolveText[currentCustomer.redemptionResolve]}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Dialogue Section */}
+      <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar z-10">
+        
+        {/* Opening Line */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-pawn-accent/80 mb-1">
+            <MessageSquareQuote className="w-4 h-4" />
+            <span className="text-xs font-bold tracking-wider uppercase">开场白</span>
+          </div>
+          <div className="bg-[#292524] p-4 border-l-2 border-pawn-accent text-[#d6d3d1] font-serif text-lg leading-relaxed shadow-sm">
+            “{dialogue.greeting}”
+          </div>
+        </div>
+
+        {/* Narrative Details */}
+        <div className="grid gap-4">
+          <div className="group">
+            <h4 className="text-xs font-mono text-stone-500 mb-1 uppercase flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> 典当理由
+            </h4>
+            <p className="text-sm text-stone-400 italic border-b border-[#292524] pb-2 group-hover:text-stone-300 transition-colors">
+              "{dialogue.pawnReason}"
+            </p>
+          </div>
+          
+          <div className="group">
+            <h4 className="text-xs font-mono text-stone-500 mb-1 uppercase">赎回承诺</h4>
+            <p className="text-sm text-stone
