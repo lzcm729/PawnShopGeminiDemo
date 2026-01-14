@@ -24,6 +24,8 @@ export const RedemptionModal: React.FC<RedemptionModalProps> = ({ item, onClose 
 
     // Extension State
     const [extendDays, setExtendDays] = useState(7);
+    
+    const extensionCount = item.pawnInfo?.extensionCount || 0;
 
     if (!costs && !isBreach) return null;
 

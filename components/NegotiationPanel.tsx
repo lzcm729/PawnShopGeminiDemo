@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame, Handshake } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines } from '../types';
 import { DealSuccessModal } from './DealSuccessModal';
 import { ActionLog } from '../hooks/useNegotiation';
@@ -163,6 +163,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   // Long press refs
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // DETECT BINARY CHOICE MODE (Collector/Sales Events)
+  const isBinaryChoice = currentCustomer?.interactionType === 'NEGOTIATION';
+
   useEffect(() => {
     if (scrollRef.current) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -201,7 +204,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
               sentiment: 'negative'
           }]);
       } else if (lastAction.type === 'NARRATIVE') {
-          // Narrative Flow: Player asks -> Customer answers
           const newEntries: LogEntry[] = [];
           
           newEntries.push({
@@ -285,6 +287,26 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
     }
   };
 
+  // --- BINARY ACCEPT HANDLER ---
+  const handleBinaryAccept = () => {
+      // Create a specific result that triggers 'deal_standard' in commitTransaction
+      // Rate 0.10 -> 'deal_standard' outcome mapping in engine
+      const mockResult: TransactionResult = {
+          success: true,
+          message: currentCustomer.dialogue.accepted.fair || "成交。",
+          cashDelta: 0, // Funds handled by event engine (ADD_FUNDS effect)
+          reputationDelta: {},
+          item: currentCustomer.item,
+          dealQuality: 'fair',
+          terms: { principal: 0, rate: 0.10 } 
+      };
+      
+      setSuccessModalData({
+          result: mockResult,
+          customer: currentCustomer
+      });
+  };
+
   const handleConfirmDeal = () => {
       if (successModalData) {
           commitTransaction(successModalData.result);
@@ -313,7 +335,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
   const startAdjusting = (amount: number) => {
       if (intervalRef.current) return;
-      adjustPrincipal(amount); // click immediately
+      adjustPrincipal(amount); 
       intervalRef.current = setInterval(() => {
           adjustPrincipal(amount);
       }, 100);
@@ -334,7 +356,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
   const handleMatchAsk = () => {
       if (!canInteract) return;
-      // Cap at available cash
       const target = Math.min(currentAskPrice, cashAvailable);
       setOfferPrincipal(target);
   };
@@ -433,113 +454,147 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           })}
       </div>
 
-      {/* --- FINANCIAL SUMMARY (Moved to Bottom) --- */}
-      <div className="bg-[#0c0a09] border-t border-b border-[#292524] p-3 shadow-md grid grid-cols-2 gap-4">
-          <div className="flex flex-col border-r border-[#292524] pr-4">
-              <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-1">Customer Ask</span>
-              <div className="flex items-center gap-3">
-                  <span className="text-xl font-mono font-bold text-stone-200">
-                     ${currentAskPrice}
-                  </span>
-                  
-                  {/* Struck-through original price if lowered */}
-                  {currentCustomer.desiredAmount > currentAskPrice && (
-                      <span className="text-sm font-mono text-stone-500 line-through decoration-stone-500 decoration-2">
-                          ${currentCustomer.desiredAmount}
+      {/* --- FINANCIAL SUMMARY (Only for Standard Negotiation) --- */}
+      {!isBinaryChoice && (
+          <div className="bg-[#0c0a09] border-t border-b border-[#292524] p-3 shadow-md grid grid-cols-2 gap-4">
+              <div className="flex flex-col border-r border-[#292524] pr-4">
+                  <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-1">Customer Ask</span>
+                  <div className="flex items-center gap-3">
+                      <span className="text-xl font-mono font-bold text-stone-200">
+                         ${currentAskPrice}
                       </span>
-                  )}
-
-                  <span className="text-[9px] text-stone-600 bg-stone-900 px-1 rounded ml-auto">ASK</span>
+                      {/* Struck-through original price if lowered */}
+                      {currentCustomer.desiredAmount > currentAskPrice && (
+                          <span className="text-sm font-mono text-stone-500 line-through decoration-stone-500 decoration-2">
+                              ${currentCustomer.desiredAmount}
+                          </span>
+                      )}
+                      <span className="text-[9px] text-stone-600 bg-stone-900 px-1 rounded ml-auto">ASK</span>
+                  </div>
+              </div>
+              
+              <div className="flex flex-col pl-2">
+                  <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-1">Projected Profit</span>
+                  <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-pawn-green" />
+                      <span className="text-xl font-mono font-bold text-pawn-green">
+                         +${profit}
+                      </span>
+                  </div>
               </div>
           </div>
-          
-          <div className="flex flex-col pl-2">
-              <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-1">Projected Profit</span>
-              <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-pawn-green" />
-                  <span className="text-xl font-mono font-bold text-pawn-green">
-                     +${profit}
-                  </span>
-              </div>
-          </div>
-      </div>
+      )}
 
       {/* --- BOTTOM: CONTROLS --- */}
       <div className="bg-[#1c1917] p-4 border-t border-[#44403c] shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-10 flex flex-col gap-3">
          
-         {/* Rate Selector */}
-         <div>
-             <div className="flex gap-2">
-                <RateCard rate={0} label="Charity" />
-                <RateCard rate={0.05} label="Standard" />
-                <RateCard rate={0.10} label="High" />
-                <RateCard rate={0.20} label="Shark" />
-             </div>
-         </div>
-
-         {/* Principal Adjuster */}
-         <div>
-             <div className="flex items-center gap-1 bg-[#0c0a09] border border-[#292524] rounded p-1 justify-between">
-                 
-                 <div className="flex gap-1">
-                     <AdjustButton amount={-100} icon={<ChevronsLeft className="w-4 h-4"/>} label="-100" />
-                     <AdjustButton amount={-10} icon={<ChevronLeft className="w-4 h-4"/>} label="-10" />
+         {isBinaryChoice ? (
+             // --- BINARY CHOICE CONTROLS (BUY/SELL) ---
+             // FIXED: No adjusters, no rates. Strict Take/Leave.
+             <div className="flex flex-col gap-4 py-2">
+                 <div className="text-center">
+                    <span className="text-stone-500 text-xs font-bold uppercase tracking-widest block mb-2">OFFER RECEIVED</span>
+                    <div className="inline-block px-6 py-2 bg-[#0c0a09] border border-stone-700 rounded-lg relative">
+                        <span className="text-4xl font-mono font-black text-white tracking-widest">${currentAskPrice}</span>
+                        <div className="absolute -top-3 -right-3">
+                            <Stamp className="w-6 h-6 text-pawn-accent rotate-[15deg]" />
+                        </div>
+                    </div>
                  </div>
                  
-                 <div className="flex-1 flex flex-col items-center justify-center min-w-[80px]">
-                     <button 
-                         onClick={handleMatchAsk}
-                         disabled={!canInteract}
-                         className="text-[10px] text-pawn-accent/80 hover:text-pawn-accent hover:underline uppercase font-bold tracking-widest mb-1 flex items-center gap-1 transition-all active:scale-95"
-                         title={`Set to $${currentAskPrice}`}
+                 <div className="flex gap-4 items-center">
+                     <Button 
+                        variant="danger" 
+                        onClick={handleManualReject} 
+                        className="flex-1 h-14 flex flex-col items-center justify-center gap-1 border-red-900 hover:bg-red-950"
                      >
-                         <Target className="w-3 h-3" />
-                         MATCH
-                     </button>
-                     <span className="text-2xl font-mono font-bold text-white tracking-wider">
-                        ${offerPrincipal}
-                     </span>
-                 </div>
-
-                 <div className="flex gap-1">
-                     <AdjustButton amount={10} icon={<ChevronRight className="w-4 h-4"/>} label="+10" />
-                     <AdjustButton amount={100} icon={<ChevronsRight className="w-4 h-4"/>} label="+100" />
+                        <span className="font-bold text-lg">拒绝</span>
+                        <span className="text-[10px] opacity-70">REJECT OFFER</span>
+                     </Button>
+                     <Button 
+                        variant="primary" 
+                        onClick={handleBinaryAccept} 
+                        className="flex-[2] h-14 flex flex-col items-center justify-center gap-1 border-pawn-accent shadow-[0_0_15px_rgba(217,119,6,0.3)]"
+                     >
+                        <span className="font-bold text-lg flex items-center gap-2"><Handshake className="w-5 h-5"/> 成交</span>
+                        <span className="text-[10px] opacity-70 text-black">ACCEPT DEAL</span>
+                     </Button>
                  </div>
              </div>
-             
-             {/* Wallet Check */}
-             <div className="flex justify-between mt-1 text-[10px] font-mono px-1">
-                 <span className={`${offerPrincipal > cashAvailable ? 'text-red-500 animate-pulse font-bold' : 'text-stone-600'}`}>
-                     Wallet: ${cashAvailable}
-                 </span>
-                 <span className="text-stone-600">
-                     Repayment: ${repaymentAmount}
-                 </span>
-             </div>
-         </div>
+         ) : (
+             // --- STANDARD PAWN CONTROLS ---
+             <>
+                 <div>
+                     <div className="flex gap-2">
+                        <RateCard rate={0} label="Charity" />
+                        <RateCard rate={0.05} label="Standard" />
+                        <RateCard rate={0.10} label="High" />
+                        <RateCard rate={0.20} label="Shark" />
+                     </div>
+                 </div>
 
-         {/* Action Buttons */}
-         <div className="flex gap-3 mt-1">
-            <Button 
-              variant="danger" 
-              onClick={handleManualReject}
-              disabled={!canInteract}
-              className="w-16 h-14 border-2 hover:bg-red-900/40 flex items-center justify-center group opacity-80 hover:opacity-100"
-              title="Reject"
-            >
-              <XCircle className="w-6 h-6 group-hover:rotate-90 transition-transform"/>
-            </Button>
+                 <div>
+                     <div className="flex items-center gap-1 bg-[#0c0a09] border border-[#292524] rounded p-1 justify-between">
+                         
+                         <div className="flex gap-1">
+                             <AdjustButton amount={-100} icon={<ChevronsLeft className="w-4 h-4"/>} label="-100" />
+                             <AdjustButton amount={-10} icon={<ChevronLeft className="w-4 h-4"/>} label="-10" />
+                         </div>
+                         
+                         <div className="flex-1 flex flex-col items-center justify-center min-w-[80px]">
+                             <button 
+                                 onClick={handleMatchAsk}
+                                 disabled={!canInteract}
+                                 className="text-[10px] text-pawn-accent/80 hover:text-pawn-accent hover:underline uppercase font-bold tracking-widest mb-1 flex items-center gap-1 transition-all active:scale-95"
+                                 title={`Set to $${currentAskPrice}`}
+                             >
+                                 <Target className="w-3 h-3" />
+                                 MATCH
+                             </button>
+                             <span className="text-2xl font-mono font-bold text-white tracking-wider">
+                                ${offerPrincipal}
+                             </span>
+                         </div>
 
-            <Button 
-              variant="primary" 
-              onClick={handleOffer} 
-              disabled={!canInteract || !canAfford}
-              className={`flex-1 h-14 text-xl tracking-[0.2em] relative overflow-hidden flex items-center justify-center gap-3 shadow-lg ${!canInteract || !canAfford ? 'grayscale opacity-50 cursor-not-allowed' : ''}`}
-            >
-               <Stamp className="w-5 h-5" />
-               SUBMIT OFFER
-            </Button>
-         </div>
+                         <div className="flex gap-1">
+                             <AdjustButton amount={10} icon={<ChevronRight className="w-4 h-4"/>} label="+10" />
+                             <AdjustButton amount={100} icon={<ChevronsRight className="w-4 h-4"/>} label="+100" />
+                         </div>
+                     </div>
+                     
+                     <div className="flex justify-between mt-1 text-[10px] font-mono px-1">
+                         <span className={`${offerPrincipal > cashAvailable ? 'text-red-500 animate-pulse font-bold' : 'text-stone-600'}`}>
+                             Wallet: ${cashAvailable}
+                         </span>
+                         <span className="text-stone-600">
+                             Repayment: ${repaymentAmount}
+                         </span>
+                     </div>
+                 </div>
+
+                 <div className="flex gap-3 mt-1">
+                    <Button 
+                      variant="danger" 
+                      onClick={handleManualReject}
+                      disabled={!canInteract}
+                      className="w-16 h-14 border-2 hover:bg-red-900/40 flex items-center justify-center group opacity-80 hover:opacity-100"
+                      title="Reject"
+                    >
+                      <XCircle className="w-6 h-6 group-hover:rotate-90 transition-transform"/>
+                    </Button>
+
+                    <Button 
+                      variant="primary" 
+                      onClick={handleOffer} 
+                      disabled={!canInteract || !canAfford}
+                      className={`flex-1 h-14 text-xl tracking-[0.2em] relative overflow-hidden flex items-center justify-center gap-3 shadow-lg ${!canInteract || !canAfford ? 'grayscale opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                       <Stamp className="w-5 h-5" />
+                       SUBMIT OFFER
+                    </Button>
+                 </div>
+             </>
+         )}
       </div>
     </div>
   );

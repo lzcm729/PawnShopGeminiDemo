@@ -5,72 +5,17 @@ import { usePawnShop } from '../hooks/usePawnShop';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Item, ItemStatus } from '../types';
 import { Button } from './ui/Button';
-import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, XCircle, CheckCircle2, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, ShieldAlert, AlertTriangle, XCircle } from 'lucide-react';
 import { CustomerView } from './CustomerView';
-import { EMMA_EVENTS } from '../services/storyData';
+import { ALL_STORY_EVENTS } from '../services/storyData';
 
-// --- TYPES ---
-type RedemptionMode = 'OBLIGATION' | 'COMPENSATION' | 'NEGOTIATION';
-
-// --- SUB-COMPONENT: Left Column (Customer + Wallet) ---
-const RedemptionCustomerPanel: React.FC<{ customer: any, totalDue: number, interestDue: number }> = ({ customer, totalDue, interestDue }) => {
-    const wallet = customer.currentWallet || 0;
-    
-    // Color Logic
-    let statusColor = "text-stone-500";
-    let statusText = "FUNDS UNKNOWN";
-    let borderColor = "border-stone-700";
-
-    if (wallet >= totalDue) {
-        statusColor = "text-green-500";
-        statusText = "资金充足 (SUFFICIENT)";
-        borderColor = "border-green-600";
-    } else if (wallet >= interestDue) {
-        statusColor = "text-yellow-500";
-        statusText = "仅够付息 (PARTIAL)";
-        borderColor = "border-yellow-600";
-    } else {
-        statusColor = "text-red-500";
-        statusText = "无力支付 (INSUFFICIENT)";
-        borderColor = "border-red-600";
-    }
-
-    return (
-        <div className="h-full border-r border-white/10 flex flex-col">
-            <CustomerView />
-            
-            {/* Wallet Overlay at bottom of Customer Panel */}
-            <div className="bg-[#1c1917] p-4 border-t border-[#44403c] relative z-20">
-                <div className={`bg-[#0c0a09] p-4 rounded-lg border-2 ${borderColor} shadow-lg relative overflow-hidden`}>
-                     {/* Background Pattern */}
-                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-                     
-                     <div className="relative z-10 flex justify-between items-center mb-2">
-                        <div className="flex items-center gap-2">
-                            <Wallet className={`w-5 h-5 ${statusColor}`} />
-                            <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">Client Wallet</span>
-                        </div>
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded bg-black/50 ${statusColor} border border-current`}>
-                            {statusText}
-                        </span>
-                     </div>
-                     
-                     <div className="relative z-10 flex items-baseline gap-1">
-                        <span className="text-3xl font-mono font-black text-white">${wallet}</span>
-                        <span className="text-xs text-stone-500 font-bold">CASH</span>
-                     </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- SUB-COMPONENT: Middle Column (Item + Receipt) ---
+// --- SUB-COMPONENT: Left Column (Item + Receipt) ---
 const TicketPanel: React.FC<{ item: Item, cost: any, penalty: number }> = ({ item, cost, penalty }) => {
     const isSold = item.status === ItemStatus.SOLD;
+    const extensionCount = item.pawnInfo?.extensionCount || 0;
     
     return (
-        <div className="h-full bg-[#1c1917] border-r border-white/10 flex flex-col relative overflow-hidden">
+        <div className="h-full bg-[#1c1917] border-r border-[#44403c] flex flex-col relative overflow-hidden">
              
              {/* 1. Item Visuals with Status Overlay */}
              <div className="flex-1 relative flex flex-col items-center justify-center p-8 bg-[#0c0a09]">
@@ -137,6 +82,12 @@ const TicketPanel: React.FC<{ item: Item, cost: any, penalty: number }> = ({ ite
                                  <span className="text-stone-500">Interest ({cost?.daysPassed} days)</span>
                                  <span className="font-bold">+${cost?.interest}</span>
                              </div>
+                             <div className="flex justify-between text-sm">
+                                 <span className="text-stone-500">Extension Count</span>
+                                 <span className="font-bold">
+                                     {extensionCount} 次 (Count)
+                                 </span>
+                             </div>
                              
                              <div className="mt-4 pt-2 border-t-2 border-stone-400 border-dashed flex justify-between items-center">
                                  <span className="text-lg font-black text-stone-900 uppercase">TOTAL DUE</span>
@@ -152,176 +103,201 @@ const TicketPanel: React.FC<{ item: Item, cost: any, penalty: number }> = ({ ite
     );
 };
 
-// --- SUB-COMPONENT: Right Column (Action Group) ---
+// --- SUB-COMPONENT: Right Column Bottom (Action Group) ---
 const SettlementPanel: React.FC<{ 
-    mode: RedemptionMode,
     customer: any, 
     item: Item, 
     cost: any, 
     penalty: number,
     onRedeem: () => void,
     onExtend: () => void,
-    onReject: () => void,
+    onRefuseExtension: () => void,
+    onDismiss: () => void,
     onHostileTakeover: () => void
-}> = ({ mode, customer, item, cost, penalty, onRedeem, onExtend, onReject, onHostileTakeover }) => {
-    const isSold = item.status === ItemStatus.SOLD;
+}> = ({ customer, item, cost, penalty, onRedeem, onExtend, onRefuseExtension, onDismiss, onHostileTakeover }) => {
+    
+    // --- DETERMINE STATE ---
     const wallet = customer.currentWallet || 0;
     const canAffordInterest = wallet >= (cost?.interest || 0);
     const canAffordTotal = wallet >= (cost?.total || 0);
     
+    const intent = customer.redemptionIntent || 'LEAVE'; // REDEEM | EXTEND | LEAVE
+    const isSold = item.status === ItemStatus.SOLD;
+
+    // CONFIRMATION STATES
     const [showTakeoverConfirm, setShowTakeoverConfirm] = useState(false);
+    const [showRefuseConfirm, setShowRefuseConfirm] = useState(false);
+
+    // --- RENDER LOGIC: BREACH MODE ---
+    if (isSold) {
+        return (
+            <div className="bg-[#1c1917] border-t border-[#44403c] flex flex-col shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-10 relative p-4 min-h-[140px] justify-center">
+                <div className="text-center text-red-500 text-xs font-bold uppercase tracking-widest border border-red-900 bg-red-950/20 py-1 rounded mb-3">
+                    BREACH PROTOCOL INITIATED
+                </div>
+                <Button
+                    variant="danger"
+                    onClick={onRedeem} // In breach mode, Redeem triggers the penalty payment
+                    className="h-16 text-xl tracking-[0.1em] shadow-[0_0_20px_rgba(220,38,38,0.3)] border-2 border-red-600 bg-red-950 hover:bg-red-800 text-white flex items-center justify-center gap-3"
+                >
+                    <ShieldAlert className="w-6 h-6"/> 
+                    <div className="flex flex-col items-start">
+                        <span className="font-black leading-none">支付赔偿</span>
+                        <span className="text-[10px] font-mono opacity-80">PENALTY (-${penalty})</span>
+                    </div>
+                </Button>
+            </div>
+        )
+    }
+
+    // --- RENDER LOGIC: STANDARD MODES ---
+    // 1. Status Bar
+    let statusColor = "text-stone-500";
+    let statusText = "UNKNOWN";
+    let statusBorder = "border-stone-700";
+    let statusBg = "bg-stone-900";
+
+    if (intent === 'REDEEM') {
+        statusColor = "text-green-500";
+        statusText = "全额备款 (FULL PAYMENT)";
+        statusBorder = "border-green-600/50";
+        statusBg = "bg-green-950/20";
+    } else if (intent === 'EXTEND') {
+        statusColor = "text-yellow-500";
+        statusText = "仅付利息 (INTEREST ONLY)";
+        statusBorder = "border-yellow-600/50";
+        statusBg = "bg-yellow-950/20";
+    } else {
+        statusColor = "text-red-500";
+        statusText = "无力支付 (INSUFFICIENT)";
+        statusBorder = "border-red-600/50";
+        statusBg = "bg-red-950/20";
+    }
 
     return (
-        <div className="h-full bg-[#0c0a09] p-6 flex flex-col justify-center gap-6 border-l border-[#292524] relative">
+        <div className="bg-[#1c1917] border-t border-[#44403c] flex flex-col shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-10 relative">
             
-            {/* Takeover Confirmation Modal Overlay */}
+            {/* Hostile Takeover Modal */}
             {showTakeoverConfirm && (
-                <div className="absolute inset-0 z-50 bg-[#1c0000] border-2 border-red-600 flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95">
-                    <AlertTriangle className="w-12 h-12 text-red-500 mb-4 animate-pulse" />
-                    <h4 className="text-xl font-black text-red-500 uppercase tracking-widest mb-2">恶意违约警告</h4>
-                    <p className="text-xs text-red-300 font-mono mb-4">
-                        你正在拒绝归还客户的物品。<br/>
-                        这将扣除 <strong className="text-white">${penalty}</strong> 作为违约金，并严重损害声誉 (CREDIBILITY -50)。
-                        <br/><br/>
-                        物品将归店铺所有 (FORFEIT)。
+                <div className="absolute inset-0 z-50 bg-[#1c0000] border-t-2 border-red-600 flex flex-col items-center justify-center p-6 text-center animate-in slide-in-from-bottom-5">
+                    <AlertTriangle className="w-10 h-10 text-red-500 mb-2 animate-pulse" />
+                    <h4 className="text-lg font-black text-red-500 uppercase tracking-widest mb-1">恶意违约警告</h4>
+                    <p className="text-xs text-red-300 font-mono mb-4 px-4">
+                        拒绝归还物品将扣除 <strong className="text-white">${penalty}</strong> 违约金并严重损害声誉。
                     </p>
                     <div className="flex gap-2 w-full">
                         <Button variant="ghost" onClick={() => setShowTakeoverConfirm(false)} className="flex-1 text-stone-400 hover:text-white text-xs">
-                            取消 (CANCEL)
+                            取消
                         </Button>
-                        <Button variant="danger" onClick={onHostileTakeover} className="flex-1 h-12 bg-red-600 text-white border-red-800 text-xs">
-                            确认执行 (EXECUTE)
+                        <Button variant="danger" onClick={onHostileTakeover} className="flex-1 h-10 bg-red-600 text-white border-red-800 text-xs">
+                            确认执行
                         </Button>
                     </div>
                 </div>
             )}
 
-            {/* Header / Mode Indicator */}
-            <div className="text-center mb-2">
-                 <h3 className="text-stone-500 text-sm font-mono uppercase tracking-widest mb-2">Action Required</h3>
-                 {mode === 'OBLIGATION' && (
-                     <span className="text-green-500 font-bold text-xs border border-green-900 bg-green-950/30 px-2 py-1 rounded">
-                         CONTRACT OBLIGATION
-                     </span>
-                 )}
-                 {mode === 'COMPENSATION' && (
-                     <span className="text-red-500 font-bold text-xs border border-red-900 bg-red-950/30 px-2 py-1 rounded">
-                         BREACH PROTOCOL
-                     </span>
-                 )}
-                 {mode === 'NEGOTIATION' && (
-                     <span className="text-yellow-500 font-bold text-xs border border-yellow-900 bg-yellow-950/30 px-2 py-1 rounded">
-                         NEGOTIATION NEEDED
-                     </span>
-                 )}
+            {/* Refuse Extension Modal */}
+            {showRefuseConfirm && (
+                 <div className="absolute inset-0 z-50 bg-[#1c1917] border-t-2 border-stone-600 flex flex-col items-center justify-center p-6 text-center animate-in slide-in-from-bottom-5">
+                    <LogOut className="w-10 h-10 text-stone-400 mb-2" />
+                    <h4 className="text-lg font-black text-stone-200 uppercase tracking-widest mb-1">拒绝续当</h4>
+                    <p className="text-xs text-stone-400 font-mono mb-4 px-4">
+                        物品将归店铺所有 (FORFEIT)。<br/>
+                        这会损害你的人情声誉 (Humanity -10)。
+                    </p>
+                    <div className="flex gap-2 w-full">
+                        <Button variant="ghost" onClick={() => setShowRefuseConfirm(false)} className="flex-1 text-stone-400 hover:text-white text-xs">
+                            取消
+                        </Button>
+                        <Button variant="primary" onClick={onRefuseExtension} className="flex-1 h-10 bg-stone-700 text-white border-stone-500 text-xs">
+                            确认送客
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* STATUS HEADER */}
+            <div className={`px-4 py-2 border-b border-[#292524] flex justify-between items-center ${statusBg}`}>
+                 <div className="flex items-center gap-2">
+                    <Wallet className={`w-4 h-4 ${statusColor}`} />
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${statusColor}`}>Client Intent</span>
+                 </div>
+                 <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${statusBorder} ${statusColor} bg-black/40`}>
+                    {statusText}
+                 </span>
             </div>
 
-            {/* --- MODE 1: OBLIGATION (Force Redeem + Hostile Option) --- */}
-            {mode === 'OBLIGATION' && (
-                <div className="flex-1 flex flex-col justify-center gap-4 animate-in fade-in slide-in-from-bottom-2">
-                    <p className="text-stone-400 text-center font-serif italic text-sm px-4">
-                        "客户资金充足且契约有效。你必须履行义务，归还当物。"
-                    </p>
-                    <Button
-                        variant="primary"
-                        onClick={onRedeem}
-                        className="h-32 text-2xl tracking-[0.2em] shadow-[0_0_30px_rgba(16,185,129,0.2)] border-2 border-green-500 bg-green-900/10 hover:bg-green-800 text-green-500 hover:text-white flex flex-col items-center justify-center gap-2"
-                    >
-                        <span className="flex items-center gap-3 font-black">
-                            <CheckCircle2 className="w-8 h-8"/> 履行契约
-                        </span>
-                        <span className="text-sm font-mono opacity-80">FULFILL CONTRACT (+${cost?.total})</span>
-                    </Button>
-                    
-                    {/* HOSTILE TAKEOVER OPTION */}
-                    <div className="border-t border-stone-800 pt-4 mt-2">
-                         <button 
+            {/* MAIN ACTIONS AREA */}
+            <div className="p-4 flex flex-col gap-3 min-h-[140px] justify-center">
+
+                {/* SCENARIO 1: CUSTOMER WANTS TO REDEEM */}
+                {intent === 'REDEEM' && (
+                    <div className="flex flex-col gap-3 animate-in fade-in">
+                        <Button
+                            variant="primary"
+                            onClick={onRedeem}
+                            className="h-16 text-xl tracking-[0.1em] shadow-[0_0_15px_rgba(16,185,129,0.2)] border-green-500 bg-green-900/20 hover:bg-green-800 text-green-400 hover:text-white flex items-center justify-center gap-3"
+                        >
+                            <CheckCircle2 className="w-6 h-6"/> 
+                            <div className="flex flex-col items-start">
+                                <span className="font-black leading-none">同意赎回</span>
+                                <span className="text-[10px] font-mono opacity-80">RETURN ITEM (+${cost?.total})</span>
+                            </div>
+                        </Button>
+                        
+                        <button 
                             onClick={() => setShowTakeoverConfirm(true)}
-                            className="w-full text-[10px] text-red-900 hover:text-red-500 font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors py-2 opacity-60 hover:opacity-100"
+                            className="text-[10px] text-red-900 hover:text-red-500 font-bold uppercase tracking-widest flex items-center justify-center gap-1 transition-colors opacity-60 hover:opacity-100"
                         >
                             <ShieldAlert className="w-3 h-3" />
-                            支付赔偿金并强制买断 (-${penalty})
+                            强制违约 / 恶意买断 (-${penalty})
                         </button>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* --- MODE 2: COMPENSATION (Force Penalty) --- */}
-            {mode === 'COMPENSATION' && (
-                <div className="flex-1 flex flex-col justify-center gap-4 animate-in fade-in slide-in-from-bottom-2">
-                     <p className="text-red-400 text-center font-serif italic text-sm px-4">
-                        "当物已遗失。你必须支付双倍违约金。"
-                    </p>
-                    <Button
-                        variant="danger"
-                        onClick={onRedeem}
-                        className="h-32 text-2xl tracking-[0.2em] shadow-[0_0_30px_rgba(220,38,38,0.2)] border-4 border-double border-red-600 bg-red-950 hover:bg-red-800 text-white flex flex-col items-center justify-center gap-2"
-                    >
-                        <span className="flex items-center gap-3 font-black">
-                            <ShieldAlert className="w-8 h-8"/> 支付赔偿
-                        </span>
-                        <span className="text-sm font-mono opacity-80">COMPENSATE (-${penalty})</span>
-                    </Button>
-                </div>
-            )}
-
-            {/* --- MODE 3: NEGOTIATION (Standard Options) --- */}
-            {mode === 'NEGOTIATION' && (
-                <div className="flex flex-col gap-4 animate-in fade-in">
-                    
-                    {/* Redeem (Likely Disabled) */}
-                    <div className="group relative">
-                        <Button 
-                            variant="primary" 
-                            onClick={onRedeem}
-                            disabled={!canAffordTotal}
-                            className={`w-full h-16 flex justify-between items-center px-6 text-lg tracking-widest border border-green-500/50 
-                                ${!canAffordTotal ? 'opacity-30 grayscale cursor-not-allowed' : 'hover:bg-green-900/20'}
-                            `}
+                {/* SCENARIO 2: CUSTOMER WANTS TO EXTEND */}
+                {intent === 'EXTEND' && (
+                    <div className="flex flex-col gap-3 animate-in fade-in">
+                        <Button
+                            variant="secondary"
+                            onClick={onExtend}
+                            className="h-16 text-xl tracking-[0.1em] border-yellow-500/50 bg-yellow-900/10 hover:bg-yellow-900/30 text-yellow-500 flex items-center justify-center gap-3"
                         >
-                            <span className="flex items-center gap-2"><Stamp className="w-5 h-5"/> 赎回物品</span>
-                            <span className="font-mono text-green-400">+${cost?.total}</span>
-                        </Button>
-                        {!canAffordTotal && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <span className="bg-black/80 text-red-500 text-xs font-bold px-2 py-1 rounded border border-red-900 rotate-[-5deg]">
-                                    FUNDS INSUFFICIENT
-                                </span>
+                            <RefreshCw className="w-6 h-6"/>
+                            <div className="flex flex-col items-start">
+                                <span className="font-black leading-none">同意续当</span>
+                                <span className="text-[10px] font-mono opacity-80">EXTEND 7 DAYS (+${cost?.interest})</span>
                             </div>
-                        )}
+                        </Button>
+
+                         <button 
+                            onClick={() => setShowRefuseConfirm(true)}
+                            className="text-[10px] text-stone-600 hover:text-stone-400 font-bold uppercase tracking-widest flex items-center justify-center gap-1 transition-colors"
+                        >
+                            <XCircle className="w-3 h-3" />
+                            拒绝续当 / 强制绝当 (REFUSE)
+                        </button>
                     </div>
+                )}
 
-                    {/* Extend */}
-                    <Button
-                        variant="secondary"
-                        onClick={onExtend}
-                        disabled={!canAffordInterest}
-                        className={`h-20 text-lg flex flex-col items-center justify-center gap-1 border-stone-600
-                            ${!canAffordInterest ? 'opacity-30 cursor-not-allowed bg-transparent' : 'hover:bg-stone-800'}
-                        `}
-                    >
-                        <span className="flex items-center gap-2"><RefreshCw className="w-5 h-5"/> 续当 7天</span>
-                        <span className="text-xs font-mono text-stone-500">CHARGE INTEREST (+${cost?.interest})</span>
-                    </Button>
-
-                    {/* Reject */}
-                    <Button
-                        variant="ghost"
-                        onClick={onReject}
-                        className="h-16 text-stone-600 hover:text-stone-400 hover:bg-stone-900 border border-transparent hover:border-stone-800"
-                    >
-                        <span className="flex items-center gap-2"><LogOut className="w-5 h-5"/> 结束交易 / 送客</span>
-                    </Button>
-
-                    {!canAffordInterest && (
-                        <div className="bg-red-950/30 text-red-500 text-xs text-center p-2 rounded border border-red-900/50 mt-2 animate-pulse">
-                            <XCircle className="w-3 h-3 inline mr-1"/>
-                            客户资金不足，无法进行操作。
-                        </div>
-                    )}
-                </div>
-            )}
-
+                {/* SCENARIO 3: CUSTOMER IS BROKE (LEAVE) */}
+                {intent === 'LEAVE' && (
+                     <div className="flex flex-col gap-3 animate-in fade-in">
+                        <p className="text-[10px] text-stone-500 text-center italic">
+                            "老板，再宽限几天吧... 我真的没钱。"
+                        </p>
+                        <Button
+                            variant="danger"
+                            onClick={onDismiss}
+                            className="h-14 w-full text-red-300 hover:text-white border-red-900/50 hover:bg-red-950 flex flex-col items-center justify-center"
+                        >
+                            <span className="flex items-center gap-2 text-lg font-bold"><LogOut className="w-5 h-5"/> 送 客 (DISMISS)</span>
+                            <span className="text-[9px] opacity-70">ITEM WILL BECOME FORFEIT</span>
+                        </Button>
+                    </div>
+                )}
+                
+            </div>
         </div>
     );
 };
@@ -329,7 +305,7 @@ const SettlementPanel: React.FC<{
 // --- MAIN WRAPPER ---
 export const RedemptionInterface: React.FC = () => {
     const { state, dispatch } = useGame();
-    const { calculateRedemptionCost, calculatePenalty, processRedemption, processExtension, processHostileTakeover } = usePawnShop();
+    const { calculateRedemptionCost, calculatePenalty, processRedemption, processExtension, processRefuseExtension, processHostileTakeover, processForcedForfeiture } = usePawnShop();
     const { commitTransaction, applyChainEffects } = useGameEngine();
     
     const customer = state.currentCustomer;
@@ -341,24 +317,6 @@ export const RedemptionInterface: React.FC = () => {
 
     const cost = calculateRedemptionCost(item);
     const penalty = calculatePenalty(item);
-    
-    // --- DETERMINE MODE ---
-    const wallet = customer.currentWallet || 0;
-    const totalCost = cost?.total || 0;
-    const isSold = item.status === ItemStatus.SOLD;
-    const isActive = item.status === ItemStatus.ACTIVE; 
-
-    let mode: RedemptionMode = 'NEGOTIATION';
-
-    if (isSold) {
-        mode = 'COMPENSATION';
-    } 
-    // Fix: Force Obligation if it's a specific Redemption interaction OR standard logic holds
-    else if (customer.interactionType === 'REDEEM' || (isActive && wallet >= totalCost)) {
-        mode = 'OBLIGATION';
-    } else {
-        mode = 'NEGOTIATION';
-    }
 
     const handleRedeem = () => {
         // Fix for Narrative Progression:
@@ -382,9 +340,51 @@ export const RedemptionInterface: React.FC = () => {
     };
 
     const handleExtend = () => {
+        // 1. Business Logic
         processExtension(item, 7);
+        
+        // 2. Narrative Logic
+        if (customer.chainId && customer.eventId) {
+             const event = ALL_STORY_EVENTS.find(e => e.id === customer.eventId);
+             if (event && event.onExtend) {
+                 applyChainEffects(customer.chainId, event.onExtend, undefined, customer);
+             }
+        }
+
          setTimeout(() => {
              dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: {}, item: null, log: '', customerName: customer.name } });
+        }, 500);
+    };
+
+    const handleRefuseExtension = () => {
+        // 1. Business Logic: Forfeit Item, -Reputation
+        processRefuseExtension(item);
+
+        // 2. Narrative Logic: Trigger Failure Mail if defined
+        if (customer.chainId && customer.eventId) {
+             const event = ALL_STORY_EVENTS.find(e => e.id === customer.eventId);
+             
+             // Check for Failure Mail
+             if (event && event.failureMailId) {
+                  dispatch({ 
+                       type: 'SCHEDULE_MAIL', 
+                       payload: { 
+                           templateId: event.failureMailId, 
+                           delayDays: 1,
+                           metadata: { relatedItemName: item.name }
+                       } 
+                  });
+             }
+
+             // Trigger "onFailure" effects (e.g. stage advancement to avoid stuck loop)
+             if (event && event.onFailure) {
+                 applyChainEffects(customer.chainId, event.onFailure, undefined, customer);
+             }
+        }
+
+        setTimeout(() => {
+            // Close interaction
+            dispatch({ type: 'REJECT_DEAL' }); 
         }, 500);
     };
 
@@ -394,7 +394,7 @@ export const RedemptionInterface: React.FC = () => {
         
         // 2. Narrative Logic Update (Apply specific hostile flow effects)
         if (customer.chainId && customer.eventId) {
-            const event = EMMA_EVENTS.find(e => e.id === customer.eventId);
+            const event = ALL_STORY_EVENTS.find(e => e.id === customer.eventId);
             const hostileFlow = event?.dynamicFlows?.['hostile_takeover'];
             
             if (hostileFlow) {
@@ -417,28 +417,34 @@ export const RedemptionInterface: React.FC = () => {
         }, 500);
     };
 
-    const handleReject = () => {
-        dispatch({ type: 'REJECT_DEAL' });
+    const handleDismiss = () => {
+        processForcedForfeiture(item);
     };
 
     return (
         <>
-            <div className="lg:col-span-3 h-full overflow-hidden">
-                <RedemptionCustomerPanel customer={customer} totalDue={cost?.total || 0} interestDue={cost?.interest || 0} />
-            </div>
-            <div className="lg:col-span-5 h-full overflow-hidden">
+            {/* COLUMN 1 (Left): TICKET (Item Info) - Matches ItemPanel in Pawn View (50%) */}
+            <div className="lg:col-span-6 h-full overflow-hidden border-r border-white/10">
                 <TicketPanel item={item} cost={cost} penalty={penalty} />
             </div>
-            <div className="lg:col-span-4 h-full overflow-hidden">
+
+            {/* COLUMN 2 (Right): CUSTOMER + ACTIONS - Matches Negotiation Panel (50%) */}
+            <div className="lg:col-span-6 h-full flex flex-col overflow-hidden">
+                {/* Top: Customer View (Dialogue) */}
+                <div className="flex-1 overflow-hidden relative">
+                    <CustomerView />
+                </div>
+                
+                {/* Bottom: Settlement Controls (Fixed) */}
                 <SettlementPanel 
-                    mode={mode}
                     customer={customer} 
                     item={item} 
                     cost={cost} 
                     penalty={penalty}
                     onRedeem={handleRedeem}
                     onExtend={handleExtend}
-                    onReject={handleReject}
+                    onRefuseExtension={handleRefuseExtension}
+                    onDismiss={handleDismiss}
                     onHostileTakeover={handleHostileTakeover}
                 />
             </div>

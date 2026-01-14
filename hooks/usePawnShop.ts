@@ -97,6 +97,17 @@ export const usePawnShop = () => {
 
     }, [calculateRedemptionCost, dispatch]);
 
+    // NEW: Process Refuse Extension (Forfeit item, no money, rep loss)
+    const processRefuseExtension = useCallback((item: Item) => {
+        dispatch({
+            type: 'REFUSE_EXTENSION',
+            payload: {
+                itemId: item.id,
+                name: item.name
+            }
+        });
+    }, [dispatch]);
+
     // 4. Check Daily Expirations
     const checkDailyExpirations = useCallback(() => {
         const currentDay = state.stats.day;
@@ -173,14 +184,27 @@ export const usePawnShop = () => {
 
     }, [calculatePenalty, state.stats.cash, dispatch]);
 
+    // NEW: Process Forced Forfeiture (Dismissing customer when they hit limit)
+    const processForcedForfeiture = useCallback((item: Item) => {
+        dispatch({
+            type: 'FORCE_FORFEIT',
+            payload: {
+                itemId: item.id,
+                name: item.name
+            }
+        });
+    }, [dispatch]);
+
     return {
         calculateRedemptionCost,
         calculatePenalty,
         processRedemption,
         processExtension,
+        processRefuseExtension,
         checkDailyExpirations,
         handleLateRedemption,
         sellActivePawn,
-        processHostileTakeover
+        processHostileTakeover,
+        processForcedForfeiture
     };
 };

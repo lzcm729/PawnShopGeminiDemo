@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useGame } from '../store/GameContext';
 import { User, MessageSquareQuote, AlertCircle, Flame } from 'lucide-react';
@@ -13,7 +14,7 @@ export const CustomerView: React.FC = () => {
     </div>
   );
 
-  const { dialogue, mood, patience } = currentCustomer;
+  const { dialogue, mood, patience, interactionType } = currentCustomer;
 
   // Resolve color mapping
   const resolveColor = {
@@ -49,6 +50,9 @@ export const CustomerView: React.FC = () => {
       borderColor = "border-pawn-green";
       shadowColor = "shadow-[0_0_15px_rgba(16,185,129,0.3)]";
   }
+
+  // Only show Pawn Reason if in Pawn Mode
+  const showPawnReason = interactionType === 'PAWN';
 
   return (
     <div className="flex flex-col h-full bg-[#1c1917] border-r border-[#44403c] relative overflow-hidden">
@@ -120,15 +124,36 @@ export const CustomerView: React.FC = () => {
 
         {/* Narrative Details */}
         <div className="grid gap-4">
-          <div className="group">
-            <h4 className="text-xs font-mono text-stone-500 mb-1 uppercase flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> 典当理由
-            </h4>
-            <p className="text-sm text-stone-400 italic border-b border-[#292524] pb-2 group-hover:text-stone-300 transition-colors">
-              "{dialogue.pawnReason}"
-            </p>
-          </div>
+          
+          {/* PAWN REASON: Only show if pawning */}
+          {showPawnReason && (
+            <div className="group">
+                <h4 className="text-xs font-mono text-stone-500 mb-1 uppercase flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> 典当理由
+                </h4>
+                <p className="text-sm text-stone-400 italic border-b border-[#292524] pb-2 group-hover:text-stone-300 transition-colors">
+                "{dialogue.pawnReason}"
+                </p>
+            </div>
+          )}
           
           <div className="group">
             <h4 className="text-xs font-mono text-stone-500 mb-1 uppercase">赎回承诺</h4>
-            <p className="text-sm text-stone
+            <p className="text-sm text-stone-400 italic border-b border-[#292524] pb-2 group-hover:text-stone-300 transition-colors">
+              "{dialogue.redemptionPlea}"
+            </p>
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div className="flex flex-wrap gap-2 mt-4">
+           {currentCustomer.tags.map(tag => (
+              <span key={tag} className="text-[10px] bg-black/40 border border-[#292524] px-2 py-1 rounded text-stone-500 font-mono">
+                  #{tag}
+              </span>
+           ))}
+        </div>
+      </div>
+    </div>
+  );
+};

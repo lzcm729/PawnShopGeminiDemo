@@ -1,5 +1,4 @@
 
-
 export enum GamePhase {
   START_SCREEN = 'START_SCREEN',
   MORNING_BRIEF = 'MORNING_BRIEF',
@@ -49,6 +48,7 @@ export interface PawnInfo {
   termDays: number;      // Agreed term (e.g. 7, 14, 30)
   dueDate: number;       // startDate + termDays
   valuation: number;     // NEW: The agreed valuation basis for the contract (used for penalty calc)
+  extensionCount?: number; // NEW: How many times has this been extended?
 }
 
 export interface Item {
@@ -133,7 +133,9 @@ export interface Customer {
   maxRepayment: number;  
   
   // NEW: Redemption Logic Fields
-  interactionType: 'PAWN' | 'REDEEM'; 
+  interactionType: 'PAWN' | 'REDEEM' | 'NEGOTIATION'; 
+  redemptionIntent?: 'REDEEM' | 'EXTEND' | 'LEAVE'; // What the customer WANTS to do based on their wallet
+
   currentWallet?: number; // How much cash the customer has on hand for redemption
   
   currentAskPrice?: number; 
@@ -195,6 +197,9 @@ export interface MailInstance {
   arrivalDay: number; 
   isRead: boolean;
   isClaimed: boolean; 
+  metadata?: {
+      relatedItemName?: string;
+  };
 }
 
 export interface ChainVariables {
@@ -265,7 +270,9 @@ export type EffectType =
   | 'REDEEM_ALL'
   | 'REDEEM_TARGET_ONLY'
   | 'ABANDON_OTHERS'
-  | 'ABANDON_ALL';
+  | 'ABANDON_ALL'
+  | 'FORCE_SELL_ALL' // NEW: Mark all chain items as SOLD
+  | 'FORCE_SELL_TARGET'; // NEW: Mark target item as SOLD
 
 export interface ChainUpdateEffect {
   type: EffectType;
@@ -300,6 +307,9 @@ export interface StoryEvent {
       [key: string]: ChainUpdateEffect[]; // Mapped by deal type: "deal_charity", "deal_standard", etc.
   };
   onReject?: ChainUpdateEffect[];
+  onExtend?: ChainUpdateEffect[]; // NEW: Effect to run when player extends the pawn
+  onFailure?: ChainUpdateEffect[]; // NEW: Effect to run when automated checks fail (e.g. Plea Mail sent)
+  failureMailId?: string; // NEW: Mail to send if redemption fails and cannot extend
 
   // Redemption Specifics
   targetItemId?: string; 

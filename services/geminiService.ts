@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Customer, ReputationProfile, ReputationType, ItemStatus } from "../types";
 import { enrichItemWithTraits } from "./contentGenerator";
@@ -124,7 +125,8 @@ export const generateCustomer = async (day: number, reputation: ReputationProfil
       id: crypto.randomUUID(),
       ...data,
       avatarSeed: "ai_" + day + "_" + Math.random(),
-      item: enrichedItem
+      item: enrichedItem,
+      interactionType: 'PAWN'
     };
   } catch (error) {
     console.error("Gemini Generation failed:", error);

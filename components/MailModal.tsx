@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { X, Mail, Download, FileText, Terminal, Minimize2 } from 'lucide-react';
+import { X, Mail, Download, FileText, Terminal, Minimize2, AlertCircle } from 'lucide-react';
 import { getMailTemplate } from '../services/mailData';
 
 export const MailModal: React.FC = () => {
@@ -116,6 +116,17 @@ export const MailModal: React.FC = () => {
                                 <span>Cycle {selectedMailInstance.arrivalDay}</span>
                             </div>
                         </div>
+
+                        {/* System Context Hint (NEW) */}
+                        {selectedMailInstance.metadata?.relatedItemName && (
+                            <div className="mb-4 px-3 py-2 bg-stone-900/80 border border-stone-700 rounded flex items-start gap-3">
+                                <AlertCircle className="w-4 h-4 text-pawn-accent shrink-0 mt-0.5" />
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-stone-500 uppercase tracking-widest font-bold">System Context</span>
+                                    <span className="text-sm text-stone-300">涉及物品: <span className="font-bold text-white">{selectedMailInstance.metadata.relatedItemName}</span></span>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Message Body */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar-light pr-4 text-stone-300 whitespace-pre-line leading-relaxed text-sm font-mono">

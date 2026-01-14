@@ -22,6 +22,7 @@ export const Dashboard: React.FC = () => {
     const [validationLogs, setValidationLogs] = useState<string[]>([]);
     const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
 
+    // Kept for backward compatibility if we want a quick validate button
     const handleValidate = () => {
         const result = validateEvents([...EMMA_EVENTS]);
         setValidationLogs(result.logs);
@@ -102,16 +103,14 @@ export const Dashboard: React.FC = () => {
 
         <div className="h-8 w-px bg-stone-700 mx-2"></div>
 
-            {/* Dev Tools (Hidden if moved to sidebar, but kept logic for fallback) */}
-            {isDev && (
-                <button
-                    onClick={handleValidate}
-                    className="w-8 h-8 rounded flex items-center justify-center transition-all text-yellow-500 hover:text-yellow-300 hover:bg-yellow-900/20 md:hidden"
-                    title="Validate Stories"
-                >
-                    <PlayCircle className="w-4 h-4" />
-                </button>
-            )}
+            {/* Dev Tools Toggle */}
+            <button
+                onClick={() => dispatch({ type: 'TOGGLE_DEBUG' })}
+                className={`w-8 h-8 rounded flex items-center justify-center transition-all ${state.showDebug ? 'bg-green-900/40 text-green-400' : 'text-stone-600 hover:text-green-500'}`}
+                title="Toggle Debug Terminal"
+            >
+                <Bug className="w-4 h-4" />
+            </button>
 
         {/* Mail Button (HUD Trigger) */}
         <Button 

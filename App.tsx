@@ -143,6 +143,7 @@ const GameContent: React.FC = () => {
       
       <InventoryModal />
       <MailModal />
+      <DebugPanel />
 
       <main className="flex-1 overflow-hidden relative">
         {state.isLoading && (
@@ -159,22 +160,17 @@ const GameContent: React.FC = () => {
             </div>
         )}
 
-        {/* 3-Column Layout */}
+        {/* Layout Grid */}
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 bg-black/20">
             
             {isRedemption ? (
-                // REDEMPTION LAYOUT (Replaces standard columns)
+                // REDEMPTION LAYOUT
                 <RedemptionInterface />
             ) : (
                 // STANDARD PAWN LAYOUT
                 <>
-                    {/* Column 1: Dev/Debug Panel (20%) */}
-                    <div className="lg:col-span-2 h-full border-r border-white/10 overflow-hidden relative z-50">
-                        <DebugPanel />
-                    </div>
-
-                    {/* Column 2: Item & Intel (40%) */}
-                    <div className="lg:col-span-5 h-full border-r border-white/10 overflow-hidden relative">
+                    {/* Column 1: Item & Intel (50%) */}
+                    <div className="lg:col-span-6 h-full border-r border-white/10 overflow-hidden relative">
                         {isNegotiating ? (
                         <ItemPanel 
                             applyLeverage={negotiation.applyLeverage} 
@@ -188,8 +184,8 @@ const GameContent: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Column 3: Negotiation (40%) - Now contains Customer Info */}
-                    <div className="lg:col-span-5 h-full overflow-hidden">
+                    {/* Column 2: Negotiation (50%) */}
+                    <div className="lg:col-span-6 h-full overflow-hidden">
                         {isNegotiating ? (
                         <NegotiationPanel negotiation={negotiation} />
                         ) : (

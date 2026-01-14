@@ -1,4 +1,5 @@
 
+
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../services/chainEngine';
 import { ALL_STORY_EVENTS } from '../services/storyData';
@@ -7,7 +8,7 @@ import { usePawnShop } from './usePawnShop';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
-  const { checkDailyExpirations } = usePawnShop();
+  const { checkDailyExpirations, calculateRedemptionCost } = usePawnShop();
 
   const startNewDay = () => {
     // 1. Simulate active chains (NPCs spending money)
@@ -47,19 +48,87 @@ export const useGameEngine = () => {
       const narrativeEvent = findEligibleEvent(state.activeChains, ALL_STORY_EVENTS);
       
       if (narrativeEvent) {
+          
+          // --- FAILURE MAIL CHECK ---
+          // Before instantiating the customer, check if they are "broke"
+          // If so, send a mail and skip the physical visit.
+          if (narrativeEvent.type === 'REDEMPTION_CHECK' && narrativeEvent.targetItemId) {
+              const item = state.inventory.find(i => i.id === narrativeEvent.targetItemId);
+              const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
+              const funds = chainState?.variables?.funds || 0;
+              
+              if (item && item.pawnInfo) {
+                  const cost = calculateRedemptionCost(item);
+                  const isBroke = funds < (cost?.total || 0);
+                  const canAffordInterest = funds >= (cost?.interest || 0);
+                  
+                  // LOGIC: If they can't afford full redeem, AND can't afford interest (i.e. truly broke)
+                  if (isBroke && !canAffordInterest) {
+                       console.log(`Customer ${narrativeEvent.chainId} is sending plea mail instead of visiting.`);
+                       
+                       const mailId = narrativeEvent.failureMailId || 'mail_generic_plea';
+                       
+                       // 1. Send Mail with context
+                       dispatch({ 
+                           type: 'SCHEDULE_MAIL', 
+                           payload: { 
+                               templateId: mailId, 
+                               delayDays: 0,
+                               metadata: { relatedItemName: item.name }
+                           } 
+                       });
+
+                       // 2. Execute Failure Effects (e.g. Advance Stage, Reduce Hope) to prevent loop
+                       if (narrativeEvent.onFailure) {
+                           applyChainEffects(narrativeEvent.chainId, narrativeEvent.onFailure);
+                       }
+                       
+                       // Skip this event by returning early (and effectively closing shop if no other events)
+                       // We need to simulate the day ending quickly or transitioning to closed.
+                       setTimeout(() => {
+                            dispatch({ type: 'SET_LOADING', payload: false });
+                            dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
+                       }, 500);
+                       return;
+                  }
+              }
+          }
+
           console.log("Triggering Narrative Event:", narrativeEvent.id);
           
-          let storyCustomer = instantiateStoryCustomer(narrativeEvent);
+          // --- GET DYNAMIC FUNDS ---
+          const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
+          const currentFunds = chainState?.variables?.funds;
 
-          // --- DYNAMIC REDEMPTION CHECK ---
+          // --- INSTANTIATE CUSTOMER WITH CONTEXT ---
+          // Pass inventory and funds so intent logic works against REAL item and REAL money
+          let storyCustomer = instantiateStoryCustomer(narrativeEvent, state.inventory, currentFunds);
+
+          // --- DYNAMIC REDEMPTION FLOW ---
           if (narrativeEvent.type === 'REDEMPTION_CHECK') {
               const flowResult = resolveRedemptionFlow(narrativeEvent, state.inventory);
               if (flowResult) {
                   console.log(`Dynamic Redemption Flow: ${flowResult.flowKey}`);
-                  storyCustomer.dialogue.greeting = flowResult.flow.dialogue;
-                  storyCustomer.dialogue.accepted.fair = "谢谢。";
-                  (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
                   
+                  const intent = storyCustomer.redemptionIntent;
+                  const isItemLost = flowResult.flowKey === 'core_lost';
+
+                  if (isItemLost) {
+                       // Priority: If item is gone, play the drama regardless of money
+                       storyCustomer.dialogue.greeting = flowResult.flow.dialogue;
+                       (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
+                  } else if (intent === 'EXTEND') {
+                       // If item is safe but customer is poor, play generic extend dialogue
+                       storyCustomer.dialogue.greeting = "老板... 钱还没凑齐。能不能再宽限几天？我先付利息。";
+                       // Note: No _dynamicEffects here, as 'Extend' uses event.onExtend logic, not flow outcomes.
+                  } else {
+                       // Default: Item safe + Has Money -> Play flow dialogue (usually "I'm here to redeem")
+                       storyCustomer.dialogue.greeting = flowResult.flow.dialogue;
+                       storyCustomer.dialogue.accepted.fair = "谢谢。";
+                       (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
+                  }
+                  
+                  // Important: Replace the dummy item with the REAL item from inventory for the UI
                   if (narrativeEvent.targetItemId) {
                       const realItem = state.inventory.find(i => i.id === narrativeEvent.targetItemId);
                       if (realItem) {
@@ -156,7 +225,8 @@ export const useGameEngine = () => {
         startDate: state.stats.day,
         termDays: termDays,
         dueDate: state.stats.day + termDays,
-        valuation: valuationBasis
+        valuation: valuationBasis,
+        extensionCount: 0 // Initialize extension count
     };
 
     const finalizedItem: Item = {
@@ -193,6 +263,7 @@ export const useGameEngine = () => {
                  
                  let itemsToRedeem: string[] = [];
                  let itemsToAbandon: string[] = [];
+                 let itemsToForceSell: string[] = [];
 
                  effects.forEach(effect => {
                      switch (effect.type) {
@@ -262,6 +333,16 @@ export const useGameEngine = () => {
                                  }
                              });
                              break;
+                         case 'FORCE_SELL_ALL':
+                             state.inventory.forEach(i => {
+                                 if (i.relatedChainId === chain.id && i.status !== ItemStatus.REDEEMED && i.status !== ItemStatus.SOLD) {
+                                     itemsToForceSell.push(i.id);
+                                 }
+                             });
+                             break;
+                         case 'FORCE_SELL_TARGET':
+                             if (chainEvent?.targetItemId) itemsToForceSell.push(chainEvent.targetItemId);
+                             break;
                          case 'TRIGGER_NEWS':
                              console.log("News Triggered:", effect.id);
                              break;
@@ -280,6 +361,20 @@ export const useGameEngine = () => {
                  
                  if (itemsToAbandon.length > 0) {
                      dispatch({ type: 'EXPIRE_ITEMS', payload: { expiredItemIds: itemsToAbandon, logs: [`${itemsToAbandon.length} 件物品已被原主放弃，归店铺所有。`] } });
+                 }
+
+                 if (itemsToForceSell.length > 0) {
+                     itemsToForceSell.forEach(id => {
+                         const item = state.inventory.find(i => i.id === id);
+                         // Use Default Sell (Liquidation logic) to mark as SOLD
+                         // Amount is irrelevant as the "Sale" money is usually added via ADD_FUNDS in the event logic
+                         if (item) {
+                             dispatch({ 
+                                type: 'DEFAULT_SELL_ITEM', 
+                                payload: { itemId: id, amount: 0, name: item.name } // Amount 0 here because event ADD_FUNDS handles the cash
+                             });
+                         }
+                     });
                  }
 
                  return newChain;

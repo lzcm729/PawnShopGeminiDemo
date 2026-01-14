@@ -1,4 +1,5 @@
 
+
 import { EventChainState, StoryEvent, TriggerCondition, ChainVariables, Customer, Item, ItemStatus, DynamicFlowOutcome, SimOperation } from '../types';
 
 // Helper: Evaluate a single condition against current variables and chain state
@@ -147,8 +148,9 @@ export const findEligibleEvent = (chains: EventChainState[], events: StoryEvent[
 /**
  * Converts a StoryEvent template into a full Customer object.
  * NOTE: If event has 'item', it merges it.
+ * UPDATED: Now accepts inventory and currentFunds to calculate accurate redemption intent.
  */
-export const instantiateStoryCustomer = (event: StoryEvent): Customer => {
+export const instantiateStoryCustomer = (event: StoryEvent, inventory: Item[] = [], currentFunds?: number): Customer => {
     const template = event.template;
     
     // Ensure deep copy of nested objects (item, dialogue) to prevent mutation
@@ -163,8 +165,46 @@ export const instantiateStoryCustomer = (event: StoryEvent): Customer => {
         deepItem.initialValuationRange = { ...deepItem.valuationRange };
     }
     
-    // If we have a targetItemId from a previous interaction, we might want to attach it?
-    // For now, the event system defines the item.
+    // Use dynamic funds from chain if available, otherwise fallback
+    const currentWallet = currentFunds !== undefined 
+        ? currentFunds 
+        : ((template as any).currentWallet || template.maxRepayment || 1000);
+    
+    // --- DETERMINE INTENT (Redeem vs Extend) ---
+    // If this is a Redemption event, check the math to see what they can afford.
+    let intent: 'REDEEM' | 'EXTEND' | 'LEAVE' | undefined;
+    
+    // Determine which Item to check against logic.
+    // If it's a redemption check, we MUST check the REAL item in inventory (because it has the real Principal/Interest),
+    // not the dummy template item.
+    let logicItem = deepItem;
+    if (event.type === 'REDEMPTION_CHECK' && event.targetItemId) {
+        const realItem = inventory.find(i => i.id === event.targetItemId);
+        if (realItem) {
+            logicItem = realItem;
+        }
+    }
+    
+    // Priority Check: Does the template force a specific intent? (e.g. Narrative override)
+    if (template.redemptionIntent) {
+        intent = template.redemptionIntent;
+    }
+    else if ((template as any).interactionType === 'REDEEM' && logicItem.pawnInfo) {
+        const p = logicItem.pawnInfo.principal;
+        const rate = logicItem.pawnInfo.interestRate;
+        // Logic: Full interest for termDays even if early; actual days if late. But for intent check, simple calc is usually fine.
+        // Let's assume standard 1 week extension cost for the check.
+        const interest = Math.ceil(p * rate); 
+        const total = p + interest;
+
+        if (currentWallet >= total) {
+            intent = 'REDEEM';
+        } else if (currentWallet >= interest) {
+            intent = 'EXTEND';
+        } else {
+            intent = 'LEAVE';
+        }
+    }
 
     return {
         id: crypto.randomUUID(),
@@ -186,7 +226,10 @@ export const instantiateStoryCustomer = (event: StoryEvent): Customer => {
         maxRepayment: template.maxRepayment || ((template.minimumAmount || 0) * 1.5),
         
         interactionType: (template as any).interactionType || 'PAWN',
-        currentWallet: (template as any).currentWallet || template.maxRepayment || 1000, 
+        redemptionIntent: intent, // STORE THE INTENT
+
+        currentWallet: currentWallet, 
+        currentAskPrice: (template as any).currentAskPrice, // Propagate the ask price from template (e.g. 5000 for collector)
         
         chainId: event.chainId,
         eventId: event.id

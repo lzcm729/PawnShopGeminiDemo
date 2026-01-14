@@ -62,16 +62,18 @@ type Action =
   | { type: 'TOGGLE_MAIL' }
   | { type: 'TOGGLE_DEBUG' } 
   | { type: 'UPDATE_CHAINS'; payload: EventChainState[] }
-  | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number } }
+  | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number; metadata?: { relatedItemName?: string } } }
   | { type: 'PROCESS_DAILY_MAIL' }
   | { type: 'READ_MAIL'; payload: string } 
   | { type: 'CLAIM_MAIL_REWARD'; payload: string }
   | { type: 'REDEEM_ITEM'; payload: { itemId: string; paymentAmount: number; name: string } }
   | { type: 'EXTEND_PAWN'; payload: { itemId: string; interestPaid: number; newDueDate: number; name: string } }
+  | { type: 'REFUSE_EXTENSION'; payload: { itemId: string; name: string } }
   | { type: 'EXPIRE_ITEMS'; payload: { expiredItemIds: string[]; logs: string[] } }
   | { type: 'DEFAULT_SELL_ITEM'; payload: { itemId: string; amount: number; name: string } }
   | { type: 'RESOLVE_BREACH'; payload: { penalty: number; name: string } }
-  | { type: 'HOSTILE_TAKEOVER'; payload: { itemId: string; penalty: number; name: string } };
+  | { type: 'HOSTILE_TAKEOVER'; payload: { itemId: string; penalty: number; name: string } }
+  | { type: 'FORCE_FORFEIT'; payload: { itemId: string; name: string } };
 
 const gameReducer = (state: GameState, action: Action): GameState => {
   switch (action.type) {
@@ -276,7 +278,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
                     ...item,
                     pawnInfo: {
                         ...item.pawnInfo,
-                        dueDate: newDueDate
+                        dueDate: newDueDate,
+                        extensionCount: (item.pawnInfo.extensionCount || 0) + 1 // INCREMENT COUNTER
                     }
                 };
             }
@@ -299,6 +302,31 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         };
     }
 
+    case 'REFUSE_EXTENSION': {
+        const { itemId, name } = action.payload;
+        
+        // Logic: Item status -> FORFEIT, Reputation (Humanity) -> -10
+        const updatedInventory = state.inventory.map(item => 
+            item.id === itemId ? { ...item, status: ItemStatus.FORFEIT } : item
+        );
+        
+        const newRep = { ...state.reputation };
+        newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 10);
+        
+        const servedCount = state.customersServedToday + 1;
+        const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
+
+        return {
+            ...state,
+            inventory: updatedInventory,
+            reputation: newRep,
+            currentCustomer: null,
+            customersServedToday: servedCount,
+            phase: nextPhase,
+            dayEvents: [...state.dayEvents, `拒绝续当: ${name}。物品已收归店铺 (Humanity -10)。`]
+        };
+    }
+
     case 'EXPIRE_ITEMS': {
         const { expiredItemIds, logs } = action.payload;
         if (expiredItemIds.length === 0) return state;
@@ -311,6 +339,26 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             ...state,
             inventory: updatedInventory,
             dayEvents: [...state.dayEvents, ...logs]
+        };
+    }
+    
+    // Legacy forced forfeiture (no rep hit) - kept for safety
+    case 'FORCE_FORFEIT': {
+        const { itemId, name } = action.payload;
+        const updatedInventory = state.inventory.map(item => 
+            item.id === itemId ? { ...item, status: ItemStatus.FORFEIT } : item
+        );
+        
+        const servedCount = state.customersServedToday + 1;
+        const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
+
+        return {
+            ...state,
+            inventory: updatedInventory,
+            currentCustomer: null,
+            customersServedToday: servedCount,
+            phase: nextPhase,
+            dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`]
         };
     }
 
@@ -469,13 +517,14 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return { ...state, activeChains: action.payload };
 
     case 'SCHEDULE_MAIL': {
-        const { templateId, delayDays } = action.payload;
+        const { templateId, delayDays, metadata } = action.payload;
         const newMail: MailInstance = {
             uniqueId: crypto.randomUUID(),
             templateId,
             arrivalDay: state.stats.day + delayDays,
             isRead: false,
-            isClaimed: false
+            isClaimed: false,
+            metadata // Store metadata
         };
         return { ...state, pendingMails: [...state.pendingMails, newMail] };
     }
