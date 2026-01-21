@@ -2,10 +2,9 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
-import { X, PackageOpen, AlertTriangle, Clock, Skull, ShieldCheck, Heart, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, DollarSign, RefreshCw, AlertOctagon } from 'lucide-react';
+import { X, PackageOpen, AlertTriangle, Clock, Skull, ShieldCheck, Heart, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, DollarSign, AlertOctagon } from 'lucide-react';
 import { ItemStatus, Item } from '../types';
 import { Button } from './ui/Button';
-import { RedemptionModal } from './RedemptionModal';
 
 const getCategoryIcon = (category: string) => {
     switch(category) {
@@ -25,7 +24,6 @@ export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
   const { sellActivePawn } = usePawnShop();
   
-  const [redemptionItem, setRedemptionItem] = useState<Item | null>(null);
   const [forceSellConfirm, setForceSellConfirm] = useState<string | null>(null);
 
   if (!state.showInventory) return null;
@@ -46,11 +44,6 @@ export const InventoryModal: React.FC = () => {
   };
 
   return (
-    <>
-    {redemptionItem && (
-        <RedemptionModal item={redemptionItem} onClose={() => setRedemptionItem(null)} />
-    )}
-
     <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div 
         className="w-full max-w-5xl h-[85vh] bg-[#1c1917] border-2 border-[#44403c] rounded-lg shadow-2xl flex flex-col relative overflow-hidden"
@@ -157,23 +150,22 @@ export const InventoryModal: React.FC = () => {
                     {/* Action Footer */}
                     <div className="bg-[#141211] p-2 border-t border-[#292524] grid grid-cols-2 gap-2">
                         
-                        {/* LEFT: Redemption / Manage */}
-                        <Button 
-                            variant="secondary" 
-                            className="h-8 text-xs px-1"
-                            onClick={() => setRedemptionItem(item)}
-                        >
-                            <RefreshCw className="w-3 h-3 mr-1 inline" />
-                            {isSold ? '违约处理' : '客户赎回'}
-                        </Button>
+                        {/* LEFT: Status Info (No Interactions) */}
+                        <div className="flex items-center justify-center">
+                            {isSold && (
+                                <span className="text-[10px] text-stone-600 font-mono bg-stone-900/50 px-2 py-1 rounded w-full text-center">
+                                    等待事件触发
+                                </span>
+                            )}
+                        </div>
 
                         {/* RIGHT: Force Sell (Active) or Liquidate (Forfeit) */}
                         {isForfeit && (
                              <Button 
                                 variant="primary" 
                                 className="h-8 text-xs px-1"
-                                onClick={() => {/* Existing Logic in EndOfDay, maybe duplicate here later? */}}
-                                disabled={true} // Keep Liquidation in EndOfDay only for now as per design
+                                onClick={() => {/* Handled in EndOfDay */}}
+                                disabled={true} 
                                 title="请在每日结算时处理绝当"
                             >
                                 <DollarSign className="w-3 h-3 mr-1 inline" />
@@ -201,12 +193,6 @@ export const InventoryModal: React.FC = () => {
                                 确定卖出?
                             </Button>
                         )}
-
-                        {isSold && (
-                            <div className="flex items-center justify-center text-[10px] text-stone-600 font-mono bg-stone-900 rounded">
-                                已售出
-                            </div>
-                        )}
                     </div>
 
                   </div>
@@ -223,6 +209,5 @@ export const InventoryModal: React.FC = () => {
         </div>
       </div>
     </div>
-    </>
   );
 };
