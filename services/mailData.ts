@@ -1,4 +1,5 @@
 
+
 import { MailTemplate } from '../types';
 
 export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
@@ -76,7 +77,7 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
       id: "mail_zhao_plea",
       sender: "周守义",
       subject: "请再宽限几天",
-      body: `老板，\n\n实在对不住。今天本来该去赎那老物件的，但单位的退休金还没发下来，医院这边又催着缴费，我实在是没脸见你。\n\n我知道规矩，但我求求你，千万别把那东西卖了。那不是铁片，那是我的命。\n\n再给我几天时间，我就是去卖血也会把钱凑齐的。求你了。\n\n老周`,
+      body: `老板，\n\n实在对不住。没能凑齐钱把老伙计赎回去，甚至连利息都交不上。\n\n单位的退休金还没发下来，医院这边又催着缴费，我实在是走投无路了。\n\n我知道规矩，东西现在归您处置。但我求求你，千万别把那东西卖了。那不是铁片，那是我的命。\n\n再给我几天时间，我就是去卖血也会把钱凑齐的。求你了。\n\n老周`,
       attachments: { cash: 0 }
   },
 

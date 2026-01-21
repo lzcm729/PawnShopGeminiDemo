@@ -1,5 +1,6 @@
 
 
+
 import { EventChainState, StoryEvent, TriggerCondition, ChainVariables, Customer, Item, ItemStatus, DynamicFlowOutcome, SimOperation } from '../types';
 
 // Helper: Evaluate a single condition against current variables and chain state
@@ -26,6 +27,7 @@ const checkCondition = (condition: TriggerCondition, chain: EventChainState): bo
     case '>=': return currentVal >= targetVal;
     case '<=': return currentVal <= targetVal;
     case '==': return currentVal === targetVal;
+    case '%': return currentVal % targetVal === 0;
     default: return false;
   }
 };

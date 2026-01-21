@@ -14,8 +14,8 @@ import { MailModal } from './components/MailModal';
 import { DebugPanel } from './components/DebugPanel';
 import { ShopClosedView } from './components/ShopClosedView';
 import { Button } from './components/ui/Button';
-import { GamePhase } from './types';
-import { Sun } from 'lucide-react';
+import { GamePhase, NewsCategory } from './types';
+import { Sun, Radio, TrendingUp, AlertTriangle } from 'lucide-react';
 
 const GameContent: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -79,36 +79,113 @@ const GameContent: React.FC = () => {
 
   if (state.phase === GamePhase.MORNING_BRIEF) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-pawn-dark text-white p-4">
-        <div className="max-w-md w-full bg-pawn-panel p-8 border-t-4 border-pawn-accent shadow-2xl">
-          <div className="flex items-center gap-3 mb-6 text-pawn-accent">
-            <Sun className="w-8 h-8" />
-            <h2 className="text-3xl font-mono">DAY {state.stats.day}</h2>
-          </div>
-          
-          <div className="space-y-4 mb-8">
-            <p className="text-gray-300">卷帘门拉开，城市苏醒。你清点了一下保险箱。</p>
-            <div className="flex justify-between border-b border-gray-700 pb-2">
-              <span>持有现金</span>
-              <span className="font-mono text-green-400">${state.stats.cash}</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-700 pb-2">
-              <span>预计今日开支</span>
-              <span className="font-mono text-red-400">-${state.stats.dailyExpenses}</span>
-            </div>
-            <div className="flex justify-between pb-2">
-              <span>下一次交租 (Day {state.stats.rentDueDate})</span>
-              <span className="font-mono text-yellow-500">${state.stats.rentDue}</span>
-            </div>
-            {state.pendingMails.some(m => m.arrivalDay <= state.stats.day) && (
-                 <div className="flex justify-between pt-2 text-pawn-accent animate-pulse">
-                    <span>提示</span>
-                    <span>有新邮件送达</span>
-                 </div>
-            )}
-          </div>
+      <div className="h-screen w-full flex items-center justify-center bg-[#0a0a0a] text-white p-4 font-mono relative overflow-hidden">
+        {/* CRT Scanline Effect */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,6px_100%] pointer-events-none z-20 opacity-30"></div>
+        
+        <div className="max-w-4xl w-full bg-[#141414] border-2 border-stone-700 shadow-2xl relative z-10 flex flex-col md:flex-row h-[80vh]">
+           
+           {/* LEFT: System Status */}
+           <div className="w-full md:w-1/3 bg-[#0f0f0f] border-r border-stone-700 p-6 flex flex-col">
+              <div className="flex items-center gap-3 mb-8 text-stone-500 border-b border-stone-800 pb-4">
+                <Sun className="w-6 h-6" />
+                <h2 className="text-xl font-bold tracking-widest">SYSTEM_WAKE</h2>
+              </div>
+              
+              <div className="space-y-6 flex-1">
+                <div className="flex justify-between items-center">
+                   <span className="text-stone-500 text-xs uppercase">Cycle</span>
+                   <span className="text-3xl font-bold text-white">DAY {state.stats.day}</span>
+                </div>
 
-          <Button onClick={startNewDay} className="w-full">开门营业 (UNLOCK)</Button>
+                <div className="space-y-2">
+                   <div className="flex justify-between text-sm">
+                      <span className="text-stone-500">LIQUID_ASSETS</span>
+                      <span className="text-green-500 font-bold">${state.stats.cash}</span>
+                   </div>
+                   <div className="flex justify-between text-sm">
+                      <span className="text-stone-500">EST_EXPENSES</span>
+                      <span className="text-red-500">-${state.stats.dailyExpenses}</span>
+                   </div>
+                   <div className="flex justify-between text-sm border-t border-stone-800 pt-2">
+                      <span className="text-stone-500">RENT_DUE (D-{state.stats.rentDueDate - state.stats.day})</span>
+                      <span className="text-yellow-500">${state.stats.rentDue}</span>
+                   </div>
+                </div>
+
+                <div className="bg-stone-900/50 p-4 rounded border border-stone-800 mt-auto">
+                    <h3 className="text-stone-500 text-xs font-bold mb-2 flex items-center gap-2">
+                        <Radio className="w-3 h-3" /> MAIL_SERVER
+                    </h3>
+                    {state.pendingMails.some(m => m.arrivalDay <= state.stats.day) ? (
+                        <div className="text-green-500 text-xs animate-pulse">
+                            [!] NEW MESSAGE RECEIVED
+                        </div>
+                    ) : (
+                        <div className="text-stone-600 text-xs">
+                            NO NEW MESSAGES
+                        </div>
+                    )}
+                </div>
+              </div>
+
+              <Button onClick={startNewDay} className="w-full mt-6 border-stone-600 hover:border-white text-stone-300">
+                  <span className="animate-pulse">INITIALIZE_SHOP()</span>
+              </Button>
+           </div>
+
+           {/* RIGHT: City News Feed */}
+           <div className="flex-1 bg-[#1a1a1a] p-8 overflow-y-auto custom-scrollbar relative">
+               <div className="absolute top-0 right-0 p-2 text-[10px] text-stone-600 font-bold uppercase tracking-widest bg-black/20">
+                   CITY_NEWS_FEED_V4.2
+               </div>
+
+               <h3 className="text-2xl font-black text-stone-300 mb-6 uppercase tracking-tighter border-b-4 border-stone-800 pb-2 inline-block">
+                   Morning Brief
+               </h3>
+
+               <div className="space-y-6">
+                   {state.dailyNews.length === 0 ? (
+                       <div className="text-stone-600 italic text-sm">No significant news reports today...</div>
+                   ) : (
+                       state.dailyNews.map(news => {
+                           let borderClass = "border-l-4 border-stone-600 pl-4";
+                           let titleClass = "text-stone-300";
+                           let icon = null;
+
+                           if (news.category === NewsCategory.NARRATIVE) {
+                               borderClass = "border-l-4 border-pawn-accent pl-4 bg-amber-950/10 p-2";
+                               titleClass = "text-pawn-accent";
+                               icon = <AlertTriangle className="w-4 h-4 text-pawn-accent inline mr-2" />;
+                           } else if (news.category === NewsCategory.MARKET) {
+                               borderClass = "border-l-4 border-blue-600 pl-4 bg-blue-950/10 p-2";
+                               titleClass = "text-blue-400";
+                               icon = <TrendingUp className="w-4 h-4 text-blue-400 inline mr-2" />;
+                           }
+
+                           return (
+                               <div key={news.id} className={`${borderClass} mb-4`}>
+                                   <h4 className={`text-lg font-bold font-serif mb-1 ${titleClass}`}>
+                                       {icon}{news.headline}
+                                   </h4>
+                                   <p className="text-sm text-stone-400 leading-relaxed font-sans">
+                                       {news.body}
+                                   </p>
+                                   {news.effect && (
+                                       <div className="mt-2 text-[10px] uppercase font-bold text-stone-500 flex gap-2">
+                                           <span>Market Impact:</span>
+                                           <span className={news.effect.priceMultiplier && news.effect.priceMultiplier < 1 ? 'text-red-500' : 'text-green-500'}>
+                                               {news.effect.categoryTarget} Value {news.effect.priceMultiplier && news.effect.priceMultiplier > 1 ? '▲' : '▼'}
+                                           </span>
+                                       </div>
+                                   )}
+                               </div>
+                           );
+                       })
+                   )}
+               </div>
+           </div>
+
         </div>
       </div>
     );

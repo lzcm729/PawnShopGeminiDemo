@@ -1,4 +1,5 @@
 
+
 export enum GamePhase {
   START_SCREEN = 'START_SCREEN',
   MORNING_BRIEF = 'MORNING_BRIEF',
@@ -252,7 +253,7 @@ export interface EventChainState {
 
 export interface TriggerCondition {
   variable: string; 
-  operator: '>' | '<' | '>=' | '<=' | '==';
+  operator: '>' | '<' | '>=' | '<=' | '==' | '%';
   value: number;
 }
 
@@ -318,6 +319,35 @@ export interface StoryEvent {
   };
 }
 
+// --- NEWS & RUMOR SYSTEM ---
+
+export enum NewsCategory {
+  NARRATIVE = 'NARRATIVE', // 剧情回响 (High Priority)
+  MARKET = 'MARKET',       // 商业情报 (Medium Priority, affects prices)
+  FLAVOR = 'FLAVOR'        // 环境噪音 (Low Priority, world building)
+}
+
+export interface MarketModifier {
+  categoryTarget?: string; // e.g. "电子产品", "All"
+  priceMultiplier?: number; // e.g. 0.8 (Depreciation), 1.2 (Appreciation)
+  riskModifier?: number; // e.g. +20 (Police risk increase)
+}
+
+export interface NewsItem {
+  id: string;
+  headline: string; // Title
+  body: string; // Content
+  category: NewsCategory;
+  priority: number; // 100=Critical Narrative, 50=Market, 10=Flavor
+  triggers: TriggerCondition[]; // Uses same logic as StoryEvent
+  effect?: MarketModifier; // Optional market impact
+  duration: number; // How many days it stays active/effective
+}
+
+export interface ActiveNewsInstance extends NewsItem {
+  daysRemaining: number;
+}
+
 export interface GameState {
   phase: GamePhase;
   stats: DailyStats;
@@ -331,11 +361,13 @@ export interface GameState {
   isLoading: boolean;
   showInventory: boolean;
   showMail: boolean; 
-  showDebug: boolean; // NEW: Toggle for Debug Panel
+  showDebug: boolean; 
   activeChains: EventChainState[]; 
   inbox: MailInstance[];
   pendingMails: MailInstance[];
-  
-  // NEW: Track unique customer/scenarios that have finished to prevent repeats
   completedScenarioIds: string[];
+  
+  // NEW: News System State
+  dailyNews: ActiveNewsInstance[]; // The news shown TODAY
+  activeMarketEffects: MarketModifier[]; // Flattened list of active modifiers
 }

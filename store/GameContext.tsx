@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren } from 'react';
-import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance } from '../types';
+import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier } from '../types';
 import { INITIAL_CHAINS } from '../services/storyData';
 import { getMailTemplate } from '../services/mailData';
 import { generateValuationRange } from '../services/contentGenerator';
@@ -37,7 +37,11 @@ const initialState: GameState = {
   inbox: [],
   pendingMails: [],
   
-  completedScenarioIds: []
+  completedScenarioIds: [],
+  
+  // NEW
+  dailyNews: [],
+  activeMarketEffects: []
 };
 
 type Action =
@@ -73,7 +77,8 @@ type Action =
   | { type: 'DEFAULT_SELL_ITEM'; payload: { itemId: string; amount: number; name: string } }
   | { type: 'RESOLVE_BREACH'; payload: { penalty: number; name: string } }
   | { type: 'HOSTILE_TAKEOVER'; payload: { itemId: string; penalty: number; name: string } }
-  | { type: 'FORCE_FORFEIT'; payload: { itemId: string; name: string } };
+  | { type: 'FORCE_FORFEIT'; payload: { itemId: string; name: string } }
+  | { type: 'UPDATE_NEWS'; payload: { news: ActiveNewsInstance[], modifiers: MarketModifier[] } }; // NEW
 
 const gameReducer = (state: GameState, action: Action): GameState => {
   switch (action.type) {
@@ -249,9 +254,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'REDEEM_ITEM': {
         const { itemId, paymentAmount, name } = action.payload;
-        const updatedInventory = state.inventory.map(item => 
-            item.id === itemId ? { ...item, status: ItemStatus.REDEEMED } : item
-        );
+        // CHANGE: Filter out the item to remove it completely from inventory
+        const updatedInventory = state.inventory.filter(item => item.id !== itemId);
 
         const record: TransactionRecord = {
             id: crypto.randomUUID(),
@@ -590,6 +594,13 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             todayTransactions: updatedTransactions
         };
     }
+
+    case 'UPDATE_NEWS':
+        return {
+            ...state,
+            dailyNews: action.payload.news,
+            activeMarketEffects: action.payload.modifiers
+        };
 
     default:
       return state;

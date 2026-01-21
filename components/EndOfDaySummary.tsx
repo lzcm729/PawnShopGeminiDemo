@@ -8,7 +8,7 @@ import { ReputationType, ItemStatus } from '../types';
 
 export const EndOfDaySummary: React.FC = () => {
   const { state, dispatch } = useGame();
-  const { liquidateItem } = useGameEngine();
+  const { liquidateItem, performNightCycle } = useGameEngine();
   const { stats, todayTransactions, reputation, inventory } = state;
 
   // Calculate Daily Totals
@@ -133,7 +133,7 @@ export const EndOfDaySummary: React.FC = () => {
 
            <Button 
              variant="primary" 
-             onClick={() => dispatch({ type: 'END_DAY' })}
+             onClick={performNightCycle} // UPDATED: Calls the new transition logic
              className="w-full h-16 text-xl tracking-widest shadow-[0_0_20px_rgba(217,119,6,0.5)] flex-shrink-0"
            >
              <Moon className="w-5 h-5 inline-block mr-3 mb-1" />

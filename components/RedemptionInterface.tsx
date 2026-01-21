@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
@@ -325,10 +326,10 @@ export const RedemptionInterface: React.FC = () => {
         if ((customer as any)._dynamicEffects && (customer as any)._dynamicEffects.length > 0) {
              commitTransaction({
                  success: true,
-                 message: "Redemption processed",
+                 message: "已赎回 (Redeemed)",
                  cashDelta: 0, // Effects handle cash via 'ADD_FUNDS'/'REDEEM_ALL'
                  reputationDelta: {},
-                 item: item
+                 item: undefined // DO NOT PASS ITEM to prevent duplication in inventory
              });
         } else {
              // Standard Redemption

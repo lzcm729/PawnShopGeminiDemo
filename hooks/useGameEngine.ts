@@ -1,7 +1,7 @@
 
-
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../services/chainEngine';
+import { generateDailyNews } from '../services/newsEngine';
 import { ALL_STORY_EVENTS } from '../services/storyData';
 import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect } from '../types';
 import { usePawnShop } from './usePawnShop';
@@ -10,15 +10,41 @@ export const useGameEngine = () => {
   const { state, dispatch } = useGame();
   const { checkDailyExpirations, calculateRedemptionCost } = usePawnShop();
 
-  const startNewDay = () => {
-    // 1. Simulate active chains (NPCs spending money)
+  // NEW: Run this when the player clicks "Sleep/End Day"
+  // It calculates everything that happens "overnight" so the Morning Brief is ready.
+  const performNightCycle = () => {
+    // 1. Simulate active chains (NPCs spending money, life moving on)
     const simulatedChains = runDailySimulation(state.activeChains);
+    
+    // Create a temp state context that includes the simulated chains AND the "next day" index
+    // This allows news like "Day 5" to trigger correctly for the upcoming morning
+    const nextDay = state.stats.day + 1;
+    const tempState = { 
+        ...state, 
+        activeChains: simulatedChains,
+        stats: {
+            ...state.stats,
+            day: nextDay
+        }
+    };
+
     dispatch({ type: 'UPDATE_CHAINS', payload: simulatedChains });
 
-    // 2. Deliver Mail
+    // 2. Generate News & Market Effects for the UPCOMING morning
+    const newsResult = generateDailyNews(tempState);
+    dispatch({ type: 'UPDATE_NEWS', payload: newsResult });
+
+    // 3. Transition to Morning Brief (and increment day integer in reducer)
+    dispatch({ type: 'END_DAY' });
+  };
+
+  // UPDATED: Now only handles the transition from Brief -> Trading
+  const startNewDay = () => {
+    // 1. Deliver Mail (Mail logic checks "arrivalDay <= currentDay")
+    // Since performNightCycle has already run 'END_DAY', state.stats.day is now correct for the new day.
     dispatch({ type: 'PROCESS_DAILY_MAIL' });
 
-    // 3. Check for expired pawn items (Core Business Lifecycle)
+    // 2. Check for expired pawn items (Core Business Lifecycle)
     checkDailyExpirations();
 
     const isRentDue = state.stats.day > 0 && state.stats.day % 5 === 0;
@@ -424,31 +450,48 @@ export const useGameEngine = () => {
         }
     }
 
-    if (result.success && result.item) {
-        if (result.item.isVirtual) { 
-            dispatch({ 
-                type: 'RESOLVE_TRANSACTION', 
-                payload: { 
-                  cashDelta: result.cashDelta, 
-                  reputationDelta: result.reputationDelta, 
-                  item: null, 
-                  log: `交易完成: ${result.item.name}。`,
-                  customerName: state.currentCustomer?.name || "Customer"
-                } 
-            });
+    if (result.success) {
+        // SUCCESS CASE
+        if (result.item) {
+             // Logic for adding item (Pawn/Buy)
+             if (result.item.isVirtual) { 
+                 dispatch({ 
+                    type: 'RESOLVE_TRANSACTION', 
+                    payload: { 
+                      cashDelta: result.cashDelta, 
+                      reputationDelta: result.reputationDelta, 
+                      item: null, 
+                      log: `交易完成: ${result.item.name}。`,
+                      customerName: state.currentCustomer?.name || "Customer"
+                    } 
+                });
+             } else {
+                 dispatch({ 
+                    type: 'RESOLVE_TRANSACTION', 
+                    payload: { 
+                      cashDelta: result.cashDelta, 
+                      reputationDelta: result.reputationDelta, 
+                      item: result.item,
+                      log: `收购了 ${result.item.name} (支出 $${Math.abs(result.cashDelta)})。`,
+                      customerName: state.currentCustomer?.name || "Customer"
+                    } 
+                });
+             }
         } else {
+             // Logic for success WITHOUT item (e.g. Redemption via effects)
              dispatch({ 
                 type: 'RESOLVE_TRANSACTION', 
                 payload: { 
                   cashDelta: result.cashDelta, 
                   reputationDelta: result.reputationDelta, 
-                  item: result.item,
-                  log: `收购了 ${result.item.name} (支出 $${Math.abs(result.cashDelta)})。`,
+                  item: null, // Ensure NO ITEM is added
+                  log: result.message || "交易完成", 
                   customerName: state.currentCustomer?.name || "Customer"
                 } 
             });
         }
     } else {
+      // FAILURE CASE
       dispatch({ 
         type: 'RESOLVE_TRANSACTION', 
         payload: { 
@@ -486,6 +529,7 @@ export const useGameEngine = () => {
 
   return {
     startNewDay,
+    performNightCycle,
     generateDailyEvent,
     evaluateTransaction,
     commitTransaction,
