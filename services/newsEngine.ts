@@ -1,12 +1,11 @@
 
-import { GameState, NewsItem, ActiveNewsInstance, MarketModifier, EventChainState } from '../types';
+
+import { GameState, NewsItem, ActiveNewsInstance, MarketModifier, NewsCategory } from '../types';
 import { ALL_NEWS_DATA } from './newsData';
 
-// Re-implement basic check logic to avoid circular dependency with chainEngine if possible,
-// or just import carefully. We need to check conditions against GameState AND ChainState.
 const checkNewsCondition = (condition: any, state: GameState): boolean => {
     let currentVal = 0;
-    const variablePath = condition.variable.split('.'); // e.g. "chain_emma.stage" or "day" or "reputation.Humanity"
+    const variablePath = condition.variable.split('.'); 
 
     // 1. Global Stats
     if (variablePath[0] === 'day') currentVal = state.stats.day;
@@ -28,11 +27,10 @@ const checkNewsCondition = (condition: any, state: GameState): boolean => {
             if (varName === 'stage') currentVal = chain.stage;
             else if (chain.variables && varName in chain.variables) currentVal = chain.variables[varName];
         } else {
-            return false; // Chain not found
+            return false;
         }
     }
 
-    // modulo operator support for periodic events
     if (condition.operator === '%') {
         return currentVal % condition.value === 0;
     }
@@ -52,45 +50,65 @@ export const generateDailyNews = (state: GameState): { news: ActiveNewsInstance[
     const { dailyNews } = state;
 
     // 1. Process Existing News (Persistence)
-    // Filter out expired news, decrement duration
     const persistedNews: ActiveNewsInstance[] = dailyNews
         .map(n => ({ ...n, daysRemaining: n.daysRemaining - 1 }))
         .filter(n => n.daysRemaining > 0);
 
-    // 2. Collect New Triggers
+    // 2. Collect New Candidates
     const potentialNews = ALL_NEWS_DATA.filter(template => {
-        // Prevent duplicates: Don't trigger if already in persisted news
         if (persistedNews.some(p => p.id === template.id)) return false;
-
-        // Check Logic
         return template.triggers.every(cond => checkNewsCondition(cond, state));
     });
 
-    // 3. Convert to Active Instances
-    const newInstances: ActiveNewsInstance[] = potentialNews.map(n => ({
+    // 3. Categorized Selection (Guaranteed Representation)
+    // We want a daily paper of roughly 4-5 items total.
+    
+    const narratives = potentialNews.filter(n => n.category === NewsCategory.NARRATIVE).sort((a,b) => b.priority - a.priority);
+    const markets = potentialNews.filter(n => n.category === NewsCategory.MARKET).sort((a,b) => b.priority - a.priority);
+    const flavors = potentialNews.filter(n => n.category === NewsCategory.FLAVOR).sort((a,b) => b.priority - a.priority);
+
+    const selectedNew: NewsItem[] = [];
+    const MAX_NEW_SLOTS = 4; // Add up to 4 new items per day
+
+    // SLOT 1 & 2: Top Narratives (Story progression is key)
+    if (narratives.length > 0) selectedNew.push(narratives[0]);
+    if (narratives.length > 1) selectedNew.push(narratives[1]);
+
+    // SLOT 3: GUARANTEED MARKET INTEL (If available)
+    if (markets.length > 0) {
+        selectedNew.push(markets[0]);
+    } else if (narratives.length > 2) {
+        // Fallback to 3rd narrative if no market news
+        selectedNew.push(narratives[2]);
+    }
+
+    // SLOT 4: FLAVOR / EXTRA MARKET
+    // If we have room, add flavor or another market
+    if (selectedNew.length < MAX_NEW_SLOTS) {
+        // Prefer a 2nd Market item if available
+        if (markets.length > 1) {
+            selectedNew.push(markets[1]);
+        } else if (flavors.length > 0) {
+            selectedNew.push(flavors[0]);
+        }
+    }
+
+    // 4. Convert to Active Instances
+    const newInstances: ActiveNewsInstance[] = selectedNew.map(n => ({
         ...n,
         daysRemaining: n.duration
     }));
 
-    // 4. Merge & Sort
+    // 5. Merge
     const allActive = [...persistedNews, ...newInstances];
     
-    // Sort by Priority DESC, then randomly shuffle same-priority for variety
-    allActive.sort((a, b) => {
-        if (b.priority !== a.priority) return b.priority - a.priority;
-        return Math.random() - 0.5;
-    });
-
-    // 5. Cap (Max 4 items to fit UI)
-    const finalNews = allActive.slice(0, 4);
-
-    // 6. Extract Modifiers
-    const modifiers: MarketModifier[] = finalNews
+    // 6. Extract Modifiers from ALL active news
+    const modifiers: MarketModifier[] = allActive
         .filter(n => n.effect !== undefined)
         .map(n => n.effect!);
 
     return {
-        news: finalNews,
+        news: allActive,
         modifiers
     };
 };

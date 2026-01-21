@@ -50,3 +50,65 @@ export const generatePawnLog = (customer: Customer, item: Item, day: number, vis
         }
     };
 };
+
+/**
+ * Generate Redeem Log
+ */
+export const generateRedeemLog = (
+    customerName: string,
+    item: Item,
+    day: number,
+    payment: number
+): ItemLogEntry => {
+    const templates = [
+        `${customerName}回来赎回了这件${item.name}。支付了$${payment}。物归原主。`,
+        `赎回。${customerName}带走了${item.name}，留下了$${payment}。`,
+        `交易完结。${customerName}取回${item.name}，柜台多了$${payment}。`
+    ];
+
+    return {
+        id: crypto.randomUUID(),
+        day,
+        content: templates[Math.floor(Math.random() * templates.length)],
+        type: 'REDEEM',
+        metadata: { payment }
+    };
+};
+
+/**
+ * Generate Forfeit Log
+ */
+export const generateForfeitLog = (
+    item: Item,
+    day: number,
+    reason?: string
+): ItemLogEntry => {
+    const content = reason
+        ? `${reason}。${item.name}归入库存。`
+        : `无人来赎。${item.name}正式成为店铺资产。`;
+
+    return {
+        id: crypto.randomUUID(),
+        day,
+        content,
+        type: 'FORFEIT',
+        metadata: { reason }
+    };
+};
+
+/**
+ * Generate Sold Log
+ */
+export const generateSoldLog = (
+    item: Item,
+    day: number,
+    amount: number
+): ItemLogEntry => {
+    return {
+        id: crypto.randomUUID(),
+        day,
+        content: `${item.name}以$${amount}的价格售出。这段故事结束了。`,
+        type: 'SOLD',
+        metadata: { amount }
+    };
+};

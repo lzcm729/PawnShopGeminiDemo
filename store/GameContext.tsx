@@ -1,9 +1,11 @@
 
+
 import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren } from 'react';
 import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier } from '../types';
 import { INITIAL_CHAINS } from '../services/storyData';
 import { getMailTemplate } from '../services/mailData';
 import { generateValuationRange } from '../services/contentGenerator';
+import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../services/logGenerator';
 
 const initialState: GameState = {
   phase: GamePhase.START_SCREEN,
@@ -85,7 +87,11 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'START_GAME':
       return { ...initialState, phase: GamePhase.MORNING_BRIEF };
       
-    case 'START_DAY':
+    case 'START_DAY': {
+      // Calculate AP Modifiers from News
+      const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
+      const effectiveMaxAP = Math.max(1, state.stats.maxActionPoints + apModifier);
+      
       return { 
         ...state, 
         customersServedToday: 0,
@@ -94,9 +100,10 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         phase: GamePhase.TRADING,
         stats: {
             ...state.stats,
-            actionPoints: state.stats.maxActionPoints 
+            actionPoints: effectiveMaxAP 
         }
       };
+    }
 
     case 'SET_PHASE':
       return { ...state, phase: action.payload };
@@ -232,9 +239,13 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'LIQUIDATE_ITEM': {
       const { itemId, amount, name } = action.payload;
-      const soldInventory = state.inventory.map(item => 
-        item.id === itemId ? { ...item, status: ItemStatus.SOLD } : item
-      );
+      const soldInventory = state.inventory.map(item => {
+        if (item.id === itemId) {
+             const soldLog = generateSoldLog(item, state.stats.day, amount);
+             return { ...item, status: ItemStatus.SOLD, logs: [...(item.logs || []), soldLog] };
+        }
+        return item;
+      });
 
       const saleRecord: TransactionRecord = {
         id: crypto.randomUUID(),
@@ -254,8 +265,15 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'REDEEM_ITEM': {
         const { itemId, paymentAmount, name } = action.payload;
-        // CHANGE: Filter out the item to remove it completely from inventory
-        const updatedInventory = state.inventory.filter(item => item.id !== itemId);
+        
+        // UPDATE: Instead of removing, we mark as REDEEMED and append log to preserve history
+        const updatedInventory = state.inventory.map(item => {
+             if (item.id === itemId) {
+                 const redeemLog = generateRedeemLog(state.currentCustomer?.name || "顾客", item, state.stats.day, paymentAmount);
+                 return { ...item, status: ItemStatus.REDEEMED, logs: [...(item.logs || []), redeemLog] };
+             }
+             return item;
+        });
 
         const record: TransactionRecord = {
             id: crypto.randomUUID(),
@@ -310,9 +328,13 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const { itemId, name } = action.payload;
         
         // Logic: Item status -> FORFEIT, Reputation (Humanity) -> -10
-        const updatedInventory = state.inventory.map(item => 
-            item.id === itemId ? { ...item, status: ItemStatus.FORFEIT } : item
-        );
+        const updatedInventory = state.inventory.map(item => {
+            if (item.id === itemId) {
+                 const log = generateForfeitLog(item, state.stats.day, "拒绝续当");
+                 return { ...item, status: ItemStatus.FORFEIT, logs: [...(item.logs || []), log] };
+            }
+            return item;
+        });
         
         const newRep = { ...state.reputation };
         newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 10);
@@ -335,9 +357,13 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const { expiredItemIds, logs } = action.payload;
         if (expiredItemIds.length === 0) return state;
 
-        const updatedInventory = state.inventory.map(item => 
-            expiredItemIds.includes(item.id) ? { ...item, status: ItemStatus.FORFEIT } : item
-        );
+        const updatedInventory = state.inventory.map(item => {
+            if (expiredItemIds.includes(item.id)) {
+                 const forfeitLog = generateForfeitLog(item, state.stats.day);
+                 return { ...item, status: ItemStatus.FORFEIT, logs: [...(item.logs || []), forfeitLog] };
+            }
+            return item;
+        });
 
         return {
             ...state,
@@ -349,9 +375,13 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     // Legacy forced forfeiture (no rep hit) - kept for safety
     case 'FORCE_FORFEIT': {
         const { itemId, name } = action.payload;
-        const updatedInventory = state.inventory.map(item => 
-            item.id === itemId ? { ...item, status: ItemStatus.FORFEIT } : item
-        );
+        const updatedInventory = state.inventory.map(item => {
+            if (item.id === itemId) {
+                 const log = generateForfeitLog(item, state.stats.day, "强制送客");
+                 return { ...item, status: ItemStatus.FORFEIT, logs: [...(item.logs || []), log] };
+            }
+            return item;
+        });
         
         const servedCount = state.customersServedToday + 1;
         const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
@@ -368,9 +398,13 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'DEFAULT_SELL_ITEM': {
         const { itemId, amount, name } = action.payload;
-        const soldInventory = state.inventory.map(item => 
-            item.id === itemId ? { ...item, status: ItemStatus.SOLD } : item
-        );
+        const soldInventory = state.inventory.map(item => {
+            if (item.id === itemId) {
+                const soldLog = generateSoldLog(item, state.stats.day, amount);
+                return { ...item, status: ItemStatus.SOLD, logs: [...(item.logs || []), soldLog] };
+            }
+            return item;
+        });
 
         const saleRecord: TransactionRecord = {
             id: crypto.randomUUID(),
@@ -415,9 +449,13 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const { itemId, penalty, name } = action.payload;
         
         // Force status to FORFEIT, player keeps the item but pays penalty
-        const updatedInventory = state.inventory.map(item => 
-            item.id === itemId ? { ...item, status: ItemStatus.FORFEIT } : item
-        );
+        const updatedInventory = state.inventory.map(item => {
+            if (item.id === itemId) {
+                const log = generateForfeitLog(item, state.stats.day, "恶意买断");
+                return { ...item, status: ItemStatus.FORFEIT, logs: [...(item.logs || []), log] };
+            }
+            return item;
+        });
 
         const newRep = { ...state.reputation };
         // Massive reputation hits

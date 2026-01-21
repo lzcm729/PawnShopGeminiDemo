@@ -21,6 +21,14 @@ const getCategoryIcon = (category: string) => {
     }
 }
 
+const LOG_TYPE_COLORS: Record<string, string> = {
+    'ENTRY': 'text-blue-400',
+    'REDEEM': 'text-green-400',
+    'FORFEIT': 'text-red-400',
+    'SOLD': 'text-amber-400',
+    'INFO': 'text-stone-400'
+};
+
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
   const { sellActivePawn } = usePawnShop();
@@ -151,7 +159,9 @@ export const InventoryModal: React.FC = () => {
                                   {item.logs.map(log => (
                                       <div key={log.id} className="mb-2 last:mb-0 border-b border-stone-800/50 pb-1 last:border-0">
                                           <span className="text-stone-600 font-sans mr-1">[Day {log.day}]</span>
-                                          {log.content}
+                                          <span className={LOG_TYPE_COLORS[log.type] || 'text-stone-400'}>
+                                              {log.content}
+                                          </span>
                                       </div>
                                   ))}
                               </div>

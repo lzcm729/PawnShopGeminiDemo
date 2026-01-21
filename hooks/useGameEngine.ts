@@ -222,6 +222,7 @@ export const useGameEngine = () => {
       [ReputationType.UNDERWORLD]: 0
     };
 
+    // Standard Rep Logic
     if (offer >= desiredAmount) {
       repDelta[ReputationType.HUMANITY] += 3;
       repDelta[ReputationType.CREDIBILITY] -= 1; 
@@ -237,10 +238,24 @@ export const useGameEngine = () => {
         repDelta[ReputationType.CREDIBILITY] -= 2;
     }
 
+    // RISK MODIFIER LOGIC
+    // Check for active Police Raid or similar high-risk events
+    const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
+    
     if (item.isStolen) {
+      // Base logic
       repDelta[ReputationType.UNDERWORLD] += 5;
       repDelta[ReputationType.CREDIBILITY] -= 2; 
+      
+      // Multiplier logic
+      if (currentRisk > 0) {
+          // Massive penalty to Credibility if caught taking stolen goods during a raid
+          repDelta[ReputationType.CREDIBILITY] -= 20; 
+          // But maybe extra underworld rep for being bold?
+          repDelta[ReputationType.UNDERWORLD] += 5;
+      }
     }
+    
     if (item.isFake) {
        repDelta[ReputationType.CREDIBILITY] -= 5; 
     }
@@ -269,6 +284,12 @@ export const useGameEngine = () => {
     }
     
     const narrativeLog = generatePawnLog(customer, item, state.stats.day, visitCount);
+    
+    // Add Warning Log if High Risk Trade
+    if (item.isStolen && currentRisk > 0) {
+        narrativeLog.content += " [警告] 在严打期间收受赃物，风声走漏。信誉大幅下降！";
+    }
+
     const updatedLogs = [...(item.logs || []), narrativeLog];
 
     const finalizedItem: Item = {

@@ -50,6 +50,12 @@ export interface ItemLogEntry {
   metadata?: {
       visitCount?: number;
       moodState?: string;
+      // REDEEM related
+      payment?: number;
+      // SOLD related
+      amount?: number;
+      // General
+      reason?: string;
   };
 }
 
@@ -345,6 +351,7 @@ export interface MarketModifier {
   categoryTarget?: string; // e.g. "电子产品", "All"
   priceMultiplier?: number; // e.g. 0.8 (Depreciation), 1.2 (Appreciation)
   riskModifier?: number; // e.g. +20 (Police risk increase)
+  actionPointsModifier?: number; // NEW: Flavor text having real gameplay impact (Rain = tired = less AP)
 }
 
 export interface NewsItem {
