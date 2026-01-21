@@ -1,7 +1,9 @@
 
+
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../services/chainEngine';
 import { generateDailyNews } from '../services/newsEngine';
+import { generatePawnLog } from '../services/logGenerator';
 import { ALL_STORY_EVENTS } from '../services/storyData';
 import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect } from '../types';
 import { usePawnShop } from './usePawnShop';
@@ -255,12 +257,27 @@ export const useGameEngine = () => {
         extensionCount: 0 // Initialize extension count
     };
 
+    // --- ITEM LOG GENERATION ---
+    // Calculate Visit Count based on Chain Stage
+    let visitCount = 1;
+    if (customer.chainId) {
+        const chain = state.activeChains.find(c => c.id === customer.chainId);
+        if (chain) {
+            // Usually Stage 0 is first visit, so Visit = Stage + 1
+            visitCount = chain.stage + 1;
+        }
+    }
+    
+    const narrativeLog = generatePawnLog(customer, item, state.stats.day, visitCount);
+    const updatedLogs = [...(item.logs || []), narrativeLog];
+
     const finalizedItem: Item = {
       ...item,
       pawnAmount: offer,
       pawnInfo: pawnInfo, 
       pawnDate: state.stats.day,
-      status: ItemStatus.ACTIVE 
+      status: ItemStatus.ACTIVE,
+      logs: updatedLogs // Attach Log
     };
 
     let quality: 'fair' | 'fleeced' | 'premium' = 'fair';

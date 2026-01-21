@@ -1,8 +1,9 @@
 
+
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
-import { X, PackageOpen, AlertTriangle, Clock, Skull, ShieldCheck, Heart, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, DollarSign, AlertOctagon } from 'lucide-react';
+import { X, PackageOpen, AlertTriangle, Clock, Skull, ShieldCheck, Heart, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, DollarSign, AlertOctagon, BookOpen } from 'lucide-react';
 import { ItemStatus, Item } from '../types';
 import { Button } from './ui/Button';
 
@@ -124,6 +125,7 @@ export const InventoryModal: React.FC = () => {
                          </div>
                       </div>
 
+                      {/* Financials */}
                       <div className="bg-[#1c1917] p-2 rounded text-xs font-mono grid grid-cols-2 gap-2 border border-[#292524] mb-3">
                          <div>
                             <span className="block text-stone-600">已付当金</span>
@@ -138,6 +140,28 @@ export const InventoryModal: React.FC = () => {
                             )}
                          </div>
                       </div>
+                      
+                      {/* NARRATIVE LOG DISPLAY (New Feature) */}
+                      {item.logs && item.logs.length > 0 ? (
+                          <div className="mb-3">
+                              <div className="flex items-center gap-1 text-[10px] text-stone-500 mb-1 font-bold uppercase tracking-wider">
+                                  <BookOpen className="w-3 h-3"/> 档案记录 (Journal)
+                              </div>
+                              <div className="bg-stone-900/30 border border-stone-800 rounded p-2 text-[10px] text-stone-400 font-serif leading-relaxed h-20 overflow-y-auto custom-scrollbar-light">
+                                  {item.logs.map(log => (
+                                      <div key={log.id} className="mb-2 last:mb-0 border-b border-stone-800/50 pb-1 last:border-0">
+                                          <span className="text-stone-600 font-sans mr-1">[Day {log.day}]</span>
+                                          {log.content}
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+                      ) : (
+                          // Fallback to description if no logs
+                          <div className="mb-3 text-[10px] text-stone-600 italic border-l-2 border-stone-700 pl-2">
+                             "{item.historySnippet}"
+                          </div>
+                      )}
 
                       {!isSold && !isForfeit && (
                         <div className="flex items-center gap-2 text-xs text-stone-400 bg-stone-900/50 p-1.5 rounded mb-2">

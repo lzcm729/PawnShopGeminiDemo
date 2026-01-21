@@ -1,4 +1,5 @@
 
+
 import { Item, ItemStatus } from '../types';
 
 // ==========================================
@@ -101,6 +102,7 @@ export const enrichItemWithTraits = (item: any): Item => {
         initialRange: range, // Freeze start state
         hiddenTraits: hidden,
         revealedTraits: item.revealedTraits || [],
+        logs: item.logs || [], // Initialize Logs
         pawnAmount: 0 // Reset for new transaction
     } as Item;
 };
