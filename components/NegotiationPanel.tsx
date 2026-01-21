@@ -1,12 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame, Handshake } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame, Handshake, BrainCircuit } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines } from '../types';
 import { DealSuccessModal } from './DealSuccessModal';
 import { ActionLog } from '../hooks/useNegotiation';
+import { getMerchantInstinct } from '../services/instinctSystem';
 
 interface NegotiationStateProps {
     negotiation: {
@@ -165,6 +165,11 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
   // DETECT BINARY CHOICE MODE (Collector/Sales Events)
   const isBinaryChoice = currentCustomer?.interactionType === 'NEGOTIATION';
+
+  // --- MERCHANT INSTINCT (NEW) ---
+  const instinct = currentCustomer && item && !isBinaryChoice
+      ? getMerchantInstinct(offerPrincipal, selectedRate, currentCustomer, item) 
+      : { text: "", color: "" };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -562,15 +567,22 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                          </div>
                      </div>
                      
-                     <div className="flex justify-between mt-1 text-[10px] font-mono px-1">
-                         <span className={`${offerPrincipal > cashAvailable ? 'text-red-500 animate-pulse font-bold' : 'text-stone-600'}`}>
-                             Wallet: ${cashAvailable}
-                         </span>
-                         <span className="text-stone-600">
-                             Repayment: ${repaymentAmount}
-                         </span>
-                     </div>
                  </div>
+
+                 {/* --- MERCHANT INSTINCT (NEW LOCATION) --- */}
+                 {instinct.text && (
+                    <div className="py-2 -mx-2 flex flex-col items-center justify-center min-h-[3rem] animate-in fade-in duration-300">
+                        <div className={`flex items-center gap-2 opacity-80 mb-1 ${instinct.color}`}>
+                             <BrainCircuit className="w-3 h-3" />
+                             <span className="text-[9px] font-mono uppercase tracking-widest font-bold">
+                                 直觉
+                             </span>
+                        </div>
+                        <p className={`text-center font-serif italic text-sm ${instinct.color} leading-snug transition-all`}>
+                            "{instinct.text}"
+                        </p>
+                    </div>
+                 )}
 
                  <div className="flex gap-3 mt-1">
                     <Button 
