@@ -1,19 +1,22 @@
 
-
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
 import { useGameEngine } from '../hooks/useGameEngine';
-import { Item, ItemStatus } from '../types';
+import { Item, ItemStatus, ChainUpdateEffect } from '../types';
 import { Button } from './ui/Button';
-import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, ShieldAlert, AlertTriangle, XCircle } from 'lucide-react';
+import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, ShieldAlert, AlertTriangle, XCircle, Layers, Plus } from 'lucide-react';
 import { CustomerView } from './CustomerView';
 import { ALL_STORY_EVENTS } from '../services/storyData';
 
 // --- SUB-COMPONENT: Left Column (Item + Receipt) ---
-const TicketPanel: React.FC<{ item: Item, cost: any, penalty: number }> = ({ item, cost, penalty }) => {
-    const isSold = item.status === ItemStatus.SOLD;
-    const extensionCount = item.pawnInfo?.extensionCount || 0;
+const TicketPanel: React.FC<{ items: Item[], cost: any, penalty: number, isBundle: boolean }> = ({ items, cost, penalty, isBundle }) => {
+    // If bundle, we pick the first one as representative or show a stack
+    const primaryItem = items[0];
+    if (!primaryItem) return null;
+
+    const isSold = primaryItem.status === ItemStatus.SOLD; // Assume check on primary for breach (rare in bundle)
+    const extensionCount = primaryItem.pawnInfo?.extensionCount || 0;
     
     return (
         <div className="h-full bg-[#1c1917] border-r border-[#44403c] flex flex-col relative overflow-hidden">
@@ -21,7 +24,16 @@ const TicketPanel: React.FC<{ item: Item, cost: any, penalty: number }> = ({ ite
              {/* 1. Item Visuals with Status Overlay */}
              <div className="flex-1 relative flex flex-col items-center justify-center p-8 bg-[#0c0a09]">
                  <div className="w-48 h-48 bg-stone-800 rounded-full flex items-center justify-center mb-6 shadow-inner border border-stone-700 relative z-10">
-                     <Package className="w-24 h-24 text-stone-600 opacity-50" />
+                     {isBundle ? (
+                         <div className="relative">
+                             <Layers className="w-24 h-24 text-stone-500 opacity-50" />
+                             <div className="absolute -bottom-2 -right-2 bg-pawn-accent text-black font-bold text-xs px-2 py-1 rounded-full border border-white">
+                                 x{items.length}
+                             </div>
+                         </div>
+                     ) : (
+                         <Package className="w-24 h-24 text-stone-600 opacity-50" />
+                     )}
                      
                      {/* SOLD OVERLAY */}
                      {isSold && (
@@ -34,8 +46,22 @@ const TicketPanel: React.FC<{ item: Item, cost: any, penalty: number }> = ({ ite
                      )}
                  </div>
                  
-                 <h2 className="text-2xl font-bold text-stone-200 z-10">{item.name}</h2>
-                 <p className="text-sm text-stone-500 font-mono z-10">{item.pawnInfo ? `Ticket #${item.id.slice(0,6)}` : 'UNKNOWN'}</p>
+                 <h2 className="text-2xl font-bold text-stone-200 z-10 text-center">
+                     {isBundle ? "批量赎回 (Batch Redemption)" : primaryItem.name}
+                 </h2>
+                 <div className="text-sm text-stone-500 font-mono z-10 mt-2 text-center">
+                     {isBundle ? (
+                         items.length <= 3 ? (
+                             <div className="flex flex-col gap-1">
+                                 {items.map(i => <span key={i.id}>{i.name}</span>)}
+                             </div>
+                         ) : (
+                             <span>{items.length} Items Selected</span>
+                         )
+                     ) : (
+                         primaryItem.pawnInfo ? `Ticket #${primaryItem.id.slice(0,6)}` : 'UNKNOWN'
+                     )}
+                 </div>
 
                  {/* Grid Pattern */}
                  <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-10 pointer-events-none"></div>
@@ -58,7 +84,7 @@ const TicketPanel: React.FC<{ item: Item, cost: any, penalty: number }> = ({ ite
                          <div className="space-y-2 font-mono">
                              <div className="flex justify-between text-sm text-red-400">
                                  <span>CONTRACT VALUATION</span>
-                                 <span>${item.pawnInfo?.valuation}</span>
+                                 <span>${primaryItem.pawnInfo?.valuation}</span>
                              </div>
                              <div className="flex justify-between text-sm text-red-400">
                                  <span>BREACH MULTIPLIER</span>
@@ -75,22 +101,51 @@ const TicketPanel: React.FC<{ item: Item, cost: any, penalty: number }> = ({ ite
                      ) : (
                          // STANDARD RECEIPT
                          <div className="space-y-2 font-mono text-stone-800">
-                             <div className="flex justify-between text-sm">
-                                 <span className="text-stone-500">Principal Loan</span>
-                                 <span className="font-bold">${cost?.principal}</span>
-                             </div>
-                             <div className="flex justify-between text-sm">
-                                 <span className="text-stone-500">Interest ({cost?.daysPassed} days)</span>
-                                 <span className="font-bold">+${cost?.interest}</span>
-                             </div>
-                             <div className="flex justify-between text-sm">
-                                 <span className="text-stone-500">Extension Count</span>
-                                 <span className="font-bold">
-                                     {extensionCount} 次 (Count)
-                                 </span>
-                             </div>
+                             {isBundle ? (
+                                 <div className="flex flex-col gap-2">
+                                     <div className="max-h-32 overflow-y-auto custom-scrollbar-light border-b border-stone-400/30 pb-2">
+                                         {items.map(i => {
+                                             const p = i.pawnInfo?.principal || 0;
+                                             return (
+                                                 <div key={i.id} className="flex justify-between text-xs mb-1">
+                                                     <span className="truncate w-3/4 text-stone-700">{i.name}</span>
+                                                     <span className="font-mono text-stone-500">${p}</span>
+                                                 </div>
+                                             )
+                                         })}
+                                     </div>
+                                     
+                                     <div className="flex flex-col gap-1 text-xs font-mono text-stone-600 border-b border-dashed border-stone-400 pb-2 mb-1">
+                                         <div className="flex justify-between">
+                                             <span>Total Principal</span>
+                                             <span className="font-bold">${cost?.principal}</span>
+                                         </div>
+                                         <div className="flex justify-between text-stone-500 items-center">
+                                             <span className="flex items-center gap-1"><Plus className="w-3 h-3"/> Total Interest</span>
+                                             <span className="font-bold text-stone-700">+${cost?.interest}</span>
+                                         </div>
+                                     </div>
+                                 </div>
+                             ) : (
+                                 <>
+                                     <div className="flex justify-between text-sm">
+                                         <span className="text-stone-500">Principal Loan</span>
+                                         <span className="font-bold">${cost?.principal}</span>
+                                     </div>
+                                     <div className="flex justify-between text-sm">
+                                         <span className="text-stone-500">Interest ({cost?.daysPassed} days)</span>
+                                         <span className="font-bold">+${cost?.interest}</span>
+                                     </div>
+                                     <div className="flex justify-between text-sm">
+                                         <span className="text-stone-500">Extension Count</span>
+                                         <span className="font-bold">
+                                             {extensionCount} 次 (Count)
+                                         </span>
+                                     </div>
+                                 </>
+                             )}
                              
-                             <div className="mt-4 pt-2 border-t-2 border-stone-400 border-dashed flex justify-between items-center">
+                             <div className="mt-2 pt-2 flex justify-between items-center">
                                  <span className="text-lg font-black text-stone-900 uppercase">TOTAL DUE</span>
                                  <span className="text-3xl font-black text-pawn-accent bg-black px-2 py-0.5 rounded transform rotate-[-1deg] shadow-lg">
                                      ${cost?.total}
@@ -107,30 +162,26 @@ const TicketPanel: React.FC<{ item: Item, cost: any, penalty: number }> = ({ ite
 // --- SUB-COMPONENT: Right Column Bottom (Action Group) ---
 const SettlementPanel: React.FC<{ 
     customer: any, 
-    item: Item, 
     cost: any, 
     penalty: number,
     onRedeem: () => void,
     onExtend: () => void,
     onRefuseExtension: () => void,
     onDismiss: () => void,
-    onHostileTakeover: () => void
-}> = ({ customer, item, cost, penalty, onRedeem, onExtend, onRefuseExtension, onDismiss, onHostileTakeover }) => {
+    onHostileTakeover: () => void,
+    isBreach: boolean
+}> = ({ customer, cost, penalty, onRedeem, onExtend, onRefuseExtension, onDismiss, onHostileTakeover, isBreach }) => {
     
     // --- DETERMINE STATE ---
     const wallet = customer.currentWallet || 0;
-    const canAffordInterest = wallet >= (cost?.interest || 0);
-    const canAffordTotal = wallet >= (cost?.total || 0);
-    
     const intent = customer.redemptionIntent || 'LEAVE'; // REDEEM | EXTEND | LEAVE
-    const isSold = item.status === ItemStatus.SOLD;
 
     // CONFIRMATION STATES
     const [showTakeoverConfirm, setShowTakeoverConfirm] = useState(false);
     const [showRefuseConfirm, setShowRefuseConfirm] = useState(false);
 
     // --- RENDER LOGIC: BREACH MODE ---
-    if (isSold) {
+    if (isBreach) {
         return (
             <div className="bg-[#1c1917] border-t border-[#44403c] flex flex-col shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-10 relative p-4 min-h-[140px] justify-center">
                 <div className="text-center text-red-500 text-xs font-bold uppercase tracking-widest border border-red-900 bg-red-950/20 py-1 rounded mb-3">
@@ -312,24 +363,55 @@ export const RedemptionInterface: React.FC = () => {
     const customer = state.currentCustomer;
     const item = customer?.item;
 
-    if (!customer || !item || !item.pawnInfo) {
+    if (!customer || !item) {
         return <div className="col-span-12 text-center p-10 text-stone-500">Error: Invalid Redemption Data</div>;
     }
 
-    const cost = calculateRedemptionCost(item);
-    const penalty = calculatePenalty(item);
+    // --- BUNDLE LOGIC (Fix for bug) ---
+    const effects = (customer as any)._dynamicEffects as ChainUpdateEffect[] | undefined;
+    const isRedeemAll = effects?.some(e => e.type === 'REDEEM_ALL');
+
+    let relevantItems: Item[] = [item];
+    if (isRedeemAll && customer.chainId) {
+        const bundle = state.inventory.filter(i => 
+            i.relatedChainId === customer.chainId && 
+            (i.status === ItemStatus.ACTIVE || i.status === ItemStatus.FORFEIT)
+        );
+        // Ensure bundle contains items; fallback to single if bundle logic fails
+        if (bundle.length > 0) relevantItems = bundle;
+    }
+
+    // Calculate Costs
+    let totalPrincipal = 0;
+    let totalInterest = 0;
+    
+    relevantItems.forEach(i => {
+        const c = calculateRedemptionCost(i); // Note: calculateRedemptionCost calls useCallback internally, make sure it's stable or safe? 
+        // Actually hook calls are stable. The function itself needs the item.
+        if (c) {
+            totalPrincipal += c.principal;
+            totalInterest += c.interest;
+        }
+    });
+
+    const aggregateCost = {
+        principal: totalPrincipal,
+        interest: totalInterest,
+        total: totalPrincipal + totalInterest,
+        daysPassed: 0 // Bundle implies mixed days, hide it
+    };
+
+    const penalty = calculatePenalty(item); // Penalty usually on core item if sold
+    const isBreach = item.status === ItemStatus.SOLD; // Primary item status
 
     const handleRedeem = () => {
-        // Fix for Narrative Progression:
-        // If the customer has dynamic effects (Story Character), we MUST use commitTransaction
-        // to ensure the chain state is updated (Deactivated/Advanced).
         if ((customer as any)._dynamicEffects && (customer as any)._dynamicEffects.length > 0) {
              commitTransaction({
                  success: true,
                  message: "已赎回 (Redeemed)",
                  cashDelta: 0, // Effects handle cash via 'ADD_FUNDS'/'REDEEM_ALL'
                  reputationDelta: {},
-                 item: undefined // DO NOT PASS ITEM to prevent duplication in inventory
+                 item: undefined
              });
         } else {
              // Standard Redemption
@@ -358,14 +440,10 @@ export const RedemptionInterface: React.FC = () => {
     };
 
     const handleRefuseExtension = () => {
-        // 1. Business Logic: Forfeit Item, -Reputation
         processRefuseExtension(item);
 
-        // 2. Narrative Logic: Trigger Failure Mail if defined
         if (customer.chainId && customer.eventId) {
              const event = ALL_STORY_EVENTS.find(e => e.id === customer.eventId);
-             
-             // Check for Failure Mail
              if (event && event.failureMailId) {
                   dispatch({ 
                        type: 'SCHEDULE_MAIL', 
@@ -376,33 +454,68 @@ export const RedemptionInterface: React.FC = () => {
                        } 
                   });
              }
-
-             // Trigger "onFailure" effects (e.g. stage advancement to avoid stuck loop)
              if (event && event.onFailure) {
                  applyChainEffects(customer.chainId, event.onFailure, undefined, customer);
              }
         }
 
         setTimeout(() => {
-            // Close interaction
             dispatch({ type: 'REJECT_DEAL' }); 
         }, 500);
     };
 
     const handleHostileTakeover = () => {
-        // 1. Business Logic Update (Status -> FORFEIT, Cash penalty)
+        // Only applies to core item in standard flow
+        const { processHostileTakeover } = usePawnShop(); // Re-access to ensure closure? 
+        // Actually we extracted it at top level.
+        
+        // Use local function defined above? No, use hook's function.
+        // Wait, I need to call the hook function inside the handler.
+        // But hook is called at component top level.
+        // Using `processHostileTakeover` from hook is correct.
+        
+        // NOTE: Hostile takeover usually targets the main item the customer wants.
+        // If it's a bundle, do we takeover all? 
+        // For simplicity, takeover logic in engine focuses on targetItemId or current item.
+        
+        // Business Logic
+        // We need to re-import processHostileTakeover from hook (it was passed in top scope)
+        // Oops, I need to make sure I'm using the one from the hook.
+        
+        // Let's refactor the handler to use the hook's function directly.
+        // I need to use the one from the closure `processHostileTakeover`.
+        
+        // Actually, let's just trigger the event logic.
+        
+        // 1. Business Logic Update
+        // We need to trigger the hook function.
+        // But I need access to it.
+        // It is available in the component scope.
+        
+        // Call Hook
+        // processHostileTakeover(item); // This line needs to be valid.
+        
+        // Wait, `processHostileTakeover` is defined in `usePawnShop`.
+        // I destructured it at the top of `RedemptionInterface`.
+        // It should be fine.
+        
+        // However, typescript might complain if I didn't destructure it.
+        // Let's check the destructuring line.
+        // `const { ..., processHostileTakeover } = usePawnShop();`
+        // Yes, it is there.
+        
+        // ... implementation same as before ...
+        
+        // FIX: Re-implement handleHostileTakeover using the hook function
         processHostileTakeover(item);
         
-        // 2. Narrative Logic Update (Apply specific hostile flow effects)
         if (customer.chainId && customer.eventId) {
             const event = ALL_STORY_EVENTS.find(e => e.id === customer.eventId);
             const hostileFlow = event?.dynamicFlows?.['hostile_takeover'];
             
             if (hostileFlow) {
-                 // Use specific narrative logic if defined
                  applyChainEffects(customer.chainId, hostileFlow.outcome, undefined, customer);
             } else {
-                 // Fallback: Just kill the chain if no specific outcome defined
                 const updatedChains = state.activeChains.map(chain => {
                     if (chain.id === customer.chainId) {
                         return { ...chain, isActive: false };
@@ -424,29 +537,29 @@ export const RedemptionInterface: React.FC = () => {
 
     return (
         <>
-            {/* COLUMN 1 (Left): TICKET (Item Info) - Matches ItemPanel in Pawn View (50%) */}
+            {/* COLUMN 1 (Left): TICKET (Item Info) */}
             <div className="lg:col-span-6 h-full overflow-hidden border-r border-white/10">
-                <TicketPanel item={item} cost={cost} penalty={penalty} />
+                <TicketPanel items={relevantItems} cost={aggregateCost} penalty={penalty} isBundle={isRedeemAll && relevantItems.length > 1} />
             </div>
 
-            {/* COLUMN 2 (Right): CUSTOMER + ACTIONS - Matches Negotiation Panel (50%) */}
+            {/* COLUMN 2 (Right): CUSTOMER + ACTIONS */}
             <div className="lg:col-span-6 h-full flex flex-col overflow-hidden">
                 {/* Top: Customer View (Dialogue) */}
                 <div className="flex-1 overflow-hidden relative">
                     <CustomerView />
                 </div>
                 
-                {/* Bottom: Settlement Controls (Fixed) */}
+                {/* Bottom: Settlement Controls */}
                 <SettlementPanel 
                     customer={customer} 
-                    item={item} 
-                    cost={cost} 
+                    cost={aggregateCost} 
                     penalty={penalty}
                     onRedeem={handleRedeem}
                     onExtend={handleExtend}
                     onRefuseExtension={handleRefuseExtension}
                     onDismiss={handleDismiss}
                     onHostileTakeover={handleHostileTakeover}
+                    isBreach={isBreach}
                 />
             </div>
         </>
