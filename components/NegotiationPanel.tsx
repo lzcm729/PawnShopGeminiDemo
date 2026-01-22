@@ -376,7 +376,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   };
 
   // Quick Action Handlers
-  const handleQuickDesired = () => setOfferPrincipal(Math.min(currentCustomer.desiredAmount, cashAvailable));
+  const handleQuickDesired = () => setOfferPrincipal(Math.min(currentAskPrice, cashAvailable));
   const handleQuickValuation = () => {
       const min = item.currentRange[0];
       const max = item.currentRange[1];
