@@ -103,6 +103,10 @@ export const enrichItemWithTraits = (item: any): Item => {
         hiddenTraits: hidden,
         revealedTraits: item.revealedTraits || [],
         logs: item.logs || [], // Initialize Logs
-        pawnAmount: 0 // Reset for new transaction
+        pawnAmount: 0, // Reset for new transaction
+        
+        // Appraisal Init
+        appraisalCount: item.appraisalCount || 0,
+        hasNegativeAppraisalEvent: item.hasNegativeAppraisalEvent || false
     } as Item;
 };

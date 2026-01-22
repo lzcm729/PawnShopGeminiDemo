@@ -1,13 +1,16 @@
 
+
 import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
 import { ItemTrait } from '../types';
+import { rollAppraisalEvent, AppraisalEvent } from '../services/appraisalUtils';
 
 interface AppraisalResult {
     success: boolean;
     failureReason?: 'NO_AP' | 'NO_PATIENCE' | 'ALREADY_KNOWN';
     newTraitsFound: ItemTrait[];
     newRange: [number, number];
+    event?: AppraisalEvent;
 }
 
 export const useAppraisal = () => {
@@ -50,43 +53,90 @@ export const useAppraisal = () => {
             };
         }
 
+        // --- NEW: EVENT ROLL ---
+        const event = rollAppraisalEvent(
+            item.appraisalCount || 0,
+            item.uncertainty,
+            item.hasNegativeAppraisalEvent || false
+        );
+
+        let extraPatienceCost = 0;
+        let uncertaintyBoost = 0;
+        let bonusTraits: ItemTrait[] = [];
+
+        if (event.type === 'MISHAP') {
+            uncertaintyBoost = 0.05; // Slight range bounce back
+        } else if (event.type === 'IMPATIENT') {
+            extraPatienceCost = 1;
+        } else if (event.type === 'LUCKY_FIND') {
+            if (undiscoveredCandidates.length > 0) {
+                // Find a random trait to force reveal
+                const idx = Math.floor(Math.random() * undiscoveredCandidates.length);
+                bonusTraits.push(undiscoveredCandidates[idx]);
+                // Remove it from candidates so standard check doesn't double add (though unique check handles it)
+                undiscoveredCandidates.splice(idx, 1);
+            }
+        }
+
         // 2. Consume Resources
         dispatch({ type: 'CONSUME_AP', payload: 1 });
+        
+        // Apply Patience Costs (Standard + Event)
+        const totalPatienceCost = 1 + extraPatienceCost;
         dispatch({ 
             type: 'UPDATE_CUSTOMER_STATUS', 
             payload: { 
-                patience: Math.max(0, customer.patience - 1), 
+                patience: Math.max(0, customer.patience - totalPatienceCost), 
                 mood: customer.mood,
                 currentAskPrice: customer.currentAskPrice || customer.desiredAmount 
             } 
         });
 
-        // 3. Trait Discovery
-        const newTraitsFound: ItemTrait[] = [];
-        undiscoveredCandidates.forEach(trait => {
-            const roll = Math.random();
-            const chance = 0.5 - (trait.discoveryDifficulty * 0.3); 
-            if (roll < chance) {
-                newTraitsFound.push(trait);
-            }
-        });
-
-        const updatedRevealed = [...revealedTraits, ...newTraitsFound];
-
-        // 4. Update Knowledge (Standard Lerp Narrowing ONLY)
-        // We no longer trigger "Anchor Shift" here. That happens when the player CLICKS the trait.
+        // 3. Trait Discovery (Standard)
+        const newTraitsFound: ItemTrait[] = [...bonusTraits];
         
+        // Only perform standard roll if not a Mishap (Mishap clouds judgment, no new traits standard way)
+        // But Lucky Find is additive.
+        if (event.type !== 'MISHAP') {
+            undiscoveredCandidates.forEach(trait => {
+                const roll = Math.random();
+                const chance = 0.5 - (trait.discoveryDifficulty * 0.3); 
+                if (roll < chance) {
+                    newTraitsFound.push(trait);
+                }
+            });
+        }
+
+        // Dedupe traits
+        const uniqueNewTraits = Array.from(new Set(newTraitsFound.map(t => t.id)))
+            .map(id => newTraitsFound.find(t => t.id === id)!);
+
+        const updatedRevealed = [...revealedTraits, ...uniqueNewTraits];
+
+        // 4. Update Knowledge (Standard Lerp Narrowing)
+        // Mishap adds uncertainty, standard reduces it.
         let newUncertainty = item.uncertainty;
         
-        // Decay uncertainty slightly for stat tracking
-        newUncertainty = Math.max(0.05, newUncertainty * 0.85);
+        if (event.type === 'MISHAP') {
+            newUncertainty = Math.min(0.5, newUncertainty + uncertaintyBoost);
+        } else {
+             // Decay uncertainty
+             newUncertainty = Math.max(0.05, newUncertainty * 0.85);
+        }
 
         const CONVERGENCE_SPEED = 0.15; // 15% closer per attempt
         const anchor = item.perceivedValue ?? item.realValue;
         const [currentMin, currentMax] = item.currentRange;
 
+        // Base narrowing
         let calcMin = currentMin + (anchor - currentMin) * CONVERGENCE_SPEED;
         let calcMax = currentMax - (currentMax - anchor) * CONVERGENCE_SPEED;
+        
+        // If mishap, widen slightly instead of narrowing
+        if (event.type === 'MISHAP') {
+             calcMin = currentMin - (anchor * 0.05);
+             calcMax = currentMax + (anchor * 0.05);
+        }
 
         // Humanize rounding (e.g. 1052 -> 1050)
         const roundToHuman = (val: number) => {
@@ -97,10 +147,15 @@ export const useAppraisal = () => {
         let nextMin = roundToHuman(calcMin);
         let nextMax = roundToHuman(calcMax);
 
-        // Constraint 1: Strict Shrinking (Inner Bounds)
-        // Ensure we never expand the range outward.
-        nextMin = Math.max(currentMin, nextMin);
-        nextMax = Math.min(currentMax, nextMax);
+        // Constraint 1: Strict Shrinking (Inner Bounds) UNLESS MISHAP
+        if (event.type !== 'MISHAP') {
+             nextMin = Math.max(currentMin, nextMin);
+             nextMax = Math.min(currentMax, nextMax);
+        } else {
+             // For mishap, clamp to reasonable bounds (0, 2x anchor)
+             nextMin = Math.max(0, nextMin);
+             nextMax = Math.min(anchor * 3, nextMax); // Soft cap
+        }
 
         // Constraint 2: Min <= Max safety
         if (nextMin > nextMax) {
@@ -112,6 +167,8 @@ export const useAppraisal = () => {
         const newRange: [number, number] = [nextMin, nextMax];
 
         // 5. Dispatch Update
+        const hasNegative = event.type === 'MISHAP' || event.type === 'IMPATIENT';
+        
         dispatch({
             type: 'UPDATE_ITEM_KNOWLEDGE',
             payload: {
@@ -119,14 +176,17 @@ export const useAppraisal = () => {
                 newRange: newRange,
                 revealedTraits: updatedRevealed,
                 newUncertainty,
-                newPerceived: item.perceivedValue // Keep existing perceived value logic
+                newPerceived: item.perceivedValue,
+                incrementAppraisalCount: true,
+                hasNegativeEvent: hasNegative ? true : undefined
             }
         });
 
         return {
             success: true,
-            newTraitsFound,
-            newRange
+            newTraitsFound: uniqueNewTraits,
+            newRange,
+            event
         };
 
     }, [customer, state.stats.actionPoints, dispatch]);

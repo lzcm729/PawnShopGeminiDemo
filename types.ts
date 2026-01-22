@@ -103,6 +103,10 @@ export interface Item {
   revealedTraits: ItemTrait[];  // Traits found by player
   
   logs: ItemLogEntry[]; // NEW: Narrative History Logs
+  
+  // NEW: Appraisal State
+  appraisalCount?: number;
+  hasNegativeAppraisalEvent?: boolean;
 
   // NEW: Chain Linkage
   relatedChainId?: string; // Links item to a specific story chain (e.g., "chain_emma")

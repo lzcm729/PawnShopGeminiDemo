@@ -1,10 +1,12 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
 import { useAppraisal } from '../hooks/useAppraisal';
-import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp } from 'lucide-react';
+import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown } from 'lucide-react';
 import { Button } from './ui/Button';
 import { ItemTrait } from '../types';
+import { getUncertaintyRisk } from '../services/appraisalUtils';
 
 const getIcon = (category: string) => {
     switch(category) {
@@ -24,9 +26,10 @@ interface ItemPanelProps {
   applyLeverage: (power: number, description: string) => void;
   triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void; 
   canInteract: boolean;
+  currentAskPrice: number; // For tooltip preview
 }
 
-export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarrative, canInteract }) => {
+export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarrative, canInteract, currentAskPrice }) => {
   const { state, dispatch } = useGame();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
@@ -34,7 +37,8 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
   
   const [appraising, setAppraising] = useState(false);
   const [usedLeverageIds, setUsedLeverageIds] = useState<string[]>([]);
-  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'warning' | 'error', text: string } | null>(null);
+  const [hoveredTrait, setHoveredTrait] = useState<ItemTrait | null>(null);
 
   // Reset local state on customer change
   useEffect(() => {
@@ -63,14 +67,25 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
           setAppraising(false);
           
           if (!result.success) {
-              if (result.failureReason === 'NO_AP') setFeedbackMsg("行动点不足 (No Action Points)");
-              if (result.failureReason === 'NO_PATIENCE') setFeedbackMsg("客户失去了耐心 (No Patience)");
-              if (result.failureReason === 'ALREADY_KNOWN') setFeedbackMsg("暂无更多线索 (No New Traits)");
+              if (result.failureReason === 'NO_AP') setFeedbackMsg({ type: 'warning', text: "行动点不足 (No AP)" });
+              else if (result.failureReason === 'NO_PATIENCE') setFeedbackMsg({ type: 'warning', text: "客户失去了耐心 (No Patience)" });
+              else if (result.failureReason === 'ALREADY_KNOWN') setFeedbackMsg({ type: 'warning', text: "暂无更多线索 (No New Traits)" });
           } else {
-              if (result.newTraitsFound.length > 0) {
-                  setFeedbackMsg(`发现了 ${result.newTraitsFound.length} 个新特征!`);
+              // Handle Appraisal Events
+              if (result.event && result.event.type !== 'NORMAL') {
+                   if (result.event.type === 'MISHAP') {
+                       setFeedbackMsg({ type: 'error', text: result.event.message || "鉴定失误" });
+                   } else if (result.event.type === 'IMPATIENT') {
+                       setFeedbackMsg({ type: 'error', text: result.event.message || "客户不耐烦" });
+                   } else if (result.event.type === 'LUCKY_FIND') {
+                       setFeedbackMsg({ type: 'success', text: result.event.message || "意外发现!" });
+                   }
               } else {
-                  setFeedbackMsg("估值范围已更新 (Range Narrowed)");
+                   if (result.newTraitsFound.length > 0) {
+                      setFeedbackMsg({ type: 'success', text: `发现了 ${result.newTraitsFound.length} 个新特征!` });
+                   } else {
+                      setFeedbackMsg({ type: 'success', text: "估值范围已更新 (Range Narrowed)" });
+                   }
               }
           }
       }, 600);
@@ -84,7 +99,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
       // Check if this trait triggers a "Truth Realization" (e.g. Fake item)
       if (trait.type === 'FAKE') {
           dispatch({ type: 'REALIZE_ITEM_TRUTH', payload: { itemId: item.id } });
-          setFeedbackMsg("价值崩塌 (VALUE CRASH)");
+          setFeedbackMsg({ type: 'error', text: "价值崩塌 (VALUE CRASH)" });
       }
 
       if (trait.type === 'FLAW' || trait.type === 'FAKE') {
@@ -152,29 +167,23 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
     : "text-stone-400";
     
   // Dynamic Label Style: 
-  // If Crash Mode is active, use Large Red Pulse.
-  // Otherwise use Small Gray (Normal Mode).
   const labelContainerClass = isCrashMode
     ? "text-lg font-mono font-bold text-pawn-red uppercase mb-1 px-1 transition-all"
     : "text-[10px] font-mono text-stone-600 uppercase mb-1 px-1 transition-all";
 
-  // Center Label Configuration
-  // Text is always "ESTIMATED", but style reflects crash state.
   const centerLabelText = "估值范围 (ESTIMATED)";
   const centerLabelClass = isCrashMode 
     ? "text-[10px] text-pawn-red font-bold tracking-widest border-b border-pawn-red/30 pb-0.5 mb-1 animate-pulse" 
     : "text-[9px] text-stone-600 font-bold tracking-widest border-b border-stone-800 pb-0.5";
 
-  // ANIMATION LOGIC:
-  // To achieve the "Shrink on first appearance" effect:
-  // When !isAppraised (Hidden), we position the green bar at the INITIAL/GHOST dimensions.
-  // When isAppraised (Visible), we position it at CURRENT dimensions.
-  // The CSS transition handles the smooth shrink from Initial -> Current as it fades in.
   const barStyle = {
       left: `${isAppraised ? leftPercent : initialLeftPercent}%`,
       width: `${isAppraised ? widthPercent : initialWidthPercent}%`,
       opacity: isAppraised ? 1 : 0
   };
+
+  // RISK ALERT LOGIC
+  const uncertaintyRisk = getUncertaintyRisk(currentMin, currentMax);
 
   return (
       <div className="h-full bg-[#1c1917] border-x border-[#44403c] flex flex-col overflow-hidden relative">
@@ -193,8 +202,12 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                         AP: {state.stats.actionPoints} / {state.stats.maxActionPoints}
                      </div>
                      {feedbackMsg && (
-                         <div className="text-xs text-yellow-500 bg-black/80 px-2 py-1 rounded animate-in fade-in slide-in-from-top-1 absolute top-12 right-2 z-50">
-                             {feedbackMsg}
+                         <div className={`text-xs px-2 py-1 rounded animate-in fade-in slide-in-from-top-1 absolute top-12 right-2 z-50 ${
+                             feedbackMsg.type === 'error' ? 'text-red-500 bg-red-950/80 border border-red-800' :
+                             feedbackMsg.type === 'warning' ? 'text-amber-500 bg-amber-950/80 border border-amber-800' :
+                             'text-green-500 bg-green-950/80 border border-green-800'
+                         }`}>
+                             {feedbackMsg.text}
                          </div>
                      )}
                  </div>
@@ -222,14 +235,13 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                     </div>
                     
                     <div className="h-4 w-full bg-stone-900 rounded-sm relative overflow-visible border border-stone-800">
-                        
-                        {/* 1. Initial Ghost Range (Gray) - Fades in upon appraisal */}
+                        {/* 1. Initial Ghost Range (Gray) */}
                          <div 
                             className={`absolute top-1 bottom-1 bg-stone-700/30 border-x border-stone-600/50 z-0 transition-opacity duration-700 ${isAppraised ? 'opacity-100' : 'opacity-0'}`}
                             style={{ left: `${initialLeftPercent}%`, width: `${initialWidthPercent}%` }}
                         ></div>
 
-                        {/* 2. Current Range Fill (Green) - Shrinks from Initial to Current upon first appearance */}
+                        {/* 2. Current Range Fill (Green) */}
                         <div 
                             className={`absolute top-0 bottom-0 border-x-2 transition-all duration-700 ease-out z-10 ${rangeBarClass}`}
                             style={barStyle}
@@ -245,7 +257,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                             </div>
                         </div>
                         
-                        {/* 3. Placeholder (Dashed Line) - Fades out when appraised */}
+                        {/* 3. Placeholder (Dashed Line) */}
                         <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none ${isAppraised ? 'opacity-0' : 'opacity-100'}`}>
                              <div className="w-full h-[1px] bg-stone-800 border-t border-dashed border-stone-700/50"></div>
                         </div>
@@ -253,6 +265,21 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                         {/* Grid Pattern */}
                         <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-20 pointer-events-none"></div>
                     </div>
+                    
+                    {/* RISK ALERT */}
+                    {uncertaintyRisk === 'HIGH' && (
+                      <div className="flex items-center justify-center gap-2 text-red-500 text-[10px] font-bold mt-1 bg-red-950/20 py-0.5 rounded border border-red-900/30 animate-pulse">
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>估值不确定性高，建议深入鉴定 (HIGH RISK)</span>
+                      </div>
+                    )}
+                    {uncertaintyRisk === 'MEDIUM' && (
+                      <div className="flex items-center justify-center gap-2 text-amber-500 text-[10px] font-bold mt-1 bg-amber-950/20 py-0.5 rounded border border-amber-900/30">
+                        <AlertCircle className="w-3 h-3" />
+                        <span>估值区间较大 (UNCERTAIN)</span>
+                      </div>
+                    )}
+
                  </div>
 
                  <Button 
@@ -307,19 +334,21 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                          </p>
                      </div>
 
-                     {/* 2. REVEALED Traits (Sorted Above Hidden) */}
+                     {/* 2. REVEALED Traits */}
                      {revealedTraits.map((trait) => {
                          const isUsed = usedLeverageIds.includes(trait.id);
                          let borderColor = "border-stone-400";
                          let bgColor = "bg-white";
                          let icon = <HelpCircle className="w-4 h-4"/>;
                          let label = "点击对话";
+                         let impactText = "";
                          
                          if (trait.type === 'FLAW') {
                              borderColor = "border-red-400";
                              bgColor = "bg-red-50";
                              icon = <AlertCircle className="w-4 h-4 text-red-600"/>;
                              label = "点击压价";
+                             impactText = `-${Math.abs(trait.valueImpact * 100)}%`;
                          } else if (trait.type === 'STORY') {
                              borderColor = "border-blue-400";
                              bgColor = "bg-blue-50";
@@ -330,18 +359,35 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                              icon = <Skull className="w-4 h-4 text-purple-600"/>;
                              label = "点击揭穿";
                          }
+                         
+                         // Calculate explicit cash impact for tooltip
+                         const cashImpact = Math.floor(currentAskPrice * Math.abs(trait.valueImpact));
 
                          return (
                              <button
                                 key={trait.id}
                                 onClick={() => handleTraitClick(trait)}
+                                onMouseEnter={() => setHoveredTrait(trait)}
+                                onMouseLeave={() => setHoveredTrait(null)}
                                 disabled={isUsed || !canInteract}
                                 className={`
-                                    w-full text-left p-2 rounded border-l-4 shadow-sm transition-all duration-500 group relative overflow-hidden animate-in zoom-in-95
+                                    w-full text-left p-2 rounded border-l-4 shadow-sm transition-all duration-500 group relative overflow-visible animate-in zoom-in-95
                                     ${borderColor} ${bgColor}
                                     ${isUsed ? 'opacity-50 grayscale-[0.3]' : 'hover:translate-x-1 hover:shadow-md'}
                                 `}
                              >
+                                 {/* Hover Tooltip (Preview Impact) */}
+                                 {hoveredTrait?.id === trait.id && !isUsed && canInteract && (trait.type === 'FLAW' || trait.type === 'FAKE') && (
+                                    <div className="absolute -top-8 right-0 bg-black/90 text-white text-[10px] px-2 py-1 rounded shadow-xl z-50 whitespace-nowrap border border-stone-600 animate-in fade-in slide-in-from-bottom-1">
+                                        <div className="flex items-center gap-1">
+                                            <ArrowDown className="w-3 h-3 text-red-500" />
+                                            <span>
+                                                {trait.type === 'FAKE' ? "价值崩塌" : `底价 -${cashImpact} (${impactText})`}
+                                            </span>
+                                        </div>
+                                    </div>
+                                 )}
+
                                  <div className="flex justify-between items-start mb-1 relative z-10">
                                      <div className="font-bold text-xs flex items-center gap-1.5">
                                          {icon}
@@ -373,7 +419,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                          );
                      })}
 
-                     {/* 3. HIDDEN Trait Placeholders (Always at Bottom) */}
+                     {/* 3. HIDDEN Trait Placeholders */}
                      {unrevealedTraits.map((trait) => (
                         <div key={trait.id} className="w-full p-2 rounded border border-dashed border-stone-400 bg-stone-200/50 opacity-60 relative overflow-hidden select-none grayscale">
                             <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-10"></div>

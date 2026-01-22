@@ -330,6 +330,7 @@ const GameContent: React.FC = () => {
                             applyLeverage={negotiation.applyLeverage} 
                             triggerNarrative={negotiation.triggerNarrative}
                             canInteract={!negotiation.isWalkedAway}
+                            currentAskPrice={negotiation.currentAskPrice} // PASSING PROP
                         />
                         ) : (
                         <div className="h-full flex items-center justify-center text-stone-700 font-mono">

@@ -1,6 +1,8 @@
 
+
 import { Customer, Item, InterestRate } from '../types';
 import { INSTINCT_MATRIX, getMatrixKey, getRandomText, InstinctRateZone, InstinctPriceZone, InstinctNpcStyle } from './instinctMatrix';
+import { getUncertaintyRisk } from './appraisalUtils';
 
 // Match thresholds with useNegotiation hook
 const getInsultThreshold = (style: string, minPrincipal: number) => {
@@ -42,6 +44,15 @@ export const getMerchantInstinct = (
       return {
           text: getRandomText(INSTINCT_MATRIX['generic_fake_bargain'], seed),
           color: "text-stone-500"
+      };
+  }
+  
+  // 1. New: High Uncertainty Risk
+  const uncertaintyRisk = getUncertaintyRisk(item.currentRange[0], item.currentRange[1]);
+  if (uncertaintyRisk === 'HIGH') {
+      return {
+          text: "这价格范围太宽了，盲收等于赌博。",
+          color: "text-amber-500 font-bold"
       };
   }
 

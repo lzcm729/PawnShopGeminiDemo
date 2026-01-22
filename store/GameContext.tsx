@@ -54,7 +54,7 @@ type Action =
   | { type: 'SET_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER_STATUS'; payload: { patience: number; mood: Mood; currentAskPrice: number } }
   | { type: 'APPRAISE_ITEM' } 
-  | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: any[]; newUncertainty: number; newPerceived?: number } } 
+  | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: any[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean } } 
   | { type: 'REALIZE_ITEM_TRUTH'; payload: { itemId: string } }
   | { type: 'CONSUME_AP'; payload: number } 
   | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string } }
@@ -133,6 +133,10 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'UPDATE_ITEM_KNOWLEDGE':
       if (!state.currentCustomer || state.currentCustomer.item.id !== action.payload.itemId) return state;
+      
+      const prevCount = state.currentCustomer.item.appraisalCount || 0;
+      const prevNegative = state.currentCustomer.item.hasNegativeAppraisalEvent || false;
+      
       return {
           ...state,
           currentCustomer: {
@@ -143,7 +147,10 @@ const gameReducer = (state: GameState, action: Action): GameState => {
                   revealedTraits: action.payload.revealedTraits,
                   uncertainty: action.payload.newUncertainty,
                   perceivedValue: action.payload.newPerceived, 
-                  appraised: true
+                  appraised: true,
+                  // New State Updates
+                  appraisalCount: action.payload.incrementAppraisalCount ? prevCount + 1 : prevCount,
+                  hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : prevNegative
               }
           }
       };
