@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
@@ -5,8 +6,9 @@ import { Button } from './ui/Button';
 import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame, Handshake, BrainCircuit } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines } from '../types';
 import { DealSuccessModal } from './DealSuccessModal';
-import { ActionLog } from '../hooks/useNegotiation';
+import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../services/instinctSystem';
+import { NegotiationHistory } from './NegotiationHistory';
 
 interface NegotiationStateProps {
     negotiation: {
@@ -20,6 +22,8 @@ interface NegotiationStateProps {
         mood: string;
         patience: number;
         currentAskPrice: number;
+        offerHistory: OfferRecord[];
+        revealedMinimum: boolean;
     }
 }
 
@@ -129,6 +133,10 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
                           <span className="block text-[9px] uppercase text-stone-600 mb-0.5 font-bold">Negotiation Dynamic</span>
                           <span className="font-serif italic">"{customer.dialogue.negotiationDynamic}"</span>
                       </div>
+                      <div className="bg-black/20 p-2 rounded border-l-2 border-stone-600">
+                          <span className="block text-[9px] uppercase text-stone-600 mb-0.5 font-bold">Negotiation Style</span>
+                          <span className="font-serif font-bold text-pawn-accent">{customer.negotiationStyle}</span>
+                      </div>
                  </div>
              )}
         </div>
@@ -152,7 +160,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
     lastAction,
     mood,
     patience,
-    currentAskPrice
+    currentAskPrice,
+    offerHistory,
+    revealedMinimum
   } = negotiation;
 
   const [chatLog, setChatLog] = useState<LogEntry[]>([]);
@@ -175,7 +185,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
     if (scrollRef.current) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [chatLog]);
+  }, [chatLog, offerHistory]);
 
   useEffect(() => {
     if (currentCustomer) {
@@ -365,6 +375,15 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
       setOfferPrincipal(target);
   };
 
+  // Quick Action Handlers
+  const handleQuickDesired = () => setOfferPrincipal(Math.min(currentCustomer.desiredAmount, cashAvailable));
+  const handleQuickValuation = () => {
+      const min = item.currentRange[0];
+      const max = item.currentRange[1];
+      setOfferPrincipal(Math.min(Math.floor((min + max) / 2), cashAvailable));
+  };
+  const handleQuickFloor = () => setOfferPrincipal(Math.min(currentCustomer.minimumAmount, cashAvailable));
+
   const RateCard = ({ rate, label }: { rate: InterestRate, label: string }) => (
       <button 
         onClick={() => setSelectedRate(rate)}
@@ -457,6 +476,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                   </div>
               );
           })}
+          
+          {/* History Injection */}
+          {!isBinaryChoice && <NegotiationHistory history={offerHistory} />}
       </div>
 
       {/* --- FINANCIAL SUMMARY (Only for Standard Negotiation) --- */}
@@ -495,7 +517,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
          
          {isBinaryChoice ? (
              // --- BINARY CHOICE CONTROLS (BUY/SELL) ---
-             // FIXED: No adjusters, no rates. Strict Take/Leave.
              <div className="flex flex-col gap-4 py-2">
                  <div className="text-center">
                     <span className="text-stone-500 text-xs font-bold uppercase tracking-widest block mb-2">OFFER RECEIVED</span>
@@ -567,6 +588,32 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                          </div>
                      </div>
                      
+                     {/* Quick Action Buttons */}
+                     <div className="flex justify-center gap-2 mt-2">
+                        <button 
+                            onClick={handleQuickDesired}
+                            disabled={!canInteract}
+                            className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-[10px] font-mono text-stone-400 rounded border border-stone-700 transition-colors"
+                        >
+                            [期望]
+                        </button>
+                        <button 
+                            onClick={handleQuickValuation}
+                            disabled={!canInteract}
+                            className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-[10px] font-mono text-stone-400 rounded border border-stone-700 transition-colors"
+                        >
+                            [估值]
+                        </button>
+                        {revealedMinimum && (
+                            <button 
+                                onClick={handleQuickFloor}
+                                disabled={!canInteract}
+                                className="px-2 py-1 bg-red-950/30 hover:bg-red-900/50 text-[10px] font-mono text-red-400 rounded border border-red-900/50 transition-colors animate-in fade-in"
+                            >
+                                [底价]
+                            </button>
+                        )}
+                     </div>
                  </div>
 
                  {/* --- MERCHANT INSTINCT (NEW LOCATION) --- */}

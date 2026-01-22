@@ -20,6 +20,14 @@ export interface ActionLog {
     id: number;
 }
 
+export interface OfferRecord {
+  amount: number;
+  rate: InterestRate;
+  status: NegotiationStatus;
+  patienceCost: number;
+  timestamp: number;
+}
+
 interface UseNegotiationReturn {
   patience: number;
   mood: NegotiationMood;
@@ -31,11 +39,24 @@ interface UseNegotiationReturn {
   isWalkedAway: boolean;
   submitOffer: () => NegotiationResult;
   applyLeverage: (power: number, description: string) => void;
-  triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void; // Added impact
+  triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void;
   resetNegotiation: () => void;
   lastAction: ActionLog | null; 
   currentAskPrice: number;
+  
+  // New Fields
+  offerHistory: OfferRecord[];
+  revealedMinimum: boolean;
 }
+
+const getInsultThreshold = (style: string, minPrincipal: number) => {
+  switch (style) {
+    case 'Aggressive': return minPrincipal * 0.8;
+    case 'Desperate': return minPrincipal * 0.6;
+    case 'Deceptive': return minPrincipal * 0.75;
+    default: return minPrincipal * 0.7; // Professional
+  }
+};
 
 export const useNegotiation = (customer: Customer | null): UseNegotiationReturn => {
   // Logic State
@@ -49,6 +70,10 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
   const [selectedRate, setSelectedRate] = useState<InterestRate>(0.05);
   const [currentAskPrice, setCurrentAskPrice] = useState<number>(0);
   
+  // History & Intel
+  const [offerHistory, setOfferHistory] = useState<OfferRecord[]>([]);
+  const [revealedMinimum, setRevealedMinimum] = useState(false);
+  
   const lastCustomerId = useRef<string | undefined>(undefined);
 
   // Initialize
@@ -57,6 +82,8 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         setLastAction(null);
         setIsWalkedAway(false);
         setMood('Neutral');
+        setOfferHistory([]);
+        setRevealedMinimum(false);
         return;
     }
 
@@ -67,6 +94,8 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
       setMood('Neutral');
       setIsWalkedAway(false);
       setLastAction(null);
+      setOfferHistory([]);
+      setRevealedMinimum(false);
       setOfferPrincipal(Math.floor(customer.desiredAmount * 0.8));
       setSelectedRate(0.05);
       setCurrentAskPrice(customer.currentAskPrice ?? customer.desiredAmount);
@@ -79,6 +108,8 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
       setMood('Neutral');
       setIsWalkedAway(false);
       setLastAction(null);
+      setOfferHistory([]);
+      setRevealedMinimum(false);
       setOfferPrincipal(Math.floor(customer.desiredAmount * 0.8));
       setSelectedRate(0.05);
       setCurrentAskPrice(customer.currentAskPrice ?? customer.desiredAmount);
@@ -89,15 +120,11 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
   const reducePrice = (power: number): number => {
       if (power <= 0) return 0;
       const reduction = Math.floor(currentAskPrice * power);
-      // Don't let ask price drop below minimum (or some floor) too easily, 
-      // but strictly speaking leverage should work. 
-      // Let's floor it at minimumAmount for now to keep game logic sane.
       const newAsk = Math.max(customer?.minimumAmount || 0, currentAskPrice - reduction);
       setCurrentAskPrice(newAsk);
-      return currentAskPrice - newAsk; // Return actual reduction amount
+      return currentAskPrice - newAsk; 
   };
 
-  // Standard Leverage (Negative Impact / Pressure)
   const applyLeverage = useCallback((power: number, description: string) => {
     if (!customer || isWalkedAway) return;
 
@@ -112,7 +139,6 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     });
   }, [customer, isWalkedAway, currentAskPrice]);
 
-  // Narrative Dialogue (Story Telling)
   const triggerNarrative = useCallback((playerLine: string, customerLine: string, impact: number = 0) => {
       if (!customer || isWalkedAway) return;
 
@@ -135,6 +161,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     const minPrincipal = customer.minimumAmount;
     const maxRepayment = customer.maxRepayment || (minPrincipal * 1.2); 
     const totalRepayment = offerPrincipal * (1 + selectedRate);
+    const insultThreshold = getInsultThreshold(customer.negotiationStyle, minPrincipal);
     
     let status: NegotiationStatus;
     let costPatience = 0;
@@ -143,9 +170,9 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
 
     // --- LOGIC GATES ---
 
-    if (offerPrincipal < minPrincipal * 0.7) {
+    if (offerPrincipal < insultThreshold) {
         status = 'INSULT';
-        costPatience = 2;
+        costPatience = 2; // Dynamic penalty could be added here later
         nextMood = 'Angry';
         message = "你这是在打发叫花子吗？太离谱了！";
     }
@@ -154,9 +181,9 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         costPatience = 1;
         nextMood = 'Annoyed';
         message = "这点钱不够应急啊，再加点吧。";
+        // Reveal Minimum Logic
+        setRevealedMinimum(true);
     }
-    // FIX: Only trigger interest/repayment limit warning if there IS interest.
-    // If rate is 0%, it's a charity/premium deal, so high principal shouldn't trigger "Usury".
     else if (selectedRate > 0 && totalRepayment > maxRepayment) {
         status = 'INTEREST_TOO_HIGH';
         costPatience = 1;
@@ -185,6 +212,12 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     const remaining = Math.max(0, patience - costPatience);
     setPatience(remaining);
     setMood(nextMood);
+    
+    // Add to History
+    setOfferHistory(prev => [
+        { amount: offerPrincipal, rate: selectedRate, status, patienceCost: costPatience, timestamp: Date.now() },
+        ...prev.slice(0, 2) // Keep last 3 (current + 2 old)
+    ]);
 
     if (status !== 'ACCEPTED' && remaining <= 0) {
         return {
@@ -215,6 +248,8 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     triggerNarrative,
     resetNegotiation,
     lastAction,
-    currentAskPrice
+    currentAskPrice,
+    offerHistory,
+    revealedMinimum
   };
 };
