@@ -1,6 +1,9 @@
 
 
 
+
+
+
 import { EventChainState, StoryEvent, TriggerCondition, ChainVariables, Customer, Item, ItemStatus, DynamicFlowOutcome, SimOperation } from '../types';
 
 // Helper: Evaluate a single condition against current variables and chain state
@@ -36,7 +39,7 @@ const checkCondition = (condition: TriggerCondition, chain: EventChainState): bo
  * Executes a single simulation operation on the chain state.
  * Returns the modified chain variables/state components.
  */
-const executeSimOp = (chain: EventChainState, op: SimOperation): void => {
+const executeSimOp = (chain: EventChainState, op: SimOperation, sideEffects: { chainId: string, op: SimOperation }[]): void => {
     if (op.type === 'DEACTIVATE') {
         chain.isActive = false;
     } 
@@ -53,14 +56,19 @@ const executeSimOp = (chain: EventChainState, op: SimOperation): void => {
             case 'SET': chain.variables[op.target] = val; break;
         }
     }
+    else if (op.type === 'SCHEDULE_MAIL') {
+        sideEffects.push({ chainId: chain.id, op });
+    }
 };
 
 /**
  * Iterates through all chains and applies the generic Simulation Rules System.
  * Replaces hardcoded logic like 'dailyCost'.
  */
-export const runDailySimulation = (chains: EventChainState[]): EventChainState[] => {
-  return chains.map(chain => {
+export const runDailySimulation = (chains: EventChainState[]): { chains: EventChainState[], sideEffects: { chainId: string, op: SimOperation }[] } => {
+  const sideEffects: { chainId: string, op: SimOperation }[] = [];
+
+  const newChains = chains.map(chain => {
     if (!chain.isActive) return chain;
 
     // Create a shallow copy so we can modify it in place during the rule pass
@@ -93,9 +101,9 @@ export const runDailySimulation = (chains: EventChainState[]): EventChainState[]
             const roll = Math.random() * 100;
             
             if (roll < probability) {
-                rule.onSuccess.forEach(op => executeSimOp(newChain, op));
+                rule.onSuccess.forEach(op => executeSimOp(newChain, op, sideEffects));
             } else if (rule.onFail) {
-                rule.onFail.forEach(op => executeSimOp(newChain, op));
+                rule.onFail.forEach(op => executeSimOp(newChain, op, sideEffects));
             }
         }
 
@@ -113,13 +121,15 @@ export const runDailySimulation = (chains: EventChainState[]): EventChainState[]
             }
 
             if (triggered) {
-                rule.onTrigger.forEach(op => executeSimOp(newChain, op));
+                rule.onTrigger.forEach(op => executeSimOp(newChain, op, sideEffects));
             }
         }
     });
 
     return newChain;
   });
+
+  return { chains: newChains, sideEffects };
 };
 
 /**
@@ -240,14 +250,18 @@ export const instantiateStoryCustomer = (event: StoryEvent, inventory: Item[] = 
 
 /**
  * Logic to resolve redemption status before generating the customer.
+ * Updated to accept dynamic targetId override.
  */
-export const resolveRedemptionFlow = (event: StoryEvent, inventory: Item[]): { flowKey: string, flow: DynamicFlowOutcome } | null => {
-    if (event.type !== 'REDEMPTION_CHECK' || !event.targetItemId || !event.dynamicFlows) {
+export const resolveRedemptionFlow = (event: StoryEvent, inventory: Item[], dynamicTargetId?: string): { flowKey: string, flow: DynamicFlowOutcome } | null => {
+    if (event.type !== 'REDEMPTION_CHECK' || !event.dynamicFlows) {
         return null;
     }
+    
+    const targetId = event.targetItemId || dynamicTargetId;
+    if (!targetId) return null;
 
     // 1. Check Target (Core) Item
-    const coreItem = inventory.find(i => i.id === event.targetItemId);
+    const coreItem = inventory.find(i => i.id === targetId);
     // Core is safe if it exists AND is not sold. (Active or Forfeit is fine, player still has it)
     const coreSafe = !!coreItem && coreItem.status !== ItemStatus.SOLD && coreItem.status !== ItemStatus.REDEEMED;
 
@@ -256,7 +270,7 @@ export const resolveRedemptionFlow = (event: StoryEvent, inventory: Item[]): { f
     // Note: Items must be tagged with relatedChainId for this to work robustly.
     const otherChainItems = inventory.filter(i => 
         i.relatedChainId === event.chainId && 
-        i.id !== event.targetItemId &&
+        i.id !== targetId &&
         i.status !== ItemStatus.REDEEMED
     );
 

@@ -1,5 +1,8 @@
 
 
+
+
+
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../services/chainEngine';
 import { generateDailyNews } from '../services/newsEngine';
@@ -16,8 +19,37 @@ export const useGameEngine = () => {
   // It calculates everything that happens "overnight" so the Morning Brief is ready.
   const performNightCycle = () => {
     // 1. Simulate active chains (NPCs spending money, life moving on)
-    const simulatedChains = runDailySimulation(state.activeChains);
+    // Destructure to get sideEffects
+    const { chains: simulatedChains, sideEffects } = runDailySimulation(state.activeChains);
     
+    // Process Side Effects (e.g. Scheduled Mails from Rules)
+    sideEffects.forEach(({ chainId, op }) => {
+        if (op.type === 'SCHEDULE_MAIL' && op.templateId) {
+             let metadata: any = {};
+             
+             // Specific logic for underworld warning to inject context
+             if (op.templateId === 'mail_underworld_warning') {
+                 const chain = simulatedChains.find(c => c.id === chainId);
+                 const itemId = chain?.variables?.targetItemId;
+                 if (itemId) {
+                    const item = state.inventory.find(i => i.id === String(itemId));
+                    metadata.relatedItemName = item?.name || "Unknown Item";
+                 } else {
+                    metadata.relatedItemName = "Unknown Item";
+                 }
+             }
+
+             dispatch({ 
+                type: 'SCHEDULE_MAIL', 
+                payload: { 
+                    templateId: op.templateId, 
+                    delayDays: op.delayDays || 0,
+                    metadata
+                } 
+            });
+        }
+    });
+
     // Create a temp state context that includes the simulated chains AND the "next day" index
     // This allows news like "Day 5" to trigger correctly for the upcoming morning
     const nextDay = state.stats.day + 1;
@@ -80,44 +112,58 @@ export const useGameEngine = () => {
           // --- FAILURE MAIL CHECK ---
           // Before instantiating the customer, check if they are "broke"
           // If so, send a mail and skip the physical visit.
-          if (narrativeEvent.type === 'REDEMPTION_CHECK' && narrativeEvent.targetItemId) {
-              const item = state.inventory.find(i => i.id === narrativeEvent.targetItemId);
-              const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
-              const funds = chainState?.variables?.funds || 0;
-              
-              if (item && item.pawnInfo) {
-                  const cost = calculateRedemptionCost(item);
-                  const isBroke = funds < (cost?.total || 0);
-                  const canAffordInterest = funds >= (cost?.interest || 0);
-                  
-                  // LOGIC: If they can't afford full redeem, AND can't afford interest (i.e. truly broke)
-                  if (isBroke && !canAffordInterest) {
-                       console.log(`Customer ${narrativeEvent.chainId} is sending plea mail instead of visiting.`);
-                       
-                       const mailId = narrativeEvent.failureMailId || 'mail_generic_plea';
-                       
-                       // 1. Send Mail with context
-                       dispatch({ 
-                           type: 'SCHEDULE_MAIL', 
-                           payload: { 
-                               templateId: mailId, 
-                               delayDays: 0,
-                               metadata: { relatedItemName: item.name }
-                           } 
-                       });
+          if (narrativeEvent.type === 'REDEMPTION_CHECK') {
+              // DYNAMIC TARGET ITEM ID RESOLUTION
+              let targetId = narrativeEvent.targetItemId;
+              // If not on event, check chain variables (Underworld Logic)
+              if (!targetId) {
+                  const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
+                  if (chainState && chainState.variables.targetItemId) {
+                      targetId = String(chainState.variables.targetItemId); // Ensure string
+                  }
+              }
 
-                       // 2. Execute Failure Effects (e.g. Advance Stage, Reduce Hope) to prevent loop
-                       if (narrativeEvent.onFailure) {
-                           applyChainEffects(narrativeEvent.chainId, narrativeEvent.onFailure);
-                       }
-                       
-                       // Skip this event by returning early (and effectively closing shop if no other events)
-                       // We need to simulate the day ending quickly or transitioning to closed.
-                       setTimeout(() => {
-                            dispatch({ type: 'SET_LOADING', payload: false });
-                            dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
-                       }, 500);
-                       return;
+              if (targetId) {
+                  const item = state.inventory.find(i => i.id === targetId);
+                  const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
+                  const funds = chainState?.variables?.funds || 0;
+                  
+                  if (item && item.pawnInfo) {
+                      const cost = calculateRedemptionCost(item);
+                      const isBroke = funds < (cost?.total || 0);
+                      const canAffordInterest = funds >= (cost?.interest || 0);
+                      
+                      // LOGIC: If they can't afford full redeem, AND can't afford interest (i.e. truly broke)
+                      // ALSO: If it's underworld, they never pay, so skip check? 
+                      // No, underworld event doesn't use failureMailId usually.
+                      if (narrativeEvent.failureMailId && isBroke && !canAffordInterest) {
+                           console.log(`Customer ${narrativeEvent.chainId} is sending plea mail instead of visiting.`);
+                           
+                           const mailId = narrativeEvent.failureMailId || 'mail_generic_plea';
+                           
+                           // 1. Send Mail with context
+                           dispatch({ 
+                               type: 'SCHEDULE_MAIL', 
+                               payload: { 
+                                   templateId: mailId, 
+                                   delayDays: 0,
+                                   metadata: { relatedItemName: item.name }
+                               } 
+                           });
+
+                           // 2. Execute Failure Effects (e.g. Advance Stage, Reduce Hope) to prevent loop
+                           if (narrativeEvent.onFailure) {
+                               applyChainEffects(narrativeEvent.chainId, narrativeEvent.onFailure);
+                           }
+                           
+                           // Skip this event by returning early (and effectively closing shop if no other events)
+                           // We need to simulate the day ending quickly or transitioning to closed.
+                           setTimeout(() => {
+                                dispatch({ type: 'SET_LOADING', payload: false });
+                                dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
+                           }, 500);
+                           return;
+                      }
                   }
               }
           }
@@ -134,7 +180,7 @@ export const useGameEngine = () => {
 
           // --- DYNAMIC REDEMPTION FLOW ---
           if (narrativeEvent.type === 'REDEMPTION_CHECK') {
-              const flowResult = resolveRedemptionFlow(narrativeEvent, state.inventory);
+              const flowResult = resolveRedemptionFlow(narrativeEvent, state.inventory, chainState?.variables?.targetItemId);
               if (flowResult) {
                   console.log(`Dynamic Redemption Flow: ${flowResult.flowKey}`);
                   
@@ -157,8 +203,10 @@ export const useGameEngine = () => {
                   }
                   
                   // Important: Replace the dummy item with the REAL item from inventory for the UI
-                  if (narrativeEvent.targetItemId) {
-                      const realItem = state.inventory.find(i => i.id === narrativeEvent.targetItemId);
+                  // Resolve Target Item ID again
+                  const tId = narrativeEvent.targetItemId || chainState?.variables?.targetItemId;
+                  if (tId) {
+                      const realItem = state.inventory.find(i => i.id === tId);
                       if (realItem) {
                            storyCustomer.item = { ...realItem };
                            storyCustomer.interactionType = 'REDEEM';
@@ -353,9 +401,19 @@ export const useGameEngine = () => {
                              break;
                          case 'SCHEDULE_MAIL':
                              if (effect.templateId) {
+                                 // Inject Metadata for interpolation (e.g. relatedItemName)
+                                 const meta: any = { relatedItemName: customer?.item.name };
+                                 if (effect.templateId === 'mail_underworld_warning') {
+                                    // Special logic for underworld? No, customer item name is enough
+                                 }
+
                                  dispatch({ 
                                     type: 'SCHEDULE_MAIL', 
-                                    payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0 } 
+                                    payload: { 
+                                        templateId: effect.templateId, 
+                                        delayDays: effect.delayDays || 0,
+                                        metadata: meta
+                                    } 
                                  });
                              }
                              break;
@@ -381,11 +439,13 @@ export const useGameEngine = () => {
                              });
                              break;
                          case 'REDEEM_TARGET_ONLY':
-                             if (chainEvent?.targetItemId) itemsToRedeem.push(chainEvent.targetItemId);
+                             const tId = chainEvent?.targetItemId || chain.variables.targetItemId;
+                             if (tId) itemsToRedeem.push(tId);
                              break;
                          case 'ABANDON_OTHERS':
                              state.inventory.forEach(i => {
-                                 if (i.relatedChainId === chain.id && i.id !== chainEvent?.targetItemId && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) {
+                                 const tId = chainEvent?.targetItemId || chain.variables.targetItemId;
+                                 if (i.relatedChainId === chain.id && i.id !== tId && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) {
                                      itemsToAbandon.push(i.id);
                                  }
                              });
@@ -405,7 +465,8 @@ export const useGameEngine = () => {
                              });
                              break;
                          case 'FORCE_SELL_TARGET':
-                             if (chainEvent?.targetItemId) itemsToForceSell.push(chainEvent.targetItemId);
+                             const targetId = chainEvent?.targetItemId || chain.variables.targetItemId;
+                             if (targetId) itemsToForceSell.push(targetId);
                              break;
                          case 'TRIGGER_NEWS':
                              console.log("News Triggered:", effect.id);
@@ -451,6 +512,53 @@ export const useGameEngine = () => {
 
   const commitTransaction = (result: TransactionResult) => {
     const currentCust = state.currentCustomer;
+    
+    // -------------------------------------------------------------------------
+    // NEW: UNDERWORLD TRIGGER LOGIC
+    // If player accepts a suspicious/contraband item, trigger the Underworld Chain
+    // -------------------------------------------------------------------------
+    if (result.success && result.item && (result.item.category === '违禁品' || result.item.isSuspicious)) {
+        // Find if chain exists
+        const underworldChain = state.activeChains.find(c => c.id === 'chain_underworld');
+        
+        if (underworldChain && !underworldChain.isActive) {
+             console.log("TRIGGERING UNDERWORLD CHAIN for item:", result.item.id);
+             
+             // Activate chain and store item ID in variables
+             const updatedChains = state.activeChains.map(chain => {
+                 if (chain.id === 'chain_underworld') {
+                     return { 
+                         ...chain, 
+                         isActive: true, 
+                         variables: { ...chain.variables, targetItemId: result.item!.id, days_since_trigger: 0 } 
+                     };
+                 }
+                 return chain;
+             });
+             
+             // We dispatch immediately. This might cause a slight race if `commitTransaction` also does `UPDATE_CHAINS` below via effects.
+             // But usually `commitTransaction` runs effects via `applyChainEffects` which reads `state.activeChains`.
+             // To be safe, we should combine logic or ensure applyChainEffects sees the updated state? 
+             // Actually, `applyChainEffects` uses `state.activeChains` from closure. 
+             // Ideally we should pass this update to applyChainEffects or do it separately.
+             // Since underworld is likely orthogonal to the current customer chain, we can just dispatch.
+             dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
+             
+             // Inject a log
+             dispatch({ 
+                 type: 'RESOLVE_TRANSACTION', 
+                 payload: { 
+                    cashDelta: 0, 
+                    reputationDelta: {}, 
+                    item: null, 
+                    log: "系统提示：收受违禁品引起了某些人的注意...", 
+                    customerName: "System" 
+                 } 
+            });
+        }
+    }
+    // -------------------------------------------------------------------------
+
 
     if (result.success && currentCust?.chainId && currentCust?.eventId) {
         const chainEvent = ALL_STORY_EVENTS.find(e => e.id === currentCust.eventId);

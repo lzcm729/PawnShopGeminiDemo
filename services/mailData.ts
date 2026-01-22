@@ -1,5 +1,6 @@
 
 
+
 import { MailTemplate } from '../types';
 
 export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
@@ -85,8 +86,17 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
       id: "mail_generic_plea",
       sender: "顾客",
       subject: "关于我的当品",
-      body: `老板，\n\n我现在手头有点紧，没法按时去赎回东西了。但我真的不想失去它。\n\n请不要把它挂牌出售，我会尽快凑钱回来的。拜托了。`,
+      body: `老板，\n\n我现在手头有点紧，没法按时去赎回 {{itemName}} 了。但我真的不想失去它。\n\n请不要把它挂牌出售，我会尽快凑钱回来的。拜托了。`,
       attachments: { cash: 0 }
+  },
+
+  // --- UNDERWORLD MAILS ---
+  "mail_underworld_warning": {
+    id: "mail_underworld_warning",
+    sender: "[未知]",
+    subject: "你会后悔的",
+    body: `老板，\n\n听说你店里收了一个不该收的东西 ({{itemName}})。\n我们的人很快会来"取回"它。\n\n如果东西还在，我们可以当作什么都没发生。\n如果不在... 夜路走多了，小心影子。\n\n别报警。你知道的。`,
+    attachments: { cash: 0 }
   }
 };
 

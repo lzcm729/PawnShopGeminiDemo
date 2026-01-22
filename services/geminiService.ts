@@ -3,6 +3,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Customer, ReputationProfile, ReputationType, ItemStatus } from "../types";
 import { enrichItemWithTraits } from "./contentGenerator";
+import { generateDesignBible } from "./designExporter";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -76,9 +77,19 @@ export const generateCustomer = async (day: number, reputation: ReputationProfil
   const credibility = reputation[ReputationType.CREDIBILITY];
   const underworld = reputation[ReputationType.UNDERWORLD];
   
+  // Retrieve the core design bible to use as system instruction
+  const designBible = generateDesignBible();
+  const systemInstruction = `
+    You are the AI Dungeon Master for the game "The Pawn's Dilemma".
+    Your role is to generate unique, noir-style characters and items that fit the game's atmosphere and mechanics.
+    
+    STRICTLY ADHERE to the following Game Design Bible:
+    
+    ${designBible}
+  `;
+
   const prompt = `
-    你是"典当铺模拟器"的游戏主持人。
-    当前状态:
+    当前游戏状态:
     - 天数: ${day}
     - 玩家声誉: 人性 ${humanity}, 商业信誉 ${credibility}, 地下关系 ${underworld}.
 
@@ -86,15 +97,11 @@ export const generateCustomer = async (day: number, reputation: ReputationProfil
     
     要求:
     1. **语言必须为简体中文**。
-    2. 价值分层: 确保 'valuation' (契约估值/死当价格) 与 'realValue' (真实市场价) 有区别。
-       - 如果是赝品 (isFake)，真实价值应极低。
-       - 如果是赃物 (isStolen)，真实价值可能很高但有风险。
-    3. 对话风格: 黑色电影风格，简练、压抑或充满市井气。
-    4. 逻辑: 最低接受价 (minimumAmount) 必须 <= 期望价 (desiredAmount)。
-       - maxRepayment 通常是 minimumAmount 的 1.1 到 1.5 倍，取决于人物是否绝望。
-    5. Tags: 根据情境添加标签，如 'HighRisk', 'Emotional', 'Scam' 等。
-    
-    财务目标: 交易金额大约在 $${100 + day * 40} 左右。
+    2. 价值分层: 严格区分 'valuation' (契约估值/死当价格) 与 'realValue' (真实市场价)。
+       - 骗局(Scam)物品: valuation 远高于 realValue。
+       - 捡漏(Opportunity)物品: valuation 远低于 realValue。
+    3. 逻辑: 最低接受价 (minimumAmount) 必须 <= 期望价 (desiredAmount)。
+    4. 财务目标: 交易金额大约在 $${100 + day * 40} 左右，但允许根据物品稀有度大幅波动。
   `;
 
   try {
@@ -104,7 +111,8 @@ export const generateCustomer = async (day: number, reputation: ReputationProfil
       config: {
         responseMimeType: "application/json",
         responseSchema: customerSchema,
-        temperature: 1.0, 
+        temperature: 1.0,
+        systemInstruction: systemInstruction 
       },
     });
 

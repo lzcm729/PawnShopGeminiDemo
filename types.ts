@@ -82,6 +82,7 @@ export interface Item {
   
   isStolen: boolean;
   isFake: boolean;
+  isSuspicious?: boolean; // NEW: Triggers underworld events
   sentimentalValue: boolean;
   appraised: boolean; 
   pawnDate: number; 
@@ -218,22 +219,22 @@ export interface MailInstance {
   arrivalDay: number; 
   isRead: boolean;
   isClaimed: boolean; 
-  metadata?: {
-      relatedItemName?: string;
-  };
+  metadata?: any; // Changed from specific object to any for flexibility
 }
 
 export interface ChainVariables {
-  [key: string]: number; 
+  [key: string]: any; // Changed to any to support storing itemIds strings
 }
 
 // --- NEW SIMULATION RULES SYSTEM ---
 
 export interface SimOperation {
-  type: 'MOD_VAR' | 'SET_STAGE' | 'DEACTIVATE';
+  type: 'MOD_VAR' | 'SET_STAGE' | 'DEACTIVATE' | 'SCHEDULE_MAIL';
   target?: string; // e.g. "funds", "job_chance"
   value?: number;  // e.g. 150, 1
   op?: 'ADD' | 'SUB' | 'SET'; // Default 'ADD' for numeric vars
+  templateId?: string; // used for SCHEDULE_MAIL
+  delayDays?: number; // used for SCHEDULE_MAIL
 }
 
 export interface RuleDelta {

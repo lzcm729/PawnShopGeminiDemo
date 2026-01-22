@@ -1,8 +1,10 @@
 
+
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { X, Mail, Download, FileText, Terminal, Minimize2, AlertCircle } from 'lucide-react';
 import { getMailTemplate } from '../services/mailData';
+import { interpolateMailBody } from '../services/mailInterpolation';
 
 export const MailModal: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -21,6 +23,11 @@ export const MailModal: React.FC = () => {
 
   const selectedMailInstance = selectedMailId ? state.inbox.find(m => m.uniqueId === selectedMailId) : null;
   const selectedTemplate = selectedMailInstance ? getMailTemplate(selectedMailInstance.templateId) : null;
+  
+  // Interpolate Body if selected
+  const displayBody = selectedTemplate && selectedMailInstance 
+      ? interpolateMailBody(selectedTemplate.body, selectedMailInstance.metadata || {}) 
+      : "";
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150 bg-black/80 backdrop-blur-sm">
@@ -128,9 +135,9 @@ export const MailModal: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Message Body */}
+                        {/* Message Body (Interpolated) */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar-light pr-4 text-stone-300 whitespace-pre-line leading-relaxed text-sm font-mono">
-                            {selectedTemplate.body}
+                            {displayBody}
                         </div>
 
                         {/* Attachment Area */}

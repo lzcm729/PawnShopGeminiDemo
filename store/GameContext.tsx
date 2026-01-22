@@ -68,7 +68,7 @@ type Action =
   | { type: 'TOGGLE_MAIL' }
   | { type: 'TOGGLE_DEBUG' } 
   | { type: 'UPDATE_CHAINS'; payload: EventChainState[] }
-  | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number; metadata?: { relatedItemName?: string } } }
+  | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number; metadata?: any } }
   | { type: 'PROCESS_DAILY_MAIL' }
   | { type: 'READ_MAIL'; payload: string } 
   | { type: 'CLAIM_MAIL_REWARD'; payload: string }
