@@ -122,6 +122,7 @@ export interface RuleCompound {
     threshold: number;      
     targetVar: string;      
     effect: number;         
+    cap?: { min?: number; max?: number };
     logMessage?: string;
 }
 
@@ -170,6 +171,7 @@ export interface ChainUpdateEffect {
   type: EffectType;
   variable?: string; 
   value?: number;    
+  delta?: number;
   templateId?: string; 
   delayDays?: number; 
   id?: string; 

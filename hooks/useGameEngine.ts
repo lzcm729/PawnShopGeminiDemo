@@ -300,7 +300,16 @@ export const useGameEngine = () => {
                          case 'ADD_FUNDS_DEAL': if (transactionResult) newChain.variables.funds = (newChain.variables.funds || 0) + Math.abs(transactionResult.cashDelta); break;
                          case 'ADD_FUNDS': if (effect.value) newChain.variables.funds = (newChain.variables.funds || 0) + effect.value; break;
                          case 'SET_STAGE': if (effect.value !== undefined) newChain.stage = effect.value; break;
-                         case 'MODIFY_VAR': if (effect.variable && effect.value !== undefined) newChain.variables[effect.variable] = effect.value; break;
+                         case 'MODIFY_VAR': 
+                            if (effect.variable) {
+                                if (effect.delta !== undefined) {
+                                    const current = newChain.variables[effect.variable] || 0;
+                                    newChain.variables[effect.variable] = Math.max(0, Math.min(100, current + effect.delta));
+                                } else if (effect.value !== undefined) {
+                                    newChain.variables[effect.variable] = effect.value; 
+                                }
+                            }
+                            break;
                          case 'DEACTIVATE': case 'DEACTIVATE_CHAIN': newChain.isActive = false; break;
                          case 'SCHEDULE_MAIL':
                              if (effect.templateId) {

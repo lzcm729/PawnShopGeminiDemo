@@ -128,7 +128,12 @@ export const runDailySimulation = (chains: EventChainState[]): { chains: EventCh
             }
             if (triggered) {
                 const targetCurrent = newChain.variables[rule.targetVar] || 0;
-                newChain.variables[rule.targetVar] = targetCurrent + rule.effect;
+                let newVal = targetCurrent + rule.effect;
+                if (rule.cap) {
+                    if (rule.cap.max !== undefined) newVal = Math.min(newVal, rule.cap.max);
+                    if (rule.cap.min !== undefined) newVal = Math.max(newVal, rule.cap.min);
+                }
+                newChain.variables[rule.targetVar] = newVal;
                 if (rule.logMessage) newChain.simulationLog!.push({ day: 0, content: rule.logMessage, type: 'DAILY' });
             }
         }

@@ -16,6 +16,13 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
     body: `我以为你会帮我... 结果你和其他吸血鬼没什么两样。\n\n因为没有电脑，我错过了入职提交材料的截止日期。工作没了，还要背负你的违约金债务。\n\n我要离开这座城市了。拿着我的电脑烂在手里吧。我诅咒你，诅咒这家店永远不得安宁。`,
     attachments: { cash: 0 }
   },
+  "mail_emma_boyfriend_left": {
+    id: "mail_emma_boyfriend_left",
+    sender: "艾玛",
+    subject: "一切都结束了",
+    body: `他走了。今早我醒来，发现他的东西都不见了，只留下一张字条说受够了这种没有希望的日子。\n\n电脑赎不回来，工作也没指望了，现在连他也走了。\n\n我觉得好累。这个世界也许真的不适合我。`,
+    attachments: { cash: 0 }
+  },
   "mail_emma_plea": {
     id: "mail_emma_plea",
     sender: "艾玛",

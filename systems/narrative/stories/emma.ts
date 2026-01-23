@@ -7,16 +7,58 @@ export const EMMA_CHAIN_INIT: EventChainState = {
   npcName: "艾玛",
   isActive: false, 
   stage: 0,
-  variables: { funds: 0, hope: 50, job_chance: 0, has_laptop: 0 },
+  variables: { funds: 0, hope: 50, job_chance: 0, has_laptop: 0, redeem_attempted: 0, struggle_occurred: 0 },
   simulationLog: [],
   simulationRules: [
       { type: 'DELTA', targetVar: 'funds', value: -150 },
-      { type: 'COMPOUND', sourceVar: 'hope', operator: '<', threshold: 30, targetVar: 'job_chance', effect: -5, logMessage: "心态崩溃影响了面试表现 (Job Chance -5)" },
-      { type: 'COMPOUND', sourceVar: 'hope', operator: '>=', threshold: 80, targetVar: 'job_chance', effect: 2, logMessage: "自信的状态让面试官印象深刻 (Job Chance +2)" },
+      { 
+          type: 'COMPOUND', 
+          sourceVar: 'hope', 
+          operator: '<', 
+          threshold: 30, 
+          targetVar: 'job_chance', 
+          effect: -5, 
+          cap: { min: 0, max: 100 },
+          logMessage: "心态崩溃影响了面试表现 (Job Chance -5)" 
+      },
+      { 
+          type: 'COMPOUND', 
+          sourceVar: 'hope', 
+          operator: '>=', 
+          threshold: 80, 
+          targetVar: 'job_chance', 
+          effect: 2, 
+          cap: { min: 0, max: 100 },
+          logMessage: "自信的状态让面试官印象深刻 (Job Chance +2)" 
+      },
+      {
+          type: 'COMPOUND',
+          sourceVar: 'hope',
+          operator: '<',
+          threshold: 25,
+          targetVar: 'funds',
+          effect: -30,
+          logMessage: "心情低落，买了瓶酒消愁 (额外消费 -30)"
+      },
+      {
+          type: 'THRESHOLD',
+          targetVar: 'hope',
+          operator: '<',
+          value: 10,
+          onTrigger: [
+              { type: 'SET_STAGE', value: 4 },  
+              { type: 'SCHEDULE_MAIL', templateId: 'mail_emma_boyfriend_left', delayDays: 0 }
+          ],
+          triggerLog: "彻底崩溃，男友离开了她"
+      },
       { 
           type: 'CHANCE', 
           chanceVar: 'job_chance', 
           onSuccess: [{ type: 'MOD_VAR', target: 'funds', value: 3000, op: 'ADD' }, { type: 'MOD_VAR', target: 'job_chance', value: 0, op: 'SET' }, { type: 'MOD_VAR', target: 'hope', value: 50, op: 'ADD' }],
+          onFail: [
+              { type: 'MOD_VAR', target: 'hope', value: -8, op: 'ADD' },      
+              { type: 'MOD_VAR', target: 'job_chance', value: -3, op: 'ADD' } 
+          ],
           successLog: "收到录用通知书！(OFFER RECEIVED)",
           failLog: "面试再次被拒..."
       },
@@ -156,10 +198,30 @@ export const EMMA_EVENTS: StoryEvent[] = [
       redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 2, mood: 'Annoyed', tags: ["Story", "HighMoralStake"]
     },
     outcomes: {
-      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "has_laptop", value: 1 }, { type: "MODIFY_VAR", variable: "job_chance", value: 100 }],
-      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "has_laptop", value: 1 }, { type: "MODIFY_VAR", variable: "job_chance", value: 80 }],
-      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "has_laptop", value: 1 }, { type: "MODIFY_VAR", variable: "job_chance", value: 30 }],
-      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "has_laptop", value: 1 }, { type: "MODIFY_VAR", variable: "job_chance", value: 10 }]
+      "deal_charity":  [
+          { type: "ADD_FUNDS_DEAL" }, 
+          { type: "SET_STAGE", value: 3 }, 
+          { type: "MODIFY_VAR", variable: "has_laptop", value: 1 }, 
+          { type: "MODIFY_VAR", variable: "job_chance", delta: 50 }
+      ],
+      "deal_aid":      [
+          { type: "ADD_FUNDS_DEAL" }, 
+          { type: "SET_STAGE", value: 3 }, 
+          { type: "MODIFY_VAR", variable: "has_laptop", value: 1 }, 
+          { type: "MODIFY_VAR", variable: "job_chance", delta: 35 }
+      ],
+      "deal_standard": [
+          { type: "ADD_FUNDS_DEAL" }, 
+          { type: "SET_STAGE", value: 3 }, 
+          { type: "MODIFY_VAR", variable: "has_laptop", value: 1 }, 
+          { type: "MODIFY_VAR", variable: "job_chance", delta: 10 }
+      ],
+      "deal_shark":    [
+          { type: "ADD_FUNDS_DEAL" }, 
+          { type: "SET_STAGE", value: 3 }, 
+          { type: "MODIFY_VAR", variable: "has_laptop", value: 1 }, 
+          { type: "MODIFY_VAR", variable: "job_chance", delta: -10 }
+      ]
     },
     onReject: [{ type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "job_chance", value: 0 }, { type: "MODIFY_VAR", variable: "hope", value: -50 }]
   },
@@ -170,11 +232,15 @@ export const EMMA_EVENTS: StoryEvent[] = [
     triggerConditions: [
       { variable: "stage", operator: "==", value: 3 },
       { variable: "has_laptop", operator: "==", value: 1 },
-      { variable: "hope", operator: ">=", value: 40 }
+      { variable: "hope", operator: ">=", value: 40 },
+      { variable: "redeem_attempted", operator: "==", value: 0 }
     ],
     targetItemId: "emma_item_laptop",
     failureMailId: "mail_emma_plea", 
-    onFailure: [{ type: "MODIFY_VAR", variable: "hope", value: -20 }],
+    onFailure: [
+        { type: "MODIFY_VAR", variable: "hope", value: -20 },
+        { type: "MODIFY_VAR", variable: "redeem_attempted", value: 1 }
+    ],
     template: {
         name: "艾玛",
         description: "她气色红润，眼神明亮，手里拿着一张Offer。",
@@ -196,11 +262,22 @@ export const EMMA_EVENTS: StoryEvent[] = [
     dynamicFlows: {
       "all_safe": {
         dialogue: "老板！看！工牌！我入职了！预支了安家费，我来把所有东西都赎回去！谢谢你没在这个月赶尽杀绝。",
-        outcome: [{ type: "REDEEM_ALL" }, { type: "DEACTIVATE_CHAIN" }, { type: "SCHEDULE_MAIL", templateId: "mail_emma_success", delayDays: 2 }]
+        outcome: [
+            { type: "REDEEM_ALL" }, 
+            { type: "MODIFY_VAR", variable: "has_laptop", value: 0 },
+            { type: "DEACTIVATE_CHAIN" }, 
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_success", delayDays: 2 }
+        ]
       },
       "core_safe": {
         dialogue: "笔记本还在就好... 只要有它，我就能东山再起。至于那些衣服和面霜... (叹气) 算了，旧的不去新的不来。我就赎电脑。",
-        outcome: [{ type: "REDEEM_TARGET_ONLY" }, { type: "ABANDON_OTHERS" }, { type: "DEACTIVATE_CHAIN" }, { type: "SCHEDULE_MAIL", templateId: "mail_welcome", delayDays: 3 }]
+        outcome: [
+            { type: "REDEEM_TARGET_ONLY" }, 
+            { type: "MODIFY_VAR", variable: "has_laptop", value: 0 },
+            { type: "ABANDON_OTHERS" }, 
+            { type: "DEACTIVATE_CHAIN" }, 
+            { type: "SCHEDULE_MAIL", templateId: "mail_welcome", delayDays: 3 }
+        ]
       },
       "core_lost": {
         dialogue: "我是来赎电脑的... 什么？你卖了？那里面有我所有的资料！... 算了，其他的我也不要了。我再也不想看到这家店。",
@@ -213,9 +290,64 @@ export const EMMA_EVENTS: StoryEvent[] = [
     }
   },
   {
+    id: "emma_03b_struggle",
+    chainId: "chain_emma",
+    triggerConditions: [
+        { variable: "stage", operator: "==", value: 3 },
+        { variable: "redeem_attempted", operator: "==", value: 1 },
+        { variable: "struggle_occurred", operator: "==", value: 0 },
+        { variable: "funds", operator: ">", value: 0 } 
+    ],
+    item: makeItem({
+        id: "emma_item_watch",
+        name: "智能手表",
+        category: "电子产品",
+        visualDescription: "一块运动款智能手表，表带磨损严重。",
+        historySnippet: "男朋友送的生日礼物，现在... 戴着也是讽刺。",
+        appraisalNote: "普通消费级智能手表，二手价值有限。",
+        archiveSummary: "艾玛在放弃之前，还在做最后的挣扎。",
+        realValue: 400,
+        hiddenTraits: [
+            { id: "t_emma_watch_scratch", name: "屏幕划痕", type: 'FLAW', description: "屏幕有细微划痕，显示效果受影响。", valueImpact: -0.15, discoveryDifficulty: 0.2 }
+        ],
+        isStolen: false, isFake: false, sentimentalValue: true, appraised: false, status: ItemStatus.ACTIVE
+    }, "chain_emma"),
+    template: {
+        name: "艾玛",
+        description: "眼神涣散，嘴角带着自嘲的苦笑。",
+        avatarSeed: "emma_desperate",
+        desiredAmount: 300, minimumAmount: 150, maxRepayment: 500,
+        dialogue: {
+            greeting: "老板... 电脑没赎回来，工作也黄了。这块表... 你收吗？",
+            pawnReason: "他说我整天愁眉苦脸的，带着这表更觉得讽刺。不如换点钱，再投几份简历试试。",
+            redemptionPlea: "就当是... 最后一次挣扎吧。万一还有转机呢。",
+            negotiationDynamic: "别压太低了... 我就剩这点东西了。",
+            accepted: {
+                fair: "谢谢。我再试试。",
+                fleeced: "好吧... 有总比没有强。",
+                premium: "这么多？... 谢谢，我会好好用这笔钱的。"
+            },
+            rejected: "连这个都不要？... 我还能卖什么呢。",
+            rejectionLines: { standard: "好吧。", angry: "...", desperate: "求你了..." }
+        },
+        redemptionResolve: "Weak", negotiationStyle: "Desperate", patience: 2, mood: 'Neutral', tags: ["Story"]
+    },
+    outcomes: {
+        "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", value: 8 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }],
+        "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", value: 3 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }],
+        "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", value: -3 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }],
+        "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", value: -10 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }]
+    },
+    onReject: [{ type: "MODIFY_VAR", variable: "hope", value: -15 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }]
+  },
+  {
     id: "emma_04_ring",
     chainId: "chain_emma",
-    triggerConditions: [{ variable: "stage", operator: "==", value: 3 }, { variable: "funds", operator: "<=", value: 0 }],
+    triggerConditions: [
+        { variable: "stage", operator: "==", value: 3 }, 
+        { variable: "funds", operator: "<=", value: 0 },
+        { variable: "redeem_attempted", operator: "==", value: 1 }
+    ],
     item: makeItem({ 
         id: "emma_item_ring", 
         name: "白金婚戒", 
