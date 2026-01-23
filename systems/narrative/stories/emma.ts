@@ -102,9 +102,9 @@ export const EMMA_EVENTS: StoryEvent[] = [
       redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 3, mood: 'Neutral', tags: ["Story", "LowRisk"]
     },
     outcomes: {
-      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 70 }, { type: "MODIFY_VAR", variable: "job_chance", value: 50 }],
-      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 65 }, { type: "MODIFY_VAR", variable: "job_chance", value: 40 }],
-      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 60 }, { type: "MODIFY_VAR", variable: "job_chance", value: 30 }],
+      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 70 }, { type: "MODIFY_VAR", variable: "job_chance", value: 30 }],
+      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 65 }, { type: "MODIFY_VAR", variable: "job_chance", value: 25 }],
+      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 60 }, { type: "MODIFY_VAR", variable: "job_chance", value: 20 }],
       "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 40 }, { type: "MODIFY_VAR", variable: "job_chance", value: 10 }]
     },
     onReject: [{ type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 40 }]
@@ -152,10 +152,10 @@ export const EMMA_EVENTS: StoryEvent[] = [
       redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 3, mood: 'Neutral', tags: ["Story"]
     },
     outcomes: {
-      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 10 }],
-      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 0 }],
-      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -5 }],
-      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -15 }]
+      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 10 }, { type: "MODIFY_VAR", variable: "job_chance", delta: 10 }],
+      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 0 }, { type: "MODIFY_VAR", variable: "job_chance", delta: 5 }],
+      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -5 }, { type: "MODIFY_VAR", variable: "job_chance", delta: 0 }],
+      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -15 }, { type: "MODIFY_VAR", variable: "job_chance", delta: -5 }]
     },
     onReject: [{ type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -20 }]
   },
