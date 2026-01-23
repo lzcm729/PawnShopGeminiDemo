@@ -1,6 +1,6 @@
 
 import { useGame } from '../store/GameContext';
-import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../systems/narrative/engine';
+import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow, checkCondition, resolveDialogue } from '../systems/narrative/engine';
 import { generateDailyNews } from '../systems/news/engine';
 import { generatePawnLog } from '../systems/game/utils/logGenerator';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
@@ -139,12 +139,12 @@ export const useGameEngine = () => {
                   const isItemLost = flowResult.flowKey === 'core_lost';
 
                   if (isItemLost) {
-                       storyCustomer.dialogue.greeting = flowResult.flow.dialogue;
+                       storyCustomer.dialogue.greeting = resolveDialogue(flowResult.flow.dialogue, chainState);
                        (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
                   } else if (intent === 'EXTEND') {
                        storyCustomer.dialogue.greeting = "老板... 钱还没凑齐。能不能再宽限几天？我先付利息。";
                   } else {
-                       storyCustomer.dialogue.greeting = flowResult.flow.dialogue;
+                       storyCustomer.dialogue.greeting = resolveDialogue(flowResult.flow.dialogue, chainState);
                        storyCustomer.dialogue.accepted.fair = "谢谢。";
                        (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
                   }
@@ -315,6 +315,14 @@ export const useGameEngine = () => {
                              if (effect.templateId) {
                                  const meta: any = { relatedItemName: customer?.item.name };
                                  dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0, metadata: meta } });
+                             }
+                             break;
+                         case 'CONDITIONAL_MAIL':
+                             if (effect.condition && effect.templateId) {
+                                 if (checkCondition(effect.condition, newChain)) {
+                                      const meta: any = { relatedItemName: customer?.item.name };
+                                      dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0, metadata: meta } });
+                                 }
                              }
                              break;
                          case 'MODIFY_REP':

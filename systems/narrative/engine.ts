@@ -2,7 +2,7 @@
 import { EventChainState, StoryEvent, TriggerCondition, Dialogue, DialogueText, SimOperation, Customer, Item, ItemStatus, DynamicFlowOutcome } from '../../types';
 
 // Helper: Evaluate a single condition
-const checkCondition = (condition: TriggerCondition, chain: EventChainState): boolean => {
+export const checkCondition = (condition: TriggerCondition, chain: EventChainState): boolean => {
   let currentVal = 0;
   if (chain.variables && condition.variable in chain.variables) {
       currentVal = chain.variables[condition.variable];
@@ -24,12 +24,12 @@ const checkCondition = (condition: TriggerCondition, chain: EventChainState): bo
 };
 
 // Dialogue Resolution
-const resolveDialogue = (def: DialogueText, chain?: EventChainState): string => {
+export const resolveDialogue = (def: DialogueText, chain?: EventChainState): string => {
     if (typeof def === 'string') return def;
     if (!chain) return def[def.length - 1].text; 
 
     for (const variant of def) {
-        if (checkCondition(variant.condition, chain)) {
+        if (!variant.condition || checkCondition(variant.condition, chain)) {
             return variant.text;
         }
     }

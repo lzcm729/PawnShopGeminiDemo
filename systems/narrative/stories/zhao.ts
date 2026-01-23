@@ -20,6 +20,18 @@ export const ZHAO_CHAIN_INIT: EventChainState = {
         { type: 'THRESHOLD', targetVar: 'day', operator: '==', value: 7, onTrigger: [{ type: 'MOD_VAR', target: 'funds', value: 600 }] },
         { type: 'THRESHOLD', targetVar: 'day', operator: '==', value: 11, onTrigger: [{ type: 'MOD_VAR', target: 'funds', value: 1500 }] },
         { type: 'THRESHOLD', targetVar: 'day', operator: '==', value: 14, onTrigger: [{ type: 'MOD_VAR', target: 'funds', value: 1000 }] },
+        // New Stress Rule
+        {
+            type: 'THRESHOLD',
+            targetVar: 'stress',
+            operator: '>=',
+            value: 30,
+            onTrigger: [
+                { type: 'SET_STAGE', value: 99 },
+                { type: 'SCHEDULE_MAIL', templateId: 'mail_zhao_hospital', delayDays: 0 }
+            ],
+            triggerLog: "周老因压力过大被送往医院"
+        }
     ]
 };
 
@@ -63,10 +75,10 @@ export const ZHAO_EVENTS: StoryEvent[] = [
             redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 4, mood: 'Neutral', tags: ["Emotional", "HighMoralStake"]
         },
         outcomes: {
-            "deal_charity": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "trust", value: 10 }],
-            "deal_aid":     [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "trust", value: 5 }],
-            "deal_standard":[{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }],
-            "deal_shark":   [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "stress", value: 10 }]
+            "deal_charity": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "trust", value: 10 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 }],
+            "deal_aid":     [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "trust", value: 5 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 }],
+            "deal_standard":[{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 }],
+            "deal_shark":   [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "stress", value: 10 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 }]
         },
         onReject: [{ type: "DEACTIVATE_CHAIN" }]
     },
@@ -128,10 +140,16 @@ export const ZHAO_EVENTS: StoryEvent[] = [
             avatarSeed: "elder_zhao_v2",
             desiredAmount: 3000, minimumAmount: 2000, maxRepayment: 4000,
             dialogue: {
-                greeting: "老板... 我又来了。",
+                greeting: [
+                    { condition: { variable: "funds", operator: "<", value: 0 }, text: "老板... 我又来了。这次是真的没办法了。" },
+                    { text: "老板... 我又来了。" }
+                ],
                 pawnReason: "这腿的老毛病犯了，医院催缴住院押金。我实在没办法...",
                 redemptionPlea: "证书和勋章是一套，千万别拆散了。",
-                negotiationDynamic: "这可是原件... 救命钱，不能少啊。",
+                negotiationDynamic: [
+                    { condition: { variable: "funds", operator: "<", value: -500 }, text: "少给点也行... 只要能付住院押金就好..." },
+                    { text: "这可是原件... 救命钱，不能少啊。" }
+                ],
                 accepted: { fair: "谢谢！救命之恩！", fleeced: "唉... 先救急吧。", premium: "好人一生平安！" },
                 rejected: "这... 那我只能去卖血了...",
                 rejectionLines: { standard: "打扰了。", angry: "...", desperate: "求求你..." }
@@ -139,8 +157,8 @@ export const ZHAO_EVENTS: StoryEvent[] = [
             redemptionResolve: "Strong", negotiationStyle: "Desperate", patience: 3, mood: 'Neutral', tags: ["Emotional"]
         },
         outcomes: {
-            "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }],
-            "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }],
+            "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "trust", value: 5 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }],
+            "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "trust", value: 3 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }],
             "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }],
             "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }, { type: "MODIFY_VAR", variable: "stress", value: 20 }]
         },
@@ -161,7 +179,11 @@ export const ZHAO_EVENTS: StoryEvent[] = [
             avatarSeed: "elder_zhao_v2",
             interactionType: 'REDEEM',
             dialogue: {
-                greeting: "老板，钱终于凑齐了。连本带利，我想把勋章赎回去。只有放在自己枕头底下，心里才踏实。",
+                greeting: [
+                    { condition: { variable: "trust", operator: ">=", value: 70 }, text: "老板！好久不见。钱凑齐了，多亏你当时帮我一把。" },
+                    { condition: { variable: "trust", operator: "<=", value: 30 }, text: "钱带来了。赎回吧。" },
+                    { text: "老板，钱凑齐了。连本带利，我想把勋章赎回去。" }
+                ],
                 pawnReason: "", 
                 redemptionPlea: "证书... 证书还要再压几天。",
                 negotiationDynamic: "...",
@@ -195,7 +217,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
     {
         id: "zhao_05_collector_high",
         chainId: "chain_zhao",
-        triggerConditions: [{ variable: "stage", operator: "==", value: 4 }, { variable: "day", operator: ">=", value: 8 }],
+        triggerConditions: [{ variable: "stage", operator: "==", value: 4 }, { variable: "day", operator: ">=", value: 10 }],
         item: makeItem({ id: "zhao_virtual_deal_high", name: "收购邀约：全套立功档案", category: "其他", visualDescription: "一份加急的收购合同。", historySnippet: "客户说，这是最后一次报价。", appraisalNote: "这是出卖灵魂的价格。", archiveSummary: "玩家在巨大的金钱诱惑面前动摇了吗？", realValue: 38000, isVirtual: true, isStolen: false, isFake: false, sentimentalValue: false, appraised: true, status: ItemStatus.ACTIVE }, "chain_zhao"),
         template: {
             name: "收藏顾问",
@@ -233,7 +255,11 @@ export const ZHAO_EVENTS: StoryEvent[] = [
         triggerConditions: [{ variable: "stage", operator: "==", value: 5 }, { variable: "day", operator: ">=", value: 12 }],
         targetItemId: "zhao_item_cert", 
         failureMailId: "mail_zhao_plea",
-        onFailure: [{ type: "SET_STAGE", value: 6 }],
+        onFailure: [
+            { type: "DEACTIVATE_CHAIN" },
+            { type: "SCHEDULE_MAIL", templateId: "mail_zhao_tragedy", delayDays: 1 },
+            { type: "MODIFY_REP", value: -15 }
+        ],
         template: {
             name: "周守义",
             description: "穿着旧军装，胸前别着那枚勋章（如果已赎回）。",
@@ -254,8 +280,18 @@ export const ZHAO_EVENTS: StoryEvent[] = [
         },
         dynamicFlows: {
             "all_safe": {
-                dialogue: "老板，我来接老伙计们回家了。明天就是孙子的婚礼，我得体体面面的。",
-                outcome: [{ type: "REDEEM_ALL" }, { type: "DEACTIVATE_CHAIN" }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_good", delayDays: 2 }, { type: "MODIFY_REP", value: 20 }]
+                dialogue: [
+                    { condition: { variable: "trust", operator: ">=", value: 70 }, text: "老板，婚礼上我要戴着这枚勋章。你是我们全家的恩人！" },
+                    { condition: { variable: "trust", operator: "<=", value: 30 }, text: "东西拿回来了。以后不会再来了。" },
+                    { text: "老板，我来接老伙计们回家了。" }
+                ],
+                outcome: [
+                    { type: "REDEEM_ALL" }, 
+                    { type: "DEACTIVATE_CHAIN" }, 
+                    { type: "CONDITIONAL_MAIL", condition: { variable: "medal_extended", operator: "==", value: 1 }, templateId: "mail_zhao_good_extended" },
+                    { type: "CONDITIONAL_MAIL", condition: { variable: "medal_extended", operator: "==", value: 0 }, templateId: "mail_zhao_good" },
+                    { type: "MODIFY_REP", value: 20 }
+                ]
             },
             "core_safe": {
                 dialogue: "还好证书还在... 勋章没了就没了吧。只要人还在，魂就在。",

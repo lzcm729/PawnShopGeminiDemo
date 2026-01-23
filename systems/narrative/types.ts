@@ -22,7 +22,7 @@ export interface TriggerCondition {
 }
 
 export interface DialogueVariant {
-    condition: TriggerCondition;
+    condition?: TriggerCondition;
     text: string;
 }
 
@@ -158,6 +158,7 @@ export type EffectType =
   | 'DEACTIVATE' 
   | 'DEACTIVATE_CHAIN' 
   | 'SCHEDULE_MAIL'
+  | 'CONDITIONAL_MAIL'
   | 'MODIFY_REP' 
   | 'TRIGGER_NEWS'
   | 'REDEEM_ALL'
@@ -175,10 +176,11 @@ export interface ChainUpdateEffect {
   templateId?: string; 
   delayDays?: number; 
   id?: string; 
+  condition?: TriggerCondition;
 }
 
 export interface DynamicFlowOutcome {
-  dialogue: string;
+  dialogue: DialogueText;
   outcome: ChainUpdateEffect[];
 }
 

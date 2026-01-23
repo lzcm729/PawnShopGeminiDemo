@@ -51,6 +51,13 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
       body: `当铺老板：\n\n爷爷让我给您发这封邮件。昨天的婚礼上，爷爷穿着旧军装，胸前戴着那枚勋章给我们证婚。虽然他腿脚不好，但那天他站得比谁都直。\n\n他说那是他这辈子最体面的一天。谢谢您没让他把荣誉给卖了。\n\n附上几张喜糖的照片，和一点心意。`,
       attachments: { cash: 200 }
   },
+  "mail_zhao_good_extended": {
+      id: "mail_zhao_good_extended",
+      sender: "小孙子",
+      subject: "爷爷说你是好人",
+      body: `当铺老板：\n\n爷爷让我特别感谢你当时同意延期。他说如果不是你通融，勋章早就没了。\n\n婚礼上爷爷戴着那枚勋章，站得笔直。他说那是他这辈子最体面的一天。\n\n附上喜糖和一点心意。爷爷说，做生意讲究诚信，但更难得的是讲义气。\n\n祝生意兴隆！`,
+      attachments: { cash: 300 }
+  },
   "mail_zhao_evil": {
       id: "mail_zhao_evil",
       sender: "匿名",
@@ -63,6 +70,27 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
       sender: "周守义",
       subject: "请再宽限几天",
       body: `老板，\n\n实在对不住。没能凑齐钱把老伙计赎回去，甚至连利息都交不上。\n\n单位的退休金还没发下来，医院这边又催着缴费，我实在是走投无路了。\n\n我知道规矩，东西现在归您处置。但我求求你，千万别把那东西卖了。那不是铁片，那是我的命。\n\n再给我几天时间，我就是去卖血也会把钱凑齐的。求你了。\n\n老周`,
+      attachments: { cash: 0 }
+  },
+  "mail_zhao_rumor": {
+      id: "mail_zhao_rumor",
+      sender: "同行老李",
+      subject: "有人在打听老物件",
+      body: `老弟：\n\n最近有个穿西装的在咱们这片转悠，专门打听老军功章的事。听说他背后是个大买家，出手很阔绰。\n\n你店里如果有这类东西，可得留个心眼。这种人看着体面，背后的道道多着呢。\n\n提醒你一句，别让人给套路了。\n\n老李`,
+      attachments: { cash: 0 }
+  },
+  "mail_zhao_hospital": {
+      id: "mail_zhao_hospital",
+      sender: "孙子 小周",
+      subject: "爷爷住院了",
+      body: `当铺老板：\n\n我爷爷昨晚突然昏倒了，现在在医院抢救。医生说是心脏问题，可能跟最近压力太大有关。\n\n他一直念叨着什么勋章和欠债的事。我不知道你们之间发生了什么，但我想你应该知道这件事。\n\n婚礼推迟了。爷爷说过"不能让老伙计在外面过夜"，可现在他自己都不知道能不能出院了。\n\n我会尽快联系你处理那些东西的。`,
+      attachments: { cash: 0 }
+  },
+  "mail_zhao_tragedy": {
+      id: "mail_zhao_tragedy",
+      sender: "社区通知",
+      subject: "关于周守义老人的情况",
+      body: `致相关人士：\n\n周守义老人因经济困难和精神压力，于昨日被送往医院。他的孙子婚礼已推迟。\n\n老人在病床上一直念叨着什么"勋章"和"老伙计"。如果您知道相关情况，请与我们联系。`,
       attachments: { cash: 0 }
   },
   "mail_generic_plea": {
