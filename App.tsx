@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState } from 'react';
 import { GameProvider, useGame } from './store/GameContext';
 import { useGameEngine } from './hooks/useGameEngine';
@@ -88,200 +87,211 @@ const GameContent: React.FC = () => {
     const isRain = activeFlavor?.headline.includes("雨");
 
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#0a0a0a] text-white p-4 font-mono relative overflow-hidden">
-        {/* CRT Scanline Effect */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,6px_100%] pointer-events-none z-20 opacity-30"></div>
-        
-        <div className="max-w-6xl w-full bg-[#141414] border-2 border-stone-700 shadow-2xl relative z-10 flex flex-col md:flex-row h-[85vh]">
-           
-           {/* LEFT: System Status */}
-           <div className="w-full md:w-1/4 bg-[#0f0f0f] border-r border-stone-700 p-6 flex flex-col relative">
-              <div className="flex items-center gap-3 mb-8 text-stone-500 border-b border-stone-800 pb-4">
-                <Sun className="w-6 h-6" />
-                <h2 className="text-xl font-bold tracking-widest">SYSTEM_WAKE</h2>
-              </div>
-              
-              <div className="space-y-6 flex-1">
-                <div className="flex justify-between items-center">
-                   <span className="text-stone-500 text-xs uppercase">Cycle</span>
-                   <span className="text-3xl font-bold text-white">DAY {state.stats.day}</span>
+      <>
+        <div className="h-screen w-full flex items-center justify-center bg-[#0a0a0a] text-white p-4 font-mono relative overflow-hidden">
+          {/* CRT Scanline Effect */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,6px_100%] pointer-events-none z-20 opacity-30"></div>
+          
+          <div className="max-w-6xl w-full bg-[#141414] border-2 border-stone-700 shadow-2xl relative z-10 flex flex-col md:flex-row h-[85vh]">
+             
+             {/* LEFT: System Status */}
+             <div className="w-full md:w-1/4 bg-[#0f0f0f] border-r border-stone-700 p-6 flex flex-col relative">
+                <div className="flex items-center gap-3 mb-8 text-stone-500 border-b border-stone-800 pb-4">
+                  <Sun className="w-6 h-6" />
+                  <h2 className="text-xl font-bold tracking-widest">SYSTEM_WAKE</h2>
+                </div>
+                
+                <div className="space-y-6 flex-1">
+                  <div className="flex justify-between items-center">
+                     <span className="text-stone-500 text-xs uppercase">Cycle</span>
+                     <span className="text-3xl font-bold text-white">DAY {state.stats.day}</span>
+                  </div>
+
+                  <div className="space-y-2">
+                     <div className="flex justify-between text-sm">
+                        <span className="text-stone-500">LIQUID_ASSETS</span>
+                        <span className="text-green-500 font-bold">${state.stats.cash}</span>
+                     </div>
+                     <div className="flex justify-between text-sm">
+                        <span className="text-stone-500">EST_EXPENSES</span>
+                        <span className="text-red-500">-${state.stats.dailyExpenses}</span>
+                     </div>
+                     <div className="flex justify-between text-sm border-t border-stone-800 pt-2">
+                        <span className="text-stone-500">RENT_DUE (D-{state.stats.rentDueDate - state.stats.day})</span>
+                        <span className="text-yellow-500">${state.stats.rentDue}</span>
+                     </div>
+                  </div>
+
+                  <div className="bg-stone-900/50 p-4 rounded border border-stone-800 mt-auto">
+                      <h3 className="text-stone-500 text-xs font-bold mb-2 flex items-center gap-2">
+                          <Radio className="w-3 h-3" /> MAIL_SERVER
+                      </h3>
+                      {state.pendingMails.some(m => m.arrivalDay <= state.stats.day) ? (
+                          <div className="text-green-500 text-xs animate-pulse">
+                              [!] NEW MESSAGE RECEIVED
+                          </div>
+                      ) : (
+                          <div className="text-stone-600 text-xs">
+                              NO NEW MESSAGES
+                          </div>
+                      )}
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                   <div className="flex justify-between text-sm">
-                      <span className="text-stone-500">LIQUID_ASSETS</span>
-                      <span className="text-green-500 font-bold">${state.stats.cash}</span>
-                   </div>
-                   <div className="flex justify-between text-sm">
-                      <span className="text-stone-500">EST_EXPENSES</span>
-                      <span className="text-red-500">-${state.stats.dailyExpenses}</span>
-                   </div>
-                   <div className="flex justify-between text-sm border-t border-stone-800 pt-2">
-                      <span className="text-stone-500">RENT_DUE (D-{state.stats.rentDueDate - state.stats.day})</span>
-                      <span className="text-yellow-500">${state.stats.rentDue}</span>
-                   </div>
-                </div>
+                <Button onClick={startNewDay} className="w-full mt-6 border-stone-600 hover:border-white text-stone-300">
+                    <span className="animate-pulse">INITIALIZE_SHOP()</span>
+                </Button>
+             </div>
 
-                <div className="bg-stone-900/50 p-4 rounded border border-stone-800 mt-auto">
-                    <h3 className="text-stone-500 text-xs font-bold mb-2 flex items-center gap-2">
-                        <Radio className="w-3 h-3" /> MAIL_SERVER
-                    </h3>
-                    {state.pendingMails.some(m => m.arrivalDay <= state.stats.day) ? (
-                        <div className="text-green-500 text-xs animate-pulse">
-                            [!] NEW MESSAGE RECEIVED
-                        </div>
-                    ) : (
-                        <div className="text-stone-600 text-xs">
-                            NO NEW MESSAGES
-                        </div>
-                    )}
-                </div>
-              </div>
+             {/* RIGHT: Newspaper Layout */}
+             <div className="flex-1 bg-[#e7e5e4] text-stone-900 relative flex flex-col">
+                 {/* Paper Texture Overlay */}
+                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-60 pointer-events-none mix-blend-multiply"></div>
 
-              <Button onClick={startNewDay} className="w-full mt-6 border-stone-600 hover:border-white text-stone-300">
-                  <span className="animate-pulse">INITIALIZE_SHOP()</span>
-              </Button>
-           </div>
+                 {/* News Header */}
+                 <div className="p-6 border-b-2 border-stone-800 flex justify-between items-end relative z-10">
+                     <div>
+                         <h1 className="text-4xl font-black font-serif uppercase tracking-tight leading-none">The City Chronicle</h1>
+                         <div className="text-xs font-mono text-stone-600 mt-1 flex gap-4 uppercase font-bold">
+                             <span>Issue #{1000 + state.stats.day}</span>
+                             <span>Section 12</span>
+                             <span>Price: 5 Credits</span>
+                         </div>
+                     </div>
+                     {/* Flavor / Weather Widget */}
+                     <div className="text-right">
+                         {isRain ? (
+                             <div className="flex items-center gap-2 text-stone-700">
+                                 <span className="font-bold text-sm uppercase">Heavy Rain</span>
+                                 <CloudRain className="w-8 h-8" />
+                             </div>
+                         ) : (
+                             <div className="flex items-center gap-2 text-stone-700">
+                                 <span className="font-bold text-sm uppercase">Overcast</span>
+                                 <Wind className="w-8 h-8" />
+                             </div>
+                         )}
+                         {activeFlavor && (
+                             <div className="text-[10px] text-stone-500 mt-1 max-w-[200px] leading-tight text-right">
+                                 {activeFlavor.headline}
+                             </div>
+                         )}
+                     </div>
+                 </div>
 
-           {/* RIGHT: Newspaper Layout */}
-           <div className="flex-1 bg-[#e7e5e4] text-stone-900 relative flex flex-col">
-               {/* Paper Texture Overlay */}
-               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-60 pointer-events-none mix-blend-multiply"></div>
+                 {/* News Content Grid */}
+                 <div className="flex-1 p-6 grid grid-cols-12 gap-6 relative z-10 overflow-y-auto">
+                     
+                     {/* MAIN COLUMN (8 cols): Narratives */}
+                     <div className="col-span-8 space-y-6">
+                         <div className="border-b-2 border-stone-800 pb-2 mb-2 flex items-center gap-2">
+                             <Newspaper className="w-5 h-5" />
+                             <h3 className="font-bold font-sans uppercase tracking-widest text-sm">Top Stories</h3>
+                         </div>
 
-               {/* News Header */}
-               <div className="p-6 border-b-2 border-stone-800 flex justify-between items-end relative z-10">
-                   <div>
-                       <h1 className="text-4xl font-black font-serif uppercase tracking-tight leading-none">The City Chronicle</h1>
-                       <div className="text-xs font-mono text-stone-600 mt-1 flex gap-4 uppercase font-bold">
-                           <span>Issue #{1000 + state.stats.day}</span>
-                           <span>Section 12</span>
-                           <span>Price: 5 Credits</span>
-                       </div>
-                   </div>
-                   {/* Flavor / Weather Widget */}
-                   <div className="text-right">
-                       {isRain ? (
-                           <div className="flex items-center gap-2 text-stone-700">
-                               <span className="font-bold text-sm uppercase">Heavy Rain</span>
-                               <CloudRain className="w-8 h-8" />
-                           </div>
-                       ) : (
-                           <div className="flex items-center gap-2 text-stone-700">
-                               <span className="font-bold text-sm uppercase">Overcast</span>
-                               <Wind className="w-8 h-8" />
-                           </div>
-                       )}
-                       {activeFlavor && (
-                           <div className="text-[10px] text-stone-500 mt-1 max-w-[200px] leading-tight text-right">
-                               {activeFlavor.headline}
-                           </div>
-                       )}
-                   </div>
-               </div>
+                         {narratives.length === 0 ? (
+                             <p className="text-stone-500 italic font-serif">City is quiet today...</p>
+                         ) : (
+                             narratives.map(news => (
+                                 <div key={news.id} className="mb-6">
+                                     <h2 className="text-2xl font-serif font-bold mb-2 leading-tight hover:text-pawn-red transition-colors cursor-default">
+                                         {news.headline}
+                                     </h2>
+                                     <p className="text-sm font-serif leading-relaxed text-stone-700 text-justify">
+                                         <span className="float-left text-3xl font-black mr-2 leading-none mt-[-4px]">
+                                             {news.body.charAt(0)}
+                                         </span>
+                                         {news.body.slice(1)}
+                                     </p>
+                                 </div>
+                             ))
+                         )}
+                     </div>
 
-               {/* News Content Grid */}
-               <div className="flex-1 p-6 grid grid-cols-12 gap-6 relative z-10 overflow-y-auto">
-                   
-                   {/* MAIN COLUMN (8 cols): Narratives */}
-                   <div className="col-span-8 space-y-6">
-                       <div className="border-b-2 border-stone-800 pb-2 mb-2 flex items-center gap-2">
-                           <Newspaper className="w-5 h-5" />
-                           <h3 className="font-bold font-sans uppercase tracking-widest text-sm">Top Stories</h3>
-                       </div>
+                     {/* SIDEBAR (4 cols): Market Ticker */}
+                     <div className="col-span-4 bg-stone-200/50 p-4 border border-stone-300 h-fit">
+                          <div className="border-b-2 border-stone-400 pb-2 mb-4 flex items-center gap-2 text-stone-600">
+                             <TrendingUp className="w-5 h-5" />
+                             <h3 className="font-bold font-sans uppercase tracking-widest text-sm">Market Watch</h3>
+                          </div>
 
-                       {narratives.length === 0 ? (
-                           <p className="text-stone-500 italic font-serif">City is quiet today...</p>
-                       ) : (
-                           narratives.map(news => (
-                               <div key={news.id} className="mb-6">
-                                   <h2 className="text-2xl font-serif font-bold mb-2 leading-tight hover:text-pawn-red transition-colors cursor-default">
-                                       {news.headline}
-                                   </h2>
-                                   <p className="text-sm font-serif leading-relaxed text-stone-700 text-justify">
-                                       <span className="float-left text-3xl font-black mr-2 leading-none mt-[-4px]">
-                                           {news.body.charAt(0)}
-                                       </span>
-                                       {news.body.slice(1)}
+                          {markets.length === 0 ? (
+                              <p className="text-xs text-stone-500">No market alerts.</p>
+                          ) : (
+                              markets.map(news => (
+                                  <div key={news.id} className="mb-4 pb-4 border-b border-stone-300 last:border-0 last:pb-0">
+                                      <h4 className="font-bold text-sm mb-1 leading-tight">{news.headline}</h4>
+                                      <p className="text-[10px] text-stone-600 leading-snug mb-2">
+                                          {news.body}
+                                      </p>
+                                      
+                                      {/* Explicit Effect Badge */}
+                                      {news.effect && (
+                                          <div className="bg-stone-300 px-2 py-1 rounded text-[10px] font-mono font-bold flex justify-between items-center">
+                                              <span>{news.effect.categoryTarget || "General"}</span>
+                                              <span className={
+                                                  (news.effect.priceMultiplier && news.effect.priceMultiplier > 1) ? 'text-green-700' : 'text-red-700'
+                                              }>
+                                                  {news.effect.priceMultiplier ? (news.effect.priceMultiplier > 1 ? "▲ BULLISH" : "▼ BEARISH") : "RISK ALERT"}
+                                              </span>
+                                          </div>
+                                      )}
+                                  </div>
+                              ))
+                          )}
+
+                          {/* Flavor Tip in Sidebar if space permits */}
+                          {activeFlavor && activeFlavor.effect && activeFlavor.effect.actionPointsModifier && (
+                               <div className="mt-6 pt-4 border-t border-stone-400 text-stone-500">
+                                   <h4 className="font-bold text-xs uppercase mb-1 flex items-center gap-1">
+                                      <AlertOctagon className="w-3 h-3" /> Advisory
+                                   </h4>
+                                   <p className="text-[10px]">
+                                       Conditions affecting daily efficiency. 
+                                       <br/>
+                                       <span className="font-bold text-red-600">AP Adjusted: {activeFlavor.effect.actionPointsModifier}</span>
                                    </p>
                                </div>
-                           ))
-                       )}
-                   </div>
+                          )}
+                     </div>
+                 </div>
+                 
+                 {/* Footer */}
+                 <div className="p-2 border-t border-stone-400 text-center text-[10px] text-stone-500 font-mono uppercase tracking-widest relative z-10">
+                     The City Chronicle © 2077 - Truth is expensive.
+                 </div>
 
-                   {/* SIDEBAR (4 cols): Market Ticker */}
-                   <div className="col-span-4 bg-stone-200/50 p-4 border border-stone-300 h-fit">
-                        <div className="border-b-2 border-stone-400 pb-2 mb-4 flex items-center gap-2 text-stone-600">
-                           <TrendingUp className="w-5 h-5" />
-                           <h3 className="font-bold font-sans uppercase tracking-widest text-sm">Market Watch</h3>
-                        </div>
+             </div>
 
-                        {markets.length === 0 ? (
-                            <p className="text-xs text-stone-500">No market alerts.</p>
-                        ) : (
-                            markets.map(news => (
-                                <div key={news.id} className="mb-4 pb-4 border-b border-stone-300 last:border-0 last:pb-0">
-                                    <h4 className="font-bold text-sm mb-1 leading-tight">{news.headline}</h4>
-                                    <p className="text-[10px] text-stone-600 leading-snug mb-2">
-                                        {news.body}
-                                    </p>
-                                    
-                                    {/* Explicit Effect Badge */}
-                                    {news.effect && (
-                                        <div className="bg-stone-300 px-2 py-1 rounded text-[10px] font-mono font-bold flex justify-between items-center">
-                                            <span>{news.effect.categoryTarget || "General"}</span>
-                                            <span className={
-                                                (news.effect.priceMultiplier && news.effect.priceMultiplier > 1) ? 'text-green-700' : 'text-red-700'
-                                            }>
-                                                {news.effect.priceMultiplier ? (news.effect.priceMultiplier > 1 ? "▲ BULLISH" : "▼ BEARISH") : "RISK ALERT"}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            ))
-                        )}
-
-                        {/* Flavor Tip in Sidebar if space permits */}
-                        {activeFlavor && activeFlavor.effect && activeFlavor.effect.actionPointsModifier && (
-                             <div className="mt-6 pt-4 border-t border-stone-400 text-stone-500">
-                                 <h4 className="font-bold text-xs uppercase mb-1 flex items-center gap-1">
-                                    <AlertOctagon className="w-3 h-3" /> Advisory
-                                 </h4>
-                                 <p className="text-[10px]">
-                                     Conditions affecting daily efficiency. 
-                                     <br/>
-                                     <span className="font-bold text-red-600">AP Adjusted: {activeFlavor.effect.actionPointsModifier}</span>
-                                 </p>
-                             </div>
-                        )}
-                   </div>
-               </div>
-               
-               {/* Footer */}
-               <div className="p-2 border-t border-stone-400 text-center text-[10px] text-stone-500 font-mono uppercase tracking-widest relative z-10">
-                   The City Chronicle © 2077 - Truth is expensive.
-               </div>
-
-           </div>
-
+          </div>
+          <DebugPanel />
         </div>
-      </div>
+      </>
     );
   }
 
   if (state.phase === GamePhase.END_OF_DAY) {
-    return <EndOfDaySummary />;
+    return (
+      <>
+        <EndOfDaySummary />
+        <DebugPanel />
+      </>
+    );
   }
   
   if (state.phase === GamePhase.GAME_OVER) {
     return (
-      <div className="h-screen flex items-center justify-center bg-red-950 text-white">
-        <div className="text-center">
-           <h1 className="text-6xl font-black mb-4">破产 (BANKRUPT)</h1>
-           <p className="text-xl mb-8">店铺倒闭了。</p>
-           <p className="text-md text-red-300 mb-8">{state.dayEvents[state.dayEvents.length - 1]}</p>
-           <Button onClick={() => window.location.reload()}>再试一次</Button>
+      <>
+        <div className="h-screen flex items-center justify-center bg-red-950 text-white">
+          <div className="text-center">
+             <h1 className="text-6xl font-black mb-4">破产 (BANKRUPT)</h1>
+             <p className="text-xl mb-8">店铺倒闭了。</p>
+             <p className="text-md text-red-300 mb-8">{state.dayEvents[state.dayEvents.length - 1]}</p>
+             <Button onClick={() => window.location.reload()}>再试一次</Button>
+          </div>
         </div>
-      </div>
+        <DebugPanel />
+      </>
     )
   }
 

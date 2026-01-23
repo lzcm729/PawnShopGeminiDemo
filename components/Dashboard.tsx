@@ -103,15 +103,6 @@ export const Dashboard: React.FC = () => {
 
         <div className="h-8 w-px bg-stone-700 mx-2"></div>
 
-            {/* Dev Tools Toggle */}
-            <button
-                onClick={() => dispatch({ type: 'TOGGLE_DEBUG' })}
-                className={`w-8 h-8 rounded flex items-center justify-center transition-all ${state.showDebug ? 'bg-green-900/40 text-green-400' : 'text-stone-600 hover:text-green-500'}`}
-                title="Toggle Debug Terminal"
-            >
-                <Bug className="w-4 h-4" />
-            </button>
-
         {/* Mail Button (HUD Trigger) */}
         <Button 
             variant="secondary" 
