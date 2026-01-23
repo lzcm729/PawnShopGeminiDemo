@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { X, CheckCircle, AlertTriangle, Copy, Check, Terminal } from 'lucide-react';
 import { Button } from './ui/Button';
-import { ValidationIssue, generateFixPrompt } from '../services/eventValidator';
+import { ValidationIssue, generateFixPrompt } from '../systems/narrative/validator';
 
 interface ValidationModalProps {
     isOpen: boolean;
@@ -29,7 +29,6 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({ isOpen, onClos
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="w-full max-w-3xl bg-[#0c0c0c] border border-stone-700 shadow-2xl rounded-lg flex flex-col max-h-[85vh]">
                 
-                {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b border-stone-800 bg-[#1c1917]">
                     <div className="flex items-center gap-2">
                         {isClean ? <CheckCircle className="text-green-500" /> : <AlertTriangle className="text-yellow-500" />}
@@ -40,7 +39,6 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({ isOpen, onClos
                     </button>
                 </div>
 
-                {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6 font-mono text-sm bg-black custom-scrollbar">
                     {isClean ? (
                         <div className="flex flex-col items-center justify-center h-40 text-green-500">
@@ -50,7 +48,6 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({ isOpen, onClos
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {/* Raw Logs */}
                             <div className="space-y-2">
                                 {logs.map((log, idx) => (
                                     <div 
@@ -66,7 +63,6 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({ isOpen, onClos
                                 ))}
                             </div>
 
-                            {/* Fix Candidate Preview */}
                             {issues.length > 0 && (
                                 <div className="mt-6 border-t border-stone-800 pt-4">
                                     <h3 className="text-stone-400 font-bold mb-2 flex items-center gap-2">
@@ -87,7 +83,6 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({ isOpen, onClos
                     )}
                 </div>
 
-                {/* Footer */}
                 <div className="p-4 border-t border-stone-800 bg-[#1c1917] flex justify-between items-center text-xs">
                     <div className="text-stone-500">
                         Errors: <span className="text-red-500 font-bold">{logs.filter(l => l.startsWith('❌')).length}</span>

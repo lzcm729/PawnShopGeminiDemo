@@ -7,21 +7,19 @@ import { Item, ItemStatus, ChainUpdateEffect } from '../types';
 import { Button } from './ui/Button';
 import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, ShieldAlert, AlertTriangle, XCircle, Layers, Plus, Heart, HandHeart, Skull } from 'lucide-react';
 import { CustomerView } from './CustomerView';
-import { ALL_STORY_EVENTS } from '../services/storyData';
+import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
+import { playSfx } from '../systems/game/audio';
 
-// --- SUB-COMPONENT: Left Column (Item + Receipt) ---
 const TicketPanel: React.FC<{ items: Item[], cost: any, penalty: number, isBundle: boolean }> = ({ items, cost, penalty, isBundle }) => {
-    // If bundle, we pick the first one as representative or show a stack
     const primaryItem = items[0];
     if (!primaryItem) return null;
 
-    const isSold = primaryItem.status === ItemStatus.SOLD; // Assume check on primary for breach (rare in bundle)
+    const isSold = primaryItem.status === ItemStatus.SOLD;
     const extensionCount = primaryItem.pawnInfo?.extensionCount || 0;
     
     return (
         <div className="h-full bg-[#1c1917] border-r border-[#44403c] flex flex-col relative overflow-hidden">
              
-             {/* 1. Item Visuals with Status Overlay */}
              <div className="flex-1 relative flex flex-col items-center justify-center p-8 bg-[#0c0a09]">
                  <div className="w-48 h-48 bg-stone-800 rounded-full flex items-center justify-center mb-6 shadow-inner border border-stone-700 relative z-10">
                      {isBundle ? (
@@ -35,7 +33,6 @@ const TicketPanel: React.FC<{ items: Item[], cost: any, penalty: number, isBundl
                          <Package className="w-24 h-24 text-stone-600 opacity-50" />
                      )}
                      
-                     {/* SOLD OVERLAY */}
                      {isSold && (
                          <div className="absolute inset-0 flex items-center justify-center z-50">
                              <div className="w-full h-full absolute bg-red-950/40 rounded-full animate-pulse"></div>
@@ -63,14 +60,11 @@ const TicketPanel: React.FC<{ items: Item[], cost: any, penalty: number, isBundl
                      )}
                  </div>
 
-                 {/* Grid Pattern */}
                  <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-10 pointer-events-none"></div>
              </div>
 
-             {/* 2. Receipt Detail */}
              <div className={`p-6 border-t-4 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-20 relative ${isSold ? 'bg-red-950/10 border-red-900' : 'bg-[#e7e5e4] border-stone-300 text-stone-900'}`}>
                  
-                 {/* Paper Texture */}
                  {!isSold && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-40 pointer-events-none mix-blend-multiply"></div>}
                  
                  <div className="relative z-10">
@@ -80,7 +74,6 @@ const TicketPanel: React.FC<{ items: Item[], cost: any, penalty: number, isBundl
                      </div>
 
                      {isSold ? (
-                         // BREACH RECEIPT
                          <div className="space-y-2 font-mono">
                              <div className="flex justify-between text-sm text-red-400">
                                  <span>CONTRACT VALUATION</span>
@@ -99,7 +92,6 @@ const TicketPanel: React.FC<{ items: Item[], cost: any, penalty: number, isBundl
                              </p>
                          </div>
                      ) : (
-                         // STANDARD RECEIPT
                          <div className="space-y-2 font-mono text-stone-800">
                              {isBundle ? (
                                  <div className="flex flex-col gap-2">
@@ -159,7 +151,6 @@ const TicketPanel: React.FC<{ items: Item[], cost: any, penalty: number, isBundl
     );
 };
 
-// --- SUB-COMPONENT: Right Column Bottom (Action Group) ---
 const SettlementPanel: React.FC<{ 
     customer: any, 
     cost: any, 
@@ -174,19 +165,17 @@ const SettlementPanel: React.FC<{
     canAffordBreach: boolean
 }> = ({ customer, cost, penalty, onRedeem, onCharityReturn, onExtend, onRefuseExtension, onDismiss, onHostileTakeover, isBreach, canAffordBreach }) => {
     
-    // --- DETERMINE STATE ---
-    const intent = customer.redemptionIntent || 'LEAVE'; // REDEEM | EXTEND | LEAVE
+    const intent = customer.redemptionIntent || 'LEAVE'; 
     const allowFree = customer.allowFreeRedeem;
     const canAffordRedeem = customer.currentWallet >= (cost?.total || 0);
     const canAffordInterest = customer.currentWallet >= (cost?.interest || 0);
 
-    // If it's a breach, only 2 paths: Pay Penalty or Hostile Takeover (if implemented) or just Dismiss/Fail
     if (isBreach) {
         return (
             <div className="p-4 grid gap-3">
                 <Button 
                     variant="danger" 
-                    onClick={onRedeem} // In breach context, redeem means "Pay Penalty"
+                    onClick={onRedeem} 
                     disabled={!canAffordBreach}
                     className="h-16 text-lg border-red-500 bg-red-900/30 hover:bg-red-900/50"
                 >
@@ -196,7 +185,6 @@ const SettlementPanel: React.FC<{
                     </div>
                 </Button>
                 
-                {/* Hostile Takeover / Refuse to pay */}
                 <Button 
                     variant="secondary"
                     onClick={onHostileTakeover}
@@ -210,11 +198,9 @@ const SettlementPanel: React.FC<{
         );
     }
 
-    // Standard Paths
     return (
         <div className="p-4 flex flex-col gap-3">
             
-            {/* 1. CHARITY RETURN (Special Logic) */}
             {allowFree && (
                 <Button 
                     variant="primary"
@@ -233,7 +219,6 @@ const SettlementPanel: React.FC<{
             )}
 
             <div className="grid grid-cols-2 gap-3">
-                {/* 2. REDEEM BUTTON */}
                 <Button 
                     variant="primary" 
                     onClick={onRedeem}
@@ -248,7 +233,6 @@ const SettlementPanel: React.FC<{
                     </span>
                 </Button>
 
-                {/* 3. EXTEND BUTTON */}
                 <Button 
                     variant="secondary" 
                     onClick={onExtend}
@@ -262,24 +246,22 @@ const SettlementPanel: React.FC<{
                 </Button>
             </div>
 
-            {/* 4. DISMISS / REFUSE */}
             <div className="flex gap-2 mt-2">
                 <button 
-                    onClick={onRefuseExtension}
+                    onClick={() => { playSfx('CLICK'); onRefuseExtension(); }}
                     className="flex-1 py-2 text-xs text-stone-600 hover:text-red-500 hover:bg-red-950/20 border border-transparent hover:border-red-900/30 rounded transition-colors flex items-center justify-center gap-1"
                     title="Forfeit Item & Keep Cash"
                 >
                     <Skull className="w-3 h-3" /> 拒绝续当 (Forfeit)
                 </button>
                 <button 
-                    onClick={onDismiss}
+                    onClick={() => { playSfx('CLICK'); onDismiss(); }}
                     className="flex-1 py-2 text-xs text-stone-600 hover:text-stone-400 border border-transparent hover:border-stone-700 rounded transition-colors flex items-center justify-center gap-1"
                 >
                     <LogOut className="w-3 h-3" /> 送客 (Dismiss)
                 </button>
             </div>
 
-            {/* Wallet Context Hint */}
             <div className="mt-1 text-center">
                 {!canAffordRedeem && !canAffordInterest && !allowFree ? (
                     <span className="text-[10px] text-red-500 animate-pulse font-mono">
@@ -305,24 +287,14 @@ export const RedemptionInterface: React.FC = () => {
     const customer = state.currentCustomer;
     if (!customer) return null;
 
-    // --- LOGIC: Identify Target Items ---
-    // If it's a "Bundle Redeem" event, we might need to find all items for this chain.
-    // Logic: If customer.item is a dummy virtual item (for Redemption Event), we need to look up real items.
-    
     let targetItems: Item[] = [];
     const eventId = customer.eventId;
     const event = ALL_STORY_EVENTS.find(e => e.id === eventId);
     
-    // Check if event specifies redemption logic
-    const isRedeemAll = event?.outcomes?.['deal_standard']?.some(e => e.type === 'REDEEM_ALL'); // Heuristic check if not explicit
-    
-    // Default: The item attached to customer
     if (customer.item && !customer.item.isVirtual) {
         targetItems = [customer.item];
     } else {
-        // Look for items belonging to this chain
         targetItems = state.inventory.filter(i => i.relatedChainId === customer.chainId && i.status !== ItemStatus.REDEEMED);
-        // If specific target, filter
         const targetId = event?.targetItemId;
         if (targetId) {
             const specific = targetItems.find(i => i.id === targetId);
@@ -336,7 +308,6 @@ export const RedemptionInterface: React.FC = () => {
         </div>
     );
 
-    // --- CALCULATE COSTS (Batch) ---
     let totalPrincipal = 0;
     let totalInterest = 0;
     let anySold = false;
@@ -360,29 +331,21 @@ export const RedemptionInterface: React.FC = () => {
         principal: totalPrincipal,
         interest: totalInterest,
         total: totalCost,
-        daysPassed: 0 // Irrelevant for batch
+        daysPassed: 0 
     };
-
-    // --- HANDLERS ---
 
     const handleRedeem = () => {
         if (anySold) {
-            // PAY PENALTY
-            if (state.stats.cash < totalPenalty) return; // Should be disabled anyway
-            
-            // We use commitTransaction but with a penalty construct
-            // Actually `processRedemption` handles logic but for batch/event we use `commitTransaction` + effects
+            if (state.stats.cash < totalPenalty) return; 
             const res = {
                 success: true,
                 message: "支付赔偿金。",
                 cashDelta: -totalPenalty,
-                reputationDelta: { Credibility: -20 }, // Still lose rep for breach
+                reputationDelta: { Credibility: -20 },
                 dealQuality: 'fair' as const
             };
             commitTransaction(res);
         } else {
-            // STANDARD REDEEM
-            // We construct a transaction result that ADDS cash
             const res = {
                 success: true,
                 message: customer.dialogue.accepted.fair || "赎回成功。",
@@ -390,64 +353,42 @@ export const RedemptionInterface: React.FC = () => {
                 reputationDelta: { Credibility: 2 },
                 dealQuality: 'fair' as const
             };
-            // Note: The `commitTransaction` logic triggers chain effects.
-            // If the event has "REDEEM_ALL" or "REDEEM_TARGET" effects, the items will be updated there.
-            // If not, we might need manual update? 
-            // `applyChainEffects` in `useGameEngine` handles `REDEEM_ALL`/`REDEEM_TARGET`.
-            // So we just need to ensure the event has those effects mapped to "deal_standard" (which commitTransaction uses by default/logic).
             commitTransaction(res);
         }
     };
 
     const handleCharityReturn = () => {
-        // Special Action: Return for $0
         const res = {
             success: true,
             message: "你是个好人。(Charity)",
             cashDelta: 0,
-            reputationDelta: { Humanity: 15 }, // Big boost
-            dealQuality: 'premium' as const // Treat as premium for outcome mapping
+            reputationDelta: { Humanity: 15 }, 
+            dealQuality: 'premium' as const,
+            terms: { principal: 0, rate: 0 }
         };
-        // We rely on the event having a 'deal_charity' or similar outcome that does REDEEM_TARGET
-        // OR we manually trigger redemption here? 
-        // The event system maps `rate=0` to `deal_charity`.
-        // Let's force terms to rate 0.
-        res['terms'] = { principal: 0, rate: 0 };
         commitTransaction(res);
     };
 
     const handleExtend = () => {
-        // Only Pay Interest
         const res = {
             success: true,
             message: "续当成功。",
             cashDelta: totalInterest,
             reputationDelta: { Credibility: 1 },
-            dealQuality: 'fair' as const // Usually maps to standard outcome unless specific extend logic exists
+            dealQuality: 'fair' as const 
         };
         
-        // Extension is special. It doesn't close the chain usually.
-        // It updates the item due date. 
-        // If the event has `onExtend` logic, we should use that.
-        // The `useGameEngine` doesn't strictly have a `commitExtension` method that maps to `onExtend`.
-        // BUT `commitTransaction` checks for `onComplete`.
-        
-        // Let's manually trigger the extension logic for items
         targetItems.forEach(i => {
             dispatch({ 
                 type: 'EXTEND_PAWN', 
-                payload: { itemId: i.id, interestPaid: 0, newDueDate: i.pawnInfo!.dueDate + 7, name: i.name } // Interest is in cashDelta
+                payload: { itemId: i.id, interestPaid: 0, newDueDate: i.pawnInfo!.dueDate + 7, name: i.name } 
             });
         });
 
-        // And allow engine to process event outcomes (e.g. reduce stress)
-        // We hack the terms to imply standard deal for now, or add specific extend handling
-        // Ideally we use `applyChainEffects` with `event.onExtend`.
         if (event?.onExtend) {
             applyChainEffects(customer.chainId, event.onExtend);
         }
         
-        // Resolve transaction visually
         dispatch({ 
             type: 'RESOLVE_TRANSACTION', 
             payload: { 
@@ -465,19 +406,13 @@ export const RedemptionInterface: React.FC = () => {
     };
 
     const handleRefuseExtension = () => {
-        // Force Forfeit
         targetItems.forEach(i => processForcedForfeiture(i));
-        // Trigger generic rejection logic for chain
         rejectCustomer(); 
     };
 
     const handleHostileTakeover = () => {
-        // Only valid for breach usually, refusing to pay penalty? 
-        // Or forcing a buyout on a non-breach item (Refusing redemption)
-        // For breach, it means dismissing without paying.
         if (anySold) {
-            rejectCustomer(); // Just leave, effectively refusing to pay.
-            // Trigger bad mail
+            rejectCustomer(); 
             if (event?.dynamicFlows?.['hostile_takeover']) {
                  applyChainEffects(customer.chainId, event.dynamicFlows['hostile_takeover'].outcome);
             }
@@ -486,7 +421,6 @@ export const RedemptionInterface: React.FC = () => {
 
     return (
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 bg-black/20">
-            {/* LEFT: 50% - Item & Receipt */}
             <div className="lg:col-span-6 h-full">
                 <TicketPanel 
                     items={targetItems} 
@@ -496,14 +430,11 @@ export const RedemptionInterface: React.FC = () => {
                 />
             </div>
 
-            {/* RIGHT: 50% - Customer & Actions */}
             <div className="lg:col-span-6 h-full flex flex-col bg-[#1c1917] border-l border-[#44403c]">
-                {/* 1. Customer View (Top) */}
                 <div className="flex-1 overflow-hidden relative border-b border-[#44403c]">
                     <CustomerView />
                 </div>
 
-                {/* 2. Settlement Action Panel (Bottom) */}
                 <div className="bg-[#141211] relative z-10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
                     <SettlementPanel 
                         customer={customer}

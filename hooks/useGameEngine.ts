@@ -1,9 +1,9 @@
 
 import { useGame } from '../store/GameContext';
-import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../services/chainEngine';
-import { generateDailyNews } from '../services/newsEngine';
-import { generatePawnLog } from '../services/logGenerator';
-import { ALL_STORY_EVENTS } from '../services/storyData';
+import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../systems/narrative/engine';
+import { generateDailyNews } from '../systems/news/engine';
+import { generatePawnLog } from '../systems/game/utils/logGenerator';
+import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect } from '../types';
 import { usePawnShop } from './usePawnShop';
 
@@ -11,19 +11,12 @@ export const useGameEngine = () => {
   const { state, dispatch } = useGame();
   const { checkDailyExpirations, calculateRedemptionCost } = usePawnShop();
 
-  // NEW: Run this when the player clicks "Sleep/End Day"
-  // It calculates everything that happens "overnight" so the Morning Brief is ready.
   const performNightCycle = () => {
-    // 1. Simulate active chains (NPCs spending money, life moving on)
-    // Destructure to get sideEffects
     const { chains: simulatedChains, sideEffects } = runDailySimulation(state.activeChains);
     
-    // Process Side Effects (e.g. Scheduled Mails from Rules)
     sideEffects.forEach(({ chainId, op }) => {
         if (op.type === 'SCHEDULE_MAIL' && op.templateId) {
              let metadata: any = {};
-             
-             // Specific logic for underworld warning to inject context
              if (op.templateId === 'mail_underworld_warning') {
                  const chain = simulatedChains.find(c => c.id === chainId);
                  const itemId = chain?.variables?.targetItemId;
@@ -34,86 +27,53 @@ export const useGameEngine = () => {
                     metadata.relatedItemName = "Unknown Item";
                  }
              }
-
-             dispatch({ 
-                type: 'SCHEDULE_MAIL', 
-                payload: { 
-                    templateId: op.templateId, 
-                    delayDays: op.delayDays || 0,
-                    metadata
-                } 
-            });
+             dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: op.templateId, delayDays: op.delayDays || 0, metadata } });
         }
     });
 
-    // Create a temp state context that includes the simulated chains AND the "next day" index
-    // This allows news like "Day 5" to trigger correctly for the upcoming morning
     const nextDay = state.stats.day + 1;
     const tempState = { 
         ...state, 
         activeChains: simulatedChains,
-        stats: {
-            ...state.stats,
-            day: nextDay
-        }
+        stats: { ...state.stats, day: nextDay }
     };
 
     dispatch({ type: 'UPDATE_CHAINS', payload: simulatedChains });
 
-    // 2. Generate News & Market Effects for the UPCOMING morning
     const newsResult = generateDailyNews(tempState);
     dispatch({ type: 'UPDATE_NEWS', payload: newsResult });
     
-    // Process News-Triggered Mails
     newsResult.scheduledMails.forEach(mailId => {
-        dispatch({ 
-            type: 'SCHEDULE_MAIL', 
-            payload: { templateId: mailId, delayDays: 0 } 
-        });
+        dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: mailId, delayDays: 0 } });
     });
 
-    // 3. Transition to Morning Brief (and increment day integer in reducer)
     dispatch({ type: 'END_DAY' });
   };
 
-  // UPDATED: Now only handles the transition from Brief -> Trading
   const startNewDay = () => {
-    // 1. Deliver Mail (Mail logic checks "arrivalDay <= currentDay")
-    // Since performNightCycle has already run 'END_DAY', state.stats.day is now correct for the new day.
     dispatch({ type: 'PROCESS_DAILY_MAIL' });
-
-    // 2. Check for expired pawn items (Core Business Lifecycle)
     checkDailyExpirations();
 
     const isRentDue = state.stats.day > 0 && state.stats.day % 5 === 0;
     
     if (isRentDue && state.stats.cash < state.stats.rentDue) {
-       dispatch({ 
-         type: 'GAME_OVER', 
-         payload: "资金链断裂。你交不起房租，被房东赶了出去。" 
-       });
+       dispatch({ type: 'GAME_OVER', payload: "资金链断裂。你交不起房租，被房东赶了出去。" });
        return;
     }
-
     if (isRentDue) {
        dispatch({ type: 'PAY_RENT' });
     }
-
     dispatch({ type: 'START_DAY' });
   };
 
   const generateDailyEvent = async () => {
     if (state.isLoading) return;
-
     dispatch({ type: 'SET_LOADING', payload: true });
     
     try {
-      // Step A: Priority Check - Narrative Chains (All Characters)
       const narrativeEvent = findEligibleEvent(state.activeChains, ALL_STORY_EVENTS);
       
       if (narrativeEvent) {
-          
-          // --- SPECIAL EVENT LOGIC ---
           let targetId = narrativeEvent.targetItemId;
           if (!targetId) {
                const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
@@ -122,22 +82,15 @@ export const useGameEngine = () => {
                }
           }
 
-          // Case 1: POST_FORFEIT_VISIT Checks
           if (narrativeEvent.type === 'POST_FORFEIT_VISIT') {
-              // Ensure item exists and is FORFEIT
               const forfeitItem = state.inventory.find(i => i.id === targetId && i.status === ItemStatus.FORFEIT);
               if (!forfeitItem) {
-                   console.log(`Skipping POST_FORFEIT_VISIT for ${narrativeEvent.id}: Item not forfeit or missing.`);
-                   // Skip this event and try fallback (or next tick, but for now just close shop to avoid loop)
-                   // Ideally we would loop to find next event, but simplified logic:
                    dispatch({ type: 'SET_LOADING', payload: false });
                    dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
                    return;
               }
           }
 
-          // Case 2: FAILURE MAIL CHECK (Redemption Only)
-          // Before instantiating the customer, check if they are "broke"
           if (narrativeEvent.type === 'REDEMPTION_CHECK') {
               if (targetId) {
                   const item = state.inventory.find(i => i.id === targetId);
@@ -149,28 +102,11 @@ export const useGameEngine = () => {
                       const isBroke = funds < (cost?.total || 0);
                       const canAffordInterest = funds >= (cost?.interest || 0);
                       
-                      // LOGIC: If they can't afford full redeem, AND can't afford interest (i.e. truly broke)
                       if (narrativeEvent.failureMailId && isBroke && !canAffordInterest) {
-                           console.log(`Customer ${narrativeEvent.chainId} is sending plea mail instead of visiting.`);
-                           
                            const mailId = narrativeEvent.failureMailId || 'mail_generic_plea';
+                           dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: mailId, delayDays: 0, metadata: { relatedItemName: item.name } } });
+                           if (narrativeEvent.onFailure) applyChainEffects(narrativeEvent.chainId, narrativeEvent.onFailure);
                            
-                           // 1. Send Mail with context
-                           dispatch({ 
-                               type: 'SCHEDULE_MAIL', 
-                               payload: { 
-                                   templateId: mailId, 
-                                   delayDays: 0,
-                                   metadata: { relatedItemName: item.name }
-                               } 
-                           });
-
-                           // 2. Execute Failure Effects (e.g. Advance Stage, Reduce Hope) to prevent loop
-                           if (narrativeEvent.onFailure) {
-                               applyChainEffects(narrativeEvent.chainId, narrativeEvent.onFailure);
-                           }
-                           
-                           // Skip this event
                            setTimeout(() => {
                                 dispatch({ type: 'SET_LOADING', payload: false });
                                 dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
@@ -181,57 +117,38 @@ export const useGameEngine = () => {
               }
           }
 
-          console.log("Triggering Narrative Event:", narrativeEvent.id);
-          
-          // --- GET DYNAMIC FUNDS ---
           const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
           const currentFunds = chainState?.variables?.funds;
 
-          // --- INSTANTIATE CUSTOMER WITH CONTEXT ---
-          // Pass inventory, funds AND chainState so dynamic dialogue and logs can be resolved
-          let storyCustomer = instantiateStoryCustomer(
-              narrativeEvent, 
-              state.inventory, 
-              currentFunds,
-              chainState // NEW: Pass chain state
-          );
+          let storyCustomer = instantiateStoryCustomer(narrativeEvent, state.inventory, currentFunds, chainState);
 
-          // --- OVERRIDE FOR POST_FORFEIT ---
           if (narrativeEvent.type === 'POST_FORFEIT_VISIT' && targetId) {
               const realItem = state.inventory.find(i => i.id === targetId);
               if (realItem) {
                   storyCustomer.item = { ...realItem };
-                  storyCustomer.interactionType = 'REDEEM'; // Reuse Redeem UI
-                  storyCustomer.redemptionIntent = 'REDEEM'; // Default intent
-                  storyCustomer.allowFreeRedeem = true; // Enable charity option
+                  storyCustomer.interactionType = 'REDEEM'; 
+                  storyCustomer.redemptionIntent = 'REDEEM'; 
+                  storyCustomer.allowFreeRedeem = true; 
               }
           }
 
-          // --- DYNAMIC REDEMPTION FLOW ---
           if (narrativeEvent.type === 'REDEMPTION_CHECK') {
               const flowResult = resolveRedemptionFlow(narrativeEvent, state.inventory, chainState?.variables?.targetItemId);
               if (flowResult) {
-                  console.log(`Dynamic Redemption Flow: ${flowResult.flowKey}`);
-                  
                   const intent = storyCustomer.redemptionIntent;
                   const isItemLost = flowResult.flowKey === 'core_lost';
 
                   if (isItemLost) {
-                       // Priority: If item is gone, play the drama regardless of money
                        storyCustomer.dialogue.greeting = flowResult.flow.dialogue;
                        (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
                   } else if (intent === 'EXTEND') {
-                       // If item is safe but customer is poor, play generic extend dialogue
                        storyCustomer.dialogue.greeting = "老板... 钱还没凑齐。能不能再宽限几天？我先付利息。";
-                       // Note: No _dynamicEffects here, as 'Extend' uses event.onExtend logic, not flow outcomes.
                   } else {
-                       // Default: Item safe + Has Money -> Play flow dialogue (usually "I'm here to redeem")
                        storyCustomer.dialogue.greeting = flowResult.flow.dialogue;
                        storyCustomer.dialogue.accepted.fair = "谢谢。";
                        (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
                   }
                   
-                  // Important: Replace the dummy item with the REAL item from inventory for the UI
                   const tId = narrativeEvent.targetItemId || chainState?.variables?.targetItemId;
                   if (tId) {
                       const realItem = state.inventory.find(i => i.id === tId);
@@ -250,12 +167,8 @@ export const useGameEngine = () => {
           return;
       }
 
-      // Step B: Fallback (Closed)
-      // Since all presets are now Chains, if no chain event triggers, we have no content.
-      console.log("No customers available today.");
       setTimeout(() => {
           dispatch({ type: 'SET_LOADING', payload: false });
-          // Transition to SHOP_CLOSED to prevent infinite loop in App.tsx
           dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
       }, 500);
 
@@ -276,9 +189,8 @@ export const useGameEngine = () => {
     let isAccepted = false;
     let refuseReason = "";
 
-    if (offer >= minimumAmount) {
-      isAccepted = true;
-    } else {
+    if (offer >= minimumAmount) isAccepted = true;
+    else {
       isAccepted = false;
       refuseReason = "出价太低了。";
     }
@@ -292,13 +204,8 @@ export const useGameEngine = () => {
        };
     }
 
-    const repDelta: any = {
-      [ReputationType.HUMANITY]: 0,
-      [ReputationType.CREDIBILITY]: 0,
-      [ReputationType.UNDERWORLD]: 0
-    };
+    const repDelta: any = { [ReputationType.HUMANITY]: 0, [ReputationType.CREDIBILITY]: 0, [ReputationType.UNDERWORLD]: 0 };
 
-    // Standard Rep Logic
     if (offer >= desiredAmount) {
       repDelta[ReputationType.HUMANITY] += 3;
       repDelta[ReputationType.CREDIBILITY] -= 1; 
@@ -306,37 +213,27 @@ export const useGameEngine = () => {
       repDelta[ReputationType.CREDIBILITY] += 1;
     }
     
-    if (rate === 0) {
-        repDelta[ReputationType.HUMANITY] += 5;
-    } else if (rate >= 0.20) {
+    if (rate === 0) repDelta[ReputationType.HUMANITY] += 5;
+    else if (rate >= 0.20) {
         repDelta[ReputationType.HUMANITY] -= 3;
         repDelta[ReputationType.UNDERWORLD] += 2;
         repDelta[ReputationType.CREDIBILITY] -= 2;
     }
 
-    // RISK MODIFIER LOGIC
-    // Check for active Police Raid or similar high-risk events
     const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
     
     if (item.isStolen || (item.category === '违禁品' && !item.isSuspicious)) {
-      // Base logic
       repDelta[ReputationType.UNDERWORLD] += 5;
       repDelta[ReputationType.CREDIBILITY] -= 2; 
       
-      // Multiplier logic
       if (currentRisk > 0) {
-          // Massive penalty to Credibility if caught taking stolen goods during a raid
           repDelta[ReputationType.CREDIBILITY] -= 20; 
-          // But maybe extra underworld rep for being bold?
           repDelta[ReputationType.UNDERWORLD] += 5;
-          // TRIGGER VIOLATION FLAG for Intelligence Verification
           dispatch({ type: 'ADD_VIOLATION', payload: 'police_risk_ignored' });
       }
     }
     
-    if (item.isFake) {
-       repDelta[ReputationType.CREDIBILITY] -= 5; 
-    }
+    if (item.isFake) repDelta[ReputationType.CREDIBILITY] -= 5; 
 
     const valuationBasis = item.perceivedValue !== undefined ? item.perceivedValue : item.realValue;
     const termDays = 7;
@@ -347,23 +244,16 @@ export const useGameEngine = () => {
         termDays: termDays,
         dueDate: state.stats.day + termDays,
         valuation: valuationBasis,
-        extensionCount: 0 // Initialize extension count
+        extensionCount: 0 
     };
 
-    // --- ITEM LOG GENERATION ---
-    // Calculate Visit Count based on Chain Stage
     let visitCount = 1;
     if (customer.chainId) {
         const chain = state.activeChains.find(c => c.id === customer.chainId);
-        if (chain) {
-            // Usually Stage 0 is first visit, so Visit = Stage + 1
-            visitCount = chain.stage + 1;
-        }
+        if (chain) visitCount = chain.stage + 1;
     }
     
     const narrativeLog = generatePawnLog(customer, item, state.stats.day, visitCount);
-    
-    // Add Warning Log if High Risk Trade
     if ((item.isStolen || item.category === '违禁品') && currentRisk > 0) {
         narrativeLog.content += " [警告] 在严打期间收受违规物品，已被市场监管部门注意！";
     }
@@ -376,7 +266,7 @@ export const useGameEngine = () => {
       pawnInfo: pawnInfo, 
       pawnDate: state.stats.day,
       status: ItemStatus.ACTIVE,
-      logs: updatedLogs // Attach Log
+      logs: updatedLogs
     };
 
     let quality: 'fair' | 'fleeced' | 'premium' = 'fair';
@@ -395,111 +285,51 @@ export const useGameEngine = () => {
     };
   };
 
-  // EXTRACTED LOGIC: Can be used by Commit or manually by UI (e.g. Hostile Takeover)
   const applyChainEffects = (chainId: string, effects: ChainUpdateEffect[], transactionResult?: TransactionResult, customer?: Customer) => {
         const chainEvent = customer?.eventId ? ALL_STORY_EVENTS.find(e => e.id === customer.eventId) : null;
 
         const updatedChains = state.activeChains.map(chain => {
              if (chain.id === chainId) {
                  let newChain = { ...chain, variables: { ...chain.variables } };
-                 
                  let itemsToRedeem: string[] = [];
                  let itemsToAbandon: string[] = [];
                  let itemsToForceSell: string[] = [];
 
                  effects.forEach(effect => {
                      switch (effect.type) {
-                         case 'ADD_FUNDS_DEAL':
-                             if (transactionResult) {
-                                newChain.variables.funds = (newChain.variables.funds || 0) + Math.abs(transactionResult.cashDelta);
-                             }
-                             break;
-                         case 'ADD_FUNDS': 
-                             if (effect.value) newChain.variables.funds = (newChain.variables.funds || 0) + effect.value;
-                             break;
-                         case 'SET_STAGE':
-                             if (effect.value !== undefined) newChain.stage = effect.value;
-                             break;
-                         case 'MODIFY_VAR':
-                             if (effect.variable && effect.value !== undefined) {
-                                 newChain.variables[effect.variable] = effect.value;
-                             }
-                             break;
-                         case 'DEACTIVATE':
-                         case 'DEACTIVATE_CHAIN':
-                             newChain.isActive = false;
-                             break;
+                         case 'ADD_FUNDS_DEAL': if (transactionResult) newChain.variables.funds = (newChain.variables.funds || 0) + Math.abs(transactionResult.cashDelta); break;
+                         case 'ADD_FUNDS': if (effect.value) newChain.variables.funds = (newChain.variables.funds || 0) + effect.value; break;
+                         case 'SET_STAGE': if (effect.value !== undefined) newChain.stage = effect.value; break;
+                         case 'MODIFY_VAR': if (effect.variable && effect.value !== undefined) newChain.variables[effect.variable] = effect.value; break;
+                         case 'DEACTIVATE': case 'DEACTIVATE_CHAIN': newChain.isActive = false; break;
                          case 'SCHEDULE_MAIL':
                              if (effect.templateId) {
-                                 // Inject Metadata for interpolation (e.g. relatedItemName)
                                  const meta: any = { relatedItemName: customer?.item.name };
-                                 if (effect.templateId === 'mail_underworld_warning') {
-                                    // Special logic for underworld? No, customer item name is enough
-                                 }
-
-                                 dispatch({ 
-                                    type: 'SCHEDULE_MAIL', 
-                                    payload: { 
-                                        templateId: effect.templateId, 
-                                        delayDays: effect.delayDays || 0,
-                                        metadata: meta
-                                    } 
-                                 });
+                                 dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0, metadata: meta } });
                              }
                              break;
                          case 'MODIFY_REP':
-                             if (effect.value) {
-                                 dispatch({ 
-                                     type: 'RESOLVE_TRANSACTION', 
-                                     payload: { 
-                                         cashDelta: 0, 
-                                         reputationDelta: { [ReputationType.CREDIBILITY]: effect.value }, 
-                                         item: null, 
-                                         log: "声誉发生变化", 
-                                         customerName: customer?.name || "Event" 
-                                     } 
-                                 });
-                             }
+                             if (effect.value) dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: { [ReputationType.CREDIBILITY]: effect.value }, item: null, log: "声誉发生变化", customerName: customer?.name || "Event" } });
                              break;
                          case 'REDEEM_ALL':
-                             state.inventory.forEach(i => {
-                                 if (i.relatedChainId === chain.id && i.status !== ItemStatus.REDEEMED && i.status !== ItemStatus.SOLD) {
-                                     itemsToRedeem.push(i.id);
-                                 }
-                             });
+                             state.inventory.forEach(i => { if (i.relatedChainId === chain.id && i.status !== ItemStatus.REDEEMED && i.status !== ItemStatus.SOLD) itemsToRedeem.push(i.id); });
                              break;
                          case 'REDEEM_TARGET_ONLY':
                              const tId = chainEvent?.targetItemId || chain.variables.targetItemId;
                              if (tId) itemsToRedeem.push(tId);
                              break;
                          case 'ABANDON_OTHERS':
-                             state.inventory.forEach(i => {
-                                 const tId = chainEvent?.targetItemId || chain.variables.targetItemId;
-                                 if (i.relatedChainId === chain.id && i.id !== tId && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) {
-                                     itemsToAbandon.push(i.id);
-                                 }
-                             });
+                             state.inventory.forEach(i => { const tid = chainEvent?.targetItemId || chain.variables.targetItemId; if (i.relatedChainId === chain.id && i.id !== tid && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) itemsToAbandon.push(i.id); });
                              break;
                          case 'ABANDON_ALL':
-                             state.inventory.forEach(i => {
-                                 if (i.relatedChainId === chain.id && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) {
-                                     itemsToAbandon.push(i.id);
-                                 }
-                             });
+                             state.inventory.forEach(i => { if (i.relatedChainId === chain.id && i.status !== ItemStatus.SOLD && i.status !== ItemStatus.REDEEMED) itemsToAbandon.push(i.id); });
                              break;
                          case 'FORCE_SELL_ALL':
-                             state.inventory.forEach(i => {
-                                 if (i.relatedChainId === chain.id && i.status !== ItemStatus.REDEEMED && i.status !== ItemStatus.SOLD) {
-                                     itemsToForceSell.push(i.id);
-                                 }
-                             });
+                             state.inventory.forEach(i => { if (i.relatedChainId === chain.id && i.status !== ItemStatus.REDEEMED && i.status !== ItemStatus.SOLD) itemsToForceSell.push(i.id); });
                              break;
                          case 'FORCE_SELL_TARGET':
                              const targetId = chainEvent?.targetItemId || chain.variables.targetItemId;
                              if (targetId) itemsToForceSell.push(targetId);
-                             break;
-                         case 'TRIGGER_NEWS':
-                             console.log("News Triggered:", effect.id);
                              break;
                      }
                  });
@@ -513,85 +343,41 @@ export const useGameEngine = () => {
                         }
                      });
                  }
-                 
-                 if (itemsToAbandon.length > 0) {
-                     dispatch({ type: 'EXPIRE_ITEMS', payload: { expiredItemIds: itemsToAbandon, logs: [`${itemsToAbandon.length} 件物品已被原主放弃，归店铺所有。`] } });
-                 }
-
+                 if (itemsToAbandon.length > 0) dispatch({ type: 'EXPIRE_ITEMS', payload: { expiredItemIds: itemsToAbandon, logs: [`${itemsToAbandon.length} 件物品已被原主放弃，归店铺所有。`] } });
                  if (itemsToForceSell.length > 0) {
                      itemsToForceSell.forEach(id => {
                          const item = state.inventory.find(i => i.id === id);
-                         // Use Default Sell (Liquidation logic) to mark as SOLD
-                         // Amount is irrelevant as the "Sale" money is usually added via ADD_FUNDS in the event logic
-                         if (item) {
-                             dispatch({ 
-                                type: 'DEFAULT_SELL_ITEM', 
-                                payload: { itemId: id, amount: 0, name: item.name } // Amount 0 here because event ADD_FUNDS handles the cash
-                             });
-                         }
+                         if (item) dispatch({ type: 'DEFAULT_SELL_ITEM', payload: { itemId: id, amount: 0, name: item.name } });
                      });
                  }
-
                  return newChain;
              }
              return chain;
          });
-         
          dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
   };
 
   const commitTransaction = (result: TransactionResult) => {
     const currentCust = state.currentCustomer;
     
-    // -------------------------------------------------------------------------
-    // NEW: UNDERWORLD TRIGGER LOGIC
-    // If player accepts a suspicious/contraband item, trigger the Underworld Chain
-    // -------------------------------------------------------------------------
     if (result.success && result.item && (result.item.category === '违禁品' || result.item.isSuspicious)) {
-        // Find if chain exists
         const underworldChain = state.activeChains.find(c => c.id === 'chain_underworld');
-        
         if (underworldChain && !underworldChain.isActive) {
-             console.log("TRIGGERING UNDERWORLD CHAIN for item:", result.item.id);
-             
-             // Activate chain and store item ID in variables
              const updatedChains = state.activeChains.map(chain => {
-                 if (chain.id === 'chain_underworld') {
-                     return { 
-                         ...chain, 
-                         isActive: true, 
-                         variables: { ...chain.variables, targetItemId: result.item!.id, days_since_trigger: 0 } 
-                     };
-                 }
+                 if (chain.id === 'chain_underworld') return { ...chain, isActive: true, variables: { ...chain.variables, targetItemId: result.item!.id, days_since_trigger: 0 } };
                  return chain;
              });
-             
              dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
-             
-             // Inject a log
-             dispatch({ 
-                 type: 'RESOLVE_TRANSACTION', 
-                 payload: { 
-                    cashDelta: 0, 
-                    reputationDelta: {}, 
-                    item: null, 
-                    log: "系统提示：收受违禁品引起了某些人的注意...", 
-                    customerName: "System" 
-                 } 
-            });
+             dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: {}, item: null, log: "系统提示：收受违禁品引起了某些人的注意...", customerName: "System" } });
         }
     }
-    // -------------------------------------------------------------------------
-
 
     if (result.success && currentCust?.chainId && currentCust?.eventId) {
         const chainEvent = ALL_STORY_EVENTS.find(e => e.id === currentCust.eventId);
         if (chainEvent) {
              let effectsToRun: ChainUpdateEffect[] = (currentCust as any)._dynamicEffects || [];
-
              if (effectsToRun.length === 0 && chainEvent.outcomes) {
                  const { principal, rate } = result.terms || { principal: 0, rate: 0.05 };
-                 
                  let outcomeKey = 'deal_standard';
                  if (rate === 0) outcomeKey = 'deal_charity';
                  else if (rate === 0.05) outcomeKey = 'deal_aid';
@@ -599,117 +385,44 @@ export const useGameEngine = () => {
                  else if (rate >= 0.20) outcomeKey = 'deal_shark';
 
                  effectsToRun = chainEvent.outcomes[outcomeKey] || chainEvent.outcomes['deal_standard'] || [];
-
                  const realValue = result.item?.realValue || 0;
                  const isPremium = principal >= 2000 || (realValue > 0 && principal >= realValue * 1.5);
-
-                 if (isPremium) {
-                     effectsToRun = [
-                         ...effectsToRun,
-                         { type: 'MODIFY_VAR', variable: 'job_chance', value: 100 }
-                     ];
-                 }
+                 if (isPremium) effectsToRun = [...effectsToRun, { type: 'MODIFY_VAR', variable: 'job_chance', value: 100 }];
              }
-             
-             if (effectsToRun.length === 0 && chainEvent.onComplete) {
-                 effectsToRun = chainEvent.onComplete;
-             }
-
-             // Apply Logic
+             if (effectsToRun.length === 0 && chainEvent.onComplete) effectsToRun = chainEvent.onComplete;
              applyChainEffects(currentCust.chainId, effectsToRun, result, currentCust);
         }
     }
 
     if (result.success) {
-        // SUCCESS CASE
         if (result.item) {
-             // Logic for adding item (Pawn/Buy)
              if (result.item.isVirtual) { 
-                 dispatch({ 
-                    type: 'RESOLVE_TRANSACTION', 
-                    payload: { 
-                      cashDelta: result.cashDelta, 
-                      reputationDelta: result.reputationDelta, 
-                      item: null, 
-                      log: `交易完成: ${result.item.name}。`,
-                      customerName: state.currentCustomer?.name || "Customer"
-                    } 
-                });
+                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: null, log: `交易完成: ${result.item.name}。`, customerName: state.currentCustomer?.name || "Customer" } });
              } else {
-                 dispatch({ 
-                    type: 'RESOLVE_TRANSACTION', 
-                    payload: { 
-                      cashDelta: result.cashDelta, 
-                      reputationDelta: result.reputationDelta, 
-                      item: result.item,
-                      log: `收购了 ${result.item.name} (支出 $${Math.abs(result.cashDelta)})。`,
-                      customerName: state.currentCustomer?.name || "Customer"
-                    } 
-                });
+                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: result.item, log: `收购了 ${result.item.name} (支出 $${Math.abs(result.cashDelta)})。`, customerName: state.currentCustomer?.name || "Customer" } });
              }
         } else {
-             // Logic for success WITHOUT item (e.g. Redemption via effects)
-             dispatch({ 
-                type: 'RESOLVE_TRANSACTION', 
-                payload: { 
-                  cashDelta: result.cashDelta, 
-                  reputationDelta: result.reputationDelta, 
-                  item: null, // Ensure NO ITEM is added
-                  log: result.message || "交易完成", 
-                  customerName: state.currentCustomer?.name || "Customer"
-                } 
-            });
+             dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: null, log: result.message || "交易完成", customerName: state.currentCustomer?.name || "Customer" } });
         }
     } else {
-      // FAILURE CASE
-      dispatch({ 
-        type: 'RESOLVE_TRANSACTION', 
-        payload: { 
-          cashDelta: 0, 
-          reputationDelta: result.reputationDelta, 
-          item: null, 
-          log: `与 ${state.currentCustomer?.name} 的交易告吹: ${result.message}`,
-          customerName: state.currentCustomer?.name || "Customer"
-        } 
-      });
+      dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: result.reputationDelta, item: null, log: `与 ${state.currentCustomer?.name} 的交易告吹: ${result.message}`, customerName: state.currentCustomer?.name || "Customer" } });
     }
   };
 
   const rejectCustomer = () => {
      const currentCust = state.currentCustomer;
-     
      if (currentCust?.chainId && currentCust?.eventId) {
          const chainEvent = ALL_STORY_EVENTS.find(e => e.id === currentCust.eventId);
-         
-         if (chainEvent && chainEvent.onReject) {
-             applyChainEffects(currentCust.chainId, chainEvent.onReject, undefined, currentCust);
-         }
+         if (chainEvent && chainEvent.onReject) applyChainEffects(currentCust.chainId, chainEvent.onReject, undefined, currentCust);
      }
-
      dispatch({ type: 'REJECT_DEAL' });
   };
   
   const liquidateItem = (item: Item) => {
-      // Apply Market Multiplier
-      const multiplier = state.activeMarketEffects
-          .filter(mod => mod.categoryTarget === item.category || mod.categoryTarget === 'All')
-          .reduce((acc, mod) => acc * (mod.priceMultiplier || 1.0), 1.0);
-
+      const multiplier = state.activeMarketEffects.filter(mod => mod.categoryTarget === item.category || mod.categoryTarget === 'All').reduce((acc, mod) => acc * (mod.priceMultiplier || 1.0), 1.0);
       const amount = Math.floor(item.realValue * 0.8 * multiplier);
-      dispatch({ 
-          type: 'LIQUIDATE_ITEM', 
-          payload: { itemId: item.id, amount, name: item.name } 
-      });
+      dispatch({ type: 'LIQUIDATE_ITEM', payload: { itemId: item.id, amount, name: item.name } });
   };
 
-  return {
-    startNewDay,
-    performNightCycle,
-    generateDailyEvent,
-    evaluateTransaction,
-    commitTransaction,
-    rejectCustomer,
-    liquidateItem,
-    applyChainEffects
-  };
+  return { startNewDay, performNightCycle, generateDailyEvent, evaluateTransaction, commitTransaction, rejectCustomer, liquidateItem, applyChainEffects };
 };

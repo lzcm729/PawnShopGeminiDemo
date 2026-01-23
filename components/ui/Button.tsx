@@ -1,8 +1,11 @@
+
 import React from 'react';
+import { playSfx } from '../../systems/game/audio';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   isLoading?: boolean;
+  muteSound?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({ 
@@ -11,6 +14,8 @@ export const Button: React.FC<ButtonProps> = ({
   isLoading, 
   className = '', 
   disabled,
+  muteSound = false,
+  onClick,
   ...props 
 }) => {
   const baseStyles = "px-4 py-2 font-mono font-bold uppercase tracking-wider text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95";
@@ -22,10 +27,19 @@ export const Button: React.FC<ButtonProps> = ({
     ghost: "text-pawn-muted hover:text-pawn-text"
   };
 
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (!disabled && !isLoading && !muteSound) {
+          playSfx('CLICK');
+      }
+      if (onClick) onClick(e);
+  };
+
   return (
     <button 
       className={`${baseStyles} ${variants[variant]} ${className}`}
       disabled={disabled || isLoading}
+      onClick={handleClick}
+      onMouseEnter={() => !disabled && !isLoading && playSfx('HOVER')}
       {...props}
     >
       {isLoading ? "Thinking..." : children}

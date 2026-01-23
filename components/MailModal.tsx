@@ -2,9 +2,10 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { X, Mail, Download, FileText, Terminal, Minimize2, AlertCircle } from 'lucide-react';
-import { getMailTemplate } from '../services/mailData';
-import { interpolateMailBody } from '../services/mailInterpolation';
+import { getMailTemplate } from '../systems/narrative/mailRegistry';
+import { interpolateMailBody } from '../systems/narrative/mailUtils';
 import { NewsCategory } from '../types';
+import { playSfx } from '../systems/game/audio';
 
 export const MailModal: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -13,21 +14,26 @@ export const MailModal: React.FC = () => {
   if (!state.showMail) return null;
 
   const handleSelectMail = (uniqueId: string) => {
+      playSfx('CLICK');
       setSelectedMailId(uniqueId);
       dispatch({ type: 'READ_MAIL', payload: uniqueId });
   };
 
   const handleClaim = (uniqueId: string) => {
+      playSfx('CLICK');
       dispatch({ type: 'CLAIM_MAIL_REWARD', payload: uniqueId });
+  };
+
+  const closeMail = () => {
+      playSfx('CLICK');
+      dispatch({ type: 'TOGGLE_MAIL' });
   };
 
   const selectedMailInstance = selectedMailId ? state.inbox.find(m => m.uniqueId === selectedMailId) : null;
   const selectedTemplate = selectedMailInstance ? getMailTemplate(selectedMailInstance.templateId) : null;
   
-  // Find highest priority narrative news for interpolation context
   const narrativeNews = state.dailyNews.find(n => n.category === NewsCategory.NARRATIVE) || state.dailyNews[0];
 
-  // Interpolate Body if selected
   const displayBody = selectedTemplate && selectedMailInstance 
       ? interpolateMailBody(selectedTemplate.body, { 
           ...selectedMailInstance.metadata || {},
@@ -37,33 +43,28 @@ export const MailModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-150 bg-black/80 backdrop-blur-sm">
-      {/* CRT Monitor Effect Container */}
       <div 
         className="w-full max-w-5xl h-[85vh] bg-[#0c0c0c] border-2 border-stone-600 shadow-[0_0_40px_rgba(16,185,129,0.1)] flex flex-col relative overflow-hidden font-mono"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Title Bar */}
         <div className="h-8 bg-stone-800 border-b border-stone-600 flex justify-between items-center px-2 select-none">
             <div className="flex items-center gap-2 text-stone-300 text-xs font-bold tracking-widest">
                 <Terminal className="w-4 h-4 text-green-600" />
                 <span>MAIL_CLIENT_V1.0.EXE</span>
             </div>
             <div className="flex gap-1">
-                <button onClick={() => dispatch({ type: 'TOGGLE_MAIL' })} className="w-5 h-5 bg-stone-700 hover:bg-stone-600 flex items-center justify-center border border-stone-500 text-stone-300">
+                <button onClick={closeMail} className="w-5 h-5 bg-stone-700 hover:bg-stone-600 flex items-center justify-center border border-stone-500 text-stone-300">
                     <Minimize2 className="w-3 h-3" />
                 </button>
-                <button onClick={() => dispatch({ type: 'TOGGLE_MAIL' })} className="w-5 h-5 bg-stone-700 hover:bg-red-900 flex items-center justify-center border border-stone-500 text-stone-300">
+                <button onClick={closeMail} className="w-5 h-5 bg-stone-700 hover:bg-red-900 flex items-center justify-center border border-stone-500 text-stone-300">
                     <X className="w-3 h-3" />
                 </button>
             </div>
         </div>
 
-        {/* Terminal Body */}
         <div className="flex-1 flex overflow-hidden bg-black relative">
-            {/* Scanline Overlay */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,6px_100%] pointer-events-none z-20 opacity-50"></div>
 
-            {/* Left Sidebar: Inbox */}
             <div className="w-1/3 border-r-2 border-stone-800 flex flex-col bg-[#050505]">
                 <div className="p-2 border-b-2 border-stone-800 bg-stone-900/50 text-green-600 text-xs font-bold uppercase tracking-widest mb-1 flex justify-between">
                     <span>Inbox</span>
@@ -90,7 +91,6 @@ export const MailModal: React.FC = () => {
                                         ${isSelected ? 'bg-green-900/20' : 'hover:bg-stone-900'}
                                     `}
                                 >
-                                    {/* Selection Marker */}
                                     {isSelected && <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"></div>}
                                     
                                     <div className="flex justify-between items-baseline mb-1">
@@ -110,11 +110,9 @@ export const MailModal: React.FC = () => {
                 </div>
             </div>
 
-            {/* Right Pane: Reading Area */}
             <div className="w-2/3 flex flex-col bg-black p-6 relative">
                  {selectedTemplate && selectedMailInstance ? (
                     <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-2 duration-300">
-                        {/* Message Header */}
                         <div className="border-b-2 border-green-900/50 pb-4 mb-4 space-y-1">
                             <div className="flex items-baseline gap-4 text-sm font-mono text-green-600">
                                 <span className="w-16 text-stone-500 text-xs uppercase">From:</span>
@@ -130,7 +128,6 @@ export const MailModal: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* System Context Hint (NEW) */}
                         {selectedMailInstance.metadata?.relatedItemName && (
                             <div className="mb-4 px-3 py-2 bg-stone-900/80 border border-stone-700 rounded flex items-start gap-3">
                                 <AlertCircle className="w-4 h-4 text-pawn-accent shrink-0 mt-0.5" />
@@ -141,12 +138,10 @@ export const MailModal: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Message Body (Interpolated) */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar-light pr-4 text-stone-300 whitespace-pre-line leading-relaxed text-sm font-mono">
                             {displayBody}
                         </div>
 
-                        {/* Attachment Area */}
                         {selectedTemplate.attachments && (
                             <div className="mt-6 border border-dashed border-stone-700 bg-stone-900/30 p-4 relative">
                                 <div className="absolute -top-2 left-4 bg-black px-2 text-[10px] text-stone-500 uppercase tracking-widest">
@@ -190,7 +185,6 @@ export const MailModal: React.FC = () => {
             </div>
         </div>
         
-        {/* Footer Status Bar */}
         <div className="h-6 bg-stone-800 border-t border-stone-600 flex items-center px-2 text-[10px] font-mono text-stone-400 gap-4">
             <span className="text-green-600">ONLINE</span>
             <span>SECURE_CONNECTION</span>

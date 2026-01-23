@@ -1,11 +1,11 @@
 
-
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
 import { X, PackageOpen, AlertTriangle, Clock, Skull, ShieldCheck, Heart, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, DollarSign, AlertOctagon, BookOpen, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { ItemStatus, Item } from '../types';
 import { Button } from './ui/Button';
+import { playSfx } from '../systems/game/audio';
 
 const getCategoryIcon = (category: string) => {
     switch(category) {
@@ -80,6 +80,7 @@ export const InventoryModal: React.FC = () => {
   };
   
   const toggleExpand = (itemId: string) => {
+    playSfx('CLICK');
     setExpandedLogs(prev => {
         const next = new Set(prev);
         if (next.has(itemId)) next.delete(itemId);
@@ -299,7 +300,7 @@ export const InventoryModal: React.FC = () => {
                             <Button 
                                 variant="danger" 
                                 className="h-8 text-xs px-1 border-stone-700 text-stone-500 hover:text-red-500 hover:border-red-500 bg-transparent"
-                                onClick={() => setForceSellConfirm(item.id)}
+                                onClick={() => { setForceSellConfirm(item.id); playSfx('CLICK'); }}
                             >
                                 <AlertOctagon className="w-3 h-3 mr-1 inline" />
                                 违约出售

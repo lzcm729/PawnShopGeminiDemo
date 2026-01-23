@@ -1,10 +1,12 @@
 
-import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren, useEffect } from 'react';
 import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry } from '../types';
-import { INITIAL_CHAINS } from '../services/storyData';
-import { getMailTemplate } from '../services/mailData';
-import { generateValuationRange } from '../services/contentGenerator';
-import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../services/logGenerator';
+import { INITIAL_CHAINS } from '../systems/narrative/storyRegistry';
+import { getMailTemplate } from '../systems/narrative/mailRegistry';
+import { generateValuationRange } from '../systems/items/utils';
+import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../systems/game/utils/logGenerator';
+import { saveGame, clearSave } from '../systems/core/persistence';
+import { playSfx } from '../systems/game/audio';
 
 const initialState: GameState = {
   phase: GamePhase.START_SCREEN,
@@ -32,21 +34,17 @@ const initialState: GameState = {
   showInventory: false,
   showMail: false,
   showDebug: false,
-  
   activeChains: INITIAL_CHAINS,
-  
   inbox: [],
   pendingMails: [],
-  
   completedScenarioIds: [],
-  
-  // NEW
   dailyNews: [],
   activeMarketEffects: [],
   violationFlags: []
 };
 
 type Action =
+  | { type: 'LOAD_GAME'; payload: GameState }
   | { type: 'START_GAME' }
   | { type: 'START_DAY' }
   | { type: 'SET_PHASE'; payload: GamePhase } 
@@ -86,41 +84,33 @@ type Action =
 
 const gameReducer = (state: GameState, action: Action): GameState => {
   switch (action.type) {
+    case 'LOAD_GAME':
+      return { ...action.payload };
+
     case 'START_GAME':
+      clearSave();
+      playSfx('BOOT');
       return { ...initialState, phase: GamePhase.MORNING_BRIEF };
       
     case 'START_DAY': {
-      // Calculate AP Modifiers from News
       const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
       const effectiveMaxAP = Math.max(1, state.stats.maxActionPoints + apModifier);
-      
       return { 
         ...state, 
         customersServedToday: 0,
         dayEvents: [],
         todayTransactions: [], 
         phase: GamePhase.TRADING,
-        stats: {
-            ...state.stats,
-            actionPoints: effectiveMaxAP 
-        },
-        violationFlags: [] // Clear violations at start of new day (intelligence loop reset)
+        stats: { ...state.stats, actionPoints: effectiveMaxAP },
+        violationFlags: [] 
       };
     }
 
-    case 'SET_PHASE':
-      return { ...state, phase: action.payload };
-
-    case 'SET_LOADING':
-      return { ...state, isLoading: action.payload };
-
+    case 'SET_PHASE': return { ...state, phase: action.payload };
+    case 'SET_LOADING': return { ...state, isLoading: action.payload };
     case 'SET_CUSTOMER':
       const customerInit = { ...action.payload, mood: 'Neutral' as Mood };
-      return {
-        ...state,
-        currentCustomer: customerInit,
-        phase: GamePhase.NEGOTIATION
-      };
+      return { ...state, currentCustomer: customerInit, phase: GamePhase.NEGOTIATION };
       
     case 'UPDATE_CUSTOMER_STATUS':
       if (!state.currentCustomer) return state;
@@ -136,12 +126,10 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'UPDATE_ITEM_KNOWLEDGE':
       if (!state.currentCustomer || state.currentCustomer.item.id !== action.payload.itemId) return state;
-      
       const prevCount = state.currentCustomer.item.appraisalCount || 0;
       const prevNegative = state.currentCustomer.item.hasNegativeAppraisalEvent || false;
       const prevLogs = state.currentCustomer.item.logs || [];
       const newLogs = action.payload.log ? [...prevLogs, action.payload.log] : prevLogs;
-      
       return {
           ...state,
           currentCustomer: {
@@ -153,7 +141,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
                   uncertainty: action.payload.newUncertainty,
                   perceivedValue: action.payload.newPerceived, 
                   appraised: true,
-                  // New State Updates
                   appraisalCount: action.payload.incrementAppraisalCount ? prevCount + 1 : prevCount,
                   hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : prevNegative,
                   logs: newLogs
@@ -167,7 +154,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const newUncertainty = 0.1; 
         const trueRange = generateValuationRange(item.realValue, undefined, newUncertainty);
         const newInitialRange = generateValuationRange(item.realValue, undefined, 0.4);
-
         return {
             ...state,
             currentCustomer: {
@@ -185,56 +171,30 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     }
 
     case 'CONSUME_AP':
-      return {
-          ...state,
-          stats: {
-              ...state.stats,
-              actionPoints: Math.max(0, state.stats.actionPoints - action.payload)
-          }
-      };
+      return { ...state, stats: { ...state.stats, actionPoints: Math.max(0, state.stats.actionPoints - action.payload) } };
 
     case 'APPRAISE_ITEM':
       if (!state.currentCustomer) return state;
-      return {
-        ...state,
-        currentCustomer: {
-          ...state.currentCustomer,
-          item: { ...state.currentCustomer.item, appraised: true }
-        }
-      };
+      return { ...state, currentCustomer: { ...state.currentCustomer, item: { ...state.currentCustomer.item, appraised: true } } };
 
     case 'RESOLVE_TRANSACTION': {
       const { cashDelta, reputationDelta, item, log, customerName } = action.payload;
-      
+      if (cashDelta > 0) playSfx('SUCCESS');
+      else if (cashDelta < 0) playSfx('CLICK'); // Spending money
+
       const newRep = { ...state.reputation };
       if (reputationDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += reputationDelta[ReputationType.HUMANITY]!;
       if (reputationDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += reputationDelta[ReputationType.CREDIBILITY]!;
       if (reputationDelta[ReputationType.UNDERWORLD]) newRep[ReputationType.UNDERWORLD] += reputationDelta[ReputationType.UNDERWORLD]!;
-      
-      Object.keys(newRep).forEach(key => {
-        newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType]));
-      });
+      Object.keys(newRep).forEach(key => { newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType])); });
 
       const newInventory = item ? [...state.inventory, item] : state.inventory;
-      
-      const newTransaction: TransactionRecord | null = item ? {
-        id: crypto.randomUUID(),
-        description: `收当: ${item.name}`,
-        amount: cashDelta,
-        type: 'PAWN'
-      } : null;
-
-      const updatedTransactions = newTransaction 
-        ? [...state.todayTransactions, newTransaction] 
-        : state.todayTransactions;
-
+      const newTransaction: TransactionRecord | null = item ? { id: crypto.randomUUID(), description: `收当: ${item.name}`, amount: cashDelta, type: 'PAWN' } : null;
+      const updatedTransactions = newTransaction ? [...state.todayTransactions, newTransaction] : state.todayTransactions;
       const servedCount = state.customersServedToday + 1;
       const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
-
       const completedId = state.currentCustomer?.id;
-      const newCompletedIds = (completedId && !completedId.startsWith('proc-')) 
-          ? [...state.completedScenarioIds, completedId] 
-          : state.completedScenarioIds;
+      const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds;
 
       return {
         ...state,
@@ -252,6 +212,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'LIQUIDATE_ITEM': {
       const { itemId, amount, name } = action.payload;
+      playSfx('SUCCESS');
       const soldInventory = state.inventory.map(item => {
         if (item.id === itemId) {
              const soldLog = generateSoldLog(item, state.stats.day, amount);
@@ -259,14 +220,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         }
         return item;
       });
-
-      const saleRecord: TransactionRecord = {
-        id: crypto.randomUUID(),
-        description: `绝当变现: ${name}`,
-        amount: amount,
-        type: 'SELL'
-      };
-
+      const saleRecord: TransactionRecord = { id: crypto.randomUUID(), description: `绝当变现: ${name}`, amount: amount, type: 'SELL' };
       return {
         ...state,
         stats: { ...state.stats, cash: state.stats.cash + amount },
@@ -278,8 +232,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'REDEEM_ITEM': {
         const { itemId, paymentAmount, name } = action.payload;
-        
-        // UPDATE: Instead of removing, we mark as REDEEMED and append log to preserve history
+        playSfx('SUCCESS');
         const updatedInventory = state.inventory.map(item => {
              if (item.id === itemId) {
                  const redeemLog = generateRedeemLog(state.currentCustomer?.name || "顾客", item, state.stats.day, paymentAmount);
@@ -287,14 +240,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
              }
              return item;
         });
-
-        const record: TransactionRecord = {
-            id: crypto.randomUUID(),
-            description: `顾客赎回: ${name}`,
-            amount: paymentAmount,
-            type: 'REDEEM'
-        };
-
+        const record: TransactionRecord = { id: crypto.randomUUID(), description: `顾客赎回: ${name}`, amount: paymentAmount, type: 'REDEEM' };
         return {
             ...state,
             stats: { ...state.stats, cash: state.stats.cash + paymentAmount },
@@ -306,28 +252,14 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'EXTEND_PAWN': {
         const { itemId, interestPaid, newDueDate, name } = action.payload;
-        
+        playSfx('SUCCESS');
         const updatedInventory = state.inventory.map(item => {
             if (item.id === itemId && item.pawnInfo) {
-                return {
-                    ...item,
-                    pawnInfo: {
-                        ...item.pawnInfo,
-                        dueDate: newDueDate,
-                        extensionCount: (item.pawnInfo.extensionCount || 0) + 1 // INCREMENT COUNTER
-                    }
-                };
+                return { ...item, pawnInfo: { ...item.pawnInfo, dueDate: newDueDate, extensionCount: (item.pawnInfo.extensionCount || 0) + 1 } };
             }
             return item;
         });
-
-        const record: TransactionRecord = {
-            id: crypto.randomUUID(),
-            description: `续当利息: ${name}`,
-            amount: interestPaid,
-            type: 'EXTEND'
-        };
-
+        const record: TransactionRecord = { id: crypto.randomUUID(), description: `续当利息: ${name}`, amount: interestPaid, type: 'EXTEND' };
         return {
             ...state,
             stats: { ...state.stats, cash: state.stats.cash + interestPaid },
@@ -339,8 +271,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'REFUSE_EXTENSION': {
         const { itemId, name } = action.payload;
-        
-        // Logic: Item status -> FORFEIT, Reputation (Humanity) -> -10
         const updatedInventory = state.inventory.map(item => {
             if (item.id === itemId) {
                  const log = generateForfeitLog(item, state.stats.day, "拒绝续当");
@@ -348,13 +278,10 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             }
             return item;
         });
-        
         const newRep = { ...state.reputation };
         newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 10);
-        
         const servedCount = state.customersServedToday + 1;
         const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
-
         return {
             ...state,
             inventory: updatedInventory,
@@ -369,7 +296,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'EXPIRE_ITEMS': {
         const { expiredItemIds, logs } = action.payload;
         if (expiredItemIds.length === 0) return state;
-
         const updatedInventory = state.inventory.map(item => {
             if (expiredItemIds.includes(item.id)) {
                  const forfeitLog = generateForfeitLog(item, state.stats.day);
@@ -377,15 +303,9 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             }
             return item;
         });
-
-        return {
-            ...state,
-            inventory: updatedInventory,
-            dayEvents: [...state.dayEvents, ...logs]
-        };
+        return { ...state, inventory: updatedInventory, dayEvents: [...state.dayEvents, ...logs] };
     }
     
-    // Legacy forced forfeiture (no rep hit) - kept for safety
     case 'FORCE_FORFEIT': {
         const { itemId, name } = action.payload;
         const updatedInventory = state.inventory.map(item => {
@@ -395,22 +315,14 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             }
             return item;
         });
-        
         const servedCount = state.customersServedToday + 1;
         const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
-
-        return {
-            ...state,
-            inventory: updatedInventory,
-            currentCustomer: null,
-            customersServedToday: servedCount,
-            phase: nextPhase,
-            dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`]
-        };
+        return { ...state, inventory: updatedInventory, currentCustomer: null, customersServedToday: servedCount, phase: nextPhase, dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`] };
     }
 
     case 'DEFAULT_SELL_ITEM': {
         const { itemId, amount, name } = action.payload;
+        playSfx('SUCCESS');
         const soldInventory = state.inventory.map(item => {
             if (item.id === itemId) {
                 const soldLog = generateSoldLog(item, state.stats.day, amount);
@@ -418,50 +330,22 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             }
             return item;
         });
-
-        const saleRecord: TransactionRecord = {
-            id: crypto.randomUUID(),
-            description: `违约出售: ${name}`,
-            amount: amount,
-            type: 'SELL'
-        };
-
-        return {
-            ...state,
-            stats: { ...state.stats, cash: state.stats.cash + amount },
-            inventory: soldInventory,
-            todayTransactions: [...state.todayTransactions, saleRecord],
-            dayEvents: [...state.dayEvents, `违约出售活跃当品: ${name} (+$${amount})`]
-        };
+        const saleRecord: TransactionRecord = { id: crypto.randomUUID(), description: `违约出售: ${name}`, amount: amount, type: 'SELL' };
+        return { ...state, stats: { ...state.stats, cash: state.stats.cash + amount }, inventory: soldInventory, todayTransactions: [...state.todayTransactions, saleRecord], dayEvents: [...state.dayEvents, `违约出售活跃当品: ${name} (+$${amount})`] };
     }
 
     case 'RESOLVE_BREACH': {
         const { penalty, name } = action.payload;
-        
+        playSfx('FAIL');
         const newRep = { ...state.reputation };
         newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 50);
-
-        const record: TransactionRecord = {
-            id: crypto.randomUUID(),
-            description: `违约赔偿: ${name}`,
-            amount: -penalty,
-            type: 'PENALTY'
-        };
-
-        return {
-            ...state,
-            stats: { ...state.stats, cash: state.stats.cash - penalty },
-            reputation: newRep,
-            todayTransactions: [...state.todayTransactions, record],
-            dayEvents: [...state.dayEvents, `支付违约金: ${name} (-$${penalty})，信誉大幅下降。`]
-        };
+        const record: TransactionRecord = { id: crypto.randomUUID(), description: `违约赔偿: ${name}`, amount: -penalty, type: 'PENALTY' };
+        return { ...state, stats: { ...state.stats, cash: state.stats.cash - penalty }, reputation: newRep, todayTransactions: [...state.todayTransactions, record], dayEvents: [...state.dayEvents, `支付违约金: ${name} (-$${penalty})，信誉大幅下降。`] };
     }
     
-    // NEW ACTION: HOSTILE TAKEOVER
     case 'HOSTILE_TAKEOVER': {
         const { itemId, penalty, name } = action.payload;
-        
-        // Force status to FORFEIT, player keeps the item but pays penalty
+        playSfx('FAIL');
         const updatedInventory = state.inventory.map(item => {
             if (item.id === itemId) {
                 const log = generateForfeitLog(item, state.stats.day, "恶意买断");
@@ -469,118 +353,54 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             }
             return item;
         });
-
         const newRep = { ...state.reputation };
-        // Massive reputation hits
         newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 50);
         newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 20);
-
-        const record: TransactionRecord = {
-            id: crypto.randomUUID(),
-            description: `强制买断: ${name}`,
-            amount: -penalty,
-            type: 'PENALTY'
-        };
-
-        return {
-            ...state,
-            stats: { ...state.stats, cash: state.stats.cash - penalty },
-            inventory: updatedInventory,
-            reputation: newRep,
-            todayTransactions: [...state.todayTransactions, record],
-            dayEvents: [...state.dayEvents, `恶意违约/强制买断: ${name} (-$${penalty})。顾客极度愤怒。`]
-        };
+        const record: TransactionRecord = { id: crypto.randomUUID(), description: `强制买断: ${name}`, amount: -penalty, type: 'PENALTY' };
+        return { ...state, stats: { ...state.stats, cash: state.stats.cash - penalty }, inventory: updatedInventory, reputation: newRep, todayTransactions: [...state.todayTransactions, record], dayEvents: [...state.dayEvents, `恶意违约/强制买断: ${name} (-$${penalty})。顾客极度愤怒。`] };
     }
 
     case 'REJECT_DEAL': {
       const servedCount = state.customersServedToday + 1;
       const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
-      
       const completedId = state.currentCustomer?.id;
-      const newCompletedIds = (completedId && !completedId.startsWith('proc-')) 
-          ? [...state.completedScenarioIds, completedId] 
-          : state.completedScenarioIds;
-
-      return {
-        ...state,
-        currentCustomer: null,
-        dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`],
-        customersServedToday: servedCount,
-        phase: nextPhase,
-        completedScenarioIds: newCompletedIds
-      };
+      const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds;
+      playSfx('CLICK');
+      return { ...state, currentCustomer: null, dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`], customersServedToday: servedCount, phase: nextPhase, completedScenarioIds: newCompletedIds };
     }
 
-    case 'MANUAL_CLOSE_SHOP':
+    case 'MANUAL_CLOSE_SHOP': 
+      playSfx('CLICK');
       return { ...state, phase: GamePhase.END_OF_DAY };
 
     case 'PAY_RENT':
-      const rentRecord: TransactionRecord = {
-        id: crypto.randomUUID(),
-        description: "缴纳房租",
-        amount: -state.stats.rentDue,
-        type: 'RENT'
-      };
-
-      return {
-        ...state,
-        stats: {
-          ...state.stats,
-          cash: state.stats.cash - state.stats.rentDue,
-          rentDueDate: state.stats.rentDueDate + 5
-        },
-        dayEvents: [...state.dayEvents, `Paid Rent: $${state.stats.rentDue}`]
-      };
+      playSfx('CLICK');
+      const rentRecord: TransactionRecord = { id: crypto.randomUUID(), description: "缴纳房租", amount: -state.stats.rentDue, type: 'RENT' };
+      return { ...state, stats: { ...state.stats, cash: state.stats.cash - state.stats.rentDue, rentDueDate: state.stats.rentDueDate + 5 }, dayEvents: [...state.dayEvents, `Paid Rent: $${state.stats.rentDue}`] };
 
     case 'END_DAY':
       const nextDay = state.stats.day + 1;
       const expense = state.stats.dailyExpenses;
       const newCash = state.stats.cash - expense;
-
       if (newCash < 0) {
-        return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "Bankrupt: Daily expenses exceeded cash."] };
+          clearSave();
+          playSfx('FAIL');
+          return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "Bankrupt: Daily expenses exceeded cash."] };
       }
-
-      return {
-        ...state,
-        stats: {
-          ...state.stats,
-          day: nextDay,
-          cash: newCash,
-          actionPoints: state.stats.maxActionPoints, 
-        },
-        phase: GamePhase.MORNING_BRIEF
-      };
+      return { ...state, stats: { ...state.stats, day: nextDay, cash: newCash, actionPoints: state.stats.maxActionPoints }, phase: GamePhase.MORNING_BRIEF };
       
-    case 'GAME_OVER':
-      return {
-          ...state,
-          phase: GamePhase.GAME_OVER,
-          dayEvents: [...state.dayEvents, action.payload]
-      };
-      
-    case 'TOGGLE_INVENTORY':
-      return { ...state, showInventory: !state.showInventory };
-
-    case 'TOGGLE_MAIL':
-      return { ...state, showMail: !state.showMail };
-
-    case 'TOGGLE_DEBUG':
-      return { ...state, showDebug: !state.showDebug };
-
-    case 'UPDATE_CHAINS':
-      return { ...state, activeChains: action.payload };
+    case 'GAME_OVER': 
+      clearSave();
+      playSfx('FAIL');
+      return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, action.payload] };
+    case 'TOGGLE_INVENTORY': playSfx('HOVER'); return { ...state, showInventory: !state.showInventory };
+    case 'TOGGLE_MAIL': playSfx('HOVER'); return { ...state, showMail: !state.showMail };
+    case 'TOGGLE_DEBUG': return { ...state, showDebug: !state.showDebug };
+    case 'UPDATE_CHAINS': return { ...state, activeChains: action.payload };
 
     case 'SCHEDULE_MAIL': {
         const { templateId, delayDays, metadata } = action.payload;
-        const newMail: MailInstance = {
-            uniqueId: crypto.randomUUID(),
-            templateId,
-            arrivalDay: state.stats.day + delayDays,
-            isRead: false,
-            isClaimed: false,
-            metadata // Store metadata
-        };
+        const newMail: MailInstance = { uniqueId: crypto.randomUUID(), templateId, arrivalDay: state.stats.day + delayDays, isRead: false, isClaimed: false, metadata };
         return { ...state, pendingMails: [...state.pendingMails, newMail] };
     }
 
@@ -588,90 +408,51 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const today = state.stats.day;
         const arrivingMails = state.pendingMails.filter(m => m.arrivalDay <= today);
         const remainingPending = state.pendingMails.filter(m => m.arrivalDay > today);
-        
         if (arrivingMails.length === 0) return state;
-
-        return {
-            ...state,
-            inbox: [...arrivingMails, ...state.inbox], 
-            pendingMails: remainingPending
-        };
+        return { ...state, inbox: [...arrivingMails, ...state.inbox], pendingMails: remainingPending };
     }
 
-    case 'READ_MAIL':
-        return {
-            ...state,
-            inbox: state.inbox.map(m => m.uniqueId === action.payload ? { ...m, isRead: true } : m)
-        };
+    case 'READ_MAIL': return { ...state, inbox: state.inbox.map(m => m.uniqueId === action.payload ? { ...m, isRead: true } : m) };
 
     case 'CLAIM_MAIL_REWARD': {
         const mail = state.inbox.find(m => m.uniqueId === action.payload);
         if (!mail || mail.isClaimed) return state;
-
         const template = getMailTemplate(mail.templateId);
         if (!template || !template.attachments) return state;
-
         let cashDelta = 0;
         let newInventory = [...state.inventory];
         let transaction: TransactionRecord | null = null;
-
+        playSfx('SUCCESS');
         if (template.attachments.cash) {
             cashDelta = template.attachments.cash;
-            transaction = {
-                id: crypto.randomUUID(),
-                description: `邮件奖励: ${template.sender}`,
-                amount: cashDelta,
-                type: 'REWARD'
-            };
+            transaction = { id: crypto.randomUUID(), description: `邮件奖励: ${template.sender}`, amount: cashDelta, type: 'REWARD' };
         }
-
-        if (template.attachments.item) {
-             newInventory.push(template.attachments.item);
-        }
-
-        const updatedInbox = state.inbox.map(m => 
-            m.uniqueId === action.payload ? { ...m, isClaimed: true } : m
-        );
-        
-        const updatedTransactions = transaction 
-            ? [...state.todayTransactions, transaction]
-            : state.todayTransactions;
-
-        return {
-            ...state,
-            stats: { ...state.stats, cash: state.stats.cash + cashDelta },
-            inventory: newInventory,
-            inbox: updatedInbox,
-            todayTransactions: updatedTransactions
-        };
+        if (template.attachments.item) newInventory.push(template.attachments.item);
+        const updatedInbox = state.inbox.map(m => m.uniqueId === action.payload ? { ...m, isClaimed: true } : m);
+        const updatedTransactions = transaction ? [...state.todayTransactions, transaction] : state.todayTransactions;
+        return { ...state, stats: { ...state.stats, cash: state.stats.cash + cashDelta }, inventory: newInventory, inbox: updatedInbox, todayTransactions: updatedTransactions };
     }
 
-    case 'UPDATE_NEWS':
-        return {
-            ...state,
-            dailyNews: action.payload.news,
-            activeMarketEffects: action.payload.modifiers
-        };
+    case 'UPDATE_NEWS': return { ...state, dailyNews: action.payload.news, activeMarketEffects: action.payload.modifiers };
+    case 'ADD_VIOLATION': if (state.violationFlags.includes(action.payload)) return state; return { ...state, violationFlags: [...state.violationFlags, action.payload] };
+    case 'CLEAR_VIOLATIONS': return { ...state, violationFlags: [] };
 
-    case 'ADD_VIOLATION':
-        if (state.violationFlags.includes(action.payload)) return state;
-        return { ...state, violationFlags: [...state.violationFlags, action.payload] };
-
-    case 'CLEAR_VIOLATIONS':
-        return { ...state, violationFlags: [] };
-
-    default:
-      return state;
+    default: return state;
   }
 };
 
-const GameContext = createContext<{
-  state: GameState;
-  dispatch: React.Dispatch<Action>;
-} | undefined>(undefined);
+const GameContext = createContext<{ state: GameState; dispatch: React.Dispatch<Action>; } | undefined>(undefined);
 
 export const GameProvider = ({ children }: PropsWithChildren) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
+
+  // Auto-Save Effect (Saves whenever specific phases occur, e.g., End of Day)
+  useEffect(() => {
+      if (state.phase === GamePhase.MORNING_BRIEF) {
+          saveGame(state);
+      }
+  }, [state.phase]); // Only auto-save on phase changes to avoid spam
+
   return (
     <GameContext.Provider value={{ state, dispatch }}>
       {children}

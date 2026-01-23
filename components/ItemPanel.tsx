@@ -1,12 +1,11 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
 import { useAppraisal } from '../hooks/useAppraisal';
 import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown } from 'lucide-react';
 import { Button } from './ui/Button';
 import { ItemTrait } from '../types';
-import { getUncertaintyRisk } from '../services/appraisalUtils';
+import { getUncertaintyRisk } from '../systems/items/utils';
 
 const getIcon = (category: string) => {
     switch(category) {
@@ -26,7 +25,7 @@ interface ItemPanelProps {
   applyLeverage: (power: number, description: string) => void;
   triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void; 
   canInteract: boolean;
-  currentAskPrice: number; // For tooltip preview
+  currentAskPrice: number; 
 }
 
 export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarrative, canInteract, currentAskPrice }) => {
@@ -40,13 +39,11 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'warning' | 'error', text: string } | null>(null);
   const [hoveredTrait, setHoveredTrait] = useState<ItemTrait | null>(null);
 
-  // Reset local state on customer change
   useEffect(() => {
     setUsedLeverageIds([]);
     setFeedbackMsg(null);
   }, [currentCustomer?.id]);
 
-  // Auto-hide feedback message
   useEffect(() => {
     if (feedbackMsg) {
         const timer = setTimeout(() => {
@@ -71,7 +68,6 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
               else if (result.failureReason === 'NO_PATIENCE') setFeedbackMsg({ type: 'warning', text: "客户失去了耐心 (No Patience)" });
               else if (result.failureReason === 'ALREADY_KNOWN') setFeedbackMsg({ type: 'warning', text: "暂无更多线索 (No New Traits)" });
           } else {
-              // Handle Appraisal Events
               if (result.event && result.event.type !== 'NORMAL') {
                    if (result.event.type === 'MISHAP') {
                        setFeedbackMsg({ type: 'error', text: result.event.message || "鉴定失误" });
@@ -96,7 +92,6 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
       
       const power = Math.abs(trait.valueImpact);
 
-      // Check if this trait triggers a "Truth Realization" (e.g. Fake item)
       if (trait.type === 'FAKE') {
           dispatch({ type: 'REALIZE_ITEM_TRUTH', payload: { itemId: item.id } });
           setFeedbackMsg({ type: 'error', text: "价值崩塌 (VALUE CRASH)" });
@@ -106,37 +101,30 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
           applyLeverage(power, trait.name);
           setUsedLeverageIds(prev => [...prev, trait.id]);
       } else if (trait.type === 'STORY') {
-          // Check for dialogue trigger
           if (trait.dialogueTrigger) {
               triggerNarrative(trait.dialogueTrigger.playerLine, trait.dialogueTrigger.customerLine, power);
           } else {
-              // Fallback for generic story traits without dialogue
               applyLeverage(0.05, `话题: ${trait.name}`); 
           }
           setUsedLeverageIds(prev => [...prev, trait.id]);
       }
   };
 
-  // --- Visualization Logic ---
-  // New Tuple Structure
   const currentRange = item.currentRange || [0, 0];
   const initialRange = item.initialRange || [0, 0];
   
   const [currentMin, currentMax] = currentRange;
   const [baseMin, baseMax] = initialRange;
 
-  // Calculate dynamic display bounds that encompass both initial and current values
   const displayMin = Math.min(baseMin, currentMin);
   const displayMax = Math.max(baseMax, currentMax);
 
   const rangeWidth = displayMax - displayMin;
   const safeRangeWidth = rangeWidth === 0 ? 1 : rangeWidth;
 
-  // Current Range Bar
   const leftPercent = ((currentMin - displayMin) / safeRangeWidth) * 100;
   const widthPercent = ((currentMax - currentMin) / safeRangeWidth) * 100;
 
-  // Initial Range Ghost Bar
   const initialLeftPercent = ((baseMin - displayMin) / safeRangeWidth) * 100;
   const initialWidthPercent = ((baseMax - baseMin) / safeRangeWidth) * 100;
 
@@ -150,12 +138,8 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
   const revealedCount = revealedTraits.length + 1;
   const totalCount = hiddenTraits.length + 1; 
 
-  // Visuals for Appraised vs Unappraised
   const isAppraised = item.appraised;
   
-  // CRASH/FAKE DETECTION:
-  // Detect if item is FAKE AND the "illusion" (perceivedValue) has been removed.
-  // This ensures the red alert only triggers AFTER the player clicks the trait.
   const isCrashMode = item.isFake && item.perceivedValue === undefined;
 
   const rangeBarClass = isAppraised 
@@ -166,7 +150,6 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
     ? "text-green-500"
     : "text-stone-400";
     
-  // Dynamic Label Style: 
   const labelContainerClass = isCrashMode
     ? "text-lg font-mono font-bold text-pawn-red uppercase mb-1 px-1 transition-all"
     : "text-[10px] font-mono text-stone-600 uppercase mb-1 px-1 transition-all";
@@ -182,16 +165,13 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
       opacity: isAppraised ? 1 : 0
   };
 
-  // RISK ALERT LOGIC
   const uncertaintyRisk = getUncertaintyRisk(currentMin, currentMax);
 
   return (
       <div className="h-full bg-[#1c1917] border-x border-[#44403c] flex flex-col overflow-hidden relative">
         
-        {/* TOP SECTION: Visuals & Appraisal Bar */}
         <div className="bg-[#0c0a09] relative flex flex-col border-b border-[#292524] min-h-[40%]">
             
-            {/* Status Header */}
             <div className="p-3 flex justify-between items-start z-20">
                  <div className="bg-black/70 px-2 py-1 text-[10px] font-mono text-stone-400 border border-stone-700 backdrop-blur-sm rounded">
                    {(item.condition || 'Unknown').toUpperCase()} | {item.category}
@@ -213,7 +193,6 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                  </div>
             </div>
 
-            {/* Main Item Visual */}
             <div className="flex-1 flex flex-col items-center justify-center p-4">
                 <div className={`transition-all duration-500 p-4 border border-stone-800 rounded-full bg-stone-900/50 mb-2 ${appraising ? 'blur-sm opacity-50 scale-110' : ''}`}>
                     {getIcon(item.category)}
@@ -222,9 +201,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                 <p className="text-xs text-stone-500 font-serif italic text-center max-w-[80%]">"{item.historySnippet}"</p>
             </div>
             
-            {/* Appraisal Controls Overlay (Bottom of Top Section) */}
             <div className="p-4 border-t border-[#292524] bg-[#141211]">
-                 {/* Valuation Bar */}
                  <div className="mb-4 relative pt-5"> 
                     <div className={`flex justify-between items-end ${labelContainerClass}`}>
                         <span>${displayMin}</span>
@@ -235,18 +212,15 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                     </div>
                     
                     <div className="h-4 w-full bg-stone-900 rounded-sm relative overflow-visible border border-stone-800">
-                        {/* 1. Initial Ghost Range (Gray) */}
                          <div 
                             className={`absolute top-1 bottom-1 bg-stone-700/30 border-x border-stone-600/50 z-0 transition-opacity duration-700 ${isAppraised ? 'opacity-100' : 'opacity-0'}`}
                             style={{ left: `${initialLeftPercent}%`, width: `${initialWidthPercent}%` }}
                         ></div>
 
-                        {/* 2. Current Range Fill (Green) */}
                         <div 
                             className={`absolute top-0 bottom-0 border-x-2 transition-all duration-700 ease-out z-10 ${rangeBarClass}`}
                             style={barStyle}
                         >
-                            {/* Moving Labels inside Green Bar */}
                             <div className={`transition-opacity duration-300 ${isAppraised ? 'opacity-100' : 'opacity-0'}`}>
                                 <div className={`absolute -top-5 left-0 -translate-x-1/2 text-[10px] font-bold transition-all duration-700 bg-black/50 px-1 rounded ${rangeTextClass}`}>
                                     ${currentMin}
@@ -257,16 +231,13 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                             </div>
                         </div>
                         
-                        {/* 3. Placeholder (Dashed Line) */}
                         <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none ${isAppraised ? 'opacity-0' : 'opacity-100'}`}>
                              <div className="w-full h-[1px] bg-stone-800 border-t border-dashed border-stone-700/50"></div>
                         </div>
 
-                        {/* Grid Pattern */}
                         <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-20 pointer-events-none"></div>
                     </div>
                     
-                    {/* RISK ALERT */}
                     {uncertaintyRisk === 'HIGH' && (
                       <div className="flex items-center justify-center gap-2 text-red-500 text-[10px] font-bold mt-1 bg-red-950/20 py-0.5 rounded border border-red-900/30 animate-pulse">
                         <AlertTriangle className="w-3 h-3" />
@@ -299,11 +270,9 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
             </div>
         </div>
 
-        {/* BOTTOM SECTION: Traits Dossier */}
         <div className="flex-1 bg-[#e7e5e4] text-stone-900 flex flex-col relative shadow-[inset_0_10px_20px_rgba(0,0,0,0.1)] min-h-[60%]">
              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-40 pointer-events-none mix-blend-multiply"></div>
              
-             {/* Dossier Header */}
              <div className="p-3 border-b-2 border-stone-400/50 relative z-10 flex justify-between items-center bg-[#d6d3d1]/50 backdrop-blur-sm">
                  <h3 className="text-sm font-black uppercase tracking-tighter flex items-center gap-2">
                     <FileSearch className="w-4 h-4 text-stone-700" />
@@ -314,11 +283,9 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                  </span>
              </div>
 
-             {/* Traits Grid */}
              <div className="flex-1 overflow-y-auto p-3 relative z-10 custom-scrollbar-light">
                  <div className="space-y-2">
                      
-                     {/* 1. Base Description Card (Always First) */}
                      <div className="w-full text-left p-2 rounded border border-stone-300 bg-stone-100 shadow-sm relative group animate-in fade-in slide-in-from-left-1 duration-300">
                         <div className="flex justify-between items-start mb-1">
                              <div className="font-bold text-xs flex items-center gap-1.5 text-stone-700">
@@ -334,7 +301,6 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                          </p>
                      </div>
 
-                     {/* 2. REVEALED Traits */}
                      {revealedTraits.map((trait) => {
                          const isUsed = usedLeverageIds.includes(trait.id);
                          let borderColor = "border-stone-400";
@@ -360,7 +326,6 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                              label = "点击揭穿";
                          }
                          
-                         // Calculate explicit cash impact for tooltip
                          const cashImpact = Math.floor(currentAskPrice * Math.abs(trait.valueImpact));
 
                          return (
@@ -376,7 +341,6 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                                     ${isUsed ? 'opacity-50 grayscale-[0.3]' : 'hover:translate-x-1 hover:shadow-md'}
                                 `}
                              >
-                                 {/* Hover Tooltip (Preview Impact) */}
                                  {hoveredTrait?.id === trait.id && !isUsed && canInteract && (trait.type === 'FLAW' || trait.type === 'FAKE') && (
                                     <div className="absolute -top-8 right-0 bg-black/90 text-white text-[10px] px-2 py-1 rounded shadow-xl z-50 whitespace-nowrap border border-stone-600 animate-in fade-in slide-in-from-bottom-1">
                                         <div className="flex items-center gap-1">
@@ -401,14 +365,12 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                                      {trait.description}
                                  </p>
                                  
-                                 {/* STAMP for Used Trait */}
                                  {isUsed && (
                                     <div className="absolute right-2 top-1/2 -translate-y-1/2 border-2 border-stone-800 text-stone-800 font-black text-xs uppercase px-1 rotate-[-15deg] opacity-80 z-20 pointer-events-none mix-blend-multiply bg-stone-300/20 backdrop-blur-[1px]">
                                         已使用
                                     </div>
                                  )}
                                  
-                                 {/* Interaction Hint */}
                                  {!isUsed && canInteract && (
                                      <div className="mt-1.5 text-[9px] font-bold text-stone-400 uppercase opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 relative z-10">
                                          <Gavel className="w-3 h-3" />
@@ -419,7 +381,6 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                          );
                      })}
 
-                     {/* 3. HIDDEN Trait Placeholders */}
                      {unrevealedTraits.map((trait) => (
                         <div key={trait.id} className="w-full p-2 rounded border border-dashed border-stone-400 bg-stone-200/50 opacity-60 relative overflow-hidden select-none grayscale">
                             <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-10"></div>
