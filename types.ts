@@ -127,6 +127,32 @@ export interface AcceptedLines {
   premium: string;  
 }
 
+// DYNAMIC DIALOGUE SYSTEM
+export interface DialogueVariant {
+    condition: TriggerCondition;
+    text: string;
+}
+
+export type DialogueText = string | DialogueVariant[];
+
+export interface DialogueTemplate {
+  greeting: DialogueText;
+  pawnReason: DialogueText;
+  redemptionPlea: DialogueText;
+  negotiationDynamic: DialogueText;
+  accepted: {
+      fair: DialogueText;
+      fleeced: DialogueText;
+      premium: DialogueText;
+  };
+  rejected: DialogueText;
+  rejectionLines: {
+      standard: DialogueText;
+      angry: DialogueText;
+      desperate?: DialogueText;
+  };
+}
+
 export interface Dialogue {
   greeting: string;
   pawnReason: string;
@@ -168,6 +194,9 @@ export interface Customer {
   
   chainId?: string; 
   eventId?: string; 
+  
+  // NEW: Narrative Recap Log (What happened to them while they were gone)
+  recapLog?: SimLogEntry[];
 }
 
 export interface DailyStats {
@@ -245,6 +274,7 @@ export interface RuleDelta {
   type: 'DELTA';
   targetVar: string;
   value: number; // e.g. -150
+  logMessage?: string; // Optional: Log this change if it happens
 }
 
 export interface RuleChance {
@@ -253,6 +283,8 @@ export interface RuleChance {
   chanceFixed?: number; // Or use this fixed probability
   onSuccess: SimOperation[];
   onFail?: SimOperation[];
+  successLog?: string; // Log message on success
+  failLog?: string; // Log message on fail
 }
 
 export interface RuleThreshold {
@@ -261,9 +293,26 @@ export interface RuleThreshold {
   operator: '>' | '<' | '>=' | '<=' | '==';
   value: number;
   onTrigger: SimOperation[];
+  triggerLog?: string; // Log message when triggered
 }
 
-export type SimRule = RuleDelta | RuleChance | RuleThreshold;
+export interface RuleCompound {
+    type: 'COMPOUND';
+    sourceVar: string;      // IF hope
+    operator: '>' | '<' | '>=' | '<=' | '==';
+    threshold: number;      // < 30
+    targetVar: string;      // THEN job_chance
+    effect: number;         // += -5
+    logMessage?: string;
+}
+
+export type SimRule = RuleDelta | RuleChance | RuleThreshold | RuleCompound;
+
+export interface SimLogEntry {
+    day: number;
+    content: string;
+    type: 'DAILY' | 'MILESTONE' | 'CRISIS';
+}
 
 export interface EventChainState {
   id: string; 
@@ -272,6 +321,7 @@ export interface EventChainState {
   stage: number; 
   variables: ChainVariables;
   simulationRules: SimRule[]; // NEW: The engine driving the NPC's life
+  simulationLog?: SimLogEntry[]; // NEW: Backstage history
 }
 
 // -----------------------------------
@@ -315,6 +365,27 @@ export interface DynamicFlowOutcome {
   outcome: ChainUpdateEffect[];
 }
 
+// Interface for Defining Story Events in Data files (supports dynamic dialogue definitions)
+export interface CustomerTemplate {
+    name: string;
+    description: string;
+    avatarSeed: string;
+    dialogue: DialogueTemplate; // Uses flexible DialogueTemplate
+    redemptionResolve?: 'Strong' | 'Medium' | 'Weak' | 'None';
+    negotiationStyle?: 'Aggressive' | 'Desperate' | 'Professional' | 'Deceptive';
+    patience?: number;
+    mood?: Mood;
+    tags?: string[];
+    desiredAmount?: number;
+    minimumAmount?: number;
+    maxRepayment?: number;
+    interactionType?: 'PAWN' | 'REDEEM' | 'NEGOTIATION';
+    currentWallet?: number;
+    currentAskPrice?: number;
+    redemptionIntent?: 'REDEEM' | 'EXTEND' | 'LEAVE';
+    item?: Partial<Item>; // Added item to template as it was used in instantiation
+}
+
 export interface StoryEvent {
   id: string; 
   chainId: string; 
@@ -324,7 +395,7 @@ export interface StoryEvent {
   triggerConditions: TriggerCondition[];
   
   // Standard Event Props
-  template?: Partial<Customer>; 
+  template: CustomerTemplate; 
   item?: Partial<Item>; // Base item template to merge
   
   // Logic

@@ -1,8 +1,5 @@
 
 
-
-
-
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../services/chainEngine';
 import { generateDailyNews } from '../services/newsEngine';
@@ -175,8 +172,13 @@ export const useGameEngine = () => {
           const currentFunds = chainState?.variables?.funds;
 
           // --- INSTANTIATE CUSTOMER WITH CONTEXT ---
-          // Pass inventory and funds so intent logic works against REAL item and REAL money
-          let storyCustomer = instantiateStoryCustomer(narrativeEvent, state.inventory, currentFunds);
+          // Pass inventory, funds AND chainState so dynamic dialogue and logs can be resolved
+          let storyCustomer = instantiateStoryCustomer(
+              narrativeEvent, 
+              state.inventory, 
+              currentFunds,
+              chainState // NEW: Pass chain state
+          );
 
           // --- DYNAMIC REDEMPTION FLOW ---
           if (narrativeEvent.type === 'REDEMPTION_CHECK') {

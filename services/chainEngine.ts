@@ -1,10 +1,6 @@
 
 
-
-
-
-
-import { EventChainState, StoryEvent, TriggerCondition, ChainVariables, Customer, Item, ItemStatus, DynamicFlowOutcome, SimOperation } from '../types';
+import { EventChainState, StoryEvent, TriggerCondition, ChainVariables, Customer, Item, ItemStatus, DynamicFlowOutcome, SimOperation, Dialogue, DialogueText, SimLogEntry, SimRule } from '../types';
 
 // Helper: Evaluate a single condition against current variables and chain state
 const checkCondition = (condition: TriggerCondition, chain: EventChainState): boolean => {
@@ -33,6 +29,51 @@ const checkCondition = (condition: TriggerCondition, chain: EventChainState): bo
     case '%': return currentVal % targetVal === 0;
     default: return false;
   }
+};
+
+/**
+ * Resolves a dialogue definition which can be a string or a list of conditional variants.
+ */
+const resolveDialogue = (def: DialogueText, chain?: EventChainState): string => {
+    if (typeof def === 'string') return def;
+    if (!chain) return def[def.length - 1].text; // Fallback to last if no chain context
+
+    for (const variant of def) {
+        if (checkCondition(variant.condition, chain)) {
+            return variant.text;
+        }
+    }
+    
+    // Fallback to the last item as default if no conditions match
+    return def.length > 0 ? def[def.length - 1].text : "...";
+};
+
+/**
+ * Resolves the full dialogue object from template to final strings.
+ */
+const resolveCustomerDialogue = (templateDialogue: any, chain?: EventChainState): Dialogue => {
+    const resolved: any = {};
+    
+    // Top Level Fields
+    ['greeting', 'pawnReason', 'redemptionPlea', 'negotiationDynamic', 'rejected'].forEach(key => {
+        resolved[key] = resolveDialogue(templateDialogue[key], chain);
+    });
+
+    // Nested: Accepted
+    resolved.accepted = {};
+    ['fair', 'fleeced', 'premium'].forEach(key => {
+        resolved.accepted[key] = resolveDialogue(templateDialogue.accepted[key], chain);
+    });
+
+    // Nested: RejectionLines
+    resolved.rejectionLines = {};
+    ['standard', 'angry', 'desperate'].forEach(key => {
+        if (templateDialogue.rejectionLines[key]) {
+            resolved.rejectionLines[key] = resolveDialogue(templateDialogue.rejectionLines[key], chain);
+        }
+    });
+
+    return resolved as Dialogue;
 };
 
 /**
@@ -75,7 +116,8 @@ export const runDailySimulation = (chains: EventChainState[]): { chains: EventCh
     // (We deep copy variables so rules can interact cumulatively)
     const newChain = { 
         ...chain, 
-        variables: { ...chain.variables } 
+        variables: { ...chain.variables },
+        simulationLog: chain.simulationLog ? [...chain.simulationLog] : [] // Clone logs
     };
 
     if (!newChain.simulationRules) return newChain;
@@ -86,6 +128,14 @@ export const runDailySimulation = (chains: EventChainState[]): { chains: EventCh
         if (rule.type === 'DELTA') {
             const current = newChain.variables[rule.targetVar] || 0;
             newChain.variables[rule.targetVar] = current + rule.value;
+            
+            if (rule.logMessage) {
+                 newChain.simulationLog!.push({
+                     day: 0, // Day injected by caller usually, or we use a placeholder
+                     content: rule.logMessage,
+                     type: 'DAILY'
+                 });
+            }
         }
         
         // TYPE B: CHANCE (Probability Check)
@@ -102,8 +152,14 @@ export const runDailySimulation = (chains: EventChainState[]): { chains: EventCh
             
             if (roll < probability) {
                 rule.onSuccess.forEach(op => executeSimOp(newChain, op, sideEffects));
+                if (rule.successLog) {
+                    newChain.simulationLog!.push({ day: 0, content: rule.successLog, type: 'MILESTONE' });
+                }
             } else if (rule.onFail) {
                 rule.onFail.forEach(op => executeSimOp(newChain, op, sideEffects));
+                 if (rule.failLog) {
+                    newChain.simulationLog!.push({ day: 0, content: rule.failLog, type: 'CRISIS' });
+                }
             }
         }
 
@@ -122,6 +178,33 @@ export const runDailySimulation = (chains: EventChainState[]): { chains: EventCh
 
             if (triggered) {
                 rule.onTrigger.forEach(op => executeSimOp(newChain, op, sideEffects));
+                if (rule.triggerLog) {
+                    newChain.simulationLog!.push({ day: 0, content: rule.triggerLog, type: 'CRISIS' });
+                }
+            }
+        }
+
+        // TYPE D: COMPOUND (Variable Interaction)
+        // e.g., IF Hope < 30 THEN JobChance += -5
+        else if (rule.type === 'COMPOUND') {
+             const sourceVal = newChain.variables[rule.sourceVar] || 0;
+             let triggered = false;
+             
+             switch (rule.operator) {
+                case '>': triggered = sourceVal > rule.threshold; break;
+                case '<': triggered = sourceVal < rule.threshold; break;
+                case '>=': triggered = sourceVal >= rule.threshold; break;
+                case '<=': triggered = sourceVal <= rule.threshold; break;
+                case '==': triggered = sourceVal === rule.threshold; break;
+            }
+
+            if (triggered) {
+                const targetCurrent = newChain.variables[rule.targetVar] || 0;
+                newChain.variables[rule.targetVar] = targetCurrent + rule.effect;
+                
+                if (rule.logMessage) {
+                    newChain.simulationLog!.push({ day: 0, content: rule.logMessage, type: 'DAILY' });
+                }
             }
         }
     });
@@ -161,8 +244,14 @@ export const findEligibleEvent = (chains: EventChainState[], events: StoryEvent[
  * Converts a StoryEvent template into a full Customer object.
  * NOTE: If event has 'item', it merges it.
  * UPDATED: Now accepts inventory and currentFunds to calculate accurate redemption intent.
+ * UPDATED: Resolves Dynamic Dialogue based on chain state.
  */
-export const instantiateStoryCustomer = (event: StoryEvent, inventory: Item[] = [], currentFunds?: number): Customer => {
+export const instantiateStoryCustomer = (
+    event: StoryEvent, 
+    inventory: Item[] = [], 
+    currentFunds?: number,
+    chainState?: EventChainState // Pass chain state for dialogue resolution
+): Customer => {
     const template = event.template;
     
     // Ensure deep copy of nested objects (item, dialogue) to prevent mutation
@@ -170,7 +259,8 @@ export const instantiateStoryCustomer = (event: StoryEvent, inventory: Item[] = 
     const baseItem = event.item || template.item || {};
     const deepItem = JSON.parse(JSON.stringify(baseItem));
     
-    const deepDialogue = JSON.parse(JSON.stringify(template.dialogue));
+    // RESOLVE DYNAMIC DIALOGUE
+    const resolvedDialogue = resolveCustomerDialogue(template.dialogue, chainState);
     
     // Ensure initialValuationRange exists
     if (!deepItem.initialValuationRange && deepItem.valuationRange) {
@@ -183,12 +273,7 @@ export const instantiateStoryCustomer = (event: StoryEvent, inventory: Item[] = 
         : ((template as any).currentWallet || template.maxRepayment || 1000);
     
     // --- DETERMINE INTENT (Redeem vs Extend) ---
-    // If this is a Redemption event, check the math to see what they can afford.
     let intent: 'REDEEM' | 'EXTEND' | 'LEAVE' | undefined;
-    
-    // Determine which Item to check against logic.
-    // If it's a redemption check, we MUST check the REAL item in inventory (because it has the real Principal/Interest),
-    // not the dummy template item.
     let logicItem = deepItem;
     if (event.type === 'REDEMPTION_CHECK' && event.targetItemId) {
         const realItem = inventory.find(i => i.id === event.targetItemId);
@@ -197,15 +282,12 @@ export const instantiateStoryCustomer = (event: StoryEvent, inventory: Item[] = 
         }
     }
     
-    // Priority Check: Does the template force a specific intent? (e.g. Narrative override)
     if (template.redemptionIntent) {
         intent = template.redemptionIntent;
     }
     else if ((template as any).interactionType === 'REDEEM' && logicItem.pawnInfo) {
         const p = logicItem.pawnInfo.principal;
         const rate = logicItem.pawnInfo.interestRate;
-        // Logic: Full interest for termDays even if early; actual days if late. But for intent check, simple calc is usually fine.
-        // Let's assume standard 1 week extension cost for the check.
         const interest = Math.ceil(p * rate); 
         const total = p + interest;
 
@@ -218,12 +300,17 @@ export const instantiateStoryCustomer = (event: StoryEvent, inventory: Item[] = 
         }
     }
 
+    // EXTRACT LOGS (If any) for Recap
+    // We only show logs generated since last visit? Or last 5?
+    // For now, let's take the last 5 logs from the chain state.
+    const recapLog = chainState?.simulationLog ? chainState.simulationLog.slice(-5) : undefined;
+
     return {
         id: crypto.randomUUID(),
         name: template.name || "Unknown",
         description: template.description || "",
         avatarSeed: template.avatarSeed || "default",
-        dialogue: deepDialogue,
+        dialogue: resolvedDialogue, // Use resolved string-only dialogue
         redemptionResolve: template.redemptionResolve || "Medium",
         negotiationStyle: template.negotiationStyle || "Professional",
         patience: template.patience || 3,
@@ -241,10 +328,11 @@ export const instantiateStoryCustomer = (event: StoryEvent, inventory: Item[] = 
         redemptionIntent: intent, // STORE THE INTENT
 
         currentWallet: currentWallet, 
-        currentAskPrice: (template as any).currentAskPrice, // Propagate the ask price from template (e.g. 5000 for collector)
+        currentAskPrice: (template as any).currentAskPrice,
         
         chainId: event.chainId,
-        eventId: event.id
+        eventId: event.id,
+        recapLog // Attach logs
     };
 };
 
@@ -266,8 +354,6 @@ export const resolveRedemptionFlow = (event: StoryEvent, inventory: Item[], dyna
     const coreSafe = !!coreItem && coreItem.status !== ItemStatus.SOLD && coreItem.status !== ItemStatus.REDEEMED;
 
     // 2. Check Other Items in Chain
-    // Find all items in inventory belonging to this chain (excluding the target itself)
-    // Note: Items must be tagged with relatedChainId for this to work robustly.
     const otherChainItems = inventory.filter(i => 
         i.relatedChainId === event.chainId && 
         i.id !== targetId &&

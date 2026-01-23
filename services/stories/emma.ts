@@ -1,4 +1,5 @@
 
+
 import { EventChainState, StoryEvent, ItemStatus } from '../../types';
 import { makeItem } from '../storyUtils';
 
@@ -8,13 +9,40 @@ export const EMMA_CHAIN_INIT: EventChainState = {
   isActive: false, // Default: Not Triggered
   stage: 0,
   variables: { funds: 0, hope: 50, job_chance: 0, has_laptop: 0 },
+  simulationLog: [],
   simulationRules: [
       { type: 'DELTA', targetVar: 'funds', value: -150 },
-      { type: 'CHANCE', chanceVar: 'job_chance', onSuccess: [
-          { type: 'MOD_VAR', target: 'funds', value: 3000, op: 'ADD' }, 
-          { type: 'MOD_VAR', target: 'job_chance', value: 0, op: 'SET' }, 
-          { type: 'MOD_VAR', target: 'hope', value: 50, op: 'ADD' }
-      ]},
+      // NEW: Compound Rule - Low hope drags down job chance
+      { 
+          type: 'COMPOUND', 
+          sourceVar: 'hope', 
+          operator: '<', 
+          threshold: 30, 
+          targetVar: 'job_chance', 
+          effect: -5,
+          logMessage: "心态崩溃影响了面试表现 (Job Chance -5)"
+      },
+      // NEW: Compound Rule - High hope boosts job chance
+      { 
+          type: 'COMPOUND', 
+          sourceVar: 'hope', 
+          operator: '>=', 
+          threshold: 80, 
+          targetVar: 'job_chance', 
+          effect: 2,
+          logMessage: "自信的状态让面试官印象深刻 (Job Chance +2)"
+      },
+      { 
+          type: 'CHANCE', 
+          chanceVar: 'job_chance', 
+          onSuccess: [
+              { type: 'MOD_VAR', target: 'funds', value: 3000, op: 'ADD' }, 
+              { type: 'MOD_VAR', target: 'job_chance', value: 0, op: 'SET' }, 
+              { type: 'MOD_VAR', target: 'hope', value: 50, op: 'ADD' }
+          ],
+          successLog: "收到录用通知书！(OFFER RECEIVED)",
+          failLog: "面试再次被拒..."
+      },
   ]
 };
 
@@ -55,10 +83,10 @@ export const EMMA_EVENTS: StoryEvent[] = [
       redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 3, mood: 'Neutral', tags: ["Story", "LowRisk"]
     },
     outcomes: {
-      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 70 }],
-      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 65 }],
-      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 60 }],
-      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 50 }]
+      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 70 }, { type: "MODIFY_VAR", variable: "job_chance", value: 50 }],
+      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 65 }, { type: "MODIFY_VAR", variable: "job_chance", value: 40 }],
+      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 60 }, { type: "MODIFY_VAR", variable: "job_chance", value: 30 }],
+      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 40 }, { type: "MODIFY_VAR", variable: "job_chance", value: 10 }]
     },
     onReject: [{ type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 40 }]
   },
@@ -86,9 +114,17 @@ export const EMMA_EVENTS: StoryEvent[] = [
       description: "妆容依然精致，但难掩眼底的疲惫。",
       avatarSeed: "emma_anxious",
       desiredAmount: 400, minimumAmount: 250, maxRepayment: 600,
+      // DYNAMIC DIALOGUE EXAMPLE
       dialogue: {
-        greeting: "老板，又见面了。",
-        pawnReason: "房东又在催了... 这可是全新的，连塑封都没拆。",
+        greeting: [
+            { condition: { variable: "hope", operator: "<", value: 50 }, text: "老板... 没想到这么快又见面了。（声音低沉）" },
+            { condition: { variable: "hope", operator: ">=", value: 50 }, text: "老板！又见面了。只是暂时周转一下。" },
+            { condition: { variable: "stage", operator: "==", value: 1 }, text: "老板，又见面了。" } // Fallback check
+        ],
+        pawnReason: [
+            { condition: { variable: "job_chance", operator: "<", value: 20 }, text: "投出去的简历都石沉大海... 房东又在催了。这可是全新的，连塑封都没拆。" },
+            { condition: { variable: "stage", operator: "==", value: 1 }, text: "面试还算顺利，但在发offer前，我得先解决房租问题。这可是全新的。" }
+        ],
         redemptionPlea: "希望能撑过这一周... 只要撑过去就好。",
         negotiationDynamic: "别压太低了... 我现在真的每一分钱都要算着花。",
         accepted: { fair: "希望能撑过这一周。", fleeced: "好吧... 总比没有强。", premium: "谢谢！你救了我一命。" },
@@ -98,10 +134,10 @@ export const EMMA_EVENTS: StoryEvent[] = [
       redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 3, mood: 'Neutral', tags: ["Story"]
     },
     outcomes: {
-      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 0 }],
-      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -2 }],
+      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 10 }],
+      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 0 }],
       "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -5 }],
-      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -10 }]
+      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -15 }]
     },
     onReject: [{ type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -20 }]
   },
@@ -130,7 +166,10 @@ export const EMMA_EVENTS: StoryEvent[] = [
       avatarSeed: "emma_desperate",
       desiredAmount: 1500, minimumAmount: 1000, maxRepayment: 3000,
       dialogue: {
-        greeting: "这台电脑... 帮我看个价。",
+        greeting: [
+             { condition: { variable: "hope", operator: "<", value: 20 }, text: "（她沉默地把电脑放在柜台上，手在颤抖）" },
+             { condition: { variable: "stage", operator: "==", value: 2 }, text: "这台电脑... 帮我看个价。" }
+        ],
         pawnReason: "这是我最后的生产力工具，没了它我没法投简历，也没法接私活。但我现在连饭都吃不上了。",
         redemptionPlea: "里面的文件对我至关重要... 求求你，千万别格式化。我一定会来赎的。",
         negotiationDynamic: "这不仅是电脑，这是我的未来... 别再压价了。",

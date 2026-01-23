@@ -1,11 +1,16 @@
 
-import React from 'react';
+
+import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { User, MessageSquareQuote, AlertCircle, Flame } from 'lucide-react';
+import { User, MessageSquareQuote, AlertCircle, Flame, History, ChevronDown, ChevronUp } from 'lucide-react';
+import { SimLogEntry } from '../types';
 
 export const CustomerView: React.FC = () => {
   const { state } = useGame();
   const { currentCustomer } = state;
+  
+  // State for toggling the backlog history
+  const [showRecap, setShowRecap] = useState(true);
 
   if (!currentCustomer) return (
     <div className="h-full flex flex-col items-center justify-center text-stone-600 font-mono animate-pulse bg-stone-950">
@@ -14,7 +19,7 @@ export const CustomerView: React.FC = () => {
     </div>
   );
 
-  const { dialogue, mood, patience, interactionType } = currentCustomer;
+  const { dialogue, mood, patience, interactionType, recapLog } = currentCustomer;
 
   // Resolve color mapping
   const resolveColor = {
@@ -111,6 +116,38 @@ export const CustomerView: React.FC = () => {
       {/* Dialogue Section */}
       <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar z-10">
         
+        {/* BACKSTAGE RECAP LOG (Memory) */}
+        {recapLog && recapLog.length > 0 && (
+             <div className="bg-stone-900/40 border border-stone-800 rounded overflow-hidden">
+                 <button 
+                    onClick={() => setShowRecap(!showRecap)}
+                    className="w-full flex justify-between items-center p-2 bg-stone-900 border-b border-stone-800 text-[10px] text-stone-500 font-bold uppercase tracking-wider hover:bg-stone-800 transition-colors"
+                 >
+                     <span className="flex items-center gap-2"><History className="w-3 h-3"/> 顾客近期经历 (Backstage)</span>
+                     {showRecap ? <ChevronUp className="w-3 h-3"/> : <ChevronDown className="w-3 h-3"/>}
+                 </button>
+                 
+                 {showRecap && (
+                     <div className="p-3 space-y-2 animate-in slide-in-from-top-2">
+                         {recapLog.map((log, idx) => (
+                             <div key={idx} className="flex gap-2 text-xs font-mono">
+                                 <div className={`w-1 h-full rounded-full shrink-0 ${
+                                     log.type === 'MILESTONE' ? 'bg-green-500' : 
+                                     log.type === 'CRISIS' ? 'bg-red-500' : 'bg-stone-600'
+                                 }`}></div>
+                                 <span className={
+                                     log.type === 'MILESTONE' ? 'text-green-400' : 
+                                     log.type === 'CRISIS' ? 'text-red-400' : 'text-stone-400'
+                                 }>
+                                     {log.content}
+                                 </span>
+                             </div>
+                         ))}
+                     </div>
+                 )}
+             </div>
+        )}
+
         {/* Opening Line */}
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-pawn-accent/80 mb-1">
