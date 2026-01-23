@@ -1,5 +1,7 @@
 
 
+
+
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../services/chainEngine';
 import { generateDailyNews } from '../services/newsEngine';
@@ -106,20 +108,32 @@ export const useGameEngine = () => {
       
       if (narrativeEvent) {
           
-          // --- FAILURE MAIL CHECK ---
-          // Before instantiating the customer, check if they are "broke"
-          // If so, send a mail and skip the physical visit.
-          if (narrativeEvent.type === 'REDEMPTION_CHECK') {
-              // DYNAMIC TARGET ITEM ID RESOLUTION
-              let targetId = narrativeEvent.targetItemId;
-              // If not on event, check chain variables (Underworld Logic)
-              if (!targetId) {
-                  const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
-                  if (chainState && chainState.variables.targetItemId) {
-                      targetId = String(chainState.variables.targetItemId); // Ensure string
-                  }
-              }
+          // --- SPECIAL EVENT LOGIC ---
+          let targetId = narrativeEvent.targetItemId;
+          if (!targetId) {
+               const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
+               if (chainState && chainState.variables.targetItemId) {
+                   targetId = String(chainState.variables.targetItemId);
+               }
+          }
 
+          // Case 1: POST_FORFEIT_VISIT Checks
+          if (narrativeEvent.type === 'POST_FORFEIT_VISIT') {
+              // Ensure item exists and is FORFEIT
+              const forfeitItem = state.inventory.find(i => i.id === targetId && i.status === ItemStatus.FORFEIT);
+              if (!forfeitItem) {
+                   console.log(`Skipping POST_FORFEIT_VISIT for ${narrativeEvent.id}: Item not forfeit or missing.`);
+                   // Skip this event and try fallback (or next tick, but for now just close shop to avoid loop)
+                   // Ideally we would loop to find next event, but simplified logic:
+                   dispatch({ type: 'SET_LOADING', payload: false });
+                   dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
+                   return;
+              }
+          }
+
+          // Case 2: FAILURE MAIL CHECK (Redemption Only)
+          // Before instantiating the customer, check if they are "broke"
+          if (narrativeEvent.type === 'REDEMPTION_CHECK') {
               if (targetId) {
                   const item = state.inventory.find(i => i.id === targetId);
                   const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
@@ -131,8 +145,6 @@ export const useGameEngine = () => {
                       const canAffordInterest = funds >= (cost?.interest || 0);
                       
                       // LOGIC: If they can't afford full redeem, AND can't afford interest (i.e. truly broke)
-                      // ALSO: If it's underworld, they never pay, so skip check? 
-                      // No, underworld event doesn't use failureMailId usually.
                       if (narrativeEvent.failureMailId && isBroke && !canAffordInterest) {
                            console.log(`Customer ${narrativeEvent.chainId} is sending plea mail instead of visiting.`);
                            
@@ -153,8 +165,7 @@ export const useGameEngine = () => {
                                applyChainEffects(narrativeEvent.chainId, narrativeEvent.onFailure);
                            }
                            
-                           // Skip this event by returning early (and effectively closing shop if no other events)
-                           // We need to simulate the day ending quickly or transitioning to closed.
+                           // Skip this event
                            setTimeout(() => {
                                 dispatch({ type: 'SET_LOADING', payload: false });
                                 dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
@@ -179,6 +190,17 @@ export const useGameEngine = () => {
               currentFunds,
               chainState // NEW: Pass chain state
           );
+
+          // --- OVERRIDE FOR POST_FORFEIT ---
+          if (narrativeEvent.type === 'POST_FORFEIT_VISIT' && targetId) {
+              const realItem = state.inventory.find(i => i.id === targetId);
+              if (realItem) {
+                  storyCustomer.item = { ...realItem };
+                  storyCustomer.interactionType = 'REDEEM'; // Reuse Redeem UI
+                  storyCustomer.redemptionIntent = 'REDEEM'; // Default intent
+                  storyCustomer.allowFreeRedeem = true; // Enable charity option
+              }
+          }
 
           // --- DYNAMIC REDEMPTION FLOW ---
           if (narrativeEvent.type === 'REDEMPTION_CHECK') {
@@ -205,7 +227,6 @@ export const useGameEngine = () => {
                   }
                   
                   // Important: Replace the dummy item with the REAL item from inventory for the UI
-                  // Resolve Target Item ID again
                   const tId = narrativeEvent.targetItemId || chainState?.variables?.targetItemId;
                   if (tId) {
                       const realItem = state.inventory.find(i => i.id === tId);
@@ -538,12 +559,6 @@ export const useGameEngine = () => {
                  return chain;
              });
              
-             // We dispatch immediately. This might cause a slight race if `commitTransaction` also does `UPDATE_CHAINS` below via effects.
-             // But usually `commitTransaction` runs effects via `applyChainEffects` which reads `state.activeChains`.
-             // To be safe, we should combine logic or ensure applyChainEffects sees the updated state? 
-             // Actually, `applyChainEffects` uses `state.activeChains` from closure. 
-             // Ideally we should pass this update to applyChainEffects or do it separately.
-             // Since underworld is likely orthogonal to the current customer chain, we can just dispatch.
              dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
              
              // Inject a log

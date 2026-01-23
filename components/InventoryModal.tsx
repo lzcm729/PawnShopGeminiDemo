@@ -39,13 +39,30 @@ export const InventoryModal: React.FC = () => {
 
   // Show ACTIVE, FORFEIT, and SOLD (to allow seeing breach status)
   // Filter out REDEEMED as they are gone.
-  const items = state.inventory.filter(i => i.status !== ItemStatus.REDEEMED);
+  let items = state.inventory.filter(i => i.status !== ItemStatus.REDEEMED);
 
   const calculateDaysLeft = (item: Item) => {
     if (item.status === ItemStatus.FORFEIT) return 0;
     if (!item.pawnInfo) return 0;
     return Math.max(0, item.pawnInfo.dueDate - state.stats.day);
   };
+
+  // Sort: Active with low days left -> Forfeit -> Active with high days -> Sold
+  items.sort((a, b) => {
+      const aDays = calculateDaysLeft(a);
+      const bDays = calculateDaysLeft(b);
+      
+      const aPriority = a.status === ItemStatus.FORFEIT ? 1 : a.status === ItemStatus.ACTIVE ? 0 : 2;
+      const bPriority = b.status === ItemStatus.FORFEIT ? 1 : b.status === ItemStatus.ACTIVE ? 0 : 2;
+      
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      
+      // If both active, sort by days left asc
+      if (a.status === ItemStatus.ACTIVE && b.status === ItemStatus.ACTIVE) {
+          return aDays - bDays;
+      }
+      return 0;
+  });
 
   const handleForceSell = (item: Item) => {
       sellActivePawn(item);
@@ -92,6 +109,15 @@ export const InventoryModal: React.FC = () => {
                 let statusColor = 'bg-yellow-600';
                 let statusText = 'ACTIVE';
                 let borderColor = 'border-[#292524]';
+                
+                // Urgency Styling for Active Items
+                if (isActive) {
+                    if (daysLeft <= 1) {
+                        borderColor = 'border-red-500 animate-pulse';
+                    } else if (daysLeft <= 3) {
+                        borderColor = 'border-yellow-500';
+                    }
+                }
 
                 if (isForfeit) { statusColor = 'bg-red-600'; statusText = 'FORFEIT'; }
                 if (isSold) { statusColor = 'bg-stone-600'; statusText = 'SOLD'; borderColor = 'border-red-900/30 bg-red-950/10'; }
@@ -174,9 +200,10 @@ export const InventoryModal: React.FC = () => {
                       )}
 
                       {!isSold && !isForfeit && (
-                        <div className="flex items-center gap-2 text-xs text-stone-400 bg-stone-900/50 p-1.5 rounded mb-2">
+                        <div className={`flex items-center gap-2 text-xs bg-stone-900/50 p-1.5 rounded mb-2 ${daysLeft <= 3 ? 'text-red-400 font-bold border border-red-900/30' : 'text-stone-400'}`}>
                            <Clock className="w-3 h-3" />
                            <span>到期: {daysLeft} 天</span>
+                           {daysLeft <= 1 && <span className="text-[10px] bg-red-600 text-white px-1 rounded animate-pulse">EXPIRING</span>}
                         </div>
                       )}
                     </div>

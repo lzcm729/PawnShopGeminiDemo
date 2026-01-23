@@ -1,4 +1,6 @@
 
+
+
 import React, { useEffect, useState } from 'react';
 import { GameProvider, useGame } from './store/GameContext';
 import { useGameEngine } from './hooks/useGameEngine';
@@ -14,8 +16,8 @@ import { MailModal } from './components/MailModal';
 import { DebugPanel } from './components/DebugPanel';
 import { ShopClosedView } from './components/ShopClosedView';
 import { Button } from './components/ui/Button';
-import { GamePhase, NewsCategory } from './types';
-import { Sun, Radio, TrendingUp, AlertTriangle, Newspaper, CloudRain, Wind, AlertOctagon } from 'lucide-react';
+import { GamePhase, NewsCategory, ItemStatus } from './types';
+import { Sun, Radio, TrendingUp, AlertTriangle, Newspaper, CloudRain, Wind, AlertOctagon, Clock } from 'lucide-react';
 
 const GameContent: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -86,6 +88,13 @@ const GameContent: React.FC = () => {
     const activeFlavor = flavors[0];
     const isRain = activeFlavor?.headline.includes("雨");
 
+    // Check Expiring Items
+    const expiringItems = state.inventory.filter(i => 
+        i.status === ItemStatus.ACTIVE && 
+        i.pawnInfo && 
+        (i.pawnInfo.dueDate - state.stats.day <= 3)
+    ).sort((a,b) => (a.pawnInfo!.dueDate - state.stats.day) - (b.pawnInfo!.dueDate - state.stats.day));
+
     return (
       <>
         <div className="h-screen w-full flex items-center justify-center bg-[#0a0a0a] text-white p-4 font-mono relative overflow-hidden">
@@ -121,6 +130,28 @@ const GameContent: React.FC = () => {
                         <span className="text-yellow-500">${state.stats.rentDue}</span>
                      </div>
                   </div>
+
+                  {/* EXPIRY ALERT WIDGET */}
+                  {expiringItems.length > 0 && (
+                      <div className="bg-red-950/20 border border-red-900 p-4 rounded mt-4">
+                          <h3 className="text-red-500 text-xs font-bold mb-2 flex items-center gap-2 uppercase tracking-wider animate-pulse">
+                              <AlertOctagon className="w-3 h-3" /> Expiry Alert
+                          </h3>
+                          <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar-light">
+                              {expiringItems.map(item => {
+                                  const days = item.pawnInfo!.dueDate - state.stats.day;
+                                  return (
+                                      <div key={item.id} className="flex justify-between text-[10px] text-stone-400">
+                                          <span className="truncate w-2/3">{item.name}</span>
+                                          <span className={days <= 1 ? "text-red-500 font-bold" : "text-yellow-500"}>
+                                              {days}d left
+                                          </span>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      </div>
+                  )}
 
                   <div className="bg-stone-900/50 p-4 rounded border border-stone-800 mt-auto">
                       <h3 className="text-stone-500 text-xs font-bold mb-2 flex items-center gap-2">

@@ -5,7 +5,7 @@ import { usePawnShop } from '../hooks/usePawnShop';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Item, ItemStatus, ChainUpdateEffect } from '../types';
 import { Button } from './ui/Button';
-import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, ShieldAlert, AlertTriangle, XCircle, Layers, Plus } from 'lucide-react';
+import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, ShieldAlert, AlertTriangle, XCircle, Layers, Plus, Heart, HandHeart, Skull } from 'lucide-react';
 import { CustomerView } from './CustomerView';
 import { ALL_STORY_EVENTS } from '../services/storyData';
 
@@ -165,403 +165,361 @@ const SettlementPanel: React.FC<{
     cost: any, 
     penalty: number,
     onRedeem: () => void,
+    onCharityReturn: () => void,
     onExtend: () => void,
     onRefuseExtension: () => void,
     onDismiss: () => void,
     onHostileTakeover: () => void,
-    isBreach: boolean
-}> = ({ customer, cost, penalty, onRedeem, onExtend, onRefuseExtension, onDismiss, onHostileTakeover, isBreach }) => {
+    isBreach: boolean,
+    canAffordBreach: boolean
+}> = ({ customer, cost, penalty, onRedeem, onCharityReturn, onExtend, onRefuseExtension, onDismiss, onHostileTakeover, isBreach, canAffordBreach }) => {
     
     // --- DETERMINE STATE ---
-    const wallet = customer.currentWallet || 0;
     const intent = customer.redemptionIntent || 'LEAVE'; // REDEEM | EXTEND | LEAVE
+    const allowFree = customer.allowFreeRedeem;
+    const canAffordRedeem = customer.currentWallet >= (cost?.total || 0);
+    const canAffordInterest = customer.currentWallet >= (cost?.interest || 0);
 
-    // CONFIRMATION STATES
-    const [showTakeoverConfirm, setShowTakeoverConfirm] = useState(false);
-    const [showRefuseConfirm, setShowRefuseConfirm] = useState(false);
-
-    // --- RENDER LOGIC: BREACH MODE ---
+    // If it's a breach, only 2 paths: Pay Penalty or Hostile Takeover (if implemented) or just Dismiss/Fail
     if (isBreach) {
         return (
-            <div className="bg-[#1c1917] border-t border-[#44403c] flex flex-col shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-10 relative p-4 min-h-[140px] justify-center">
-                <div className="text-center text-red-500 text-xs font-bold uppercase tracking-widest border border-red-900 bg-red-950/20 py-1 rounded mb-3">
-                    BREACH PROTOCOL INITIATED
-                </div>
-                <Button
-                    variant="danger"
-                    onClick={onRedeem} // In breach mode, Redeem triggers the penalty payment
-                    className="h-16 text-xl tracking-[0.1em] shadow-[0_0_20px_rgba(220,38,38,0.3)] border-2 border-red-600 bg-red-950 hover:bg-red-800 text-white flex items-center justify-center gap-3"
+            <div className="p-4 grid gap-3">
+                <Button 
+                    variant="danger" 
+                    onClick={onRedeem} // In breach context, redeem means "Pay Penalty"
+                    disabled={!canAffordBreach}
+                    className="h-16 text-lg border-red-500 bg-red-900/30 hover:bg-red-900/50"
                 >
-                    <ShieldAlert className="w-6 h-6"/> 
-                    <div className="flex flex-col items-start">
-                        <span className="font-black leading-none">支付赔偿</span>
-                        <span className="text-[10px] font-mono opacity-80">PENALTY (-${penalty})</span>
+                    <div className="flex flex-col items-center">
+                        <span className="flex items-center gap-2 font-bold"><ShieldAlert className="w-5 h-5"/> 支付违约赔偿</span>
+                        <span className="text-xs opacity-70">PAY PENALTY (-${penalty})</span>
+                    </div>
+                </Button>
+                
+                {/* Hostile Takeover / Refuse to pay */}
+                <Button 
+                    variant="secondary"
+                    onClick={onHostileTakeover}
+                    className="h-12 border-stone-700 text-stone-500 hover:text-red-500 hover:border-red-500"
+                >
+                    <span className="flex items-center justify-center gap-2">
+                        <XCircle className="w-4 h-4"/> 拒绝赔偿 (强行赶人)
+                    </span>
+                </Button>
+            </div>
+        );
+    }
+
+    // Standard Paths
+    return (
+        <div className="p-4 flex flex-col gap-3">
+            
+            {/* 1. CHARITY RETURN (Special Logic) */}
+            {allowFree && (
+                <Button 
+                    variant="primary"
+                    onClick={onCharityReturn}
+                    className="h-14 bg-green-600 hover:bg-green-500 text-white border-green-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] relative overflow-hidden group"
+                >
+                    <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    <div className="flex items-center justify-center gap-2 relative z-10">
+                        <HandHeart className="w-6 h-6" />
+                        <div className="flex flex-col items-start">
+                            <span className="font-black tracking-widest text-lg">无偿归还</span>
+                            <span className="text-[9px] font-mono uppercase opacity-90">Grant Charity (Humanity++)</span>
+                        </div>
+                    </div>
+                </Button>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+                {/* 2. REDEEM BUTTON */}
+                <Button 
+                    variant="primary" 
+                    onClick={onRedeem}
+                    disabled={!canAffordRedeem}
+                    className={`h-16 flex flex-col items-center justify-center ${!canAffordRedeem ? 'grayscale opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <div className="flex items-center gap-2 font-bold text-lg">
+                        <Stamp className="w-5 h-5" /> 赎回
+                    </div>
+                    <span className="text-xs font-mono opacity-80">
+                        CONFIRM (+${cost?.total})
+                    </span>
+                </Button>
+
+                {/* 3. EXTEND BUTTON */}
+                <Button 
+                    variant="secondary" 
+                    onClick={onExtend}
+                    disabled={!canAffordInterest}
+                    className={`h-16 border-stone-600 ${!canAffordInterest ? 'opacity-50 cursor-not-allowed' : 'hover:border-pawn-accent hover:text-pawn-accent'}`}
+                >
+                    <div className="flex flex-col items-center">
+                        <span className="flex items-center gap-2 font-bold"><RefreshCw className="w-4 h-4"/> 续当 (7天)</span>
+                        <span className="text-xs font-mono opacity-70">EXTEND (+${cost?.interest})</span>
                     </div>
                 </Button>
             </div>
-        )
-    }
 
-    // --- RENDER LOGIC: STANDARD MODES ---
-    // 1. Status Bar
-    let statusColor = "text-stone-500";
-    let statusText = "UNKNOWN";
-    let statusBorder = "border-stone-700";
-    let statusBg = "bg-stone-900";
-
-    if (intent === 'REDEEM') {
-        statusColor = "text-green-500";
-        statusText = "全额备款 (FULL PAYMENT)";
-        statusBorder = "border-green-600/50";
-        statusBg = "bg-green-950/20";
-    } else if (intent === 'EXTEND') {
-        statusColor = "text-yellow-500";
-        statusText = "仅付利息 (INTEREST ONLY)";
-        statusBorder = "border-yellow-600/50";
-        statusBg = "bg-yellow-950/20";
-    } else {
-        statusColor = "text-red-500";
-        statusText = "无力支付 (INSUFFICIENT)";
-        statusBorder = "border-red-600/50";
-        statusBg = "bg-red-950/20";
-    }
-
-    return (
-        <div className="bg-[#1c1917] border-t border-[#44403c] flex flex-col shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-10 relative">
-            
-            {/* Hostile Takeover Modal */}
-            {showTakeoverConfirm && (
-                <div className="absolute inset-0 z-50 bg-[#1c0000] border-t-2 border-red-600 flex flex-col items-center justify-center p-6 text-center animate-in slide-in-from-bottom-5">
-                    <AlertTriangle className="w-10 h-10 text-red-500 mb-2 animate-pulse" />
-                    <h4 className="text-lg font-black text-red-500 uppercase tracking-widest mb-1">恶意违约警告</h4>
-                    <p className="text-xs text-red-300 font-mono mb-4 px-4">
-                        拒绝归还物品将扣除 <strong className="text-white">${penalty}</strong> 违约金并严重损害声誉。
-                    </p>
-                    <div className="flex gap-2 w-full">
-                        <Button variant="ghost" onClick={() => setShowTakeoverConfirm(false)} className="flex-1 text-stone-400 hover:text-white text-xs">
-                            取消
-                        </Button>
-                        <Button variant="danger" onClick={onHostileTakeover} className="flex-1 h-10 bg-red-600 text-white border-red-800 text-xs">
-                            确认执行
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Refuse Extension Modal */}
-            {showRefuseConfirm && (
-                 <div className="absolute inset-0 z-50 bg-[#1c1917] border-t-2 border-stone-600 flex flex-col items-center justify-center p-6 text-center animate-in slide-in-from-bottom-5">
-                    <LogOut className="w-10 h-10 text-stone-400 mb-2" />
-                    <h4 className="text-lg font-black text-stone-200 uppercase tracking-widest mb-1">拒绝续当</h4>
-                    <p className="text-xs text-stone-400 font-mono mb-4 px-4">
-                        物品将归店铺所有 (FORFEIT)。<br/>
-                        这会损害你的人情声誉 (Humanity -10)。
-                    </p>
-                    <div className="flex gap-2 w-full">
-                        <Button variant="ghost" onClick={() => setShowRefuseConfirm(false)} className="flex-1 text-stone-400 hover:text-white text-xs">
-                            取消
-                        </Button>
-                        <Button variant="primary" onClick={onRefuseExtension} className="flex-1 h-10 bg-stone-700 text-white border-stone-500 text-xs">
-                            确认送客
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* STATUS HEADER */}
-            <div className={`px-4 py-2 border-b border-[#292524] flex justify-between items-center ${statusBg}`}>
-                 <div className="flex items-center gap-2">
-                    <Wallet className={`w-4 h-4 ${statusColor}`} />
-                    <span className={`text-[10px] font-bold uppercase tracking-widest ${statusColor}`}>Client Intent</span>
-                 </div>
-                 <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${statusBorder} ${statusColor} bg-black/40`}>
-                    {statusText}
-                 </span>
+            {/* 4. DISMISS / REFUSE */}
+            <div className="flex gap-2 mt-2">
+                <button 
+                    onClick={onRefuseExtension}
+                    className="flex-1 py-2 text-xs text-stone-600 hover:text-red-500 hover:bg-red-950/20 border border-transparent hover:border-red-900/30 rounded transition-colors flex items-center justify-center gap-1"
+                    title="Forfeit Item & Keep Cash"
+                >
+                    <Skull className="w-3 h-3" /> 拒绝续当 (Forfeit)
+                </button>
+                <button 
+                    onClick={onDismiss}
+                    className="flex-1 py-2 text-xs text-stone-600 hover:text-stone-400 border border-transparent hover:border-stone-700 rounded transition-colors flex items-center justify-center gap-1"
+                >
+                    <LogOut className="w-3 h-3" /> 送客 (Dismiss)
+                </button>
             </div>
 
-            {/* MAIN ACTIONS AREA */}
-            <div className="p-4 flex flex-col gap-3 min-h-[140px] justify-center">
-
-                {/* SCENARIO 1: CUSTOMER WANTS TO REDEEM */}
-                {intent === 'REDEEM' && (
-                    <div className="flex flex-col gap-3 animate-in fade-in">
-                        <Button
-                            variant="primary"
-                            onClick={onRedeem}
-                            className="h-16 text-xl tracking-[0.1em] shadow-[0_0_15px_rgba(16,185,129,0.2)] border-green-500 bg-green-900/20 hover:bg-green-800 text-green-400 hover:text-white flex items-center justify-center gap-3"
-                        >
-                            <CheckCircle2 className="w-6 h-6"/> 
-                            <div className="flex flex-col items-start">
-                                <span className="font-black leading-none">同意赎回</span>
-                                <span className="text-[10px] font-mono opacity-80">RETURN ITEM (+${cost?.total})</span>
-                            </div>
-                        </Button>
-                        
-                        <button 
-                            onClick={() => setShowTakeoverConfirm(true)}
-                            className="text-[10px] text-red-900 hover:text-red-500 font-bold uppercase tracking-widest flex items-center justify-center gap-1 transition-colors opacity-60 hover:opacity-100"
-                        >
-                            <ShieldAlert className="w-3 h-3" />
-                            强制违约 / 恶意买断 (-${penalty})
-                        </button>
-                    </div>
+            {/* Wallet Context Hint */}
+            <div className="mt-1 text-center">
+                {!canAffordRedeem && !canAffordInterest && !allowFree ? (
+                    <span className="text-[10px] text-red-500 animate-pulse font-mono">
+                        <AlertTriangle className="w-3 h-3 inline mr-1"/>
+                        资金不足 (Insufficient Funds)
+                    </span>
+                ) : (
+                    <span className="text-[10px] text-stone-600 font-mono">
+                        <Wallet className="w-3 h-3 inline mr-1"/>
+                        Customer Wallet: ${customer.currentWallet}
+                    </span>
                 )}
-
-                {/* SCENARIO 2: CUSTOMER WANTS TO EXTEND */}
-                {intent === 'EXTEND' && (
-                    <div className="flex flex-col gap-3 animate-in fade-in">
-                        <Button
-                            variant="secondary"
-                            onClick={onExtend}
-                            className="h-16 text-xl tracking-[0.1em] border-yellow-500/50 bg-yellow-900/10 hover:bg-yellow-900/30 text-yellow-500 flex items-center justify-center gap-3"
-                        >
-                            <RefreshCw className="w-6 h-6"/>
-                            <div className="flex flex-col items-start">
-                                <span className="font-black leading-none">同意续当</span>
-                                <span className="text-[10px] font-mono opacity-80">EXTEND 7 DAYS (+${cost?.interest})</span>
-                            </div>
-                        </Button>
-
-                         <button 
-                            onClick={() => setShowRefuseConfirm(true)}
-                            className="text-[10px] text-stone-600 hover:text-stone-400 font-bold uppercase tracking-widest flex items-center justify-center gap-1 transition-colors"
-                        >
-                            <XCircle className="w-3 h-3" />
-                            拒绝续当 / 强制绝当 (REFUSE)
-                        </button>
-                    </div>
-                )}
-
-                {/* SCENARIO 3: CUSTOMER IS BROKE (LEAVE) */}
-                {intent === 'LEAVE' && (
-                     <div className="flex flex-col gap-3 animate-in fade-in">
-                        <p className="text-[10px] text-stone-500 text-center italic">
-                            "老板，再宽限几天吧... 我真的没钱。"
-                        </p>
-                        <Button
-                            variant="danger"
-                            onClick={onDismiss}
-                            className="h-14 w-full text-red-300 hover:text-white border-red-900/50 hover:bg-red-950 flex flex-col items-center justify-center"
-                        >
-                            <span className="flex items-center gap-2 text-lg font-bold"><LogOut className="w-5 h-5"/> 送 客 (DISMISS)</span>
-                            <span className="text-[9px] opacity-70">ITEM WILL BECOME FORFEIT</span>
-                        </Button>
-                    </div>
-                )}
-                
             </div>
         </div>
     );
 };
 
-// --- MAIN WRAPPER ---
 export const RedemptionInterface: React.FC = () => {
     const { state, dispatch } = useGame();
-    const { calculateRedemptionCost, calculatePenalty, processRedemption, processExtension, processRefuseExtension, processHostileTakeover, processForcedForfeiture } = usePawnShop();
-    const { commitTransaction, applyChainEffects } = useGameEngine();
+    const { calculateRedemptionCost, calculatePenalty, processHostileTakeover, processForcedForfeiture } = usePawnShop();
+    const { commitTransaction, rejectCustomer, applyChainEffects } = useGameEngine();
     
     const customer = state.currentCustomer;
-    const item = customer?.item;
+    if (!customer) return null;
 
-    if (!customer || !item) {
-        return <div className="col-span-12 text-center p-10 text-stone-500">Error: Invalid Redemption Data</div>;
+    // --- LOGIC: Identify Target Items ---
+    // If it's a "Bundle Redeem" event, we might need to find all items for this chain.
+    // Logic: If customer.item is a dummy virtual item (for Redemption Event), we need to look up real items.
+    
+    let targetItems: Item[] = [];
+    const eventId = customer.eventId;
+    const event = ALL_STORY_EVENTS.find(e => e.id === eventId);
+    
+    // Check if event specifies redemption logic
+    const isRedeemAll = event?.outcomes?.['deal_standard']?.some(e => e.type === 'REDEEM_ALL'); // Heuristic check if not explicit
+    
+    // Default: The item attached to customer
+    if (customer.item && !customer.item.isVirtual) {
+        targetItems = [customer.item];
+    } else {
+        // Look for items belonging to this chain
+        targetItems = state.inventory.filter(i => i.relatedChainId === customer.chainId && i.status !== ItemStatus.REDEEMED);
+        // If specific target, filter
+        const targetId = event?.targetItemId;
+        if (targetId) {
+            const specific = targetItems.find(i => i.id === targetId);
+            if (specific) targetItems = [specific];
+        }
     }
 
-    // --- BUNDLE LOGIC (Fix for bug) ---
-    const effects = (customer as any)._dynamicEffects as ChainUpdateEffect[] | undefined;
-    const isRedeemAll = effects?.some(e => e.type === 'REDEEM_ALL');
+    if (targetItems.length === 0) return (
+        <div className="h-full flex items-center justify-center text-stone-500 font-mono">
+            ERROR: NO REDEEMABLE ITEMS FOUND
+        </div>
+    );
 
-    let relevantItems: Item[] = [item];
-    if (isRedeemAll && customer.chainId) {
-        const bundle = state.inventory.filter(i => 
-            i.relatedChainId === customer.chainId && 
-            (i.status === ItemStatus.ACTIVE || i.status === ItemStatus.FORFEIT)
-        );
-        // Ensure bundle contains items; fallback to single if bundle logic fails
-        if (bundle.length > 0) relevantItems = bundle;
-    }
-
-    // Calculate Costs
+    // --- CALCULATE COSTS (Batch) ---
     let totalPrincipal = 0;
     let totalInterest = 0;
-    
-    relevantItems.forEach(i => {
-        const c = calculateRedemptionCost(i); // Note: calculateRedemptionCost calls useCallback internally, make sure it's stable or safe? 
-        // Actually hook calls are stable. The function itself needs the item.
-        if (c) {
-            totalPrincipal += c.principal;
-            totalInterest += c.interest;
+    let anySold = false;
+    let totalPenalty = 0;
+
+    targetItems.forEach(item => {
+        if (item.status === ItemStatus.SOLD) {
+            anySold = true;
+            totalPenalty += calculatePenalty(item);
+        } else {
+            const c = calculateRedemptionCost(item);
+            if (c) {
+                totalPrincipal += c.principal;
+                totalInterest += c.interest;
+            }
         }
     });
 
-    const aggregateCost = {
+    const totalCost = totalPrincipal + totalInterest;
+    const costObj = {
         principal: totalPrincipal,
         interest: totalInterest,
-        total: totalPrincipal + totalInterest,
-        daysPassed: 0 // Bundle implies mixed days, hide it
+        total: totalCost,
+        daysPassed: 0 // Irrelevant for batch
     };
 
-    const penalty = calculatePenalty(item); // Penalty usually on core item if sold
-    const isBreach = item.status === ItemStatus.SOLD; // Primary item status
+    // --- HANDLERS ---
 
     const handleRedeem = () => {
-        if ((customer as any)._dynamicEffects && (customer as any)._dynamicEffects.length > 0) {
-             commitTransaction({
-                 success: true,
-                 message: "已赎回 (Redeemed)",
-                 cashDelta: 0, // Effects handle cash via 'ADD_FUNDS'/'REDEEM_ALL'
-                 reputationDelta: {},
-                 item: undefined
-             });
+        if (anySold) {
+            // PAY PENALTY
+            if (state.stats.cash < totalPenalty) return; // Should be disabled anyway
+            
+            // We use commitTransaction but with a penalty construct
+            // Actually `processRedemption` handles logic but for batch/event we use `commitTransaction` + effects
+            const res = {
+                success: true,
+                message: "支付赔偿金。",
+                cashDelta: -totalPenalty,
+                reputationDelta: { Credibility: -20 }, // Still lose rep for breach
+                dealQuality: 'fair' as const
+            };
+            commitTransaction(res);
         } else {
-             // Standard Redemption
-             processRedemption(item);
-             setTimeout(() => {
-                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: {}, item: null, log: '', customerName: customer.name } });
-             }, 500);
+            // STANDARD REDEEM
+            // We construct a transaction result that ADDS cash
+            const res = {
+                success: true,
+                message: customer.dialogue.accepted.fair || "赎回成功。",
+                cashDelta: totalCost,
+                reputationDelta: { Credibility: 2 },
+                dealQuality: 'fair' as const
+            };
+            // Note: The `commitTransaction` logic triggers chain effects.
+            // If the event has "REDEEM_ALL" or "REDEEM_TARGET" effects, the items will be updated there.
+            // If not, we might need manual update? 
+            // `applyChainEffects` in `useGameEngine` handles `REDEEM_ALL`/`REDEEM_TARGET`.
+            // So we just need to ensure the event has those effects mapped to "deal_standard" (which commitTransaction uses by default/logic).
+            commitTransaction(res);
         }
+    };
+
+    const handleCharityReturn = () => {
+        // Special Action: Return for $0
+        const res = {
+            success: true,
+            message: "你是个好人。(Charity)",
+            cashDelta: 0,
+            reputationDelta: { Humanity: 15 }, // Big boost
+            dealQuality: 'premium' as const // Treat as premium for outcome mapping
+        };
+        // We rely on the event having a 'deal_charity' or similar outcome that does REDEEM_TARGET
+        // OR we manually trigger redemption here? 
+        // The event system maps `rate=0` to `deal_charity`.
+        // Let's force terms to rate 0.
+        res['terms'] = { principal: 0, rate: 0 };
+        commitTransaction(res);
     };
 
     const handleExtend = () => {
-        // 1. Business Logic
-        processExtension(item, 7);
+        // Only Pay Interest
+        const res = {
+            success: true,
+            message: "续当成功。",
+            cashDelta: totalInterest,
+            reputationDelta: { Credibility: 1 },
+            dealQuality: 'fair' as const // Usually maps to standard outcome unless specific extend logic exists
+        };
         
-        // 2. Narrative Logic
-        if (customer.chainId && customer.eventId) {
-             const event = ALL_STORY_EVENTS.find(e => e.id === customer.eventId);
-             if (event && event.onExtend) {
-                 applyChainEffects(customer.chainId, event.onExtend, undefined, customer);
-             }
+        // Extension is special. It doesn't close the chain usually.
+        // It updates the item due date. 
+        // If the event has `onExtend` logic, we should use that.
+        // The `useGameEngine` doesn't strictly have a `commitExtension` method that maps to `onExtend`.
+        // BUT `commitTransaction` checks for `onComplete`.
+        
+        // Let's manually trigger the extension logic for items
+        targetItems.forEach(i => {
+            dispatch({ 
+                type: 'EXTEND_PAWN', 
+                payload: { itemId: i.id, interestPaid: 0, newDueDate: i.pawnInfo!.dueDate + 7, name: i.name } // Interest is in cashDelta
+            });
+        });
+
+        // And allow engine to process event outcomes (e.g. reduce stress)
+        // We hack the terms to imply standard deal for now, or add specific extend handling
+        // Ideally we use `applyChainEffects` with `event.onExtend`.
+        if (event?.onExtend) {
+            applyChainEffects(customer.chainId, event.onExtend);
         }
-
-         setTimeout(() => {
-             dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: {}, item: null, log: '', customerName: customer.name } });
-        }, 500);
-    };
-
-    const handleRefuseExtension = () => {
-        processRefuseExtension(item);
-
-        if (customer.chainId && customer.eventId) {
-             const event = ALL_STORY_EVENTS.find(e => e.id === customer.eventId);
-             if (event && event.failureMailId) {
-                  dispatch({ 
-                       type: 'SCHEDULE_MAIL', 
-                       payload: { 
-                           templateId: event.failureMailId, 
-                           delayDays: 1,
-                           metadata: { relatedItemName: item.name }
-                       } 
-                  });
-             }
-             if (event && event.onFailure) {
-                 applyChainEffects(customer.chainId, event.onFailure, undefined, customer);
-             }
-        }
-
-        setTimeout(() => {
-            dispatch({ type: 'REJECT_DEAL' }); 
-        }, 500);
-    };
-
-    const handleHostileTakeover = () => {
-        // Only applies to core item in standard flow
-        const { processHostileTakeover } = usePawnShop(); // Re-access to ensure closure? 
-        // Actually we extracted it at top level.
         
-        // Use local function defined above? No, use hook's function.
-        // Wait, I need to call the hook function inside the handler.
-        // But hook is called at component top level.
-        // Using `processHostileTakeover` from hook is correct.
-        
-        // NOTE: Hostile takeover usually targets the main item the customer wants.
-        // If it's a bundle, do we takeover all? 
-        // For simplicity, takeover logic in engine focuses on targetItemId or current item.
-        
-        // Business Logic
-        // We need to re-import processHostileTakeover from hook (it was passed in top scope)
-        // Oops, I need to make sure I'm using the one from the hook.
-        
-        // Let's refactor the handler to use the hook's function directly.
-        // I need to use the one from the closure `processHostileTakeover`.
-        
-        // Actually, let's just trigger the event logic.
-        
-        // 1. Business Logic Update
-        // We need to trigger the hook function.
-        // But I need access to it.
-        // It is available in the component scope.
-        
-        // Call Hook
-        // processHostileTakeover(item); // This line needs to be valid.
-        
-        // Wait, `processHostileTakeover` is defined in `usePawnShop`.
-        // I destructured it at the top of `RedemptionInterface`.
-        // It should be fine.
-        
-        // However, typescript might complain if I didn't destructure it.
-        // Let's check the destructuring line.
-        // `const { ..., processHostileTakeover } = usePawnShop();`
-        // Yes, it is there.
-        
-        // ... implementation same as before ...
-        
-        // FIX: Re-implement handleHostileTakeover using the hook function
-        processHostileTakeover(item);
-        
-        if (customer.chainId && customer.eventId) {
-            const event = ALL_STORY_EVENTS.find(e => e.id === customer.eventId);
-            const hostileFlow = event?.dynamicFlows?.['hostile_takeover'];
-            
-            if (hostileFlow) {
-                 applyChainEffects(customer.chainId, hostileFlow.outcome, undefined, customer);
-            } else {
-                const updatedChains = state.activeChains.map(chain => {
-                    if (chain.id === customer.chainId) {
-                        return { ...chain, isActive: false };
-                    }
-                    return chain;
-                });
-                dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
-            }
-        }
-
-        setTimeout(() => {
-            dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: {}, item: null, log: '', customerName: customer.name } });
-        }, 500);
+        // Resolve transaction visually
+        dispatch({ 
+            type: 'RESOLVE_TRANSACTION', 
+            payload: { 
+                cashDelta: totalInterest, 
+                reputationDelta: {}, 
+                item: null, 
+                log: "续当交易完成", 
+                customerName: customer.name 
+            } 
+        });
     };
 
     const handleDismiss = () => {
-        processForcedForfeiture(item);
+        rejectCustomer();
+    };
+
+    const handleRefuseExtension = () => {
+        // Force Forfeit
+        targetItems.forEach(i => processForcedForfeiture(i));
+        // Trigger generic rejection logic for chain
+        rejectCustomer(); 
+    };
+
+    const handleHostileTakeover = () => {
+        // Only valid for breach usually, refusing to pay penalty? 
+        // Or forcing a buyout on a non-breach item (Refusing redemption)
+        // For breach, it means dismissing without paying.
+        if (anySold) {
+            rejectCustomer(); // Just leave, effectively refusing to pay.
+            // Trigger bad mail
+            if (event?.dynamicFlows?.['hostile_takeover']) {
+                 applyChainEffects(customer.chainId, event.dynamicFlows['hostile_takeover'].outcome);
+            }
+        }
     };
 
     return (
-        <>
-            {/* COLUMN 1 (Left): TICKET (Item Info) */}
-            <div className="lg:col-span-6 h-full overflow-hidden border-r border-white/10">
-                <TicketPanel items={relevantItems} cost={aggregateCost} penalty={penalty} isBundle={isRedeemAll && relevantItems.length > 1} />
-            </div>
-
-            {/* COLUMN 2 (Right): CUSTOMER + ACTIONS */}
-            <div className="lg:col-span-6 h-full flex flex-col overflow-hidden">
-                {/* Top: Customer View (Dialogue) */}
-                <div className="flex-1 overflow-hidden relative">
-                    <CustomerView />
-                </div>
-                
-                {/* Bottom: Settlement Controls */}
-                <SettlementPanel 
-                    customer={customer} 
-                    cost={aggregateCost} 
-                    penalty={penalty}
-                    onRedeem={handleRedeem}
-                    onExtend={handleExtend}
-                    onRefuseExtension={handleRefuseExtension}
-                    onDismiss={handleDismiss}
-                    onHostileTakeover={handleHostileTakeover}
-                    isBreach={isBreach}
+        <div className="h-full grid grid-cols-1 lg:grid-cols-12 bg-black/20">
+            {/* LEFT: 50% - Item & Receipt */}
+            <div className="lg:col-span-6 h-full">
+                <TicketPanel 
+                    items={targetItems} 
+                    cost={costObj} 
+                    penalty={totalPenalty} 
+                    isBundle={targetItems.length > 1}
                 />
             </div>
-        </>
+
+            {/* RIGHT: 50% - Customer & Actions */}
+            <div className="lg:col-span-6 h-full flex flex-col bg-[#1c1917] border-l border-[#44403c]">
+                {/* 1. Customer View (Top) */}
+                <div className="flex-1 overflow-hidden relative border-b border-[#44403c]">
+                    <CustomerView />
+                </div>
+
+                {/* 2. Settlement Action Panel (Bottom) */}
+                <div className="bg-[#141211] relative z-10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+                    <SettlementPanel 
+                        customer={customer}
+                        cost={costObj}
+                        penalty={totalPenalty}
+                        isBreach={anySold}
+                        canAffordBreach={state.stats.cash >= totalPenalty}
+                        onRedeem={handleRedeem}
+                        onCharityReturn={handleCharityReturn}
+                        onExtend={handleExtend}
+                        onRefuseExtension={handleRefuseExtension}
+                        onDismiss={handleDismiss}
+                        onHostileTakeover={handleHostileTakeover}
+                    />
+                </div>
+            </div>
+        </div>
     );
 };

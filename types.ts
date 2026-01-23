@@ -197,6 +197,9 @@ export interface Customer {
   
   // NEW: Narrative Recap Log (What happened to them while they were gone)
   recapLog?: SimLogEntry[];
+  
+  // NEW: Special Redemption Options
+  allowFreeRedeem?: boolean;
 }
 
 export interface DailyStats {
@@ -229,7 +232,7 @@ export interface TransactionRecord {
   id: string;
   description: string;
   amount: number; 
-  type: 'PAWN' | 'SELL' | 'RENT' | 'EXPENSE' | 'REWARD' | 'REDEEM' | 'EXTEND' | 'PENALTY';
+  type: 'PAWN' | 'SELL' | 'RENT' | 'EXPENSE' | 'REWARD' | 'REDEEM' | 'EXTEND' | 'PENALTY' | 'CHARITY';
 }
 
 // Mail & Event Types remain unchanged...
@@ -384,13 +387,14 @@ export interface CustomerTemplate {
     currentAskPrice?: number;
     redemptionIntent?: 'REDEEM' | 'EXTEND' | 'LEAVE';
     item?: Partial<Item>; // Added item to template as it was used in instantiation
+    allowFreeRedeem?: boolean; // NEW: Allow returning for free
 }
 
 export interface StoryEvent {
   id: string; 
   chainId: string; 
   // NEW: Special event type for advanced logic
-  type?: 'STANDARD' | 'REDEMPTION_CHECK';
+  type?: 'STANDARD' | 'REDEMPTION_CHECK' | 'POST_FORFEIT_VISIT';
   
   triggerConditions: TriggerCondition[];
   

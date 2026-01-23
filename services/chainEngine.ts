@@ -1,5 +1,7 @@
 
 
+
+
 import { EventChainState, StoryEvent, TriggerCondition, ChainVariables, Customer, Item, ItemStatus, DynamicFlowOutcome, SimOperation, Dialogue, DialogueText, SimLogEntry, SimRule } from '../types';
 
 // Helper: Evaluate a single condition against current variables and chain state
@@ -332,7 +334,8 @@ export const instantiateStoryCustomer = (
         
         chainId: event.chainId,
         eventId: event.id,
-        recapLog // Attach logs
+        recapLog, // Attach logs
+        allowFreeRedeem: template.allowFreeRedeem // Pass through
     };
 };
 
