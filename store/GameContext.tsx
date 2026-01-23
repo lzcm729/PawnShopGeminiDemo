@@ -1,5 +1,4 @@
 
-
 import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren } from 'react';
 import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry } from '../types';
 import { INITIAL_CHAINS } from '../services/storyData';
@@ -43,7 +42,8 @@ const initialState: GameState = {
   
   // NEW
   dailyNews: [],
-  activeMarketEffects: []
+  activeMarketEffects: [],
+  violationFlags: []
 };
 
 type Action =
@@ -80,7 +80,9 @@ type Action =
   | { type: 'RESOLVE_BREACH'; payload: { penalty: number; name: string } }
   | { type: 'HOSTILE_TAKEOVER'; payload: { itemId: string; penalty: number; name: string } }
   | { type: 'FORCE_FORFEIT'; payload: { itemId: string; name: string } }
-  | { type: 'UPDATE_NEWS'; payload: { news: ActiveNewsInstance[], modifiers: MarketModifier[] } }; // NEW
+  | { type: 'UPDATE_NEWS'; payload: { news: ActiveNewsInstance[], modifiers: MarketModifier[] } }
+  | { type: 'ADD_VIOLATION'; payload: string }
+  | { type: 'CLEAR_VIOLATIONS' };
 
 const gameReducer = (state: GameState, action: Action): GameState => {
   switch (action.type) {
@@ -101,7 +103,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         stats: {
             ...state.stats,
             actionPoints: effectiveMaxAP 
-        }
+        },
+        violationFlags: [] // Clear violations at start of new day (intelligence loop reset)
       };
     }
 
@@ -649,6 +652,13 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             dailyNews: action.payload.news,
             activeMarketEffects: action.payload.modifiers
         };
+
+    case 'ADD_VIOLATION':
+        if (state.violationFlags.includes(action.payload)) return state;
+        return { ...state, violationFlags: [...state.violationFlags, action.payload] };
+
+    case 'CLEAR_VIOLATIONS':
+        return { ...state, violationFlags: [] };
 
     default:
       return state;

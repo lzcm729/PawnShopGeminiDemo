@@ -1,10 +1,10 @@
 
-
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { X, Mail, Download, FileText, Terminal, Minimize2, AlertCircle } from 'lucide-react';
 import { getMailTemplate } from '../services/mailData';
 import { interpolateMailBody } from '../services/mailInterpolation';
+import { NewsCategory } from '../types';
 
 export const MailModal: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -24,9 +24,15 @@ export const MailModal: React.FC = () => {
   const selectedMailInstance = selectedMailId ? state.inbox.find(m => m.uniqueId === selectedMailId) : null;
   const selectedTemplate = selectedMailInstance ? getMailTemplate(selectedMailInstance.templateId) : null;
   
+  // Find highest priority narrative news for interpolation context
+  const narrativeNews = state.dailyNews.find(n => n.category === NewsCategory.NARRATIVE) || state.dailyNews[0];
+
   // Interpolate Body if selected
   const displayBody = selectedTemplate && selectedMailInstance 
-      ? interpolateMailBody(selectedTemplate.body, selectedMailInstance.metadata || {}) 
+      ? interpolateMailBody(selectedTemplate.body, { 
+          ...selectedMailInstance.metadata || {},
+          recentNews: narrativeNews ? { headline: narrativeNews.headline, body: narrativeNews.body } : undefined
+      }) 
       : "";
 
   return (

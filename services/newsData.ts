@@ -1,5 +1,4 @@
 
-
 import { NewsItem, NewsCategory } from '../types';
 
 export const ALL_NEWS_DATA: NewsItem[] = [
@@ -30,7 +29,8 @@ export const ALL_NEWS_DATA: NewsItem[] = [
         triggers: [
              { variable: "chain_emma.stage", operator: "==", value: 99 },
              { variable: "chain_emma.hope", operator: "<=", value: -50 }
-        ]
+        ],
+        triggerMailId: "mail_emma_hate" // Trigger hate mail when body is found
     },
     {
         id: "news_emma_hopeful",
@@ -178,6 +178,19 @@ export const ALL_NEWS_DATA: NewsItem[] = [
             categoryTarget: "All",
             priceMultiplier: 1.0, 
             riskModifier: 50 // HIGH RISK: Stolen items will destroy credibility
+        }
+    },
+    // NEW: Consequence News
+    {
+        id: "news_consequence_police_investigation",
+        headline: "市场监管：违规商户曝光",
+        body: "市场监督管理局通报，一家位于第12区的典当行因涉嫌收购来源不明物品被立案调查。知情人士透露，该店老板可能面临吊销执照的风险，且在社区内的信誉一落千丈。",
+        category: NewsCategory.NARRATIVE,
+        priority: 95,
+        duration: 2,
+        triggers: [], // Triggered manually by engine via violation flags
+        effect: {
+            riskModifier: 20 // Punish further
         }
     },
     {

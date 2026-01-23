@@ -1,5 +1,4 @@
 
-
 export enum GamePhase {
   START_SCREEN = 'START_SCREEN',
   MORNING_BRIEF = 'MORNING_BRIEF',
@@ -111,7 +110,7 @@ export interface Item {
   hasNegativeAppraisalEvent?: boolean;
 
   // NEW: Chain Linkage
-  relatedChainId?: string; // Links item to a specific story chain (e.g., "chain_emma")
+  relatedChainId?: string; // Links item to a specific story chain (e.g. "chain_emma")
   
   // NEW: Logic Flags
   isVirtual?: boolean; // If true, item is never added to inventory (used for checks/narrative only)
@@ -445,6 +444,7 @@ export interface NewsItem {
   triggers: TriggerCondition[]; // Uses same logic as StoryEvent
   effect?: MarketModifier; // Optional market impact
   duration: number; // How many days it stays active/effective
+  triggerMailId?: string; // NEW: Triggers this mail when news becomes active
 }
 
 export interface ActiveNewsInstance extends NewsItem {
@@ -473,4 +473,5 @@ export interface GameState {
   // NEW: News System State
   dailyNews: ActiveNewsInstance[]; // The news shown TODAY
   activeMarketEffects: MarketModifier[]; // Flattened list of active modifiers
+  violationFlags: string[]; // NEW: Tracks player violations (e.g. ignoring police warnings)
 }

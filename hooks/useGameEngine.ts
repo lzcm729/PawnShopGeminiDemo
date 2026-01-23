@@ -1,7 +1,4 @@
 
-
-
-
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow } from '../services/chainEngine';
 import { generateDailyNews } from '../services/newsEngine';
@@ -66,6 +63,14 @@ export const useGameEngine = () => {
     // 2. Generate News & Market Effects for the UPCOMING morning
     const newsResult = generateDailyNews(tempState);
     dispatch({ type: 'UPDATE_NEWS', payload: newsResult });
+    
+    // Process News-Triggered Mails
+    newsResult.scheduledMails.forEach(mailId => {
+        dispatch({ 
+            type: 'SCHEDULE_MAIL', 
+            payload: { templateId: mailId, delayDays: 0 } 
+        });
+    });
 
     // 3. Transition to Morning Brief (and increment day integer in reducer)
     dispatch({ type: 'END_DAY' });
@@ -313,7 +318,7 @@ export const useGameEngine = () => {
     // Check for active Police Raid or similar high-risk events
     const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
     
-    if (item.isStolen) {
+    if (item.isStolen || (item.category === '违禁品' && !item.isSuspicious)) {
       // Base logic
       repDelta[ReputationType.UNDERWORLD] += 5;
       repDelta[ReputationType.CREDIBILITY] -= 2; 
@@ -324,6 +329,8 @@ export const useGameEngine = () => {
           repDelta[ReputationType.CREDIBILITY] -= 20; 
           // But maybe extra underworld rep for being bold?
           repDelta[ReputationType.UNDERWORLD] += 5;
+          // TRIGGER VIOLATION FLAG for Intelligence Verification
+          dispatch({ type: 'ADD_VIOLATION', payload: 'police_risk_ignored' });
       }
     }
     
@@ -357,8 +364,8 @@ export const useGameEngine = () => {
     const narrativeLog = generatePawnLog(customer, item, state.stats.day, visitCount);
     
     // Add Warning Log if High Risk Trade
-    if (item.isStolen && currentRisk > 0) {
-        narrativeLog.content += " [警告] 在严打期间收受赃物，风声走漏。信誉大幅下降！";
+    if ((item.isStolen || item.category === '违禁品') && currentRisk > 0) {
+        narrativeLog.content += " [警告] 在严打期间收受违规物品，已被市场监管部门注意！";
     }
 
     const updatedLogs = [...(item.logs || []), narrativeLog];
@@ -683,7 +690,12 @@ export const useGameEngine = () => {
   };
   
   const liquidateItem = (item: Item) => {
-      const amount = Math.floor(item.realValue * 0.8);
+      // Apply Market Multiplier
+      const multiplier = state.activeMarketEffects
+          .filter(mod => mod.categoryTarget === item.category || mod.categoryTarget === 'All')
+          .reduce((acc, mod) => acc * (mod.priceMultiplier || 1.0), 1.0);
+
+      const amount = Math.floor(item.realValue * 0.8 * multiplier);
       dispatch({ 
           type: 'LIQUIDATE_ITEM', 
           payload: { itemId: item.id, amount, name: item.name } 

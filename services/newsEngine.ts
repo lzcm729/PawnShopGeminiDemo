@@ -1,5 +1,4 @@
 
-
 import { GameState, NewsItem, ActiveNewsInstance, MarketModifier, NewsCategory } from '../types';
 import { ALL_NEWS_DATA } from './newsData';
 
@@ -46,8 +45,8 @@ const checkNewsCondition = (condition: any, state: GameState): boolean => {
     }
 };
 
-export const generateDailyNews = (state: GameState): { news: ActiveNewsInstance[], modifiers: MarketModifier[] } => {
-    const { dailyNews } = state;
+export const generateDailyNews = (state: GameState): { news: ActiveNewsInstance[], modifiers: MarketModifier[], scheduledMails: string[] } => {
+    const { dailyNews, violationFlags } = state;
 
     // 1. Process Existing News (Persistence)
     const persistedNews: ActiveNewsInstance[] = dailyNews
@@ -99,16 +98,34 @@ export const generateDailyNews = (state: GameState): { news: ActiveNewsInstance[
         daysRemaining: n.duration
     }));
 
-    // 5. Merge
+    // 5. Intelligence Loop: Consequence Injection
+    if (violationFlags.includes('police_risk_ignored')) {
+        const consequence = ALL_NEWS_DATA.find(n => n.id === 'news_consequence_police_investigation');
+        // Prevent duplicate if already persisted or selected
+        if (consequence && !persistedNews.some(p => p.id === consequence.id) && !newInstances.some(n => n.id === consequence.id)) {
+             newInstances.push({ ...consequence, daysRemaining: consequence.duration });
+        }
+    }
+
+    // 6. Merge
     const allActive = [...persistedNews, ...newInstances];
     
-    // 6. Extract Modifiers from ALL active news
+    // 7. Extract Modifiers from ALL active news
     const modifiers: MarketModifier[] = allActive
         .filter(n => n.effect !== undefined)
         .map(n => n.effect!);
 
+    // 8. Handle Mail Triggers (Only for newly activated news)
+    const scheduledMails: string[] = [];
+    newInstances.forEach(n => {
+        if (n.triggerMailId) {
+            scheduledMails.push(n.triggerMailId);
+        }
+    });
+
     return {
         news: allActive,
-        modifiers
+        modifiers,
+        scheduledMails
     };
 };
