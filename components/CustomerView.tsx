@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { User, MessageSquareQuote, AlertCircle, Flame, History, ChevronDown, ChevronUp } from 'lucide-react';
@@ -60,7 +59,7 @@ export const CustomerView: React.FC = () => {
   const showPawnReason = interactionType === 'PAWN';
 
   return (
-    <div className="flex flex-col h-full bg-[#1c1917] border-r border-[#44403c] relative overflow-hidden">
+    <div className="flex flex-col h-full bg-[#1c1917] relative overflow-hidden">
       {/* Texture Overlay */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-noise.png')] opacity-10 pointer-events-none"></div>
       

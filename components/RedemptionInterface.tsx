@@ -420,7 +420,7 @@ export const RedemptionInterface: React.FC = () => {
     };
 
     return (
-        <div className="h-full grid grid-cols-1 lg:grid-cols-12 bg-black/20">
+        <div className="col-span-1 lg:col-span-12 h-full grid grid-cols-1 lg:grid-cols-12 bg-black/20">
             <div className="lg:col-span-6 h-full">
                 <TicketPanel 
                     items={targetItems} 
