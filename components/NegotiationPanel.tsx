@@ -3,13 +3,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame, Handshake, BrainCircuit } from 'lucide-react';
-import { Customer, TransactionResult, InterestRate, RejectionLines } from '../types';
+import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame, Handshake, BrainCircuit, AlertTriangle } from 'lucide-react';
+import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { DealSuccessModal } from './DealSuccessModal';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
 import { NegotiationHistory } from './NegotiationHistory';
 import { playSfx } from '../systems/game/audio';
+import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 
 interface NegotiationStateProps {
     negotiation: {
@@ -176,6 +177,37 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
       ? getMerchantInstinct(offerPrincipal, selectedRate, currentCustomer, item) 
       : { text: "", color: "" };
 
+  // Validate Deal Availability (For binary negotiation events that require item possession)
+  const event = currentCustomer?.eventId ? ALL_STORY_EVENTS.find(e => e.id === currentCustomer.eventId) : null;
+  let canFulfillDeal = true;
+  let fulfillmentError = "";
+
+  if (isBinaryChoice && event) {
+      // 1. Check if specific target item exists in inventory (Active or Forfeit)
+      if (event.targetItemId) {
+          const target = state.inventory.find(i => i.id === event.targetItemId);
+          if (!target || (target.status !== ItemStatus.ACTIVE && target.status !== ItemStatus.FORFEIT)) {
+              canFulfillDeal = false;
+              fulfillmentError = "标的物缺失 (Item Missing)";
+          }
+      }
+      
+      // 2. Check FORCE_SELL_ALL constraint
+      if (canFulfillDeal) {
+          const standardOutcome = event.outcomes?.['deal_standard'];
+          if (standardOutcome && standardOutcome.some(e => e.type === 'FORCE_SELL_ALL')) {
+               const hasItems = state.inventory.some(i => 
+                   i.relatedChainId === currentCustomer!.chainId && 
+                   (i.status === ItemStatus.ACTIVE || i.status === ItemStatus.FORFEIT)
+               );
+               if (!hasItems) {
+                   canFulfillDeal = false;
+                   fulfillmentError = "无货可交 (Stock Empty)";
+               }
+          }
+      }
+  }
+
   useEffect(() => {
     if (scrollRef.current) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -298,10 +330,12 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   };
 
   const handleBinaryAccept = () => {
+      // For binary offers (like acquisition offers), the currentAskPrice is the amount offered to the player.
+      // Therefore cashDelta should be positive.
       const mockResult: TransactionResult = {
           success: true,
           message: currentCustomer.dialogue.accepted.fair || "成交。",
-          cashDelta: 0, 
+          cashDelta: currentAskPrice, 
           reputationDelta: {},
           item: currentCustomer.item,
           dealQuality: 'fair',
@@ -528,13 +562,20 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                         <span className="font-bold text-lg">拒绝</span>
                         <span className="text-[10px] opacity-70">REJECT OFFER</span>
                      </Button>
+                     
                      <Button 
                         variant="primary" 
-                        onClick={handleBinaryAccept} 
-                        className="flex-[2] h-14 flex flex-col items-center justify-center gap-1 border-pawn-accent shadow-[0_0_15px_rgba(217,119,6,0.3)]"
+                        onClick={handleBinaryAccept}
+                        disabled={!canFulfillDeal} 
+                        className={`flex-[2] h-14 flex flex-col items-center justify-center gap-1 border-pawn-accent shadow-[0_0_15px_rgba(217,119,6,0.3)] ${!canFulfillDeal ? 'grayscale opacity-50 cursor-not-allowed border-stone-600 shadow-none' : ''}`}
                      >
-                        <span className="font-bold text-lg flex items-center gap-2"><Handshake className="w-5 h-5"/> 成交</span>
-                        <span className="text-[10px] opacity-70 text-black">ACCEPT DEAL</span>
+                        <span className="font-bold text-lg flex items-center gap-2">
+                            {canFulfillDeal ? <Handshake className="w-5 h-5"/> : <AlertTriangle className="w-5 h-5 text-red-500"/>} 
+                            {canFulfillDeal ? "成交" : "无法成交"}
+                        </span>
+                        <span className={`text-[10px] opacity-70 ${!canFulfillDeal ? 'text-red-400 font-bold' : 'text-black'}`}>
+                            {canFulfillDeal ? "ACCEPT DEAL" : (fulfillmentError || "ITEM MISSING")}
+                        </span>
                      </Button>
                  </div>
              </div>

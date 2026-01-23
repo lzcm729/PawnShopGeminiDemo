@@ -5,7 +5,7 @@ import { usePawnShop } from '../hooks/usePawnShop';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Item, ItemStatus, ChainUpdateEffect } from '../types';
 import { Button } from './ui/Button';
-import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, ShieldAlert, AlertTriangle, XCircle, Layers, Plus, Heart, HandHeart, Skull } from 'lucide-react';
+import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, ShieldAlert, AlertTriangle, XCircle, Layers, Plus, Heart, HandHeart, Skull, Gavel } from 'lucide-react';
 import { CustomerView } from './CustomerView';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { playSfx } from '../systems/game/audio';
@@ -165,7 +165,8 @@ const SettlementPanel: React.FC<{
     canAffordBreach: boolean
 }> = ({ customer, cost, penalty, onRedeem, onCharityReturn, onExtend, onRefuseExtension, onDismiss, onHostileTakeover, isBreach, canAffordBreach }) => {
     
-    const intent = customer.redemptionIntent || 'LEAVE'; 
+    // Determine Customer Intent. Default to REDEEM if not specified.
+    const intent = customer.redemptionIntent || 'REDEEM'; 
     const allowFree = customer.allowFreeRedeem;
     const canAffordRedeem = customer.currentWallet >= (cost?.total || 0);
     const canAffordInterest = customer.currentWallet >= (cost?.interest || 0);
@@ -187,7 +188,7 @@ const SettlementPanel: React.FC<{
                 
                 <Button 
                     variant="secondary"
-                    onClick={onHostileTakeover}
+                    onClick={onHostileTakeover} // This effectively dismisses the customer without paying if item is already gone and we refuse to pay
                     className="h-12 border-stone-700 text-stone-500 hover:text-red-500 hover:border-red-500"
                 >
                     <span className="flex items-center justify-center gap-2">
@@ -218,52 +219,69 @@ const SettlementPanel: React.FC<{
                 </Button>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-                <Button 
-                    variant="primary" 
-                    onClick={onRedeem}
-                    disabled={!canAffordRedeem}
-                    className={`h-16 flex flex-col items-center justify-center ${!canAffordRedeem ? 'grayscale opacity-50 cursor-not-allowed' : ''}`}
-                >
-                    <div className="flex items-center gap-2 font-bold text-lg">
-                        <Stamp className="w-5 h-5" /> 赎回
-                    </div>
-                    <span className="text-xs font-mono opacity-80">
-                        CONFIRM (+${cost?.total})
-                    </span>
-                </Button>
+            <div className="flex flex-col gap-3">
+                {intent === 'REDEEM' && (
+                    <Button 
+                        variant="primary" 
+                        onClick={onRedeem}
+                        disabled={!canAffordRedeem}
+                        className={`h-16 flex flex-col items-center justify-center ${!canAffordRedeem ? 'grayscale opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        <div className="flex items-center gap-2 font-bold text-lg">
+                            <Stamp className="w-5 h-5" /> 办理赎回
+                        </div>
+                        <span className="text-xs font-mono opacity-80">
+                            CONFIRM REDEMPTION (+${cost?.total})
+                        </span>
+                    </Button>
+                )}
 
-                <Button 
-                    variant="secondary" 
-                    onClick={onExtend}
-                    disabled={!canAffordInterest}
-                    className={`h-16 border-stone-600 ${!canAffordInterest ? 'opacity-50 cursor-not-allowed' : 'hover:border-pawn-accent hover:text-pawn-accent'}`}
-                >
-                    <div className="flex flex-col items-center">
-                        <span className="flex items-center gap-2 font-bold"><RefreshCw className="w-4 h-4"/> 续当 (7天)</span>
-                        <span className="text-xs font-mono opacity-70">EXTEND (+${cost?.interest})</span>
-                    </div>
-                </Button>
+                {intent === 'EXTEND' && (
+                    <Button 
+                        variant="secondary" 
+                        onClick={onExtend}
+                        disabled={!canAffordInterest}
+                        className={`h-16 border-stone-600 ${!canAffordInterest ? 'opacity-50 cursor-not-allowed' : 'hover:border-pawn-accent hover:text-pawn-accent'}`}
+                    >
+                        <div className="flex flex-col items-center">
+                            <span className="flex items-center gap-2 font-bold"><RefreshCw className="w-4 h-4"/> 办理续当 (7天)</span>
+                            <span className="text-xs font-mono opacity-70">PROCESS EXTENSION (+${cost?.interest})</span>
+                        </div>
+                    </Button>
+                )}
             </div>
 
             <div className="flex gap-2 mt-2">
-                <button 
-                    onClick={() => { playSfx('CLICK'); onRefuseExtension(); }}
-                    className="flex-1 py-2 text-xs text-stone-600 hover:text-red-500 hover:bg-red-950/20 border border-transparent hover:border-red-900/30 rounded transition-colors flex items-center justify-center gap-1"
-                    title="Forfeit Item & Keep Cash"
-                >
-                    <Skull className="w-3 h-3" /> 拒绝续当 (Forfeit)
-                </button>
-                <button 
-                    onClick={() => { playSfx('CLICK'); onDismiss(); }}
-                    className="flex-1 py-2 text-xs text-stone-600 hover:text-stone-400 border border-transparent hover:border-stone-700 rounded transition-colors flex items-center justify-center gap-1"
-                >
-                    <LogOut className="w-3 h-3" /> 送客 (Dismiss)
-                </button>
+                {intent === 'EXTEND' && (
+                    <button 
+                        onClick={() => { playSfx('CLICK'); onRefuseExtension(); }}
+                        className="flex-1 py-2 text-xs text-stone-600 hover:text-red-500 hover:bg-red-950/20 border border-transparent hover:border-red-900/30 rounded transition-colors flex items-center justify-center gap-1"
+                        title="Forfeit Item & Keep Cash"
+                    >
+                        <Skull className="w-3 h-3" /> 拒绝续当 (Forfeit)
+                    </button>
+                )}
+                
+                {intent === 'REDEEM' ? (
+                    <button 
+                        onClick={() => { playSfx('CLICK'); onHostileTakeover(); }}
+                        className="flex-1 py-2 text-xs text-stone-600 hover:text-red-500 hover:bg-red-950/20 border border-transparent hover:border-red-900/30 rounded transition-colors flex items-center justify-center gap-1"
+                        title="Breach contract and pay penalty to keep item"
+                    >
+                        <Gavel className="w-3 h-3" /> 违约赔偿 (Breach & Compensate)
+                    </button>
+                ) : (
+                    <button 
+                        onClick={() => { playSfx('CLICK'); onDismiss(); }}
+                        className="flex-1 py-2 text-xs text-stone-600 hover:text-stone-400 border border-transparent hover:border-stone-700 rounded transition-colors flex items-center justify-center gap-1"
+                    >
+                        <LogOut className="w-3 h-3" /> 送客 (Dismiss)
+                    </button>
+                )}
             </div>
 
             <div className="mt-1 text-center">
-                {!canAffordRedeem && !canAffordInterest && !allowFree ? (
+                {((intent === 'REDEEM' && !canAffordRedeem) || (intent === 'EXTEND' && !canAffordInterest)) && !allowFree ? (
                     <span className="text-[10px] text-red-500 animate-pulse font-mono">
                         <AlertTriangle className="w-3 h-3 inline mr-1"/>
                         资金不足 (Insufficient Funds)
@@ -318,6 +336,9 @@ export const RedemptionInterface: React.FC = () => {
             anySold = true;
             totalPenalty += calculatePenalty(item);
         } else {
+            // Include active items in penalty calculation if we choose to breach them
+            totalPenalty += calculatePenalty(item);
+            
             const c = calculateRedemptionCost(item);
             if (c) {
                 totalPrincipal += c.principal;
@@ -411,11 +432,38 @@ export const RedemptionInterface: React.FC = () => {
     };
 
     const handleHostileTakeover = () => {
+        // Can be triggered for sold items OR active items (if player chooses to breach)
+        // If items are SOLD, we must pay penalty to resolve.
+        // If items are ACTIVE, we pay penalty to KEEP them (forced buy out).
+        
+        rejectCustomer(); 
+        
         if (anySold) {
-            rejectCustomer(); 
-            if (event?.dynamicFlows?.['hostile_takeover']) {
-                 applyChainEffects(customer.chainId, event.dynamicFlows['hostile_takeover'].outcome);
-            }
+             // Already handled by reject? No, we need transaction.
+             // But logic is complex. For now, Hostile Takeover button does the breach logic.
+             // Actually, if we are in "isBreach" mode (top of panel), we have specific buttons.
+             // If we are in "Redeem" mode, this button triggers the hostile takeover on active items.
+             
+             // Check funds
+             if (state.stats.cash < totalPenalty) {
+                 // Should have been disabled or game over handled elsewhere?
+                 return;
+             }
+             
+             dispatch({ 
+                type: 'HOSTILE_TAKEOVER', 
+                payload: { itemId: targetItems[0].id, penalty: totalPenalty, name: targetItems[0].name } 
+             });
+        } else {
+             // Active Item Breach
+             dispatch({ 
+                type: 'HOSTILE_TAKEOVER', 
+                payload: { itemId: targetItems[0].id, penalty: totalPenalty, name: targetItems[0].name } 
+             });
+        }
+
+        if (event?.dynamicFlows?.['hostile_takeover']) {
+             applyChainEffects(customer.chainId, event.dynamicFlows['hostile_takeover'].outcome);
         }
     };
 

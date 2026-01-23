@@ -155,6 +155,14 @@ export const useGameEngine = () => {
                       if (realItem) {
                            storyCustomer.item = { ...realItem };
                            storyCustomer.interactionType = 'REDEEM';
+                           
+                           // [BUG FIX] Ensure wallet has enough if intent is REDEEM
+                           if (intent === 'REDEEM') {
+                               const cost = calculateRedemptionCost(realItem);
+                               if (cost && storyCustomer.currentWallet < cost.total) {
+                                   storyCustomer.currentWallet = cost.total + Math.floor(Math.random() * 50);
+                               }
+                           }
                       }
                   }
               }

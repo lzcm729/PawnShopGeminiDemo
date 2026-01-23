@@ -144,7 +144,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                     { condition: { variable: "funds", operator: "<", value: 0 }, text: "老板... 我又来了。这次是真的没办法了。" },
                     { text: "老板... 我又来了。" }
                 ],
-                pawnReason: "这腿的老毛病犯了，医院催缴住院押金。我实在没办法...",
+                pawnReason: "这腿的老毛病犯了，医院催缴住院押金。我实在是走投无路了...",
                 redemptionPlea: "证书和勋章是一套，千万别拆散了。",
                 negotiationDynamic: [
                     { condition: { variable: "funds", operator: "<", value: -500 }, text: "少给点也行... 只要能付住院押金就好..." },
@@ -246,6 +246,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                 { type: "SCHEDULE_MAIL", templateId: "mail_zhao_evil", delayDays: 2 }
             ]
         },
+        targetItemId: "zhao_item_medal", // Enforce that the medal must be present to accept this deal
         onReject: [{ type: "SET_STAGE", value: 5 }] 
     },
     {
