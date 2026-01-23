@@ -46,7 +46,7 @@ export interface ItemLogEntry {
   id: string;
   day: number;
   content: string;
-  type: 'ENTRY' | 'REDEEM' | 'FORFEIT' | 'SOLD' | 'INFO';
+  type: 'ENTRY' | 'REDEEM' | 'FORFEIT' | 'SOLD' | 'INFO' | 'APPRAISAL';
   metadata?: {
       visitCount?: number;
       moodState?: string;
@@ -56,6 +56,8 @@ export interface ItemLogEntry {
       amount?: number;
       // General
       reason?: string;
+      // APPRAISAL related
+      isNegative?: boolean;
   };
 }
 

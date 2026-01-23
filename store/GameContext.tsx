@@ -1,7 +1,7 @@
 
 
 import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren } from 'react';
-import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier } from '../types';
+import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry } from '../types';
 import { INITIAL_CHAINS } from '../services/storyData';
 import { getMailTemplate } from '../services/mailData';
 import { generateValuationRange } from '../services/contentGenerator';
@@ -54,7 +54,7 @@ type Action =
   | { type: 'SET_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER_STATUS'; payload: { patience: number; mood: Mood; currentAskPrice: number } }
   | { type: 'APPRAISE_ITEM' } 
-  | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: any[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean } } 
+  | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: any[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry } } 
   | { type: 'REALIZE_ITEM_TRUTH'; payload: { itemId: string } }
   | { type: 'CONSUME_AP'; payload: number } 
   | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string } }
@@ -136,6 +136,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       
       const prevCount = state.currentCustomer.item.appraisalCount || 0;
       const prevNegative = state.currentCustomer.item.hasNegativeAppraisalEvent || false;
+      const prevLogs = state.currentCustomer.item.logs || [];
+      const newLogs = action.payload.log ? [...prevLogs, action.payload.log] : prevLogs;
       
       return {
           ...state,
@@ -150,7 +152,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
                   appraised: true,
                   // New State Updates
                   appraisalCount: action.payload.incrementAppraisalCount ? prevCount + 1 : prevCount,
-                  hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : prevNegative
+                  hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : prevNegative,
+                  logs: newLogs
               }
           }
       };

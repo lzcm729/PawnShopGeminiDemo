@@ -1,4 +1,5 @@
 
+
 import { Customer, Item, ItemLogEntry } from '../types';
 
 export const generatePawnLog = (customer: Customer, item: Item, day: number, visitCount: number): ItemLogEntry => {
@@ -110,5 +111,24 @@ export const generateSoldLog = (
         content: `${item.name}以$${amount}的价格售出。这段故事结束了。`,
         type: 'SOLD',
         metadata: { amount }
+    };
+};
+
+/**
+ * Generate Appraisal Log
+ */
+export const generateAppraisalLog = (
+    item: Item,
+    day: number,
+    discovery: string,
+    isNegative: boolean
+): ItemLogEntry => {
+    const prefix = isNegative ? "⚠️ 发现: " : "✓ 确认: ";
+    return {
+        id: crypto.randomUUID(),
+        day,
+        content: `${prefix}${discovery}`,
+        type: 'APPRAISAL',
+        metadata: { isNegative }
     };
 };

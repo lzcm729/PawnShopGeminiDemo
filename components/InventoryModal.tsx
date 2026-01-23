@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
-import { X, PackageOpen, AlertTriangle, Clock, Skull, ShieldCheck, Heart, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, DollarSign, AlertOctagon, BookOpen } from 'lucide-react';
+import { X, PackageOpen, AlertTriangle, Clock, Skull, ShieldCheck, Heart, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, DollarSign, AlertOctagon, BookOpen, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { ItemStatus, Item } from '../types';
 import { Button } from './ui/Button';
 
@@ -26,7 +26,16 @@ const LOG_TYPE_COLORS: Record<string, string> = {
     'REDEEM': 'text-green-400',
     'FORFEIT': 'text-red-400',
     'SOLD': 'text-amber-400',
-    'INFO': 'text-stone-400'
+    'INFO': 'text-stone-400',
+    'APPRAISAL': 'text-orange-400'
+};
+
+const CHAIN_MARKERS: Record<string, { color: string; label: string; bg: string }> = {
+    'chain_emma': { color: 'border-purple-500', label: '艾', bg: 'bg-purple-900/80' },
+    'chain_susan': { color: 'border-pink-500', label: '苏', bg: 'bg-pink-900/80' },
+    'chain_zhao': { color: 'border-green-500', label: '赵', bg: 'bg-green-900/80' },
+    'chain_lin': { color: 'border-blue-500', label: '林', bg: 'bg-blue-900/80' },
+    'chain_underworld': { color: 'border-red-600', label: '黑', bg: 'bg-red-900/80' },
 };
 
 export const InventoryModal: React.FC = () => {
@@ -34,6 +43,7 @@ export const InventoryModal: React.FC = () => {
   const { sellActivePawn } = usePawnShop();
   
   const [forceSellConfirm, setForceSellConfirm] = useState<string | null>(null);
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
 
   if (!state.showInventory) return null;
 
@@ -67,6 +77,15 @@ export const InventoryModal: React.FC = () => {
   const handleForceSell = (item: Item) => {
       sellActivePawn(item);
       setForceSellConfirm(null);
+  };
+  
+  const toggleExpand = (itemId: string) => {
+    setExpandedLogs(prev => {
+        const next = new Set(prev);
+        if (next.has(itemId)) next.delete(itemId);
+        else next.add(itemId);
+        return next;
+    });
   };
 
   return (
@@ -106,6 +125,9 @@ export const InventoryModal: React.FC = () => {
                 const daysLeft = calculateDaysLeft(item);
                 const confirmingSell = forceSellConfirm === item.id;
                 
+                // NPC Marker
+                const chainMarker = item.relatedChainId ? CHAIN_MARKERS[item.relatedChainId] : null;
+                
                 let statusColor = 'bg-yellow-600';
                 let statusText = 'ACTIVE';
                 let borderColor = 'border-[#292524]';
@@ -118,18 +140,35 @@ export const InventoryModal: React.FC = () => {
                         borderColor = 'border-yellow-500';
                     }
                 }
+                
+                // Override border color if marked
+                if (chainMarker && !isActive) { // Only show colored border if not urgent red
+                     borderColor = chainMarker.color;
+                }
 
                 if (isForfeit) { statusColor = 'bg-red-600'; statusText = 'FORFEIT'; }
                 if (isSold) { statusColor = 'bg-stone-600'; statusText = 'SOLD'; borderColor = 'border-red-900/30 bg-red-950/10'; }
+                
+                // Logs logic
+                const isExpanded = expandedLogs.has(item.id);
+                const displayLogs = isExpanded ? item.logs : (item.logs || []).slice(-1);
+                const hiddenCount = (item.logs || []).length - displayLogs.length;
 
                 return (
                   <div key={item.id} className={`bg-[#0c0a09] border ${borderColor} rounded group hover:border-stone-500 transition-colors relative overflow-hidden flex flex-col`}>
                     
+                    {/* NPC Marker Badge */}
+                    {chainMarker && (
+                        <div className={`absolute top-0 left-0 w-6 h-6 rounded-br-lg ${chainMarker.bg} text-white flex items-center justify-center text-[10px] font-bold z-10 shadow-sm border-r border-b ${chainMarker.color}`}>
+                            {chainMarker.label}
+                        </div>
+                    )}
+
                     {/* Status Stripe */}
                     <div className={`h-1 w-full ${statusColor}`}></div>
                     
                     <div className="p-4 flex-1">
-                      <div className="flex justify-between items-start mb-2">
+                      <div className="flex justify-between items-start mb-2 pl-4"> {/* Added padding left for badge */}
                         <h3 className="font-bold text-stone-200 truncate pr-2 w-2/3">{item.name}</h3>
                         <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
                           isForfeit 
@@ -178,18 +217,40 @@ export const InventoryModal: React.FC = () => {
                       {/* NARRATIVE LOG DISPLAY (New Feature) */}
                       {item.logs && item.logs.length > 0 ? (
                           <div className="mb-3">
-                              <div className="flex items-center gap-1 text-[10px] text-stone-500 mb-1 font-bold uppercase tracking-wider">
-                                  <BookOpen className="w-3 h-3"/> 档案记录 (Journal)
+                              <div className="flex items-center justify-between text-[10px] text-stone-500 mb-1 font-bold uppercase tracking-wider">
+                                  <div className="flex items-center gap-1">
+                                    <BookOpen className="w-3 h-3"/> 档案记录 (Journal)
+                                  </div>
                               </div>
-                              <div className="bg-stone-900/30 border border-stone-800 rounded p-2 text-[10px] text-stone-400 font-serif leading-relaxed h-20 overflow-y-auto custom-scrollbar-light">
-                                  {item.logs.map(log => (
+                              <div className={`bg-stone-900/30 border border-stone-800 rounded p-2 text-[10px] text-stone-400 font-serif leading-relaxed ${isExpanded ? 'max-h-60 overflow-y-auto' : 'h-auto'} custom-scrollbar-light transition-all duration-300`}>
+                                  {displayLogs.map(log => (
                                       <div key={log.id} className="mb-2 last:mb-0 border-b border-stone-800/50 pb-1 last:border-0">
                                           <span className="text-stone-600 font-sans mr-1">[Day {log.day}]</span>
+                                          {log.type === 'APPRAISAL' && <Search className="w-3 h-3 inline mr-1 text-orange-400" />}
                                           <span className={LOG_TYPE_COLORS[log.type] || 'text-stone-400'}>
                                               {log.content}
                                           </span>
                                       </div>
                                   ))}
+                                  
+                                  {/* Expand/Collapse Control */}
+                                  {!isExpanded && hiddenCount > 0 && (
+                                     <button 
+                                        onClick={(e) => { e.stopPropagation(); toggleExpand(item.id); }}
+                                        className="w-full text-center text-stone-600 hover:text-stone-400 mt-1 pt-1 border-t border-stone-800/30 flex items-center justify-center gap-1"
+                                     >
+                                         <ChevronDown className="w-3 h-3" /> ...还有 {hiddenCount} 条记录
+                                     </button>
+                                  )}
+                                  
+                                  {isExpanded && (item.logs.length > 1) && (
+                                     <button 
+                                        onClick={(e) => { e.stopPropagation(); toggleExpand(item.id); }}
+                                        className="w-full text-center text-stone-600 hover:text-stone-400 mt-1 pt-1 border-t border-stone-800/30 flex items-center justify-center gap-1"
+                                     >
+                                         <ChevronUp className="w-3 h-3" /> 收起
+                                     </button>
+                                  )}
                               </div>
                           </div>
                       ) : (

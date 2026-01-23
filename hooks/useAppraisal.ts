@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
 import { ItemTrait } from '../types';
 import { rollAppraisalEvent, AppraisalEvent } from '../services/appraisalUtils';
+import { generateAppraisalLog } from '../services/logGenerator';
 
 interface AppraisalResult {
     success: boolean;
@@ -166,6 +167,23 @@ export const useAppraisal = () => {
 
         const newRange: [number, number] = [nextMin, nextMax];
 
+        // --- NEW: GENERATE LOG ---
+        let log = undefined;
+        if (uniqueNewTraits.length > 0) {
+            const traitNames = uniqueNewTraits.map(t => t.name).join(", ");
+            const hasFake = uniqueNewTraits.some(t => t.type === 'FAKE' || t.type === 'FLAW');
+            log = generateAppraisalLog(item, state.stats.day, `发现了特征: ${traitNames}`, hasFake);
+        } else if (event.type === 'MISHAP') {
+            log = generateAppraisalLog(item, state.stats.day, "鉴定失误，判断受到干扰。", true);
+        } else if (event.type === 'IMPATIENT') {
+             // No specific appraisal log for impatience, as it's a customer reaction? 
+             // Maybe we log it anyway to record the interaction.
+        } else {
+            // Standard narrow without traits
+            // Optional: log "Range narrowed"? Can be spammy. 
+            // Let's only log traits or major events.
+        }
+
         // 5. Dispatch Update
         const hasNegative = event.type === 'MISHAP' || event.type === 'IMPATIENT';
         
@@ -178,7 +196,8 @@ export const useAppraisal = () => {
                 newUncertainty,
                 newPerceived: item.perceivedValue,
                 incrementAppraisalCount: true,
-                hasNegativeEvent: hasNegative ? true : undefined
+                hasNegativeEvent: hasNegative ? true : undefined,
+                log // Append log if generated
             }
         });
 
