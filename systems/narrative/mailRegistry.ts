@@ -65,6 +65,20 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
       body: `听说那个老兵在孙子的婚礼上晕倒了。因为没钱买药，也没脸见人。\n\n而你赚了三万八，对吧？\n\n这钱花得安心吗？这附近的老街坊都在议论这件事。我看你这店也没必要开下去了。`,
       attachments: { cash: 0 }
   },
+  "mail_zhao_hostile": {
+      id: "mail_zhao_hostile",
+      sender: "孙子 小周",
+      subject: "严正抗议",
+      body: `关于我爷爷的勋章被贵店强制扣留一事，我们已经咨询了律师。\n\n虽然你们的合同条款可能在法律上能够站住脚，但在道德上你们已经破产了。\n\n爷爷现在精神状态很差，如果他有什么三长两短，我们绝对不会善罢甘休。`,
+      attachments: { cash: 0 }
+  },
+  "mail_zhao_sold_generic": {
+      id: "mail_zhao_sold_generic",
+      sender: "孙子 小周",
+      subject: "遗憾",
+      body: `爷爷昨天再次进了ICU。\n\n知道勋章已经找不回来了，他一句话也没说，只是默默流眼泪。\n\n那是他一辈子的念想。也许对你来说那只是一件商品，但对我们来说，那是无价之宝。\n\n你不懂尊重，也不配做这行生意。`,
+      attachments: { cash: 0 }
+  },
   "mail_zhao_plea": {
       id: "mail_zhao_plea",
       sender: "周守义",

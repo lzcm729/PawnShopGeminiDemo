@@ -210,7 +210,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
             },
             "hostile_takeover": {
                 dialogue: "强买强卖？好... 好... 你们这些吸血鬼。",
-                outcome: [{ type: "SET_STAGE", value: 4 }, { type: "MODIFY_REP", value: -50 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_evil", delayDays: 1 }]
+                outcome: [{ type: "SET_STAGE", value: 4 }, { type: "MODIFY_REP", value: -50 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_hostile", delayDays: 1 }]
             }
         }
     },
@@ -300,7 +300,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
             },
             "core_lost": {
                 dialogue: "都卖了？... 既然这样，我活着还有什么意思... 你毁了我的一切。",
-                outcome: [{ type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_REP", value: -50 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_evil", delayDays: 1 }]
+                outcome: [{ type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_REP", value: -50 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_sold_generic", delayDays: 1 }]
             }
         }
     }
