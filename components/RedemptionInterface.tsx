@@ -252,7 +252,7 @@ const SettlementPanel: React.FC<{
             </div>
 
             <div className="flex gap-2 mt-2">
-                {intent === 'EXTEND' && (
+                {intent === 'EXTEND' ? (
                     <button 
                         onClick={() => { playSfx('CLICK'); onRefuseExtension(); }}
                         className="flex-1 py-2 text-xs text-stone-600 hover:text-red-500 hover:bg-red-950/20 border border-transparent hover:border-red-900/30 rounded transition-colors flex items-center justify-center gap-1"
@@ -260,9 +260,7 @@ const SettlementPanel: React.FC<{
                     >
                         <Skull className="w-3 h-3" /> 拒绝续当 (Forfeit)
                     </button>
-                )}
-                
-                {intent === 'REDEEM' ? (
+                ) : intent === 'REDEEM' ? (
                     <button 
                         onClick={() => { playSfx('CLICK'); onHostileTakeover(); }}
                         className="flex-1 py-2 text-xs text-stone-600 hover:text-red-500 hover:bg-red-950/20 border border-transparent hover:border-red-900/30 rounded transition-colors flex items-center justify-center gap-1"
