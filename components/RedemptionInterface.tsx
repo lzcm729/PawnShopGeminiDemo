@@ -44,7 +44,7 @@ const TicketPanel: React.FC<{ items: Item[], cost: any, penalty: number, isBundl
                  </div>
                  
                  <h2 className="text-2xl font-bold text-stone-200 z-10 text-center">
-                     {isBundle ? "批量赎回 (Batch Redemption)" : primaryItem.name}
+                     {isBundle ? "批量结算 (Batch Settlement)" : primaryItem.name}
                  </h2>
                  <div className="text-sm text-stone-500 font-mono z-10 mt-2 text-center">
                      {isBundle ? (
@@ -295,7 +295,7 @@ const SettlementPanel: React.FC<{
     );
 };
 
-export const RedemptionInterface: React.FC = () => {
+export const SettlementInterface: React.FC = () => {
     const { state, dispatch } = useGame();
     const { calculateRedemptionCost, calculatePenalty, processHostileTakeover, processForcedForfeiture } = usePawnShop();
     const { commitTransaction, rejectCustomer, applyChainEffects } = useGameEngine();

@@ -7,7 +7,7 @@ import { Dashboard } from './systems/game/ui/Dashboard';
 import { CustomerView } from './components/CustomerView';
 import { ItemPanel } from './components/ItemPanel';
 import { NegotiationPanel } from './components/NegotiationPanel';
-import { RedemptionInterface } from './components/RedemptionInterface';
+import { SettlementInterface } from './components/RedemptionInterface';
 import { EndOfDaySummary } from './components/EndOfDaySummary';
 import { InventoryModal } from './components/InventoryModal'; 
 import { MailModal } from './components/MailModal';
@@ -343,7 +343,7 @@ const GameContent: React.FC = () => {
 
   const isNegotiating = state.phase === GamePhase.NEGOTIATION;
   const isShopClosed = state.phase === GamePhase.SHOP_CLOSED;
-  const isRedemption = isNegotiating && state.currentCustomer?.interactionType === 'REDEEM';
+  const isSettlement = isNegotiating && state.currentCustomer?.interactionType === 'REDEEM';
 
   return (
     <div className="h-screen flex flex-col bg-pawn-dark text-pawn-text overflow-hidden font-sans">
@@ -369,8 +369,8 @@ const GameContent: React.FC = () => {
 
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 bg-black/20">
             
-            {isRedemption ? (
-                <RedemptionInterface />
+            {isSettlement ? (
+                <SettlementInterface />
             ) : (
                 <>
                     <div className="lg:col-span-6 h-full border-r border-white/10 overflow-hidden relative">
