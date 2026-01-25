@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { GameProvider, useGame } from './store/GameContext';
 import { useGameEngine } from './hooks/useGameEngine';
 import { useNegotiation } from './hooks/useNegotiation';
@@ -20,11 +20,13 @@ import { StartScreen } from './components/StartScreen';
 import { MorningBrief } from './components/MorningBrief';
 import { NightDashboard } from './components/NightDashboard'; 
 import { GameOverScreen } from './components/GameOverScreen';
-import { VictoryScreen } from './components/VictoryScreen'; // New Import
+import { VictoryScreen } from './components/VictoryScreen'; 
 import { GamePhase } from './types';
 import { playSfx } from './systems/game/audio';
 import { Button } from './components/ui/Button';
 import { Moon } from 'lucide-react';
+import { DayToNightTransition } from './components/transitions/DayToNightTransition';
+import { NightToDayTransition } from './components/transitions/NightToDayTransition';
 
 const GameContent: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -32,6 +34,29 @@ const GameContent: React.FC = () => {
   const [loadingText, setLoadingText] = useState("");
   const negotiation = useNegotiation(state.currentCustomer);
   
+  // Transition State
+  const prevPhase = useRef<GamePhase>(state.phase);
+  const [showDayToNight, setShowDayToNight] = useState(false);
+  const [showNightToDay, setShowNightToDay] = useState(false);
+
+  useEffect(() => {
+      const current = state.phase;
+      const previous = prevPhase.current;
+
+      // Logic: If transitioning from BUSINESS/DEPARTURE to NIGHT -> DayToNight
+      // If transitioning from NIGHT to MORNING_BRIEF -> NightToDay
+      
+      if ((previous === GamePhase.BUSINESS || previous === GamePhase.DEPARTURE) && current === GamePhase.NIGHT) {
+          setShowDayToNight(true);
+      }
+      
+      if (previous === GamePhase.NIGHT && current === GamePhase.MORNING_BRIEF) {
+          setShowNightToDay(true);
+      }
+
+      prevPhase.current = current;
+  }, [state.phase]);
+
   // Phase: BUSINESS -> Automatically trigger event if no customer AND limit not reached
   useEffect(() => {
     const isBusiness = state.phase === GamePhase.BUSINESS;
@@ -65,6 +90,14 @@ const GameContent: React.FC = () => {
     }
   }, [negotiation.patience, negotiation.mood, negotiation.currentAskPrice, state.currentCustomer, dispatch]);
 
+  // --- TRANSITION OVERLAYS ---
+  const transitionOverlay = (
+      <>
+        {showDayToNight && <DayToNightTransition onComplete={() => setShowDayToNight(false)} />}
+        {showNightToDay && <NightToDayTransition onComplete={() => setShowNightToDay(false)} />}
+      </>
+  );
+
   // --- PHASE ROUTING ---
 
   if (state.phase === GamePhase.START_SCREEN) {
@@ -74,6 +107,7 @@ const GameContent: React.FC = () => {
   if (state.phase === GamePhase.MORNING_BRIEF) {
     return (
       <>
+        {transitionOverlay}
         <MorningBrief />
         <DebugPanel />
       </>
@@ -83,6 +117,7 @@ const GameContent: React.FC = () => {
   if (state.phase === GamePhase.NIGHT) {
     return (
       <>
+        {transitionOverlay}
         <NightDashboard />
         {/* Modals are available in Night Mode */}
         <InventoryModal />
@@ -127,6 +162,7 @@ const GameContent: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col bg-pawn-dark text-pawn-text overflow-hidden font-sans">
+      {transitionOverlay}
       <Dashboard />
       
       {/* Universal Modals (accessible during day via Dashboard) */}

@@ -25,6 +25,7 @@ export const initAudio = () => {
         // Pre-generate noise buffers for performance
         createNoiseBuffer('pink', 2); // 2 seconds of pink noise
         createNoiseBuffer('white', 0.5); // 0.5 seconds of white noise
+        createNoiseBuffer('brown', 2); // 2 seconds of brown noise for rumble
     }
     
     if (audioCtx.state === 'suspended') {
@@ -35,7 +36,7 @@ export const initAudio = () => {
 
 // --- SYNTHESIS UTILS ---
 
-const createNoiseBuffer = (type: 'white' | 'pink', duration: number) => {
+const createNoiseBuffer = (type: 'white' | 'pink' | 'brown', duration: number) => {
     if (!audioCtx) return;
     const bufferSize = audioCtx.sampleRate * duration;
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -60,6 +61,14 @@ const createNoiseBuffer = (type: 'white' | 'pink', duration: number) => {
             data[i] *= 0.11; // Compensate for gain
             b6 = white * 0.115926;
         }
+    } else if (type === 'brown') {
+        let lastOut = 0;
+        for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            data[i] = (lastOut + (0.02 * white)) / 1.02;
+            lastOut = data[i];
+            data[i] *= 3.5; 
+        }
     }
     noiseBuffers[type] = buffer;
 };
@@ -69,48 +78,6 @@ const createNoiseBuffer = (type: 'white' | 'pink', duration: number) => {
 export const startAmbience = () => {
     // Ambience disabled per request.
     return;
-
-    /*
-    const ctx = initAudio();
-    if (!ctx || !ambienceGain) return;
-
-    // 1. Rain Layer (Pink Noise + Lowpass)
-    if (!activeLoops['rain'] && noiseBuffers['pink']) {
-        const rainSource = ctx.createBufferSource();
-        rainSource.buffer = noiseBuffers['pink'];
-        rainSource.loop = true;
-
-        const rainFilter = ctx.createBiquadFilter();
-        rainFilter.type = 'lowpass';
-        rainFilter.frequency.value = 800; // Muffled rain sound
-
-        rainSource.connect(rainFilter);
-        rainFilter.connect(ambienceGain);
-        rainSource.start();
-        activeLoops['rain'] = rainSource;
-    }
-
-    // 2. City Drone (Detuned Sines)
-    if (!activeLoops['drone']) {
-        const droneOsc1 = ctx.createOscillator();
-        const droneOsc2 = ctx.createOscillator();
-        const droneGain = ctx.createGain();
-        
-        droneOsc1.frequency.value = 55; // Low A
-        droneOsc2.frequency.value = 57; // Slight detune for "beating" effect
-        
-        droneGain.gain.value = 0.15;
-
-        droneOsc1.connect(droneGain);
-        droneOsc2.connect(droneGain);
-        droneGain.connect(ambienceGain);
-
-        droneOsc1.start();
-        droneOsc2.start();
-        
-        activeLoops['drone'] = droneOsc1; // Store one as reference
-    }
-    */
 };
 
 export const stopAmbience = () => {
@@ -134,7 +101,7 @@ export const toggleMute = () => {
 
 export const getMuteState = () => isMuted;
 
-type SoundType = 'CLICK' | 'HOVER' | 'SUCCESS' | 'FAIL' | 'TYPE' | 'WARNING' | 'BOOT' | 'CASH' | 'STAMP' | 'GLITCH';
+type SoundType = 'CLICK' | 'HOVER' | 'SUCCESS' | 'FAIL' | 'TYPE' | 'WARNING' | 'BOOT' | 'CASH' | 'STAMP' | 'GLITCH' | 'SHUTTER' | 'DOORBELL' | 'FOOTSTEP';
 
 export const playSfx = (type: SoundType) => {
     // If muted, do nothing
@@ -151,6 +118,47 @@ export const playSfx = (type: SoundType) => {
     gain.connect(masterGain);
 
     switch (type) {
+        case 'SHUTTER':
+            // Mechanical Rolling Sound
+            if (noiseBuffers['brown']) {
+                const rumble = ctx.createBufferSource();
+                const rumbleGain = ctx.createGain();
+                const filter = ctx.createBiquadFilter();
+                
+                rumble.buffer = noiseBuffers['brown'];
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(100, t);
+                filter.frequency.linearRampToValueAtTime(800, t + 0.8);
+                filter.frequency.linearRampToValueAtTime(100, t + 1.5);
+
+                rumbleGain.gain.setValueAtTime(0, t);
+                rumbleGain.gain.linearRampToValueAtTime(0.5, t + 0.2);
+                rumbleGain.gain.linearRampToValueAtTime(0, t + 1.5);
+
+                rumble.connect(filter);
+                filter.connect(rumbleGain);
+                rumbleGain.connect(masterGain);
+                
+                rumble.start(t);
+                rumble.stop(t + 1.5);
+            }
+            
+            // Metal Clank at end
+            const clank = ctx.createOscillator();
+            const clankGain = ctx.createGain();
+            clank.type = 'square';
+            clank.frequency.setValueAtTime(100, t + 1.4);
+            clank.frequency.exponentialRampToValueAtTime(50, t + 1.5);
+            clankGain.gain.setValueAtTime(0, t + 1.4);
+            clankGain.gain.linearRampToValueAtTime(0.2, t + 1.45);
+            clankGain.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
+            
+            clank.connect(clankGain);
+            clankGain.connect(masterGain);
+            clank.start(t + 1.4);
+            clank.stop(t + 1.6);
+            break;
+
         case 'CLICK':
             osc.type = 'sine';
             osc.frequency.setValueAtTime(1200, t);
@@ -318,6 +326,58 @@ export const playSfx = (type: SoundType) => {
             osc.stop(t + 2.0);
             sub.start(t);
             sub.stop(t + 2.0);
+            break;
+
+        case 'DOORBELL':
+            // Simple Ding Dong
+            const ding = ctx.createOscillator();
+            const dong = ctx.createOscillator();
+            
+            ding.type = 'sine';
+            ding.frequency.setValueAtTime(800, t);
+            gain.gain.setValueAtTime(0.1, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+            
+            ding.connect(gain);
+            ding.start(t);
+            ding.stop(t + 1.5);
+
+            setTimeout(() => {
+                // We need new context reference or manage nodes, but here simple approach:
+                // Re-use logic or just play one tone for simplicity in this func pattern
+                // Let's just do a dual-tone in one go
+                const dongGain = ctx.createGain();
+                dong.type = 'sine';
+                dong.frequency.setValueAtTime(600, t + 0.4);
+                dongGain.gain.setValueAtTime(0.1, t + 0.4);
+                dongGain.gain.exponentialRampToValueAtTime(0.001, t + 2.0);
+                dong.connect(dongGain);
+                dongGain.connect(masterGain);
+                dong.start(t + 0.4);
+                dong.stop(t + 2.0);
+            }, 0);
+            break;
+
+        case 'FOOTSTEP':
+            // Low thud noise
+            if (noiseBuffers['pink']) {
+                const step = ctx.createBufferSource();
+                const stepGain = ctx.createGain();
+                const filter = ctx.createBiquadFilter();
+                
+                step.buffer = noiseBuffers['pink'];
+                filter.type = 'lowpass';
+                filter.frequency.value = 150;
+                
+                stepGain.gain.setValueAtTime(0.3, t);
+                stepGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+                
+                step.connect(filter);
+                filter.connect(stepGain);
+                stepGain.connect(masterGain);
+                
+                step.start(t);
+            }
             break;
     }
 };

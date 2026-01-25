@@ -70,7 +70,13 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                 negotiationDynamic: "能不能... 稍微高点？我想给孩子买个好的。",
                 accepted: { fair: "谢谢！到期我准时来。", fleeced: "唉... 凑合吧。", premium: "敬礼！你是个公道人！" },
                 rejected: "这... 那我再去别处看看。",
-                rejectionLines: { standard: "打扰了。", angry: "没眼光。", desperate: "求你了，孩子等着呢..." }
+                rejectionLines: { standard: "打扰了。", angry: "没眼光。", desperate: "求你了，孩子等着呢..." },
+                exitDialogues: {
+                    grateful: "谢谢... 谢谢。东西放你这，我放心。",
+                    neutral: "回见。保管好啊。",
+                    resentful: "唉... 世风日下。",
+                    desperate: "[老人拄着拐杖，颤颤巍巍地转身，背影显得格外佝偻]"
+                }
             },
             redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 4, mood: 'Neutral', tags: ["Emotional", "HighMoralStake"]
         },
@@ -100,7 +106,13 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                 negotiationDynamic: "嫌少？现在没有证书原件，这东西也就值这个价。",
                 accepted: { fair: "明智的选择。", fleeced: "成交。", premium: "成交。" },
                 rejected: "不急。等那老头把证书送来，我会再来的。",
-                rejectionLines: { standard: "回见。", angry: "不识抬举。", desperate: "..." }
+                rejectionLines: { standard: "回见。", angry: "不识抬举。", desperate: "..." },
+                exitDialogues: {
+                    grateful: "合作愉快。钱货两清。",
+                    neutral: "回见。",
+                    resentful: "你会后悔的。",
+                    desperate: "..."
+                }
             },
             currentAskPrice: 5000, 
             redemptionResolve: "None", negotiationStyle: "Aggressive", patience: 3, mood: 'Neutral', tags: ["HighRisk", "Opportunity"]
@@ -152,7 +164,13 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                 ],
                 accepted: { fair: "谢谢！救命之恩！", fleeced: "唉... 先救急吧。", premium: "好人一生平安！" },
                 rejected: "这... 那我只能去卖血了...",
-                rejectionLines: { standard: "打扰了。", angry: "...", desperate: "求求你..." }
+                rejectionLines: { standard: "打扰了。", angry: "...", desperate: "求求你..." },
+                exitDialogues: {
+                    grateful: "大恩不言谢。我去交钱了。",
+                    neutral: "回见。",
+                    resentful: "...",
+                    desperate: "[老人擦了擦眼角，紧紧攥着钱，像是怕它飞了一样]"
+                }
             },
             redemptionResolve: "Strong", negotiationStyle: "Desperate", patience: 3, mood: 'Neutral', tags: ["Emotional"]
         },
@@ -189,7 +207,13 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                 negotiationDynamic: "...",
                 accepted: { fair: "老伙计，我们回家。", fleeced: "...", premium: "..." },
                 rejected: "...",
-                rejectionLines: { standard: "...", angry: "...", desperate: "..." }
+                rejectionLines: { standard: "...", angry: "...", desperate: "..." },
+                exitDialogues: {
+                    grateful: "敬礼！",
+                    neutral: "走了。",
+                    resentful: "...",
+                    desperate: "..."
+                }
             },
             redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 5, mood: "Happy",
             desiredAmount: 0, minimumAmount: 0, maxRepayment: 0,
@@ -232,7 +256,13 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                 negotiationDynamic: "做生意讲究利益最大化，情怀能当饭吃吗？",
                 accepted: { fair: "这就对了。识时务者为俊杰。", fleeced: "明智。", premium: "合作愉快。" },
                 rejected: "你... 你会后悔的。这种机会只有一次！",
-                rejectionLines: { standard: "不可理喻。", angry: "傻子！", desperate: "..." }
+                rejectionLines: { standard: "不可理喻。", angry: "傻子！", desperate: "..." },
+                exitDialogues: {
+                    grateful: "你会感谢我的。",
+                    neutral: "合作愉快。",
+                    resentful: "不可理喻。",
+                    desperate: "..."
+                }
             },
             currentAskPrice: 38000, 
             redemptionResolve: "None", negotiationStyle: "Aggressive", patience: 3, mood: 'Happy', tags: ["HighRisk", "MoralEvent"]
@@ -273,7 +303,13 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                 negotiationDynamic: "...",
                 accepted: { fair: "敬礼！", fleeced: "...", premium: "..." },
                 rejected: "...",
-                rejectionLines: { standard: "...", angry: "...", desperate: "..." }
+                rejectionLines: { standard: "...", angry: "...", desperate: "..." },
+                exitDialogues: {
+                    grateful: "[老人挺直腰板，行了一个标准的军礼]",
+                    neutral: "走了。",
+                    resentful: "...",
+                    desperate: "[老人什么也没说，只是默默地流着泪走了]"
+                }
             },
             redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 5, mood: "Happy",
             desiredAmount: 0, minimumAmount: 0, maxRepayment: 0,

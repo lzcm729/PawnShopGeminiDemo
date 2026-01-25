@@ -48,7 +48,13 @@ export const SUSAN_EVENTS: StoryEvent[] = [
                 negotiationDynamic: "你什么眼光？这可是专柜货！",
                 accepted: { fair: "钱打我卡上。", fleeced: "行吧行吧，烦死了。", premium: "亲爱的你太好了！" },
                 rejected: "你给我等着！",
-                rejectionLines: { standard: "没眼光。", angry: "破店！", desperate: "帮帮姐妹..." }
+                rejectionLines: { standard: "没眼光。", angry: "破店！", desperate: "帮帮姐妹..." },
+                exitDialogues: {
+                    grateful: "亲爱的你真是救星！下次请你喝茶。",
+                    neutral: "谢了。钱这就转走了。",
+                    resentful: "这点钱... 算了，我不跟你计较。",
+                    desperate: "[她焦急地看着手机屏幕，也不理你，匆匆跑向门口]"
+                }
             },
             redemptionResolve: "Strong", negotiationStyle: "Deceptive", patience: 3, mood: 'Neutral', tags: ["Scam", "Fake"]
         },

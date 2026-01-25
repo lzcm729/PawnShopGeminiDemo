@@ -46,7 +46,13 @@ export const LIN_EVENTS: StoryEvent[] = [
                 negotiationDynamic: "啊？这破表这么值钱吗？",
                 accepted: { fair: "太棒了！", fleeced: "够买入门卡了，谢谢！", premium: "老板你是大善人！" },
                 rejected: "哦，那我再去问问。",
-                rejectionLines: { standard: "那我拿回家吧。", angry: "怎么这样...", desperate: "少给点也行啊..." }
+                rejectionLines: { standard: "那我拿回家吧。", angry: "怎么这样...", desperate: "少给点也行啊..." },
+                exitDialogues: {
+                    grateful: "谢谢老板！学费有着落了！",
+                    neutral: "那我先走了，谢谢。",
+                    resentful: "......",
+                    desperate: "[他背起书包，肩膀垮了下来，像是个做错事的孩子]"
+                }
             },
             redemptionResolve: "Weak", negotiationStyle: "Deceptive", patience: 5, mood: 'Neutral', tags: ["Opportunity"]
         },

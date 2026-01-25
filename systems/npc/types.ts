@@ -1,13 +1,14 @@
 
 import { Item } from '../items/types';
 import { Mood } from '../core/types';
-import { Dialogue, SimLogEntry } from '../narrative/types';
+import { Dialogue, SimLogEntry, CustomerPortraits } from '../narrative/types';
 
 export interface Customer {
   id: string;
   name: string;
   description: string;
   avatarSeed: string;
+  portraits?: CustomerPortraits; // NEW
   dialogue: Dialogue;
   redemptionResolve: 'Strong' | 'Medium' | 'Weak' | 'None'; 
   negotiationStyle: 'Aggressive' | 'Desperate' | 'Professional' | 'Deceptive';

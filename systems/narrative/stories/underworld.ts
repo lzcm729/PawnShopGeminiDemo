@@ -24,7 +24,7 @@ export const UNDERWORLD_EVENTS: StoryEvent[] = [
         triggerConditions: [{ variable: "days_since_trigger", operator: "==", value: 2 }],
         template: {
             name: "System", description: "", avatarSeed: "", 
-            dialogue: { greeting: "", pawnReason: "", redemptionPlea: "", negotiationDynamic: "", accepted: {fair:"",fleeced:"",premium:""}, rejected: "", rejectionLines: {standard:"",angry:""} },
+            dialogue: { greeting: "", pawnReason: "", redemptionPlea: "", negotiationDynamic: "", accepted: {fair:"",fleeced:"",premium:""}, rejected: "", rejectionLines: {standard:"",angry:""}, exitDialogues: { grateful: "...", neutral: "...", resentful: "...", desperate: "..." } },
             redemptionResolve: "None", negotiationStyle: "Professional", patience: 0, mood: "Neutral", tags: [], desiredAmount:0, minimumAmount:0, maxRepayment:0, item: {} as any 
         },
         item: {} as any
@@ -46,7 +46,13 @@ export const UNDERWORLD_EVENTS: StoryEvent[] = [
                 negotiationDynamic: "...",
                 accepted: { fair: "算你识相。", fleeced: "...", premium: "..." },
                 rejected: "...",
-                rejectionLines: { standard: "...", angry: "...", desperate: "..." }
+                rejectionLines: { standard: "...", angry: "...", desperate: "..." },
+                exitDialogues: {
+                    grateful: "懂事。",
+                    neutral: "两清。",
+                    resentful: "哼... 走路小心点。",
+                    desperate: "[冷冷地看了你一眼，做了一个割喉的手势]"
+                }
             },
             redemptionResolve: "Strong", negotiationStyle: "Aggressive", patience: 2, mood: "Angry",
             desiredAmount: 0, minimumAmount: 0, maxRepayment: 0,

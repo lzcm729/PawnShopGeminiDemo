@@ -255,6 +255,7 @@ export const instantiateStoryCustomer = (
         name: template.name || "Unknown",
         description: template.description || "",
         avatarSeed: template.avatarSeed || "default",
+        portraits: template.portraits, // Pass portraits through
         dialogue: resolvedDialogue,
         redemptionResolve: template.redemptionResolve || "Medium",
         negotiationStyle: template.negotiationStyle || "Professional",

@@ -22,6 +22,9 @@ export interface ExitLines {
   neutral: string;
   resentful: string;
   desperate: string;
+  // Silent variants (Actions instead of words)
+  resentful_silent?: string;
+  desperate_silent?: string;
 }
 
 export interface TriggerCondition {
@@ -200,10 +203,19 @@ export interface DynamicFlowOutcome {
   outcome: ChainUpdateEffect[];
 }
 
+export interface CustomerPortraits {
+    neutral?: string;
+    grateful?: string;
+    resentful?: string;
+    desperate?: string;
+    angry?: string;
+}
+
 export interface CustomerTemplate {
     name: string;
     description: string;
     avatarSeed: string;
+    portraits?: CustomerPortraits; // NEW: Specific emotional portraits
     dialogue: DialogueTemplate; 
     redemptionResolve?: 'Strong' | 'Medium' | 'Weak' | 'None';
     negotiationStyle?: 'Aggressive' | 'Desperate' | 'Professional' | 'Deceptive';

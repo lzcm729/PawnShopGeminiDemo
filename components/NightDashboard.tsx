@@ -6,11 +6,16 @@ import { Button } from './ui/Button';
 import { Moon, Mail, Package, Calendar, Power, Coffee, Activity, AlertCircle, Heart } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
+import { InnerVoiceDisplay } from './InnerVoiceDisplay';
+import { getBedtimeMonologue } from '../systems/narrative/innerVoiceRegistry';
 
 export const NightDashboard: React.FC = () => {
     const { state, dispatch } = useGame();
     const { performNightCycle } = useGameEngine();
     const { inbox, inventory, stats } = state;
+
+    const [showMonologue, setShowMonologue] = useState(false);
+    const [monologueText, setMonologueText] = useState("");
 
     const unreadMail = inbox.filter(m => !m.isRead).length;
     const activeItems = inventory.filter(i => i.status !== 'SOLD').length;
@@ -34,11 +39,23 @@ export const NightDashboard: React.FC = () => {
 
     const handleSleep = () => {
         playSfx('CLICK');
+        const text = getBedtimeMonologue(state);
+        setMonologueText(text);
+        setShowMonologue(true);
+    };
+
+    const completeNight = () => {
+        setShowMonologue(false);
         performNightCycle();
     };
 
     return (
         <div className="h-screen w-full bg-[#050505] relative overflow-hidden font-mono text-stone-400 flex flex-col items-center justify-center">
+            
+            {showMonologue && (
+                <InnerVoiceDisplay text={monologueText} onComplete={completeNight} />
+            )}
+
             {/* Background: Dark Office */}
             <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-20 blur-sm pointer-events-none grayscale contrast-125"></div>
             

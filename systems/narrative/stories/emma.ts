@@ -107,7 +107,13 @@ export const EMMA_EVENTS: StoryEvent[] = [
         negotiationDynamic: "能不能再高一点？这可是去年的走秀款。",
         accepted: { fair: "谢谢。我会回来的。", fleeced: "谢谢... 至少够付房租了。", premium: "天哪，你真是个好人！这对我帮助太大了。" },
         rejected: "好吧... 我再去别家问问，也许有人识货。",
-        rejectionLines: { standard: "谢谢。", angry: "这衣服这价？开玩笑。", desperate: "..." }
+        rejectionLines: { standard: "谢谢。", angry: "这衣服这价？开玩笑。", desperate: "..." },
+        exitDialogues: {
+            grateful: "真的很感谢你！等我找到工作，第一时间来赎！",
+            neutral: "回见。帮我保管好它。",
+            resentful: "没想到这行也这么黑... 算了。",
+            desperate: "[她默默地把钱塞进包里，低着头快步走了出去]"
+        }
       },
       redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 3, mood: 'Neutral', tags: ["Story", "LowRisk"]
     },
@@ -157,7 +163,13 @@ export const EMMA_EVENTS: StoryEvent[] = [
         negotiationDynamic: "别压太低了... 我现在真的每一分钱都要算着花。",
         accepted: { fair: "希望能撑过这一周。", fleeced: "好吧... 总比没有强。", premium: "谢谢！你救了我一命。" },
         rejected: "求你了，我真的急用... 哪怕少给点也行。",
-        rejectionLines: { standard: "行吧。", angry: "你这人怎么这样。", desperate: "求你了..." }
+        rejectionLines: { standard: "行吧。", angry: "你这人怎么这样。", desperate: "求你了..." },
+        exitDialogues: {
+            grateful: "我不会忘记你的帮助的... 等我发了工资就来。",
+            neutral: "走了。",
+            resentful: "这点钱... 也就够买几天面包。",
+            desperate: "[她拿着钱的手在发抖，似乎想说什么，但最后只是匆匆离开了]"
+        }
       },
       redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 3, mood: 'Neutral', tags: ["Story"]
     },
@@ -203,7 +215,13 @@ export const EMMA_EVENTS: StoryEvent[] = [
         negotiationDynamic: "这不仅是电脑，这是我的未来... 别再压价了。",
         accepted: { fair: "再见了，老伙计。等着我。", fleeced: "就这样吧... 只要能活下去。", premium: "谢谢你尊重它，也谢谢你尊重我。" },
         rejected: "那我怎么办... 我完了。我真的完了。",
-        rejectionLines: { standard: "再见。", angry: "你们都是吸血鬼。", desperate: "我不走！除非你给我钱！" }
+        rejectionLines: { standard: "再见。", angry: "你们都是吸血鬼。", desperate: "我不走！除非你给我钱！" },
+        exitDialogues: {
+            grateful: "我会向每个人推荐你的店... 谢谢你给我留了条活路。",
+            neutral: "一定... 一定要帮我留好它。",
+            resentful: "如果我赎不回来... 算了。",
+            desperate: "[她一步三回头地看着柜台上的电脑，眼泪在眼眶里打转，最终捂着脸跑了出去]"
+        }
       },
       redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 2, mood: 'Annoyed', tags: ["Story", "HighMoralStake"]
     },
@@ -263,7 +281,13 @@ export const EMMA_EVENTS: StoryEvent[] = [
             negotiationDynamic: "钱不是问题，我预支了薪水。",
             accepted: { fair: "谢谢你。", fleeced: "给，不用找了。", premium: "谢谢你，真的。" },
             rejected: "呃...",
-            rejectionLines: { standard: "再见", angry: "bye", desperate: "..." }
+            rejectionLines: { standard: "再见", angry: "bye", desperate: "..." },
+            exitDialogues: {
+                grateful: "再见！祝你生意兴隆！",
+                neutral: "走了。谢谢。",
+                resentful: "终于拿回来了... 我这辈子都不想再踏进这里。",
+                desperate: "[她抱着电脑，像是抱着失而复得的孩子]"
+            }
         },
         redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 5, mood: "Happy",
         desiredAmount: 0, minimumAmount: 0, maxRepayment: 10000,
@@ -338,7 +362,13 @@ export const EMMA_EVENTS: StoryEvent[] = [
                 premium: "这么多？... 谢谢，我会好好用这笔钱的。"
             },
             rejected: "连这个都不要？... 我还能卖什么呢。",
-            rejectionLines: { standard: "好吧。", angry: "...", desperate: "求你了..." }
+            rejectionLines: { standard: "好吧。", angry: "...", desperate: "求你了..." },
+            exitDialogues: {
+                grateful: "也许... 还有希望。",
+                neutral: "再见。",
+                resentful: "...",
+                desperate: "[她看着空荡荡的手腕，眼神像死了一样]"
+            }
         },
         redemptionResolve: "Weak", negotiationStyle: "Desperate", patience: 2, mood: 'Neutral', tags: ["Story"]
     },
@@ -382,7 +412,13 @@ export const EMMA_EVENTS: StoryEvent[] = [
           negotiationDynamic: "别太低就行... 我想去买瓶酒，好好睡一觉。", 
           accepted: { fair: "谢谢。你比那个男人大方多了。", fleeced: "果然，倒霉的时候喝凉水都塞牙。拿来吧。", premium: "这么多？... 呵，也许老天爷还没完全瞎眼。" }, 
           rejected: "连你也嫌弃它晦气吗？", 
-          rejectionLines: { standard: "好吧，打扰了。", angry: "...", desperate: "求你了，我真的没地方去了..." } 
+          rejectionLines: { standard: "好吧，打扰了。", angry: "...", desperate: "求你了，我真的没地方去了..." },
+          exitDialogues: {
+              grateful: "也许今晚能睡个好觉...",
+              neutral: "再见。",
+              resentful: "...",
+              desperate: "[她把钱攥在手心，像是在攥着救命稻草，跌跌撞撞地走了]"
+          }
       },
       redemptionResolve: "None", negotiationStyle: "Desperate", patience: 1, mood: "Neutral", tags: ["Tragedy"]
     },
@@ -424,7 +460,13 @@ export const EMMA_EVENTS: StoryEvent[] = [
           negotiationDynamic: "价格无所谓。只要能让我买张去地下的单程票。听说那里不看芯片，只看拳头。", 
           accepted: { fair: "成交。动手吧，给我个痛快。", fleeced: "无所谓了。反正这条命也不值钱。", premium: "这些钱... 够我在地下城换个机械义肢了。谢谢。", }, 
           rejected: "看来我连当垃圾的资格都没有。", 
-          rejectionLines: { standard: "...", angry: "...", desperate: "..." } 
+          rejectionLines: { standard: "...", angry: "...", desperate: "..." },
+          exitDialogues: {
+              grateful: "再见。不，是永别。",
+              neutral: "永别了。",
+              resentful: "...",
+              desperate: "[她捂着脖子上的伤口，像个幽灵一样飘了出去]"
+          }
       },
       redemptionResolve: "None", negotiationStyle: "Desperate", patience: 1, mood: "Neutral", tags: ["Illegal", "HighRisk"]
     },
