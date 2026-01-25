@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren, useEffect } from 'react';
 import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry, DailyFinancialSnapshot, SatisfactionLevel } from '../types';
-import { INITIAL_CHAINS } from '../systems/narrative/storyRegistry';
 import { getMailTemplate } from '../systems/narrative/mailRegistry';
 import { generateValuationRange } from '../systems/items/utils';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../systems/game/utils/logGenerator';
@@ -21,29 +20,29 @@ const initialState: GameState = {
         dueDate: GAME_CONFIG.BILL_CYCLE,
         status: 'PENDING'
     },
-    dailyExpenses: 50,
-    actionPoints: 10, 
-    maxActionPoints: 10,
+    dailyExpenses: GAME_CONFIG.DAILY_EXPENSES,
+    actionPoints: GAME_CONFIG.INITIAL_ACTION_POINTS, 
+    maxActionPoints: GAME_CONFIG.INITIAL_ACTION_POINTS,
     rentDue: GAME_CONFIG.WEEKLY_RENT,
     rentDueDate: GAME_CONFIG.RENT_CYCLE
   },
   reputation: {
-    [ReputationType.HUMANITY]: 30,
-    [ReputationType.CREDIBILITY]: 20,
-    [ReputationType.UNDERWORLD]: 5
+    [ReputationType.HUMANITY]: GAME_CONFIG.INITIAL_REPUTATION.HUMANITY,
+    [ReputationType.CREDIBILITY]: GAME_CONFIG.INITIAL_REPUTATION.CREDIBILITY,
+    [ReputationType.UNDERWORLD]: GAME_CONFIG.INITIAL_REPUTATION.UNDERWORLD
   },
   inventory: [],
   currentCustomer: null,
   dayEvents: [],
   todayTransactions: [],
   customersServedToday: 0,
-  maxCustomersPerDay: 1, 
+  maxCustomersPerDay: GAME_CONFIG.MAX_CUSTOMERS_PER_DAY, 
   isLoading: false,
   showInventory: false,
   showMail: false,
   showDebug: false,
   showFinancials: false, 
-  activeChains: INITIAL_CHAINS,
+  activeChains: GAME_CONFIG.STARTING_CHAINS,
   inbox: [],
   pendingMails: [],
   completedScenarioIds: [],
@@ -424,7 +423,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           ...state, 
           stats: { 
               ...state.stats, 
-              cash: state.stats.cash - billAmount,
+              cash: state.stats.cash - billAmount, 
               medicalBill: {
                   ...state.stats.medicalBill,
                   status: 'PAID'
