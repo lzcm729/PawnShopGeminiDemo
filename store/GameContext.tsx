@@ -55,6 +55,8 @@ type Action =
   | { type: 'LOAD_GAME'; payload: GameState }
   | { type: 'START_GAME' }
   | { type: 'START_DAY' }
+  | { type: 'OPEN_SHOP' }
+  | { type: 'START_NIGHT' }
   | { type: 'SET_PHASE'; payload: GamePhase } 
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_CUSTOMER'; payload: Customer }
@@ -102,6 +104,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return { ...initialState, phase: GamePhase.MORNING_BRIEF };
       
     case 'START_DAY': {
+      // Initialize the day, but wait in MORNING_BRIEF
       const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
       const effectiveMaxAP = Math.max(1, state.stats.maxActionPoints + apModifier);
       return { 
@@ -109,11 +112,19 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         customersServedToday: 0,
         dayEvents: [],
         todayTransactions: [], 
-        phase: GamePhase.TRADING,
+        phase: GamePhase.MORNING_BRIEF,
         stats: { ...state.stats, actionPoints: effectiveMaxAP },
         violationFlags: [] 
       };
     }
+
+    case 'OPEN_SHOP':
+      // Sound effect removed per request
+      return { ...state, phase: GamePhase.BUSINESS };
+
+    case 'START_NIGHT':
+      playSfx('CLICK');
+      return { ...state, phase: GamePhase.NIGHT, currentCustomer: null };
 
     case 'SET_PHASE': return { ...state, phase: action.payload };
     case 'SET_LOADING': return { ...state, isLoading: action.payload };
@@ -201,7 +212,11 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       const newTransaction: TransactionRecord | null = item ? { id: crypto.randomUUID(), description: `收当: ${item.name}`, amount: cashDelta, type: 'PAWN' } : null;
       const updatedTransactions = newTransaction ? [...state.todayTransactions, newTransaction] : state.todayTransactions;
       const servedCount = state.customersServedToday + 1;
-      const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
+      
+      // LOGIC CHANGE: If customers limit reached, go to DEPARTURE (which leads to NIGHT). 
+      // If not, go back to BUSINESS for next customer.
+      const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.DEPARTURE : GamePhase.BUSINESS;
+      
       const completedId = state.currentCustomer?.id;
       const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds;
 
@@ -212,7 +227,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         inventory: newInventory,
         dayEvents: [...state.dayEvents, log],
         todayTransactions: updatedTransactions,
-        currentCustomer: null,
+        // Keep customer in state for Departure summary, but prepare to clear
         customersServedToday: servedCount,
         phase: nextPhase,
         completedScenarioIds: newCompletedIds
@@ -290,12 +305,11 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const newRep = { ...state.reputation };
         newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 10);
         const servedCount = state.customersServedToday + 1;
-        const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
+        const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.DEPARTURE : GamePhase.BUSINESS;
         return {
             ...state,
             inventory: updatedInventory,
             reputation: newRep,
-            currentCustomer: null,
             customersServedToday: servedCount,
             phase: nextPhase,
             dayEvents: [...state.dayEvents, `拒绝续当: ${name}。物品已收归店铺 (Humanity -10)。`]
@@ -325,8 +339,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             return item;
         });
         const servedCount = state.customersServedToday + 1;
-        const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
-        return { ...state, inventory: updatedInventory, currentCustomer: null, customersServedToday: servedCount, phase: nextPhase, dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`] };
+        const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.DEPARTURE : GamePhase.BUSINESS;
+        return { ...state, inventory: updatedInventory, customersServedToday: servedCount, phase: nextPhase, dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`] };
     }
 
     case 'DEFAULT_SELL_ITEM': {
@@ -371,16 +385,22 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'REJECT_DEAL': {
       const servedCount = state.customersServedToday + 1;
-      const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.SHOP_CLOSED : GamePhase.TRADING;
+      const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.DEPARTURE : GamePhase.BUSINESS;
       const completedId = state.currentCustomer?.id;
       const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds;
       playSfx('CLICK');
-      return { ...state, currentCustomer: null, dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`], customersServedToday: servedCount, phase: nextPhase, completedScenarioIds: newCompletedIds };
+      return { 
+          ...state, 
+          dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`], 
+          customersServedToday: servedCount, 
+          phase: nextPhase, 
+          completedScenarioIds: newCompletedIds 
+      };
     }
 
     case 'MANUAL_CLOSE_SHOP': 
       playSfx('CLICK');
-      return { ...state, phase: GamePhase.END_OF_DAY };
+      return { ...state, phase: GamePhase.NIGHT };
 
     case 'PAY_MEDICAL_BILL': {
       playSfx('CLICK');
@@ -391,9 +411,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           amount: -billAmount, 
           type: 'MEDICAL' 
       };
-      
-      // Update Bill Status
-      const nextDueDate = state.stats.medicalBill.dueDate + GAME_CONFIG.BILL_CYCLE;
       
       return { 
           ...state, 
@@ -470,11 +487,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           playSfx('FAIL');
           return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "Bankrupt: Daily expenses exceeded cash."] };
       }
-
-      // Cycle Logic for Bill: If day passes due date and was paid, reset for next cycle.
-      // Logic handled in START_DAY or check below. 
-      // Actually, standard practice is to reset bill parameters when a new cycle starts.
-      // We'll handle this in START_DAY or hook to ensure consistency.
 
       return { 
           ...state, 

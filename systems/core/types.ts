@@ -1,11 +1,11 @@
 
 export enum GamePhase {
   START_SCREEN = 'START_SCREEN',
-  MORNING_BRIEF = 'MORNING_BRIEF',
-  TRADING = 'TRADING',
-  NEGOTIATION = 'NEGOTIATION',
-  SHOP_CLOSED = 'SHOP_CLOSED', 
-  END_OF_DAY = 'END_OF_DAY',
+  MORNING_BRIEF = 'MORNING_BRIEF', // Morning News/Weather/Prep
+  BUSINESS = 'BUSINESS',           // Shop is open, waiting for customer
+  NEGOTIATION = 'NEGOTIATION',     // Active dealing with customer
+  DEPARTURE = 'DEPARTURE',         // Post-deal summary, "Send Guest"
+  NIGHT = 'NIGHT',                 // Admin phase: Mail, Ledger, Sleep
   GAME_OVER = 'GAME_OVER',
   VICTORY = 'VICTORY'
 }

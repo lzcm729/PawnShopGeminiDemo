@@ -3,14 +3,16 @@ import React from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { NewsCategory, ItemStatus } from '../types';
+import { NewsCategory, ItemStatus, GamePhase } from '../types';
 import { Sun, CloudRain, Wind, TrendingUp, Newspaper, AlertOctagon, Radio, DollarSign, Calendar, Coffee, ArrowRight, Droplets } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/Badge';
 
 export const MorningBrief: React.FC = () => {
-  const { state } = useGame();
-  const { startNewDay } = useGameEngine();
+  const { state, dispatch } = useGame();
+  const { startNewDay } = useGameEngine(); // This actually runs daily setup logic, we might need it? 
+  // Wait, startNewDay in engine calls START_DAY which resets phase to MORNING_BRIEF.
+  // The button here should actually be "OPEN_SHOP".
 
   const narratives = state.dailyNews.filter(n => n.category === NewsCategory.NARRATIVE);
   const markets = state.dailyNews.filter(n => n.category === NewsCategory.MARKET);
@@ -115,7 +117,7 @@ export const MorningBrief: React.FC = () => {
             </div>
 
             <Button 
-                onClick={() => { startNewDay(); }} 
+                onClick={() => dispatch({ type: 'OPEN_SHOP' })} 
                 className="w-full mt-6 h-14 text-lg tracking-widest border-noir-400 hover:border-noir-txt-primary hover:bg-noir-200 text-noir-txt-primary shadow-lg group relative overflow-hidden"
             >
                 <div className="absolute inset-0 bg-noir-accent/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
@@ -127,6 +129,7 @@ export const MorningBrief: React.FC = () => {
 
          {/* RIGHT CONTENT: The City Chronicle */}
          <div className="flex-1 bg-[#e7e5e4] text-stone-900 relative flex flex-col min-w-0">
+             {/* ... existing right content ... */}
              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-60 pointer-events-none mix-blend-multiply"></div>
 
              {/* Newspaper Header */}

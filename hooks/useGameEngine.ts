@@ -117,16 +117,6 @@ export const useGameEngine = () => {
          // For now, let's just make sure the UI handles 'PAID' correctly (shows checkmark).
          // But eventually we need it to go back to PENDING so player can pay.
          
-         // Let's assume we simply update it manually here if needed, or add a RESET_BILL action.
-         // Actually, let's add a logic in `START_DAY` reducer to reset status if needed?
-         // No, let's just dispatch a patch.
-         
-         // Better: Update `PAY_MEDICAL_BILL` to NOT set status to PAID if we want it to be a recurring drain?
-         // No, user needs feedback.
-         // Solution: In `START_DAY` reducer, if `medicalBill.status === 'PAID'` and `day > (medicalBill.dueDate - GAME_CONFIG.BILL_CYCLE)`, set status to `PENDING`.
-         // I'll leave the reducer as is for now and assume the "PAID" status persists until the next bill logic triggers, 
-         // BUT `useGameEngine` is where we usually trigger things.
-         
          // Let's rely on the user having to pay again. 
          // If status is PAID, the button is disabled. 
          // We need to re-enable it.
@@ -156,7 +146,7 @@ export const useGameEngine = () => {
               const forfeitItem = state.inventory.find(i => i.id === targetId && i.status === ItemStatus.FORFEIT);
               if (!forfeitItem) {
                    dispatch({ type: 'SET_LOADING', payload: false });
-                   dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
+                   dispatch({ type: 'SET_PHASE', payload: GamePhase.DEPARTURE });
                    return;
               }
           }
@@ -179,7 +169,7 @@ export const useGameEngine = () => {
                            
                            setTimeout(() => {
                                 dispatch({ type: 'SET_LOADING', payload: false });
-                                dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
+                                dispatch({ type: 'SET_PHASE', payload: GamePhase.DEPARTURE });
                            }, 500);
                            return;
                       }
@@ -247,13 +237,13 @@ export const useGameEngine = () => {
 
       setTimeout(() => {
           dispatch({ type: 'SET_LOADING', payload: false });
-          dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
+          dispatch({ type: 'SET_PHASE', payload: GamePhase.DEPARTURE });
       }, 500);
 
     } catch (error) {
       console.error("Event generation error:", error);
       dispatch({ type: 'SET_LOADING', payload: false });
-      dispatch({ type: 'SET_PHASE', payload: GamePhase.SHOP_CLOSED });
+      dispatch({ type: 'SET_PHASE', payload: GamePhase.DEPARTURE });
     }
   };
 

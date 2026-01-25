@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { DollarSign, Calendar, Heart, Briefcase, Skull, Package, Mail, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2 } from 'lucide-react';
-import { ReputationType } from '../../core/types';
+import { ReputationType, GamePhase } from '../../core/types';
 import { Button } from '../../../components/ui/Button';
 import { StatDisplay } from '../../../components/ui/StatDisplay';
 import { Tooltip } from '../../../components/ui/Tooltip';
@@ -13,7 +13,10 @@ import { cn } from '../../../lib/utils';
 
 export const Dashboard: React.FC = () => {
     const { state, dispatch } = useGame();
-    const { stats, reputation, inventory, inbox } = state;
+    const { stats, reputation, inventory, inbox, phase } = state;
+
+    // If we are in Night phase, we hide the top dashboard because NightDashboard takes over full screen
+    if (phase === GamePhase.NIGHT) return null;
 
     const activeItems = inventory.filter(i => i.status !== 'SOLD').length;
     const unreadMailCount = inbox.filter(m => !m.isRead).length;
@@ -22,8 +25,7 @@ export const Dashboard: React.FC = () => {
     const bill = stats.medicalBill;
     const daysUntilBill = bill.dueDate - stats.day;
     const isBillCritical = daysUntilBill <= 2 && bill.status !== 'PAID';
-    const canPayBill = stats.cash >= bill.amount && bill.status !== 'PAID';
-
+    
     // Goal Logic
     const goalProgress = Math.min(100, (stats.cash / stats.targetSavings) * 100);
     const canPaySurgery = stats.cash >= stats.targetSavings;
@@ -49,13 +51,6 @@ export const Dashboard: React.FC = () => {
         dispatch({ type: 'TOGGLE_FINANCIALS' });
     };
 
-    const handlePayBill = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (canPayBill) {
-            dispatch({ type: 'PAY_MEDICAL_BILL' });
-        }
-    };
-
     const handleSurgery = () => {
         dispatch({ type: 'PAY_SURGERY' });
     };
@@ -67,6 +62,8 @@ export const Dashboard: React.FC = () => {
         </div>
     );
 
+    const isBusiness = phase === GamePhase.BUSINESS || phase === GamePhase.NEGOTIATION;
+
     return (
     <div className="w-full bg-noir-200 border-b border-noir-300 p-3 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-50 shadow-xl">
         <ValidationModal 
@@ -76,14 +73,13 @@ export const Dashboard: React.FC = () => {
             issues={validationIssues}
         />
 
-        {/* LEFT: SURVIVAL (Medical Bill) */}
+        {/* LEFT: SURVIVAL (Medical Bill Monitor) */}
         <div className="flex items-center gap-4 w-1/3">
             <div 
                 className={cn(
-                    "flex-1 relative overflow-hidden rounded border p-2 flex items-center justify-between transition-all group cursor-pointer",
+                    "flex-1 relative overflow-hidden rounded border p-2 flex items-center justify-between transition-all group",
                     isBillCritical ? "bg-red-950/30 border-red-500 animate-pulse" : "bg-noir-200 border-noir-400"
                 )}
-                onClick={toggleFinancials}
             >
                 <div className="flex items-center gap-3">
                     <div className={cn("p-2 rounded-full border", isBillCritical ? "bg-red-900 text-red-100 border-red-500" : "bg-noir-300 border-noir-500 text-red-500")}>
@@ -100,43 +96,26 @@ export const Dashboard: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
-                {bill.status !== 'PAID' && (
-                    <Button 
-                        size="sm" 
-                        variant={isBillCritical ? "danger" : "secondary"} 
-                        className="h-8 text-[10px] px-2"
-                        disabled={!canPayBill}
-                        onClick={handlePayBill}
-                    >
-                        PAY BILL
-                    </Button>
-                )}
+                {/* Button removed here, moved to NightDashboard */}
             </div>
         </div>
 
-        {/* CENTER: GOAL (Surgery Fund) */}
+        {/* CENTER: CASH & GOAL */}
         <div className="flex-1 flex flex-col items-center justify-center max-w-md w-full">
-            <div className="flex justify-between w-full text-[10px] uppercase font-bold tracking-widest text-noir-txt-muted mb-1">
-                <span>Surgery Fund</span>
-                <span className={canPaySurgery ? "text-green-500 animate-pulse" : ""}>
-                    ${stats.cash.toLocaleString()} / ${stats.targetSavings.toLocaleString()}
-                </span>
+            <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-2xl font-mono font-bold text-white tracking-tight">${stats.cash.toLocaleString()}</span>
+                <span className="text-[10px] text-stone-500 uppercase font-bold tracking-widest">Available</span>
             </div>
             
-            <div className="w-full h-3 bg-noir-300 rounded-full overflow-hidden border border-noir-400 relative">
-                {/* Progress Bar */}
+            <div className="w-full h-2 bg-noir-300 rounded-full overflow-hidden border border-noir-400 relative group">
                 <div 
                     className={cn("h-full transition-all duration-1000 relative", canPaySurgery ? "bg-green-500" : "bg-gradient-to-r from-blue-900 to-blue-500")} 
                     style={{ width: `${goalProgress}%` }}
-                >
-                    {canPaySurgery && <div className="absolute inset-0 bg-white/30 animate-[shimmer_2s_infinite]"></div>}
-                </div>
-                
-                {/* Ticks */}
-                <div className="absolute inset-0 flex justify-between px-1">
-                    {[1,2,3,4].map(i => <div key={i} className="w-px h-full bg-black/20"></div>)}
-                </div>
+                />
+            </div>
+            <div className="w-full flex justify-between mt-1 text-[9px] uppercase font-bold text-stone-600 tracking-wider">
+                <span>Surgery Fund</span>
+                <span>Target: ${stats.targetSavings.toLocaleString()}</span>
             </div>
 
             {canPaySurgery && (
@@ -196,8 +175,20 @@ export const Dashboard: React.FC = () => {
                 <Button 
                     variant="secondary" 
                     size="sm"
+                    onClick={toggleFinancials}
+                    leftIcon={<Calendar size={14} />}
+                    title="Financial Calendar"
+                >
+                    CALENDAR
+                </Button>
+
+                <Button 
+                    variant="secondary" 
+                    size="sm"
                     onClick={() => dispatch({type: 'TOGGLE_MAIL'})}
                     className={unreadMailCount > 0 ? "border-green-600 text-green-500" : ""}
+                    disabled={isBusiness}
+                    title={isBusiness ? "Available at Night" : "Inbox"}
                     leftIcon={<Mail className={unreadMailCount > 0 ? "animate-bounce" : ""} size={14} />}
                 >
                     MAIL {unreadMailCount > 0 && `(${unreadMailCount})`}

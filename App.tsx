@@ -13,10 +13,11 @@ import { InventoryModal } from './components/InventoryModal';
 import { MailModal } from './components/MailModal';
 import { FinancialCalendar } from './components/FinancialCalendar';
 import { DebugPanel } from './components/DebugPanel';
-import { ShopClosedView } from './components/ShopClosedView';
+import { DepartureView } from './components/ShopClosedView'; // Renamed file export
 import { StartScreen } from './components/StartScreen';
 import { MorningBrief } from './components/MorningBrief';
-import { GameOverScreen } from './components/GameOverScreen'; // Imported
+import { NightDashboard } from './components/NightDashboard'; // New Component
+import { GameOverScreen } from './components/GameOverScreen';
 import { GamePhase } from './types';
 
 const GameContent: React.FC = () => {
@@ -25,13 +26,15 @@ const GameContent: React.FC = () => {
   const [loadingText, setLoadingText] = useState("");
   const negotiation = useNegotiation(state.currentCustomer);
   
+  // Phase: BUSINESS -> Automatically trigger event if no customer
   useEffect(() => {
-    if (state.phase === GamePhase.TRADING && !state.isLoading) {
+    if (state.phase === GamePhase.BUSINESS && !state.isLoading && !state.currentCustomer) {
       setLoadingText("Someone is approaching the counter...");
       generateDailyEvent();
     }
-  }, [state.phase, state.isLoading, generateDailyEvent]);
+  }, [state.phase, state.isLoading, state.currentCustomer, generateDailyEvent]);
 
+  // Sync Customer Status
   useEffect(() => {
     if (state.currentCustomer && state.currentCustomer.interactionType === 'PAWN') {
         const needsUpdate = 
@@ -52,6 +55,8 @@ const GameContent: React.FC = () => {
     }
   }, [negotiation.patience, negotiation.mood, negotiation.currentAskPrice, state.currentCustomer, dispatch]);
 
+  // --- PHASE ROUTING ---
+
   if (state.phase === GamePhase.START_SCREEN) {
     return <StartScreen />;
   }
@@ -65,10 +70,14 @@ const GameContent: React.FC = () => {
     );
   }
 
-  if (state.phase === GamePhase.END_OF_DAY) {
+  if (state.phase === GamePhase.NIGHT) {
     return (
       <>
-        <EndOfDaySummary />
+        <NightDashboard />
+        {/* Modals are available in Night Mode */}
+        <InventoryModal />
+        <MailModal />
+        <FinancialCalendar />
         <DebugPanel />
       </>
     );
@@ -87,14 +96,25 @@ const GameContent: React.FC = () => {
     )
   }
 
+  if (state.phase === GamePhase.VICTORY) {
+      return (
+          <div className="h-screen flex items-center justify-center bg-white text-black font-serif text-3xl">
+              VICTORY - MOTHER SAVED
+          </div>
+      )
+  }
+
+  // --- BUSINESS / NEGOTIATION / DEPARTURE ---
+
   const isNegotiating = state.phase === GamePhase.NEGOTIATION;
-  const isShopClosed = state.phase === GamePhase.SHOP_CLOSED;
+  const isDeparture = state.phase === GamePhase.DEPARTURE;
   const isSettlement = isNegotiating && state.currentCustomer?.interactionType === 'REDEEM';
 
   return (
     <div className="h-screen flex flex-col bg-pawn-dark text-pawn-text overflow-hidden font-sans">
       <Dashboard />
       
+      {/* Universal Modals (accessible during day via Dashboard) */}
       <InventoryModal />
       <MailModal />
       <FinancialCalendar />
@@ -108,9 +128,9 @@ const GameContent: React.FC = () => {
           </div>
         )}
 
-        {isShopClosed && (
+        {isDeparture && (
             <div className="absolute inset-0 z-40 animate-in fade-in duration-500">
-                <ShopClosedView />
+                <DepartureView />
             </div>
         )}
 
@@ -120,6 +140,7 @@ const GameContent: React.FC = () => {
                 <SettlementInterface />
             ) : (
                 <>
+                    {/* Left Panel: Item / Contract */}
                     <div className="lg:col-span-6 h-full border-r border-white/10 overflow-hidden relative">
                         {isNegotiating ? (
                         <ItemPanel 
@@ -130,17 +151,18 @@ const GameContent: React.FC = () => {
                         />
                         ) : (
                         <div className="h-full flex items-center justify-center text-stone-700 font-mono">
-                            <span>...</span>
+                            {state.phase === GamePhase.BUSINESS && <span className="animate-pulse">Waiting for customer...</span>}
                         </div>
                         )}
                     </div>
 
+                    {/* Right Panel: Customer / Negotiation */}
                     <div className="lg:col-span-6 h-full overflow-hidden">
                         {isNegotiating ? (
                         <NegotiationPanel negotiation={negotiation} />
                         ) : (
                             <div className="h-full flex items-center justify-center text-stone-600 font-mono text-center p-8">
-                            {!isShopClosed && <p className="animate-pulse">等待顾客光临...</p>}
+                                <p className="opacity-50">COUNTER CLOSED</p>
                             </div>
                         )}
                     </div>
