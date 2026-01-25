@@ -3,7 +3,7 @@ import { GamePhase, DailyStats, ReputationProfile } from '../core/types';
 import { Item } from '../items/types';
 import { Customer } from '../npc/types';
 import { TransactionRecord } from '../economy/types';
-import { EventChainState, MailInstance } from '../narrative/types';
+import { EventChainState, MailInstance, SatisfactionLevel } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier } from '../news/types';
 
 export interface DailyFinancialSnapshot {
@@ -39,4 +39,6 @@ export interface GameState {
   violationFlags: string[]; 
   
   financialHistory: DailyFinancialSnapshot[]; // History of past days
+  
+  lastSatisfaction: SatisfactionLevel | null; // Tracks the emotional outcome of the last deal
 }

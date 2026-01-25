@@ -18,7 +18,18 @@ export const CustomerView: React.FC = () => {
     </div>
   );
 
-  const { dialogue, mood, patience, interactionType, recapLog } = currentCustomer;
+  const { mood, patience, interactionType, recapLog } = currentCustomer;
+  
+  // Defensive coding: Ensure dialogue object exists
+  const dialogue = currentCustomer.dialogue || {
+      greeting: "...",
+      pawnReason: "...",
+      redemptionPlea: "...",
+      negotiationDynamic: "...",
+      accepted: { fair: "...", fleeced: "...", premium: "..." },
+      rejected: "...",
+      rejectionLines: { standard: "...", angry: "..." }
+  };
 
   // Resolve color mapping
   const resolveColor = {

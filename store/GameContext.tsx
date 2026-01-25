@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren, useEffect } from 'react';
-import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry, DailyFinancialSnapshot } from '../types';
+import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry, DailyFinancialSnapshot, SatisfactionLevel } from '../types';
 import { INITIAL_CHAINS } from '../systems/narrative/storyRegistry';
 import { getMailTemplate } from '../systems/narrative/mailRegistry';
 import { generateValuationRange } from '../systems/items/utils';
@@ -23,7 +23,9 @@ const initialState: GameState = {
     },
     dailyExpenses: 50,
     actionPoints: 10, 
-    maxActionPoints: 10
+    maxActionPoints: 10,
+    rentDue: GAME_CONFIG.WEEKLY_RENT,
+    rentDueDate: GAME_CONFIG.RENT_CYCLE
   },
   reputation: {
     [ReputationType.HUMANITY]: 30,
@@ -48,7 +50,8 @@ const initialState: GameState = {
   dailyNews: [],
   activeMarketEffects: [],
   violationFlags: [],
-  financialHistory: []
+  financialHistory: [],
+  lastSatisfaction: null
 };
 
 type Action =
@@ -59,7 +62,8 @@ type Action =
   | { type: 'START_NIGHT' }
   | { type: 'SET_PHASE'; payload: GamePhase } 
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_CUSTOMER'; payload: Customer }
+  | { type: 'SET_CUSTOMER'; payload: Customer | null }
+  | { type: 'CLEAR_CUSTOMER' }
   | { type: 'UPDATE_CUSTOMER_STATUS'; payload: { patience: number; mood: Mood; currentAskPrice: number } }
   | { type: 'APPRAISE_ITEM' } 
   | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: any[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry } } 
@@ -92,7 +96,8 @@ type Action =
   | { type: 'FORCE_FORFEIT'; payload: { itemId: string; name: string } }
   | { type: 'UPDATE_NEWS'; payload: { news: ActiveNewsInstance[], modifiers: MarketModifier[] } }
   | { type: 'ADD_VIOLATION'; payload: string }
-  | { type: 'CLEAR_VIOLATIONS' };
+  | { type: 'CLEAR_VIOLATIONS' }
+  | { type: 'SET_SATISFACTION'; payload: SatisfactionLevel };
 
 const gameReducer = (state: GameState, action: Action): GameState => {
   switch (action.type) {
@@ -104,7 +109,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return { ...initialState, phase: GamePhase.MORNING_BRIEF };
       
     case 'START_DAY': {
-      // Initialize the day, but wait in MORNING_BRIEF
       const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
       const effectiveMaxAP = Math.max(1, state.stats.maxActionPoints + apModifier);
       return { 
@@ -114,23 +118,32 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         todayTransactions: [], 
         phase: GamePhase.MORNING_BRIEF,
         stats: { ...state.stats, actionPoints: effectiveMaxAP },
-        violationFlags: [] 
+        violationFlags: [],
+        lastSatisfaction: null
       };
     }
 
     case 'OPEN_SHOP':
-      // Sound effect removed per request
       return { ...state, phase: GamePhase.BUSINESS };
 
     case 'START_NIGHT':
       playSfx('CLICK');
-      return { ...state, phase: GamePhase.NIGHT, currentCustomer: null };
+      // Clear customer on transition to night
+      return { ...state, phase: GamePhase.NIGHT, currentCustomer: null, lastSatisfaction: null };
 
     case 'SET_PHASE': return { ...state, phase: action.payload };
     case 'SET_LOADING': return { ...state, isLoading: action.payload };
+    
     case 'SET_CUSTOMER':
+      if (!action.payload) {
+          // Fallback if null is passed, though CLEAR_CUSTOMER is preferred
+          return { ...state, currentCustomer: null };
+      }
       const customerInit = { ...action.payload, mood: 'Neutral' as Mood };
-      return { ...state, currentCustomer: customerInit, phase: GamePhase.NEGOTIATION };
+      return { ...state, currentCustomer: customerInit, phase: GamePhase.NEGOTIATION, lastSatisfaction: null };
+
+    case 'CLEAR_CUSTOMER':
+      return { ...state, currentCustomer: null };
       
     case 'UPDATE_CUSTOMER_STATUS':
       if (!state.currentCustomer) return state;
@@ -197,6 +210,9 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       if (!state.currentCustomer) return state;
       return { ...state, currentCustomer: { ...state.currentCustomer, item: { ...state.currentCustomer.item, appraised: true } } };
 
+    case 'SET_SATISFACTION':
+        return { ...state, lastSatisfaction: action.payload };
+
     case 'RESOLVE_TRANSACTION': {
       const { cashDelta, reputationDelta, item, log, customerName } = action.payload;
       if (cashDelta > 0) playSfx('CASH'); 
@@ -213,10 +229,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       const updatedTransactions = newTransaction ? [...state.todayTransactions, newTransaction] : state.todayTransactions;
       const servedCount = state.customersServedToday + 1;
       
-      // LOGIC CHANGE: If customers limit reached, go to DEPARTURE (which leads to NIGHT). 
-      // If not, go back to BUSINESS for next customer.
-      const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.DEPARTURE : GamePhase.BUSINESS;
-      
       const completedId = state.currentCustomer?.id;
       const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds;
 
@@ -227,10 +239,23 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         inventory: newInventory,
         dayEvents: [...state.dayEvents, log],
         todayTransactions: updatedTransactions,
-        // Keep customer in state for Departure summary, but prepare to clear
         customersServedToday: servedCount,
-        phase: nextPhase,
+        phase: GamePhase.DEPARTURE, // Force Departure Phase
         completedScenarioIds: newCompletedIds
+      };
+    }
+
+    case 'REJECT_DEAL': {
+      const servedCount = state.customersServedToday + 1;
+      const completedId = state.currentCustomer?.id;
+      const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds;
+      playSfx('CLICK');
+      return { 
+          ...state, 
+          dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`], 
+          customersServedToday: servedCount, 
+          phase: GamePhase.DEPARTURE, // Force Departure Phase
+          completedScenarioIds: newCompletedIds 
       };
     }
 
@@ -305,13 +330,12 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const newRep = { ...state.reputation };
         newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 10);
         const servedCount = state.customersServedToday + 1;
-        const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.DEPARTURE : GamePhase.BUSINESS;
         return {
             ...state,
             inventory: updatedInventory,
             reputation: newRep,
             customersServedToday: servedCount,
-            phase: nextPhase,
+            phase: GamePhase.DEPARTURE,
             dayEvents: [...state.dayEvents, `拒绝续当: ${name}。物品已收归店铺 (Humanity -10)。`]
         };
     }
@@ -339,8 +363,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             return item;
         });
         const servedCount = state.customersServedToday + 1;
-        const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.DEPARTURE : GamePhase.BUSINESS;
-        return { ...state, inventory: updatedInventory, customersServedToday: servedCount, phase: nextPhase, dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`] };
+        return { ...state, inventory: updatedInventory, customersServedToday: servedCount, phase: GamePhase.DEPARTURE, dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`] };
     }
 
     case 'DEFAULT_SELL_ITEM': {
@@ -381,21 +404,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 20);
         const record: TransactionRecord = { id: crypto.randomUUID(), description: `强制买断: ${name}`, amount: -penalty, type: 'PENALTY' };
         return { ...state, stats: { ...state.stats, cash: state.stats.cash - penalty }, inventory: updatedInventory, reputation: newRep, todayTransactions: [...state.todayTransactions, record], dayEvents: [...state.dayEvents, `恶意违约/强制买断: ${name} (-$${penalty})。顾客极度愤怒。`] };
-    }
-
-    case 'REJECT_DEAL': {
-      const servedCount = state.customersServedToday + 1;
-      const nextPhase = servedCount >= state.maxCustomersPerDay ? GamePhase.DEPARTURE : GamePhase.BUSINESS;
-      const completedId = state.currentCustomer?.id;
-      const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds;
-      playSfx('CLICK');
-      return { 
-          ...state, 
-          dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`], 
-          customersServedToday: servedCount, 
-          phase: nextPhase, 
-          completedScenarioIds: newCompletedIds 
-      };
     }
 
     case 'MANUAL_CLOSE_SHOP': 
@@ -449,7 +457,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       const expense = state.stats.dailyExpenses;
       const endingCash = state.stats.cash - expense;
       
-      // Calculate Snapshot
       const income = state.todayTransactions.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
       const txExpenses = state.todayTransactions.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0);
       const netChange = income + txExpenses - expense;
@@ -469,7 +476,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           events: snapshotEvents
       };
 
-      // Check Medical Bill Deadline
       const bill = state.stats.medicalBill;
       if (currentDay >= bill.dueDate && bill.status !== 'PAID') {
           clearSave();
@@ -481,7 +487,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           };
       }
 
-      // Check Bankruptcy
       if (endingCash < 0) {
           clearSave();
           playSfx('FAIL');

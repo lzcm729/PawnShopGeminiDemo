@@ -25,32 +25,88 @@ export const checkCondition = (condition: TriggerCondition, chain: EventChainSta
 
 // Dialogue Resolution
 export const resolveDialogue = (def: DialogueText, chain?: EventChainState): string => {
+    if (def === undefined || def === null) return "...";
     if (typeof def === 'string') return def;
-    if (!chain) return def[def.length - 1].text; 
+    if (!Array.isArray(def) || def.length === 0) return "...";
+
+    if (!chain) {
+        return def[def.length - 1].text; 
+    }
 
     for (const variant of def) {
         if (!variant.condition || checkCondition(variant.condition, chain)) {
             return variant.text;
         }
     }
-    return def.length > 0 ? def[def.length - 1].text : "...";
+    return def[def.length - 1].text;
 };
 
 const resolveCustomerDialogue = (templateDialogue: any, chain?: EventChainState): Dialogue => {
+    // Safety check for undefined dialogue template
+    const defaultDialogue: Dialogue = {
+        greeting: "...",
+        pawnReason: "...",
+        redemptionPlea: "...",
+        negotiationDynamic: "...",
+        accepted: { fair: "...", fleeced: "...", premium: "..." },
+        rejected: "...",
+        rejectionLines: { standard: "...", angry: "..." },
+        exitDialogues: { grateful: "...", neutral: "...", resentful: "...", desperate: "..." }
+    };
+
+    if (!templateDialogue) {
+        return defaultDialogue;
+    }
+
     const resolved: any = {};
-    ['greeting', 'pawnReason', 'redemptionPlea', 'negotiationDynamic', 'rejected'].forEach(key => {
-        resolved[key] = resolveDialogue(templateDialogue[key], chain);
-    });
+    const safeResolve = (key: string) => resolveDialogue(templateDialogue[key], chain);
+
+    resolved.greeting = safeResolve('greeting');
+    resolved.pawnReason = safeResolve('pawnReason');
+    resolved.redemptionPlea = safeResolve('redemptionPlea');
+    resolved.negotiationDynamic = safeResolve('negotiationDynamic');
+    resolved.rejected = safeResolve('rejected');
+    
     resolved.accepted = {};
-    ['fair', 'fleeced', 'premium'].forEach(key => {
-        resolved.accepted[key] = resolveDialogue(templateDialogue.accepted[key], chain);
-    });
+    if (templateDialogue.accepted) {
+        ['fair', 'fleeced', 'premium'].forEach(key => {
+            resolved.accepted[key] = resolveDialogue(templateDialogue.accepted[key], chain);
+        });
+    } else {
+        resolved.accepted = defaultDialogue.accepted;
+    }
+
     resolved.rejectionLines = {};
-    ['standard', 'angry', 'desperate'].forEach(key => {
-        if (templateDialogue.rejectionLines[key]) {
-            resolved.rejectionLines[key] = resolveDialogue(templateDialogue.rejectionLines[key], chain);
-        }
-    });
+    if (templateDialogue.rejectionLines) {
+        ['standard', 'angry', 'desperate'].forEach(key => {
+            if (templateDialogue.rejectionLines[key]) {
+                resolved.rejectionLines[key] = resolveDialogue(templateDialogue.rejectionLines[key], chain);
+            }
+        });
+    } else {
+        resolved.rejectionLines = defaultDialogue.rejectionLines;
+    }
+    
+    resolved.exitDialogues = {};
+    const defaultExits = {
+        grateful: "你是我的恩人... 谢谢。",
+        neutral: "回见。",
+        resentful: "算你狠... 吸血鬼。",
+        desperate: "你见死不救！"
+    };
+    
+    if (templateDialogue.exitDialogues) {
+        ['grateful', 'neutral', 'resentful', 'desperate'].forEach(key => {
+            if (templateDialogue.exitDialogues[key]) {
+                resolved.exitDialogues[key] = resolveDialogue(templateDialogue.exitDialogues[key], chain);
+            } else {
+                resolved.exitDialogues[key] = defaultExits[key as keyof typeof defaultExits];
+            }
+        });
+    } else {
+        resolved.exitDialogues = defaultExits;
+    }
+
     return resolved as Dialogue;
 };
 

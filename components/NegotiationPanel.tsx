@@ -1,4 +1,5 @@
 
+// ... existing imports ...
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
@@ -15,6 +16,7 @@ import { playSfx } from '../systems/game/audio';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { RollingNumber } from './ui/RollingNumber';
 
+// ... existing interfaces ...
 interface NegotiationStateProps {
     negotiation: {
         submitOffer: () => any;
@@ -109,6 +111,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
 
+  // ... (destructure negotiation) ...
   const { 
     offerPrincipal,
     setOfferPrincipal,
@@ -176,20 +179,24 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
       setRejectionState({show: false, text: ''});
       setSuccessModalData(null);
       
+      // SAFEGUARD: Provide default dialogue if missing
+      const greetingText = currentCustomer.dialogue?.greeting || "...";
+      const pawnReasonText = currentCustomer.dialogue?.pawnReason;
+
       const logs: LogEntry[] = [
           {
               id: 'init-1',
               sender: 'customer',
-              text: currentCustomer.dialogue.greeting,
+              text: greetingText,
               sentiment: 'neutral'
           }
       ];
 
-      if (currentCustomer.dialogue.pawnReason) {
+      if (pawnReasonText) {
           logs.push({
               id: 'init-2',
               sender: 'customer',
-              text: currentCustomer.dialogue.pawnReason,
+              text: pawnReasonText,
               sentiment: 'neutral'
           });
       }
@@ -240,10 +247,13 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
       const defaultLines = { standard: "行吧，那我走了。", angry: "浪费时间！", desperate: "求求你了..." };
-      const lines: RejectionLines = customer.dialogue.rejectionLines || defaultLines;
+      // GUARD: dialogue or rejectionLines might be missing
+      const lines: RejectionLines = customer.dialogue?.rejectionLines || defaultLines;
+      const rejectedText = customer.dialogue?.rejected || "再见。";
+      
       if (isAngry) return lines.angry || lines.standard;
       if (customer.negotiationStyle === 'Desperate') return lines.desperate || lines.standard;
-      return lines.standard || customer.dialogue.rejected || "再见。";
+      return lines.standard || rejectedText;
   };
 
   useEffect(() => {
@@ -299,9 +309,12 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   };
 
   const handleBinaryAccept = () => {
+      // GUARD: Check if accepted exists
+      const acceptedMsg = currentCustomer.dialogue?.accepted?.fair || "成交。";
+      
       const mockResult: TransactionResult = {
           success: true,
-          message: currentCustomer.dialogue.accepted.fair || "成交。",
+          message: acceptedMsg,
           cashDelta: currentAskPrice, 
           reputationDelta: {},
           item: currentCustomer.item,
@@ -489,7 +502,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
       {/* Control Deck */}
       <div className="bg-noir-200 border-t border-noir-400 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-20">
-         
+         {/* ... existing control deck logic ... */}
          {isBinaryChoice ? (
              <div className="flex flex-col gap-4">
                  <div className="flex justify-between items-end border-b border-noir-300 pb-2">
@@ -528,7 +541,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                     <RateToggle rate={0.20} label="Shark" />
                  </div>
 
-                 {/* Principal Dial - Task 2.1: Adjusted Glow */}
+                 {/* Principal Dial */}
                  <div className="flex items-center gap-2">
                      <button
                          onMouseDown={() => startAdjusting(-100)}
@@ -591,7 +604,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                     )}
                  </div>
 
-                 {/* Main Action - Task 2.2: Submit Button Shadow */}
+                 {/* Main Action */}
                  <div className="flex gap-3">
                     <Button 
                       variant="danger" 

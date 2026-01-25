@@ -2,6 +2,8 @@
 import { Item } from '../items/types';
 import { Mood } from '../core/types';
 
+export type SatisfactionLevel = 'GRATEFUL' | 'NEUTRAL' | 'RESENTFUL' | 'DESPERATE';
+
 // --- DIALOGUE SYSTEM ---
 export interface RejectionLines {
   standard: string; 
@@ -13,6 +15,13 @@ export interface AcceptedLines {
   fair: string;     
   fleeced: string;  
   premium: string;  
+}
+
+export interface ExitLines {
+  grateful: string;
+  neutral: string;
+  resentful: string;
+  desperate: string;
 }
 
 export interface TriggerCondition {
@@ -44,6 +53,12 @@ export interface DialogueTemplate {
       angry: DialogueText;
       desperate?: DialogueText;
   };
+  exitDialogues?: {
+      grateful: DialogueText;
+      neutral: DialogueText;
+      resentful: DialogueText;
+      desperate: DialogueText;
+  };
 }
 
 export interface Dialogue {
@@ -54,6 +69,7 @@ export interface Dialogue {
   accepted: AcceptedLines; 
   rejected: string; 
   rejectionLines: RejectionLines;
+  exitDialogues: ExitLines;
 }
 
 // --- MAIL SYSTEM ---

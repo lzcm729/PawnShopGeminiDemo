@@ -40,6 +40,10 @@ export interface DailyStats {
   dailyExpenses: number; 
   actionPoints: number; // Resource for appraisal
   maxActionPoints: number; // Daily cap
+
+  // Rent
+  rentDue: number;
+  rentDueDate: number;
 }
 
 export type Mood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';

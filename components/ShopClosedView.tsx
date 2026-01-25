@@ -1,63 +1,89 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
 import { Button } from './ui/Button';
-import { DoorClosed, Moon, Clock, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { SatisfactionLevel } from '../systems/narrative/types';
+import { TypewriterText } from './ui/TextEffects';
+import { playSfx } from '../systems/game/audio';
+import { GamePhase } from '../types';
 
-// Formerly ShopClosedView, now represents the "Departure" phase after a deal.
-// It serves as a brief pause before transition to Night or Next Customer.
 export const DepartureView: React.FC = () => {
   const { state, dispatch } = useGame();
+  const { currentCustomer, lastSatisfaction } = state;
 
-  const handleDeparture = () => {
-      // Logic: If served >= max, go to NIGHT. If < max, go to BUSINESS.
-      // But based on current reducer, Phase is already set to DEPARTURE.
-      // We just need an action to move forward.
-      // If we want strict day/night with 1 customer:
-      dispatch({ type: 'START_NIGHT' });
+  const [textComplete, setTextComplete] = useState(false);
+
+  useEffect(() => {
+      if (lastSatisfaction) {
+          playSfx('TYPE');
+      }
+  }, [lastSatisfaction]);
+
+  const handleNext = () => {
+      // Always transition back to BUSINESS phase. 
+      // The main GameContent component will check if maxCustomers is reached 
+      // and display the "Close Shop" button instead of generating a new event.
+      dispatch({ type: 'CLEAR_CUSTOMER' }); // Ensure customer is fully cleared
+      dispatch({ type: 'SET_PHASE', payload: GamePhase.BUSINESS });
   };
 
-  return (
-    <div className="h-full flex flex-col items-center justify-center bg-black/90 relative overflow-hidden text-stone-300">
-      {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1517502886367-e6f8564db31d?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-10 grayscale"></div>
-      
-      {/* Departure Content */}
-      <div className="relative z-10 border-4 border-stone-800 bg-[#1c1917] p-12 rounded-lg shadow-2xl flex flex-col items-center max-w-lg w-full animate-in fade-in duration-500">
-         <div className="mb-6 relative">
-            <div className="absolute -inset-4 bg-amber-900/10 blur-xl rounded-full animate-pulse"></div>
-            <DoorClosed className="w-20 h-20 text-stone-600 relative z-10" />
-         </div>
-         
-         <h1 className="text-3xl font-serif font-black tracking-widest text-stone-500 mb-2 uppercase">交易结束</h1>
-         <div className="h-px w-24 bg-stone-700 mb-6"></div>
-         
-         <div className="w-full bg-stone-900/50 p-6 rounded border border-stone-800 mb-8 text-center">
-            <p className="text-stone-400 font-serif italic mb-4">"顾客已离开。柜台恢复了平静。"</p>
-            
-            <div className="flex justify-center gap-8 text-sm font-mono text-stone-500">
-                <div className="flex flex-col items-center">
-                    <Clock className="w-4 h-4 mb-1" />
-                    <span>Cycle {state.stats.day}</span>
-                </div>
-                <div className="flex flex-col items-center">
-                    <span className="font-bold text-stone-300">{state.customersServedToday} / {state.maxCustomersPerDay}</span>
-                    <span>Served</span>
-                </div>
-            </div>
-         </div>
+  if (!currentCustomer) return null;
 
-         <Button 
-            onClick={handleDeparture}
-            className="w-full h-16 text-xl tracking-[0.2em] shadow-[0_0_20px_rgba(255,255,255,0.05)] border-stone-600 hover:bg-stone-800 group"
-            variant="secondary"
-         >
-            <div className="flex items-center gap-3">
-                <Moon className="w-5 h-5" />
-                <span>LOCK UP (NIGHT)</span>
-                <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-            </div>
-         </Button>
+  const satisfaction = lastSatisfaction || 'NEUTRAL';
+  
+  // Default exit lines if missing from data
+  const defaultExitLines: Record<SatisfactionLevel, string> = {
+      'GRATEFUL': "谢谢你... 你是个好人。我会永远记得今天的。",
+      'NEUTRAL': "走了。回见。",
+      'RESENTFUL': "算你狠... 咱们走着瞧。",
+      'DESPERATE': "求求你... (叹气) 我真的没路可走了..."
+  };
+
+  const exitText = currentCustomer.dialogue.exitDialogues?.[satisfaction] || defaultExitLines[satisfaction];
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-700">
+      
+      {/* Background Spotlight */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-b from-stone-500/10 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+
+      <div className="relative z-10 w-full max-w-2xl flex flex-col items-center">
+          
+          {/* Avatar (Large) */}
+          <div className="w-48 h-48 rounded-full border-4 border-stone-800 shadow-2xl overflow-hidden mb-8 relative grayscale hover:grayscale-0 transition-all duration-1000">
+              <img 
+                src={`https://picsum.photos/seed/${currentCustomer.avatarSeed}/400`} 
+                className="w-full h-full object-cover"
+                alt="Character"
+              />
+              <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-full"></div>
+          </div>
+
+          {/* Emotional Dialogue Box */}
+          <div className="w-full bg-[#1c1917] border border-stone-700 p-8 rounded-sm shadow-2xl relative mb-12 min-h-[150px] flex items-center justify-center text-center">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-black px-4 text-stone-500 text-xs font-mono uppercase tracking-widest border border-stone-800">
+                  {currentCustomer.name}
+              </div>
+              
+              <div className="font-serif text-xl md:text-2xl text-stone-300 italic leading-relaxed">
+                  "<TypewriterText text={exitText} speed={40} onComplete={() => setTextComplete(true)} />"
+              </div>
+          </div>
+
+          {/* Action */}
+          <div className={`transition-opacity duration-1000 ${textComplete ? 'opacity-100' : 'opacity-0'}`}>
+              <Button 
+                onClick={handleNext}
+                className="h-16 px-12 text-lg tracking-[0.3em] border-stone-600 hover:bg-stone-800 hover:border-white shadow-[0_0_30px_rgba(0,0,0,0.5)] bg-black"
+                variant="outline"
+              >
+                  <span className="flex items-center gap-4">
+                      送 客 (DISMISS) <ArrowRight className="w-5 h-5" />
+                  </span>
+              </Button>
+          </div>
+
       </div>
     </div>
   );

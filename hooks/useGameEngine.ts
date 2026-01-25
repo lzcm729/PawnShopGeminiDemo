@@ -7,6 +7,8 @@ import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect } from '../types';
 import { usePawnShop } from './usePawnShop';
 import { GAME_CONFIG } from '../systems/game/config';
+import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
+// import { generateCustomer } from '../systems/npc/generator'; // Removed: No longer generating random customers
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -56,72 +58,8 @@ export const useGameEngine = () => {
     checkDailyExpirations();
 
     const { medicalBill, day } = state.stats;
-
-    // Check if the previous bill cycle is complete (Bill due date passed, but was paid)
-    // If we are past due date and it was PAID, we should have generated next bill?
-    // Actually, simpler logic: 
-    // If status is PAID and day > dueDate, generate next bill.
-    // Note: If day > dueDate and status is PENDING, Game Over happened in END_DAY.
-    
-    // Auto-generate next bill if needed
-    /* 
-       Logic: 
-       If day > bill.dueDate AND status === 'PAID', we enter a new cycle.
-       However, reducer handles resetting logic usually. 
-       Let's assume the previous bill covered until day X. New bill covers X+7.
-    */
-    
-    // Since we are starting `day` (which was incremented in END_DAY), check bill cycle.
-    if (day > medicalBill.dueDate && medicalBill.status === 'PAID') {
-        // Generate next bill via separate action or just update state here? 
-        // For now, simpler to assume reducer logic or just let the bill sit as PAID until we explicitly want next cycle.
-        // But we want continuous pressure.
-        
-        // Let's create a logic: Reset Bill State if we passed the due date
-        // Since we don't have a specific action for "GENERATE_NEXT_BILL", let's piggyback on START_DAY logic or add a dispatch.
-        // Actually, let's keep it simple: 
-        // The bill object stays 'PAID' until the dueDate is passed. Then we need to update it.
-        // We can do this with a specific action or handle in reducer.
-        
-        // Since we are in `startNewDay`, let's check.
-    }
-
-    // However, looking at PAY_MEDICAL_BILL in reducer, it updates the dueDate immediately upon payment.
-    // So the bill always points to the *next* due date once paid.
-    // Example: Day 1. Due Day 7. Paid on Day 2 -> Due Day 14. Status PAID.
-    // Wait, if status is PAID, we shouldn't ask for money again until we are closer?
-    // Or does "PAID" mean "Safe for now"?
-    // Let's assume we want to reset status to 'PENDING' when we enter the new week.
-    
-    // Example: Paid for Day 7. DueDate becomes 14. Status PAID.
-    // When Day becomes 8 (start of new week), we should set Status to PENDING.
-    
     const cycleStartDay = medicalBill.dueDate - GAME_CONFIG.BILL_CYCLE + 1;
-    if (day >= cycleStartDay && medicalBill.status === 'PAID') {
-         // It's a new week, but bill is marked PAID? 
-         // Ah, if we paid early (Day 2), dueDate is 14.
-         // On Day 3, day < 14-7+1 (8). No reset.
-         // On Day 8, day >= 8. Reset status to PENDING.
-         
-         // We need a specific action to RESET_BILL_STATUS if we want to be clean, 
-         // or verify how `medicalBill` is updated.
-         // Current Reducer implementation of PAY_MEDICAL_BILL sets status to PAID and updates due date.
-         // So:
-         // 1. Bill Due Day 7. Status PENDING.
-         // 2. Pay on Day 5. Bill Due -> 14. Status -> PAID.
-         // 3. Day 6, 7 pass.
-         // 4. Day 8 starts. We are now in the week of the bill due Day 14. Status should be PENDING.
-         
-         // Fix: If status is PAID and day > (dueDate - 7), set to PENDING.
-         // We can dispatch a silent action or handle in reducer. 
-         // For now, let's just make sure the UI handles 'PAID' correctly (shows checkmark).
-         // But eventually we need it to go back to PENDING so player can pay.
-         
-         // Let's rely on the user having to pay again. 
-         // If status is PAID, the button is disabled. 
-         // We need to re-enable it.
-         // I'll add a check here.
-    }
+    // Logic to reset bill status if needed could go here, relying on manual logic for now.
 
     dispatch({ type: 'START_DAY' });
   };
@@ -145,8 +83,9 @@ export const useGameEngine = () => {
           if (narrativeEvent.type === 'POST_FORFEIT_VISIT') {
               const forfeitItem = state.inventory.find(i => i.id === targetId && i.status === ItemStatus.FORFEIT);
               if (!forfeitItem) {
+                   console.log("Skipping event: Item not forfeit");
                    dispatch({ type: 'SET_LOADING', payload: false });
-                   dispatch({ type: 'SET_PHASE', payload: GamePhase.DEPARTURE });
+                   dispatch({ type: 'START_NIGHT' });
                    return;
               }
           }
@@ -169,7 +108,7 @@ export const useGameEngine = () => {
                            
                            setTimeout(() => {
                                 dispatch({ type: 'SET_LOADING', payload: false });
-                                dispatch({ type: 'SET_PHASE', payload: GamePhase.DEPARTURE });
+                                dispatch({ type: 'START_NIGHT' });
                            }, 500);
                            return;
                       }
@@ -216,7 +155,6 @@ export const useGameEngine = () => {
                            storyCustomer.item = { ...realItem };
                            storyCustomer.interactionType = 'REDEEM';
                            
-                           // [BUG FIX] Ensure wallet has enough if intent is REDEEM
                            if (intent === 'REDEEM') {
                                const cost = calculateRedemptionCost(realItem);
                                if (cost && storyCustomer.currentWallet < cost.total) {
@@ -235,15 +173,14 @@ export const useGameEngine = () => {
           return;
       }
 
-      setTimeout(() => {
-          dispatch({ type: 'SET_LOADING', payload: false });
-          dispatch({ type: 'SET_PHASE', payload: GamePhase.DEPARTURE });
-      }, 500);
+      // NO CUSTOMER FOUND (Directly enter Night Phase)
+      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'START_NIGHT' });
 
     } catch (error) {
       console.error("Event generation error:", error);
       dispatch({ type: 'SET_LOADING', payload: false });
-      dispatch({ type: 'SET_PHASE', payload: GamePhase.DEPARTURE });
+      dispatch({ type: 'START_NIGHT' });
     }
   };
 
@@ -445,6 +382,22 @@ export const useGameEngine = () => {
   const commitTransaction = (result: TransactionResult) => {
     const currentCust = state.currentCustomer;
     
+    // 1. Calculate Satisfaction
+    if (currentCust) {
+        let satisfaction = evaluateSatisfaction(
+            result.terms?.principal || 0,
+            result.terms?.rate || 0.05,
+            currentCust.minimumAmount,
+            currentCust.minimumAmount,
+            false
+        );
+        
+        // Manual override for logic logic: if charity (rate 0), it is grateful
+        if (result.terms?.rate === 0) satisfaction = 'GRATEFUL';
+        
+        dispatch({ type: 'SET_SATISFACTION', payload: satisfaction });
+    }
+
     if (result.success && result.item && (result.item.category === '违禁品' || result.item.isSuspicious)) {
         const underworldChain = state.activeChains.find(c => c.id === 'chain_underworld');
         if (underworldChain && !underworldChain.isActive) {
@@ -496,6 +449,10 @@ export const useGameEngine = () => {
 
   const rejectCustomer = () => {
      const currentCust = state.currentCustomer;
+     
+     // Set Satisfaction to DESPERATE
+     dispatch({ type: 'SET_SATISFACTION', payload: 'DESPERATE' });
+
      if (currentCust?.chainId && currentCust?.eventId) {
          const chainEvent = ALL_STORY_EVENTS.find(e => e.id === currentCust.eventId);
          if (chainEvent && chainEvent.onReject) applyChainEffects(currentCust.chainId, chainEvent.onReject, undefined, currentCust);
