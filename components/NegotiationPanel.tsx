@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame, Handshake, BrainCircuit, AlertTriangle } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame, Handshake, BrainCircuit, AlertTriangle, FileText, ScanEye } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { DealSuccessModal } from './DealSuccessModal';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
@@ -31,20 +31,15 @@ interface NegotiationStateProps {
 
 interface LogEntry {
     id: string;
-    sender: 'player' | 'customer';
+    sender: 'player' | 'customer' | 'system';
     text: string;
     subtext?: string; 
     sentiment?: 'neutral' | 'negative' | 'positive';
+    type?: 'INTEL'; // Special type for Intel display
+    data?: any;
 }
 
 const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: string }> = ({ customer, patience, mood }) => {
-    const [expanded, setExpanded] = useState(false);
-
-    const toggleExpand = () => {
-        playSfx('CLICK');
-        setExpanded(!expanded);
-    };
-
     const isAngry = mood === 'Angry';
     const isHappy = mood === 'Happy';
     
@@ -110,35 +105,6 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
                       </div>
                  </div>
              </div>
-             
-             <button 
-                onClick={toggleExpand} 
-                className="flex items-center justify-between text-[10px] text-stone-500 bg-stone-900/40 border border-stone-800 px-2 py-1.5 rounded hover:bg-stone-800 hover:text-stone-300 transition-colors w-full"
-             >
-                  <span className="flex items-center gap-2 uppercase tracking-wider font-bold"><AlertCircle className="w-3 h-3"/> 客户档案 (INTEL)</span>
-                  {expanded ? <ChevronUp className="w-3 h-3"/> : <ChevronDown className="w-3 h-3"/>}
-             </button>
-             
-             {expanded && (
-                 <div className="text-xs text-stone-400 space-y-2 animate-in slide-in-from-top-2 fade-in duration-200">
-                      <div className="bg-black/20 p-2 rounded border-l-2 border-stone-600">
-                          <span className="block text-[9px] uppercase text-stone-600 mb-0.5 font-bold">Pawn Reason</span>
-                          <span className="font-serif italic">"{customer.dialogue.pawnReason}"</span>
-                      </div>
-                      <div className="bg-black/20 p-2 rounded border-l-2 border-stone-600">
-                          <span className="block text-[9px] uppercase text-stone-600 mb-0.5 font-bold">Redemption Plea</span>
-                          <span className="font-serif italic">"{customer.dialogue.redemptionPlea}"</span>
-                      </div>
-                      <div className="bg-black/20 p-2 rounded border-l-2 border-stone-600">
-                          <span className="block text-[9px] uppercase text-stone-600 mb-0.5 font-bold">Negotiation Dynamic</span>
-                          <span className="font-serif italic">"{customer.dialogue.negotiationDynamic}"</span>
-                      </div>
-                      <div className="bg-black/20 p-2 rounded border-l-2 border-stone-600">
-                          <span className="block text-[9px] uppercase text-stone-600 mb-0.5 font-bold">Negotiation Style</span>
-                          <span className="font-serif font-bold text-pawn-accent">{customer.negotiationStyle}</span>
-                      </div>
-                 </div>
-             )}
         </div>
     )
 }
@@ -177,13 +143,11 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
       ? getMerchantInstinct(offerPrincipal, selectedRate, currentCustomer, item) 
       : { text: "", color: "" };
 
-  // Validate Deal Availability (For binary negotiation events that require item possession)
   const event = currentCustomer?.eventId ? ALL_STORY_EVENTS.find(e => e.id === currentCustomer.eventId) : null;
   let canFulfillDeal = true;
   let fulfillmentError = "";
 
   if (isBinaryChoice && event) {
-      // 1. Check if specific target item exists in inventory (Active or Forfeit)
       if (event.targetItemId) {
           const target = state.inventory.find(i => i.id === event.targetItemId);
           if (!target || (target.status !== ItemStatus.ACTIVE && target.status !== ItemStatus.FORFEIT)) {
@@ -192,7 +156,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           }
       }
       
-      // 2. Check FORCE_SELL_ALL constraint
       if (canFulfillDeal) {
           const standardOutcome = event.outcomes?.['deal_standard'];
           if (standardOutcome && standardOutcome.some(e => e.type === 'FORCE_SELL_ALL')) {
@@ -218,14 +181,45 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
     if (currentCustomer) {
       setRejectionState({show: false, text: ''});
       setSuccessModalData(null);
-      setChatLog([
+      
+      // Initialize Chat Log
+      // 1. Greeting (Dialogue)
+      // 2. Pawn Reason (Dialogue)
+      // 3. Intel Report (System Info)
+      
+      const logs: LogEntry[] = [
           {
               id: 'init-1',
               sender: 'customer',
               text: currentCustomer.dialogue.greeting,
               sentiment: 'neutral'
           }
-      ]);
+      ];
+
+      // Insert Pawn Reason as second message if it exists
+      if (currentCustomer.dialogue.pawnReason) {
+          logs.push({
+              id: 'init-2',
+              sender: 'customer',
+              text: currentCustomer.dialogue.pawnReason,
+              sentiment: 'neutral'
+          });
+      }
+
+      // System Intel for remaining metadata
+      logs.push({
+          id: 'sys-intel',
+          sender: 'system',
+          text: '',
+          type: 'INTEL',
+          data: {
+              redemptionPlea: currentCustomer.dialogue.redemptionPlea,
+              negotiationDynamic: currentCustomer.dialogue.negotiationDynamic,
+              negotiationStyle: currentCustomer.negotiationStyle
+          }
+      });
+
+      setChatLog(logs);
     }
   }, [currentCustomer?.id]);
 
@@ -330,8 +324,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   };
 
   const handleBinaryAccept = () => {
-      // For binary offers (like acquisition offers), the currentAskPrice is the amount offered to the player.
-      // Therefore cashDelta should be positive.
       const mockResult: TransactionResult = {
           success: true,
           message: currentCustomer.dialogue.accepted.fair || "成交。",
@@ -486,6 +478,32 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-black/20" ref={scrollRef}>
           {chatLog.map(log => {
+              if (log.type === 'INTEL' && log.data) {
+                  return (
+                      <div key={log.id} className="bg-stone-900/60 border border-stone-800 rounded p-3 mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                          <div className="flex items-center gap-2 text-stone-500 text-[10px] font-bold uppercase tracking-widest mb-3 border-b border-stone-800 pb-2">
+                              <ScanEye className="w-4 h-4 text-pawn-accent" />
+                              <span>Customer Intel Report</span>
+                          </div>
+                          <div className="space-y-3 text-xs">
+                              {/* Removed Pawn Reason from Intel Block */}
+                              <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
+                                  <span className="text-stone-500 uppercase font-bold text-[10px] mt-0.5">Promise</span>
+                                  <span className="font-serif text-stone-300 italic">"{log.data.redemptionPlea}"</span>
+                              </div>
+                              <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
+                                  <span className="text-stone-500 uppercase font-bold text-[10px] mt-0.5">Dynamic</span>
+                                  <span className="font-serif text-stone-300 italic">"{log.data.negotiationDynamic}"</span>
+                              </div>
+                              <div className="grid grid-cols-[80px_1fr] gap-2 items-center">
+                                  <span className="text-stone-500 uppercase font-bold text-[10px]">Style</span>
+                                  <span className="font-mono font-bold text-pawn-accent">{log.data.negotiationStyle}</span>
+                              </div>
+                          </div>
+                      </div>
+                  );
+              }
+
               const isPlayer = log.sender === 'player';
               return (
                   <div key={log.id} className={`flex flex-col ${isPlayer ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-1 duration-200`}>

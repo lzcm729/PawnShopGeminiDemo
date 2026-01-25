@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren, useEffect } from 'react';
-import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry } from '../types';
+import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry, DailyFinancialSnapshot } from '../types';
 import { INITIAL_CHAINS } from '../systems/narrative/storyRegistry';
 import { getMailTemplate } from '../systems/narrative/mailRegistry';
 import { generateValuationRange } from '../systems/items/utils';
@@ -14,7 +14,7 @@ const initialState: GameState = {
     day: 1,
     cash: 100000,
     rentDue: 500,
-    rentDueDate: 5,
+    rentDueDate: 7, // Updated to 7-day cycle
     dailyExpenses: 50,
     actionPoints: 10, 
     maxActionPoints: 10
@@ -34,13 +34,15 @@ const initialState: GameState = {
   showInventory: false,
   showMail: false,
   showDebug: false,
+  showFinancials: false, // Initial State
   activeChains: INITIAL_CHAINS,
   inbox: [],
   pendingMails: [],
   completedScenarioIds: [],
   dailyNews: [],
   activeMarketEffects: [],
-  violationFlags: []
+  violationFlags: [],
+  financialHistory: []
 };
 
 type Action =
@@ -65,6 +67,7 @@ type Action =
   | { type: 'TOGGLE_INVENTORY' }
   | { type: 'TOGGLE_MAIL' }
   | { type: 'TOGGLE_DEBUG' } 
+  | { type: 'TOGGLE_FINANCIALS' } // New Action
   | { type: 'UPDATE_CHAINS'; payload: EventChainState[] }
   | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number; metadata?: any } }
   | { type: 'PROCESS_DAILY_MAIL' }
@@ -376,18 +379,45 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'PAY_RENT':
       playSfx('CLICK');
       const rentRecord: TransactionRecord = { id: crypto.randomUUID(), description: "缴纳房租", amount: -state.stats.rentDue, type: 'RENT' };
-      return { ...state, stats: { ...state.stats, cash: state.stats.cash - state.stats.rentDue, rentDueDate: state.stats.rentDueDate + 5 }, dayEvents: [...state.dayEvents, `Paid Rent: $${state.stats.rentDue}`] };
+      return { ...state, stats: { ...state.stats, cash: state.stats.cash - state.stats.rentDue, rentDueDate: state.stats.rentDueDate + 7 }, dayEvents: [...state.dayEvents, `Paid Rent: $${state.stats.rentDue}`] };
 
     case 'END_DAY':
+      const currentDay = state.stats.day;
       const nextDay = state.stats.day + 1;
       const expense = state.stats.dailyExpenses;
-      const newCash = state.stats.cash - expense;
-      if (newCash < 0) {
+      const endingCash = state.stats.cash - expense;
+      
+      // Calculate Snapshot
+      const income = state.todayTransactions.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
+      const txExpenses = state.todayTransactions.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0);
+      const netChange = income + txExpenses - expense;
+      
+      const snapshotEvents = state.todayTransactions.map(t => ({
+          type: t.amount > 0 ? 'INCOME' as const : 'EXPENSE' as const,
+          amount: t.amount,
+          label: t.description
+      }));
+      snapshotEvents.push({ type: 'EXPENSE', amount: -expense, label: '店铺运营 (Burn)' });
+
+      const newSnapshot: DailyFinancialSnapshot = {
+          day: currentDay,
+          startingCash: state.stats.cash - (income + txExpenses), // Approximate starting cash of current day
+          endingCash: endingCash,
+          netChange: netChange,
+          events: snapshotEvents
+      };
+
+      if (endingCash < 0) {
           clearSave();
           playSfx('FAIL');
           return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "Bankrupt: Daily expenses exceeded cash."] };
       }
-      return { ...state, stats: { ...state.stats, day: nextDay, cash: newCash, actionPoints: state.stats.maxActionPoints }, phase: GamePhase.MORNING_BRIEF };
+      return { 
+          ...state, 
+          stats: { ...state.stats, day: nextDay, cash: endingCash, actionPoints: state.stats.maxActionPoints }, 
+          financialHistory: [...state.financialHistory, newSnapshot],
+          phase: GamePhase.MORNING_BRIEF 
+      };
       
     case 'GAME_OVER': 
       clearSave();
@@ -396,6 +426,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'TOGGLE_INVENTORY': playSfx('HOVER'); return { ...state, showInventory: !state.showInventory };
     case 'TOGGLE_MAIL': playSfx('HOVER'); return { ...state, showMail: !state.showMail };
     case 'TOGGLE_DEBUG': return { ...state, showDebug: !state.showDebug };
+    case 'TOGGLE_FINANCIALS': playSfx('HOVER'); return { ...state, showFinancials: !state.showFinancials };
     case 'UPDATE_CHAINS': return { ...state, activeChains: action.payload };
 
     case 'SCHEDULE_MAIL': {

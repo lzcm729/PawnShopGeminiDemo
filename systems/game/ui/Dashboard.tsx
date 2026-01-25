@@ -28,6 +28,11 @@ export const Dashboard: React.FC = () => {
         if (!newState) playSfx('CLICK');
     };
 
+    const toggleFinancials = () => {
+        playSfx('CLICK');
+        dispatch({ type: 'TOGGLE_FINANCIALS' });
+    };
+
     return (
     <div className="w-full bg-pawn-panel border-b border-white/10 p-4 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-50 shadow-lg">
         <ValidationModal 
@@ -38,14 +43,20 @@ export const Dashboard: React.FC = () => {
         />
 
         <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2 text-pawn-accent">
-            <Calendar className="w-5 h-5" />
+        <button 
+            onClick={toggleFinancials}
+            className="flex items-center gap-2 text-pawn-accent bg-amber-950/20 px-3 py-1 rounded border border-amber-900/50 hover:bg-amber-900/40 hover:scale-105 hover:border-pawn-accent transition-all cursor-pointer shadow-[0_0_10px_rgba(217,119,6,0.1)] group"
+            title="Open Financial Calendar"
+        >
+            <Calendar className="w-5 h-5 group-hover:text-white transition-colors" />
             <span className="font-mono text-xl font-bold">DAY {stats.day}</span>
-        </div>
+        </button>
         
-        <div className="flex items-center gap-2 text-pawn-green bg-green-950/30 px-3 py-1 rounded border border-green-900/50">
+        <div 
+            className="flex items-center gap-2 text-pawn-green bg-green-950/30 px-3 py-1 rounded border border-green-900/50 shadow-[0_0_10px_rgba(34,197,94,0.1)] cursor-default"
+        >
             <DollarSign className="w-5 h-5" />
-            <span className="font-mono text-xl font-bold tracking-widest">${stats.cash}</span>
+            <span className="font-mono text-xl font-bold tracking-widest">{stats.cash}</span>
         </div>
 
         <div className={`flex items-center gap-2 px-3 py-1 rounded border ${daysUntilRent <= 2 ? 'bg-red-950/30 text-red-500 border-red-900 animate-pulse' : 'bg-stone-800 text-stone-400 border-stone-700'}`}>
@@ -98,6 +109,15 @@ export const Dashboard: React.FC = () => {
         >
             {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
         </button>
+
+        <Button 
+            variant="secondary" 
+            onClick={toggleFinancials}
+            className="flex items-center gap-2 px-3 py-1"
+        >
+            <Calendar className="w-4 h-4" />
+            <span>日历</span>
+        </Button>
 
         <Button 
             variant="secondary" 

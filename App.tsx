@@ -11,6 +11,7 @@ import { SettlementInterface } from './components/RedemptionInterface';
 import { EndOfDaySummary } from './components/EndOfDaySummary';
 import { InventoryModal } from './components/InventoryModal'; 
 import { MailModal } from './components/MailModal';
+import { FinancialCalendar } from './components/FinancialCalendar';
 import { DebugPanel } from './components/DebugPanel';
 import { ShopClosedView } from './components/ShopClosedView';
 import { Button } from './components/ui/Button';
@@ -351,6 +352,7 @@ const GameContent: React.FC = () => {
       
       <InventoryModal />
       <MailModal />
+      <FinancialCalendar />
       <DebugPanel />
 
       <main className="flex-1 overflow-hidden relative">

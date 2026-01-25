@@ -6,6 +6,14 @@ import { TransactionRecord } from '../economy/types';
 import { EventChainState, MailInstance } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier } from '../news/types';
 
+export interface DailyFinancialSnapshot {
+  day: number;
+  startingCash: number;
+  endingCash: number;
+  netChange: number;
+  events: { type: 'INCOME' | 'EXPENSE'; amount: number; label: string }[];
+}
+
 export interface GameState {
   phase: GamePhase;
   stats: DailyStats;
@@ -20,6 +28,7 @@ export interface GameState {
   showInventory: boolean;
   showMail: boolean; 
   showDebug: boolean; 
+  showFinancials: boolean; // New Flag for Calendar
   activeChains: EventChainState[]; 
   inbox: MailInstance[];
   pendingMails: MailInstance[];
@@ -28,4 +37,6 @@ export interface GameState {
   dailyNews: ActiveNewsInstance[]; 
   activeMarketEffects: MarketModifier[]; 
   violationFlags: string[]; 
+  
+  financialHistory: DailyFinancialSnapshot[]; // History of past days
 }

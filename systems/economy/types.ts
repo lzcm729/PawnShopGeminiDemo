@@ -20,3 +20,24 @@ export interface TransactionRecord {
   amount: number; 
   type: 'PAWN' | 'SELL' | 'RENT' | 'EXPENSE' | 'REWARD' | 'REDEEM' | 'EXTEND' | 'PENALTY' | 'CHARITY';
 }
+
+// --- FINANCIAL PROJECTION SYSTEM ---
+
+export type CalendarEventType = 'BILL' | 'INCOME_POTENTIAL' | 'NARRATIVE';
+
+export interface CalendarEvent {
+  type: CalendarEventType;
+  amount: number; // Positive for income, Negative for expense
+  label: string;
+  isCertain: boolean; // True for Bills, False for Redemptions
+  relatedId?: string;
+}
+
+export interface CalendarDayData {
+  dayId: number;
+  events: CalendarEvent[];
+  projectedBalance: number; // End of day balance
+  riskLevel: 'SAFE' | 'CRITICAL';
+  isToday: boolean;
+  isPast?: boolean;
+}
