@@ -6,7 +6,8 @@ export enum GamePhase {
   NEGOTIATION = 'NEGOTIATION',
   SHOP_CLOSED = 'SHOP_CLOSED', 
   END_OF_DAY = 'END_OF_DAY',
-  GAME_OVER = 'GAME_OVER'
+  GAME_OVER = 'GAME_OVER',
+  VICTORY = 'VICTORY'
 }
 
 export enum ReputationType {
@@ -21,11 +22,21 @@ export interface ReputationProfile {
   [ReputationType.UNDERWORLD]: number;
 }
 
+export interface MedicalBill {
+  amount: number;
+  dueDate: number;
+  status: 'PENDING' | 'PAID' | 'OVERDUE';
+}
+
 export interface DailyStats {
   day: number;
   cash: number;
-  rentDue: number;
-  rentDueDate: number;
+  
+  // New Core Loop Fields
+  targetSavings: number;
+  motherStatus: string;
+  medicalBill: MedicalBill;
+
   dailyExpenses: number; 
   actionPoints: number; // Resource for appraisal
   maxActionPoints: number; // Daily cap

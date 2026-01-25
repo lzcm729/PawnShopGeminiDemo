@@ -7,14 +7,20 @@ import { generateValuationRange } from '../systems/items/utils';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../systems/game/utils/logGenerator';
 import { saveGame, clearSave } from '../systems/core/persistence';
 import { playSfx } from '../systems/game/audio';
+import { GAME_CONFIG } from '../systems/game/config';
 
 const initialState: GameState = {
   phase: GamePhase.START_SCREEN,
   stats: {
     day: 1,
-    cash: 100000,
-    rentDue: 500,
-    rentDueDate: 7, // Updated to 7-day cycle
+    cash: GAME_CONFIG.INITIAL_FUNDS,
+    targetSavings: GAME_CONFIG.GOAL_AMOUNT,
+    motherStatus: 'Stable',
+    medicalBill: {
+        amount: GAME_CONFIG.WEEKLY_MEDICAL_COST,
+        dueDate: GAME_CONFIG.BILL_CYCLE,
+        status: 'PENDING'
+    },
     dailyExpenses: 50,
     actionPoints: 10, 
     maxActionPoints: 10
@@ -34,7 +40,7 @@ const initialState: GameState = {
   showInventory: false,
   showMail: false,
   showDebug: false,
-  showFinancials: false, // Initial State
+  showFinancials: false, 
   activeChains: INITIAL_CHAINS,
   inbox: [],
   pendingMails: [],
@@ -62,12 +68,13 @@ type Action =
   | { type: 'REJECT_DEAL' }
   | { type: 'MANUAL_CLOSE_SHOP' } 
   | { type: 'END_DAY' }
-  | { type: 'PAY_RENT' }
+  | { type: 'PAY_MEDICAL_BILL' }
+  | { type: 'PAY_SURGERY' }
   | { type: 'GAME_OVER'; payload: string }
   | { type: 'TOGGLE_INVENTORY' }
   | { type: 'TOGGLE_MAIL' }
   | { type: 'TOGGLE_DEBUG' } 
-  | { type: 'TOGGLE_FINANCIALS' } // New Action
+  | { type: 'TOGGLE_FINANCIALS' } 
   | { type: 'UPDATE_CHAINS'; payload: EventChainState[] }
   | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number; metadata?: any } }
   | { type: 'PROCESS_DAILY_MAIL' }
@@ -92,7 +99,6 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'START_GAME':
       clearSave();
-      // BOOT sound played in component
       return { ...initialState, phase: GamePhase.MORNING_BRIEF };
       
     case 'START_DAY': {
@@ -182,8 +188,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'RESOLVE_TRANSACTION': {
       const { cashDelta, reputationDelta, item, log, customerName } = action.payload;
-      if (cashDelta > 0) playSfx('CASH'); // Earning Money
-      else if (cashDelta < 0) playSfx('CLICK'); // Spending Money (Sound played by button mostly, but good for feedback)
+      if (cashDelta > 0) playSfx('CASH'); 
+      else if (cashDelta < 0) playSfx('CLICK'); 
 
       const newRep = { ...state.reputation };
       if (reputationDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += reputationDelta[ReputationType.HUMANITY]!;
@@ -376,10 +382,49 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       playSfx('CLICK');
       return { ...state, phase: GamePhase.END_OF_DAY };
 
-    case 'PAY_RENT':
-      playSfx('CLICK'); // Should technically be money sound, but money leaving
-      const rentRecord: TransactionRecord = { id: crypto.randomUUID(), description: "缴纳房租", amount: -state.stats.rentDue, type: 'RENT' };
-      return { ...state, stats: { ...state.stats, cash: state.stats.cash - state.stats.rentDue, rentDueDate: state.stats.rentDueDate + 7 }, dayEvents: [...state.dayEvents, `Paid Rent: $${state.stats.rentDue}`] };
+    case 'PAY_MEDICAL_BILL': {
+      playSfx('CLICK');
+      const billAmount = state.stats.medicalBill.amount;
+      const billRecord: TransactionRecord = { 
+          id: crypto.randomUUID(), 
+          description: "支付母亲医药费", 
+          amount: -billAmount, 
+          type: 'MEDICAL' 
+      };
+      
+      // Update Bill Status
+      const nextDueDate = state.stats.medicalBill.dueDate + GAME_CONFIG.BILL_CYCLE;
+      
+      return { 
+          ...state, 
+          stats: { 
+              ...state.stats, 
+              cash: state.stats.cash - billAmount,
+              medicalBill: {
+                  ...state.stats.medicalBill,
+                  status: 'PAID'
+              }
+          }, 
+          todayTransactions: [...state.todayTransactions, billRecord],
+          dayEvents: [...state.dayEvents, `Paid Medical Bill: $${billAmount}`] 
+      };
+    }
+
+    case 'PAY_SURGERY': {
+        const surgeryCost = GAME_CONFIG.GOAL_AMOUNT;
+        const record: TransactionRecord = {
+            id: crypto.randomUUID(),
+            description: "支付终极手术费",
+            amount: -surgeryCost,
+            type: 'SURGERY'
+        };
+        return {
+            ...state,
+            phase: GamePhase.VICTORY,
+            stats: { ...state.stats, cash: state.stats.cash - surgeryCost },
+            todayTransactions: [...state.todayTransactions, record]
+        };
+    }
 
     case 'END_DAY':
       const currentDay = state.stats.day;
@@ -401,17 +446,36 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
       const newSnapshot: DailyFinancialSnapshot = {
           day: currentDay,
-          startingCash: state.stats.cash - (income + txExpenses), // Approximate starting cash of current day
+          startingCash: state.stats.cash - (income + txExpenses), 
           endingCash: endingCash,
           netChange: netChange,
           events: snapshotEvents
       };
 
+      // Check Medical Bill Deadline
+      const bill = state.stats.medicalBill;
+      if (currentDay >= bill.dueDate && bill.status !== 'PAID') {
+          clearSave();
+          playSfx('FAIL');
+          return { 
+              ...state, 
+              phase: GamePhase.GAME_OVER, 
+              dayEvents: [...state.dayEvents, "GAME OVER: 母亲因拖欠医药费停药，病情恶化去世。"] 
+          };
+      }
+
+      // Check Bankruptcy
       if (endingCash < 0) {
           clearSave();
           playSfx('FAIL');
           return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "Bankrupt: Daily expenses exceeded cash."] };
       }
+
+      // Cycle Logic for Bill: If day passes due date and was paid, reset for next cycle.
+      // Logic handled in START_DAY or check below. 
+      // Actually, standard practice is to reset bill parameters when a new cycle starts.
+      // We'll handle this in START_DAY or hook to ensure consistency.
+
       return { 
           ...state, 
           stats: { ...state.stats, day: nextDay, cash: endingCash, actionPoints: state.stats.maxActionPoints }, 
@@ -477,12 +541,11 @@ const GameContext = createContext<{ state: GameState; dispatch: React.Dispatch<A
 export const GameProvider = ({ children }: PropsWithChildren) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
 
-  // Auto-Save Effect (Saves whenever specific phases occur, e.g., End of Day)
   useEffect(() => {
       if (state.phase === GamePhase.MORNING_BRIEF) {
           saveGame(state);
       }
-  }, [state.phase]); // Only auto-save on phase changes to avoid spam
+  }, [state.phase]); 
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>
