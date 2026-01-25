@@ -3,6 +3,7 @@ import React from 'react';
 import { Customer, TransactionResult, ReputationType } from '../types';
 import { Button } from './ui/Button';
 import { PackageCheck, DollarSign, Heart, Briefcase, Skull, Stamp, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive } from 'lucide-react';
+import { playSfx } from '../systems/game/audio';
 
 interface DealSuccessModalProps {
   customer: Customer;
@@ -32,6 +33,11 @@ export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, re
   let dialogueText = customer.dialogue.accepted.fair;
   if (result.dealQuality === 'fleeced') dialogueText = customer.dialogue.accepted.fleeced;
   if (result.dealQuality === 'premium') dialogueText = customer.dialogue.accepted.premium;
+
+  const handleClose = () => {
+      playSfx('STAMP');
+      onClose();
+  };
 
   return (
     <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
@@ -105,7 +111,7 @@ export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, re
 
         {/* Action */}
         <div className="relative z-10 w-full">
-            <Button onClick={onClose} className="w-full h-14 text-xl tracking-widest shadow-lg">
+            <Button onClick={handleClose} className="w-full h-14 text-xl tracking-widest shadow-lg" muteSound>
                 <Stamp className="w-5 h-5 mr-2 inline-block"/>
                 收 货 (STORAGE)
             </Button>

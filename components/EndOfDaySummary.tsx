@@ -3,11 +3,12 @@ import React from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Moon, TrendingUp, TrendingDown, DollarSign, PackageX, AlertOctagon } from 'lucide-react';
+import { Moon, TrendingUp, AlertOctagon, DollarSign, PackageX, Power, ArrowRight } from 'lucide-react';
 import { ReputationType, ItemStatus } from '../types';
+import { cn } from '../lib/utils';
 
 export const EndOfDaySummary: React.FC = () => {
-  const { state, dispatch } = useGame();
+  const { state } = useGame();
   const { liquidateItem, performNightCycle } = useGameEngine();
   const { stats, todayTransactions, reputation, inventory } = state;
 
@@ -19,125 +20,184 @@ export const EndOfDaySummary: React.FC = () => {
   // Find items that are FORFEIT (Owned by shop, ready to sell)
   const expiredItems = inventory.filter(item => item.status === ItemStatus.FORFEIT);
 
-  // Reputation Bars Helper
-  const RepBar = ({ type, label, color }: { type: ReputationType, label: string, color: string }) => (
-    <div className="mb-4">
-      <div className="flex justify-between text-xs font-mono text-stone-400 mb-1">
-        <span>{label}</span>
-        <span>{reputation[type]}%</span>
-      </div>
-      <div className="h-2 bg-black rounded-full overflow-hidden border border-stone-800">
-        <div className={`h-full ${color} transition-all duration-1000`} style={{ width: `${reputation[type]}%` }}></div>
-      </div>
-    </div>
-  );
+  // Formatting currency
+  const fmt = (n: number) => Math.abs(n).toLocaleString();
 
   return (
-    <div className="h-screen w-full flex items-center justify-center bg-black p-4 relative overflow-hidden">
+    <div className="h-screen w-full flex items-center justify-center bg-[#0a0a0a] relative overflow-hidden font-mono">
       {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?q=80&w=2574&auto=format&fit=crop')] bg-cover bg-center opacity-10 blur-sm"></div>
+      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1494587416117-f101a292419b?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-20 blur-sm pointer-events-none"></div>
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none"></div>
 
-      <div className="z-10 w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 h-[80vh]">
+      <div className="z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-12 h-[85vh] p-8">
         
-        {/* LEFT COLUMN: THE LEDGER */}
-        <div className="bg-[#e7e5e4] text-stone-900 p-8 rounded shadow-2xl rotate-[-1deg] flex flex-col font-mono relative overflow-hidden">
-           {/* Paper texture overlay */}
-           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-30 pointer-events-none"></div>
-           
-           <div className="border-b-2 border-dashed border-stone-400 pb-4 mb-4 text-center">
-             <h2 className="text-3xl font-bold uppercase tracking-widest">每日结单</h2>
-             <p className="text-sm text-stone-600">日期: 第 {stats.day} 天</p>
-           </div>
-
-           <div className="flex-1 overflow-y-auto custom-scrollbar-light space-y-2 pr-2">
-              {todayTransactions.length === 0 && <p className="text-center text-stone-500 italic mt-10">今日无交易记录</p>}
-              {todayTransactions.map(t => (
-                <div key={t.id} className="flex justify-between text-sm border-b border-stone-300 pb-1">
-                  <span className="truncate w-2/3">{t.description}</span>
-                  <span className={t.amount >= 0 ? "text-green-800 font-bold" : "text-red-800"}>
-                    {t.amount >= 0 ? '+' : ''}{t.amount}
-                  </span>
+        {/* LEFT COLUMN: THE THERMAL RECEIPT */}
+        <div className="lg:col-span-5 flex justify-center items-start pt-10">
+            <div className="bg-white text-black w-full max-w-sm shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform -rotate-1 relative animate-in slide-in-from-top-10 duration-700">
+                {/* Receipt Header */}
+                <div className="p-6 pb-4 text-center border-b-2 border-dashed border-stone-300">
+                    <h2 className="text-2xl font-black uppercase tracking-widest mb-1">Daily Z-Report</h2>
+                    <div className="text-xs font-bold text-stone-500 uppercase">Sector 12 Pawn Shop</div>
+                    <div className="text-xs font-mono mt-2">
+                        CYCLE: {String(stats.day).padStart(4, '0')} <br/>
+                        DATE: {new Date().toISOString().split('T')[0]}
+                    </div>
                 </div>
-              ))}
-              
-              {/* Anticipated Daily Expense */}
-              <div className="flex justify-between text-sm border-b border-stone-300 pb-1 mt-4 text-stone-500 italic">
-                  <span>店铺运营开支</span>
-                  <span className="text-red-800">-{stats.dailyExpenses}</span>
-              </div>
-           </div>
 
-           <div className="border-t-2 border-stone-800 pt-4 mt-4">
-              <div className="flex justify-between text-xl font-bold">
-                 <span>今日净收益:</span>
-                 <span className={dailyNet - stats.dailyExpenses >= 0 ? "text-green-700" : "text-red-700"}>
-                    {dailyNet - stats.dailyExpenses >= 0 ? '+' : ''}{dailyNet - stats.dailyExpenses}
-                 </span>
-              </div>
-              <div className="flex justify-between text-sm mt-2 text-stone-600">
-                 <span>当前现金:</span>
-                 <span>${stats.cash}</span>
-              </div>
-              <div className="mt-4 p-2 bg-red-100 border border-red-300 text-red-900 text-center text-sm rounded">
-                 <AlertOctagon className="w-4 h-4 inline-block mr-1 mb-1"/>
-                 距离缴纳房租 (${stats.rentDue}) 还有 {stats.rentDueDate - stats.day} 天
-              </div>
-           </div>
+                {/* Transaction List */}
+                <div className="p-6 py-4 min-h-[300px] max-h-[50vh] overflow-y-auto custom-scrollbar-light space-y-3">
+                    {todayTransactions.length === 0 && (
+                        <div className="text-center text-stone-400 italic py-8">-- NO TRANSACTIONS --</div>
+                    )}
+                    
+                    {todayTransactions.map(t => (
+                        <div key={t.id} className="flex justify-between items-baseline text-xs font-bold font-mono">
+                            <span className="truncate w-2/3 uppercase text-stone-700">{t.description}</span>
+                            <span className={t.amount >= 0 ? "text-black" : "text-red-600"}>
+                                {t.amount >= 0 ? '' : '-'}${fmt(t.amount)}
+                            </span>
+                        </div>
+                    ))}
+
+                    <div className="border-t border-dashed border-stone-300 my-2"></div>
+                    
+                    <div className="flex justify-between items-baseline text-xs font-bold font-mono text-stone-500">
+                        <span>OPERATING COSTS</span>
+                        <span className="text-red-600">-${fmt(stats.dailyExpenses)}</span>
+                    </div>
+                </div>
+
+                {/* Receipt Footer (Totals) */}
+                <div className="p-6 pt-4 border-t-2 border-dashed border-stone-300 bg-stone-50">
+                    <div className="flex justify-between items-center mb-1 text-sm">
+                        <span className="font-bold uppercase">Net Change</span>
+                        <span className={cn("font-black font-mono", dailyNet - stats.dailyExpenses >= 0 ? "text-black" : "text-red-600")}>
+                            {dailyNet - stats.dailyExpenses >= 0 ? '+' : '-'}${fmt(dailyNet - stats.dailyExpenses)}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t border-stone-300">
+                        <span className="font-black uppercase">Closing Cash</span>
+                        <span className="font-black font-mono text-xl">${fmt(stats.cash)}</span>
+                    </div>
+                    
+                    <div className="mt-6 text-center">
+                        <div className="inline-block border-2 border-black px-4 py-1 font-black text-xl uppercase opacity-50 rotate-[-12deg]">
+                            APPROVED
+                        </div>
+                    </div>
+                    
+                    <div className="text-[10px] text-center text-stone-400 mt-4 font-mono">
+                        *** THANK YOU FOR YOUR SERVICE *** <br/>
+                        TERMINAL ID: P-8821
+                    </div>
+                </div>
+
+                {/* Jagged Edge Effect (CSS) */}
+                <div className="absolute top-full left-0 right-0 h-4 bg-[linear-gradient(45deg,transparent_33.333%,#ffffff_33.333%,#ffffff_66.667%,transparent_66.667%),linear-gradient(-45deg,transparent_33.333%,#ffffff_33.333%,#ffffff_66.667%,transparent_66.667%)] bg-[length:20px_40px] bg-[position:0_-20px]"></div>
+            </div>
         </div>
 
-        {/* RIGHT COLUMN: STATUS & BACKROOM */}
-        <div className="flex-1 flex flex-col gap-6">
+        {/* RIGHT COLUMN: DIGITAL DASHBOARD */}
+        <div className="lg:col-span-7 flex flex-col gap-6 pt-10">
            
-           {/* Reputation Card */}
-           <div className="bg-[#1c1917] p-6 rounded border-l-4 border-pawn-accent shadow-lg text-stone-200">
-              <h3 className="text-xl font-serif text-pawn-accent mb-4 flex items-center gap-2">
-                 <TrendingUp className="w-5 h-5" /> 街坊风评
-              </h3>
-              <RepBar type={ReputationType.HUMANITY} label="人性 (Humanity)" color="bg-rose-600" />
-              <RepBar type={ReputationType.CREDIBILITY} label="信誉 (Credibility)" color="bg-blue-500" />
-              <RepBar type={ReputationType.UNDERWORLD} label="地下 (Underworld)" color="bg-purple-600" />
-           </div>
-
-           {/* Inventory/Liquidate Card */}
-           <div className="flex-1 bg-[#292524] p-6 rounded border border-stone-700 shadow-lg flex flex-col min-h-0">
-              <h3 className="text-xl font-serif text-stone-300 mb-2 flex items-center gap-2">
-                 <PackageX className="w-5 h-5" /> 过期仓库 (绝当)
-              </h3>
-              <p className="text-xs text-stone-500 mb-4">物品超过期限未赎回即归店铺所有。可立即变现。</p>
-
-              <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                 {expiredItems.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-stone-600">
-                       <p>暂无过期物品</p>
-                    </div>
-                 ) : (
-                    expiredItems.map(item => (
-                       <div key={item.id} className="bg-black/40 p-3 rounded border border-stone-600 flex justify-between items-center group">
-                          <div>
-                             <p className="text-stone-200 font-bold text-sm">{item.name}</p>
-                             <p className="text-stone-500 text-xs">估值: ${item.realValue}</p>
-                          </div>
-                          <Button 
-                             variant="secondary" 
-                             className="text-xs px-2 py-1 h-auto"
-                             onClick={() => liquidateItem(item)}
-                          >
-                             <DollarSign className="w-3 h-3 inline mr-1"/>
-                             变现 (+${Math.floor(item.realValue * 0.8)})
-                          </Button>
+           {/* RENT STATUS */}
+           <div className="bg-noir-200 border border-noir-400 p-6 rounded-lg relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                   <AlertOctagon className="w-24 h-24 text-red-500" />
+               </div>
+               
+               <div className="relative z-10 flex justify-between items-end mb-4">
+                   <div>
+                       <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-1">Upcoming Liability</h3>
+                       <div className="text-3xl font-black text-white flex items-center gap-2">
+                           RENT DUE <span className="text-red-500">${stats.rentDue}</span>
                        </div>
-                    ))
-                 )}
-              </div>
+                   </div>
+                   <div className="text-right">
+                       <div className="text-4xl font-mono font-bold text-white">{stats.rentDueDate - stats.day}</div>
+                       <div className="text-xs text-stone-500 uppercase font-bold">Days Remaining</div>
+                   </div>
+               </div>
+
+               {/* Progress Bar */}
+               <div className="w-full h-4 bg-noir-400 rounded-full overflow-hidden border border-noir-500">
+                   <div 
+                        className={cn("h-full transition-all duration-1000", 
+                            stats.cash >= stats.rentDue ? "bg-pawn-green" : "bg-red-600 animate-pulse"
+                        )} 
+                        style={{ width: `${Math.min(100, (stats.cash / stats.rentDue) * 100)}%` }}
+                   ></div>
+               </div>
+               <div className="flex justify-between mt-2 text-[10px] font-mono text-stone-500 uppercase">
+                   <span>Coverage: {Math.round((stats.cash / stats.rentDue) * 100)}%</span>
+                   <span>Target: ${stats.rentDue}</span>
+               </div>
            </div>
 
+           {/* REPUTATION MATRIX */}
+           <div className="grid grid-cols-3 gap-4">
+               {[
+                   { label: 'Humanity', value: reputation[ReputationType.HUMANITY], color: 'text-rose-500', bar: 'bg-rose-600' },
+                   { label: 'Credibility', value: reputation[ReputationType.CREDIBILITY], color: 'text-blue-500', bar: 'bg-blue-600' },
+                   { label: 'Underworld', value: reputation[ReputationType.UNDERWORLD], color: 'text-purple-500', bar: 'bg-purple-600' },
+               ].map(rep => (
+                   <div key={rep.label} className="bg-noir-200 border border-noir-400 p-4 rounded flex flex-col items-center justify-center">
+                       <div className="text-2xl font-black text-white mb-1">{rep.value}</div>
+                       <div className={cn("text-[10px] uppercase font-bold tracking-widest mb-3", rep.color)}>{rep.label}</div>
+                       <div className="w-full h-1.5 bg-noir-400 rounded-full overflow-hidden">
+                           <div className={cn("h-full transition-all duration-1000", rep.bar)} style={{ width: `${rep.value}%` }}></div>
+                       </div>
+                   </div>
+               ))}
+           </div>
+
+           {/* BACKROOM INVENTORY (FORFEIT) */}
+           <div className="flex-1 bg-noir-200 border border-noir-400 rounded-lg p-6 flex flex-col min-h-0">
+               <div className="flex justify-between items-center mb-4 pb-2 border-b border-noir-400">
+                   <h3 className="text-stone-300 font-bold uppercase tracking-widest flex items-center gap-2">
+                       <PackageX className="w-5 h-5" /> Liquidate Assets
+                   </h3>
+                   <span className="text-[10px] bg-noir-400 text-stone-300 px-2 py-1 rounded">
+                       {expiredItems.length} ITEMS READY
+                   </span>
+               </div>
+
+               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                   {expiredItems.length === 0 ? (
+                       <div className="h-full flex flex-col items-center justify-center text-stone-600 text-xs uppercase tracking-widest">
+                           Vault is Clear
+                       </div>
+                   ) : (
+                       expiredItems.map(item => (
+                           <div key={item.id} className="flex justify-between items-center bg-black/30 p-3 rounded border border-noir-400 group hover:border-stone-500 transition-colors">
+                               <div>
+                                   <div className="text-stone-200 text-sm font-bold">{item.name}</div>
+                                   <div className="text-xs text-stone-500 font-mono">Est. ${item.realValue}</div>
+                               </div>
+                               <Button 
+                                   size="sm"
+                                   variant="secondary"
+                                   onClick={() => liquidateItem(item)}
+                                   className="text-[10px] h-8 border-stone-600 hover:bg-pawn-accent hover:text-black hover:border-pawn-accent"
+                               >
+                                   <DollarSign className="w-3 h-3 mr-1"/> SELL (+${Math.floor(item.realValue * 0.8)})
+                               </Button>
+                           </div>
+                       ))
+                   )}
+               </div>
+           </div>
+
+           {/* SYSTEM SHUTDOWN BUTTON */}
            <Button 
              variant="primary" 
-             onClick={performNightCycle} // UPDATED: Calls the new transition logic
-             className="w-full h-16 text-xl tracking-widest shadow-[0_0_20px_rgba(217,119,6,0.5)] flex-shrink-0"
+             onClick={performNightCycle} 
+             className="w-full h-16 text-xl tracking-[0.2em] shadow-[0_0_30px_rgba(217,119,6,0.3)] bg-gradient-to-r from-amber-700 to-amber-600 border-none hover:from-amber-600 hover:to-amber-500 relative overflow-hidden group"
            >
-             <Moon className="w-5 h-5 inline-block mr-3 mb-1" />
-             结束今日 (SLEEP)
+             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+             <span className="relative z-10 flex items-center justify-center gap-3">
+                 <Power className="w-6 h-6" /> SYSTEM SHUTDOWN (SLEEP)
+             </span>
            </Button>
 
         </div>

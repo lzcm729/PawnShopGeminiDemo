@@ -3,7 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Minus, Plus, Stamp, XCircle, LogOut, MessageCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, AlertCircle, ChevronDown, ChevronUp, Flame, Handshake, BrainCircuit, AlertTriangle, FileText, ScanEye } from 'lucide-react';
+import { Badge } from './ui/Badge';
+import { cn } from '../lib/utils';
+import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { DealSuccessModal } from './DealSuccessModal';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
@@ -11,6 +13,7 @@ import { getMerchantInstinct } from '../systems/negotiation/instinct';
 import { NegotiationHistory } from './NegotiationHistory';
 import { playSfx } from '../systems/game/audio';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
+import { RollingNumber } from './ui/RollingNumber';
 
 interface NegotiationStateProps {
     negotiation: {
@@ -35,75 +38,66 @@ interface LogEntry {
     text: string;
     subtext?: string; 
     sentiment?: 'neutral' | 'negative' | 'positive';
-    type?: 'INTEL'; // Special type for Intel display
+    type?: 'INTEL';
     data?: any;
 }
 
 const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: string }> = ({ customer, patience, mood }) => {
     const isAngry = mood === 'Angry';
-    const isHappy = mood === 'Happy';
     
-    let borderColor = "border-[#44403c]";
-    let shadowColor = "";
+    // Calculate patience percentage for the bar
+    const maxPatience = 5; 
+    const patiencePercent = (patience / maxPatience) * 100;
     
-    if (isAngry) {
-        borderColor = "border-red-600";
-        shadowColor = "shadow-[0_0_10px_rgba(220,38,38,0.5)]";
-    } else if (isHappy) {
-        borderColor = "border-pawn-green";
-        shadowColor = "shadow-[0_0_10px_rgba(16,185,129,0.3)]";
-    }
-
-    const resolveText: Record<string, string> = {
-        Strong: '坚决', Medium: '犹豫', Weak: '动摇', None: '放弃'
-    };
-    const resolveColor: Record<string, string> = {
-        Strong: 'text-red-500 border-red-900 bg-red-950/20',
-        Medium: 'text-yellow-500 border-yellow-900 bg-yellow-950/20',
-        Weak: 'text-stone-500 border-stone-800 bg-stone-900/20',
-        None: 'text-stone-700 border-stone-800'
-    };
+    let patienceColor = "bg-emerald-500";
+    if (patiencePercent <= 40) patienceColor = "bg-amber-500";
+    if (patiencePercent <= 20) patienceColor = "bg-red-600";
 
     return (
-        <div className="bg-[#141211] border-b border-[#292524] p-4 flex flex-col gap-3 flex-shrink-0">
-             <div className="flex gap-4 items-center">
-                 <div className={`w-14 h-14 rounded-full border-2 overflow-hidden flex-shrink-0 bg-stone-800 transition-colors duration-300 ${borderColor} ${shadowColor}`}>
-                     <img 
-                        src={`https://picsum.photos/seed/${customer.avatarSeed}/200`} 
-                        alt="Customer" 
-                        className={`w-full h-full object-cover transition-all duration-700 ${isAngry ? 'grayscale-0 contrast-125' : 'grayscale opacity-90'}`}
-                     />
-                 </div>
-                 
-                 <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start mb-1">
-                          <div>
-                              <h2 className="text-base font-bold text-stone-200 leading-none truncate pr-2">{customer.name}</h2>
-                              <span className="text-[10px] font-mono text-stone-500 tracking-widest">{customer.id.slice(0,8)}</span>
+        <div className="bg-noir-200 border-b border-noir-400 p-4 flex gap-4 shrink-0 shadow-lg relative overflow-hidden">
+             {/* Surveillance Photo Effect */}
+             <div className="relative w-16 h-16 shrink-0 border border-noir-400 p-0.5 bg-noir-300">
+                 <img 
+                    src={`https://picsum.photos/seed/${customer.avatarSeed}/200`} 
+                    alt="Subject" 
+                    className={cn(
+                        "w-full h-full object-cover filter contrast-125 sepia-[0.3]",
+                        isAngry ? "grayscale-0" : "grayscale"
+                    )}
+                 />
+                 <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.5)_50%)] bg-[length:100%_4px] pointer-events-none opacity-30"></div>
+                 {isAngry && <div className="absolute inset-0 border-2 border-red-500 animate-pulse"></div>}
+             </div>
+             
+             <div className="flex-1 min-w-0 flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                      <div>
+                          <div className="flex items-center gap-2">
+                              <h2 className="text-lg font-serif font-bold text-noir-txt-primary leading-none tracking-wide">{customer.name}</h2>
+                              <Badge variant="outline" className="text-[9px] py-0 h-4">ID: {customer.id.slice(0,4)}</Badge>
                           </div>
-                          <div className={`text-[10px] font-bold border px-1.5 py-0.5 rounded ${resolveColor[customer.redemptionResolve]}`}>
-                              {resolveText[customer.redemptionResolve]}
+                          <div className="flex gap-2 mt-1">
+                              <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 rounded border border-noir-300">
+                                  {customer.negotiationStyle}
+                              </span>
+                              <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 rounded border border-noir-300">
+                                  Resolve: {customer.redemptionResolve}
+                              </span>
                           </div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
-                           <div className="flex gap-0.5">
-                               {Array.from({length: 5}).map((_, i) => (
-                                  <Flame 
-                                    key={i} 
-                                    className={`w-3 h-3 transition-all duration-300 ${
-                                        i < patience 
-                                            ? (isAngry ? 'text-red-600 fill-red-600 animate-pulse' : 'text-orange-500 fill-orange-500') 
-                                            : 'text-stone-800'
-                                    }`} 
-                                  />
-                               ))}
-                           </div>
-                           <span className={`text-[9px] uppercase font-bold tracking-wider ${isAngry ? 'text-red-500' : 'text-stone-600'}`}>
-                                {isAngry ? "ANGRY" : "PATIENCE"}
-                           </span>
+                      <div className="text-right">
+                          <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
+                              <Activity className="w-3 h-3" /> Stress Limit
+                          </div>
+                          <div className="w-24 h-2 bg-noir-400 rounded-sm overflow-hidden border border-noir-500">
+                              <div 
+                                  className={cn("h-full transition-all duration-500", patienceColor)} 
+                                  style={{ width: `${patiencePercent}%` }}
+                              />
+                          </div>
                       </div>
-                 </div>
+                  </div>
              </div>
         </div>
     )
@@ -152,7 +146,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           const target = state.inventory.find(i => i.id === event.targetItemId);
           if (!target || (target.status !== ItemStatus.ACTIVE && target.status !== ItemStatus.FORFEIT)) {
               canFulfillDeal = false;
-              fulfillmentError = "标的物缺失 (Item Missing)";
+              fulfillmentError = "ITEM MISSING";
           }
       }
       
@@ -165,7 +159,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                );
                if (!hasItems) {
                    canFulfillDeal = false;
-                   fulfillmentError = "无货可交 (Stock Empty)";
+                   fulfillmentError = "STOCK EMPTY";
                }
           }
       }
@@ -182,11 +176,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
       setRejectionState({show: false, text: ''});
       setSuccessModalData(null);
       
-      // Initialize Chat Log
-      // 1. Greeting (Dialogue)
-      // 2. Pawn Reason (Dialogue)
-      // 3. Intel Report (System Info)
-      
       const logs: LogEntry[] = [
           {
               id: 'init-1',
@@ -196,7 +185,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           }
       ];
 
-      // Insert Pawn Reason as second message if it exists
       if (currentCustomer.dialogue.pawnReason) {
           logs.push({
               id: 'init-2',
@@ -205,19 +193,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
               sentiment: 'neutral'
           });
       }
-
-      // System Intel for remaining metadata
-      logs.push({
-          id: 'sys-intel',
-          sender: 'system',
-          text: '',
-          type: 'INTEL',
-          data: {
-              redemptionPlea: currentCustomer.dialogue.redemptionPlea,
-              negotiationDynamic: currentCustomer.dialogue.negotiationDynamic,
-              negotiationStyle: currentCustomer.negotiationStyle
-          }
-      });
 
       setChatLog(logs);
     }
@@ -230,13 +205,13 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           setChatLog(prev => [...prev, {
               id: `lev-${lastAction.id}`,
               sender: 'player',
-              text: lastAction.text,
+              text: `[INTEL USED] ${lastAction.text}`,
               sentiment: 'neutral'
           }, {
               id: `lev-react-${lastAction.id}`,
               sender: 'customer',
               text: "...",
-              subtext: lastAction.subtext || "心情变差 (Mood Worsened)",
+              subtext: lastAction.subtext || "Mood Worsened",
               sentiment: 'negative'
           }]);
       } else if (lastAction.type === 'NARRATIVE') {
@@ -254,7 +229,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                   id: `narrative-c-${lastAction.id}`,
                   sender: 'customer',
                   text: lastAction.customerResponse,
-                  subtext: lastAction.subtext || "深层交流 (Deep Talk)",
+                  subtext: lastAction.subtext || "Deep Talk",
                   sentiment: 'positive'
                });
           }
@@ -287,20 +262,20 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
     const result = submitOffer();
 
     let penaltyLabel = "";
-    if (result.status === 'PRINCIPAL_TOO_LOW') penaltyLabel = "本金过低 (Too Low)";
-    if (result.status === 'INSULT') penaltyLabel = "侮辱性报价 (Insult)";
-    if (result.status === 'INTEREST_TOO_HIGH') penaltyLabel = "总利息过高 (Usury)";
-    if (result.status === 'RATE_MISMATCH') penaltyLabel = "利率/本金不匹配 (Mismatch)";
+    if (result.status === 'PRINCIPAL_TOO_LOW') penaltyLabel = "LOWBALL";
+    if (result.status === 'INSULT') penaltyLabel = "INSULT";
+    if (result.status === 'INTEREST_TOO_HIGH') penaltyLabel = "USURY";
+    if (result.status === 'RATE_MISMATCH') penaltyLabel = "RISK MISMATCH";
 
     const playerLog: LogEntry = {
         id: `offer-${Date.now()}`,
         sender: 'player',
-        text: `报价: $${offerPrincipal} (${selectedRate * 100}% 利息)`,
+        text: `OFFER: $${offerPrincipal} @ ${selectedRate * 100}%`,
         sentiment: 'neutral'
     };
 
     const patienceLoss = prevPatience - result.patienceRemaining;
-    const subtext = patienceLoss > 0 ? `-${patienceLoss} 耐心 [${penaltyLabel}]` : undefined;
+    const subtext = patienceLoss > 0 ? `Patience -${patienceLoss} [${penaltyLabel}]` : undefined;
     
     const customerLog: LogEntry = {
         id: `resp-${Date.now()}`,
@@ -394,11 +369,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
       setOfferPrincipal(target);
   };
 
-  const handleQuickDesired = () => {
-      playSfx('CLICK');
-      setOfferPrincipal(Math.min(currentAskPrice, cashAvailable));
-  };
-  
   const handleQuickValuation = () => {
       playSfx('CLICK');
       const min = item.currentRange[0];
@@ -411,40 +381,24 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
       setOfferPrincipal(Math.min(currentCustomer.minimumAmount, cashAvailable));
   };
 
-  const RateCard = ({ rate, label }: { rate: InterestRate, label: string }) => (
+  const RateToggle = ({ rate, label }: { rate: InterestRate, label: string }) => (
       <button 
         onClick={() => { playSfx('CLICK'); setSelectedRate(rate); }}
         disabled={!canInteract}
-        className={`
-            flex-1 py-2 px-1 rounded border transition-all duration-200 flex flex-col items-center justify-center gap-0.5
-            ${selectedRate === rate 
-                ? 'bg-pawn-accent text-black border-pawn-accent shadow-[0_0_10px_rgba(217,119,6,0.4)] scale-105 z-10' 
-                : 'bg-[#292524] border-[#44403c] text-stone-400 hover:border-stone-500 hover:bg-[#333]'
-            }
-        `}
+        className={cn(
+            "flex-1 py-1 px-1 rounded-sm border transition-all duration-200 flex flex-col items-center justify-center relative overflow-hidden group",
+            selectedRate === rate 
+                ? "bg-amber-600 border-amber-500 text-black shadow-[0_0_10px_rgba(217,119,6,0.4)]" 
+                : "bg-noir-300 border-noir-400 text-noir-txt-muted hover:bg-noir-200 hover:text-noir-txt-primary"
+        )}
       >
-          <span className="text-lg font-black font-mono leading-none">{rate * 100}%</span>
-          <span className="text-[9px] uppercase font-bold tracking-wider opacity-80">{label}</span>
-      </button>
-  );
-
-  const AdjustButton = ({ amount, icon, label }: { amount: number, icon: React.ReactNode, label?: string }) => (
-      <button
-          onMouseDown={() => startAdjusting(amount)}
-          onMouseUp={stopAdjusting}
-          onMouseLeave={stopAdjusting}
-          onTouchStart={() => startAdjusting(amount)}
-          onTouchEnd={stopAdjusting}
-          disabled={!canInteract}
-          className="w-10 h-12 bg-[#1c1917] hover:bg-stone-800 border border-[#292524] rounded flex items-center justify-center text-stone-400 active:scale-95 transition-colors select-none"
-          title={label}
-      >
-          {icon}
+          <span className="text-xs font-black font-mono leading-none z-10">{rate * 100}%</span>
+          <span className="text-[8px] uppercase font-bold tracking-wider opacity-80 z-10">{label}</span>
       </button>
   );
 
   return (
-    <div className="flex flex-col h-full relative bg-[#1c1917] border-l border-[#44403c]">
+    <div className="flex flex-col h-full relative bg-noir-100 border-l border-noir-400">
       <CustomerHeader customer={currentCustomer} patience={patience} mood={mood} />
 
       {successModalData && (
@@ -455,69 +409,47 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           />
       )}
 
+      {/* Rejection Overlay */}
       {rejectionState.show && !successModalData && (
-            <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300 rounded-sm">
-                <div className="bg-[#1c1917] border-2 border-red-900/50 p-6 max-w-md w-full shadow-2xl relative">
-                    <div className="mb-8 mt-6">
-                        <MessageCircle className="w-10 h-10 text-stone-600 mb-4 mx-auto"/>
-                        <p className="font-serif text-xl text-center text-stone-300 italic leading-relaxed px-4">
-                            "{rejectionState.text}"
-                        </p>
-                    </div>
+            <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-300">
+                <div className="bg-noir-200 border-2 border-red-900/50 p-8 max-w-md w-full shadow-2xl relative flex flex-col items-center">
+                    <div className="text-6xl font-serif text-noir-txt-muted opacity-20 absolute top-4 left-4">“</div>
+                    <p className="font-serif text-xl text-center text-noir-txt-primary italic leading-relaxed z-10 my-6">
+                        {rejectionState.text}
+                    </p>
                     <Button 
                         variant="danger" 
                         onClick={completeRejection}
-                        className="w-full h-14 text-lg tracking-widest border-red-800 hover:bg-red-950 flex items-center justify-center gap-2"
+                        className="w-full h-14 text-lg tracking-widest mt-4"
                     >
-                        <LogOut className="w-5 h-5" />
-                        送 客 (DISMISS)
+                        <XCircle className="w-5 h-5 mr-2" />
+                        DISMISS
                     </Button>
                 </div>
             </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-black/20" ref={scrollRef}>
-          {chatLog.map(log => {
-              if (log.type === 'INTEL' && log.data) {
-                  return (
-                      <div key={log.id} className="bg-stone-900/60 border border-stone-800 rounded p-3 mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                          <div className="flex items-center gap-2 text-stone-500 text-[10px] font-bold uppercase tracking-widest mb-3 border-b border-stone-800 pb-2">
-                              <ScanEye className="w-4 h-4 text-pawn-accent" />
-                              <span>Customer Intel Report</span>
-                          </div>
-                          <div className="space-y-3 text-xs">
-                              {/* Removed Pawn Reason from Intel Block */}
-                              <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
-                                  <span className="text-stone-500 uppercase font-bold text-[10px] mt-0.5">Promise</span>
-                                  <span className="font-serif text-stone-300 italic">"{log.data.redemptionPlea}"</span>
-                              </div>
-                              <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
-                                  <span className="text-stone-500 uppercase font-bold text-[10px] mt-0.5">Dynamic</span>
-                                  <span className="font-serif text-stone-300 italic">"{log.data.negotiationDynamic}"</span>
-                              </div>
-                              <div className="grid grid-cols-[80px_1fr] gap-2 items-center">
-                                  <span className="text-stone-500 uppercase font-bold text-[10px]">Style</span>
-                                  <span className="font-mono font-bold text-pawn-accent">{log.data.negotiationStyle}</span>
-                              </div>
-                          </div>
-                      </div>
-                  );
-              }
-
+      {/* Chat Log */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/40 relative" ref={scrollRef}>
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
+          
+          {chatLog.map((log, idx) => {
               const isPlayer = log.sender === 'player';
               return (
-                  <div key={log.id} className={`flex flex-col ${isPlayer ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-1 duration-200`}>
-                      <div className={`
-                          max-w-[90%] px-3 py-2 rounded text-sm relative border shadow-sm
-                          ${isPlayer 
-                              ? 'bg-amber-950/20 border-amber-900/40 text-amber-100 rounded-br-none' 
-                              : 'bg-[#292524] border-[#44403c] text-stone-200 rounded-bl-none'
-                          }
-                      `}>
+                  <div key={log.id} className={cn("flex flex-col max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300", isPlayer ? "items-end ml-auto" : "items-start")}>
+                      <div className={cn(
+                          "px-4 py-3 rounded-lg relative shadow-sm text-sm border",
+                          isPlayer 
+                              ? "bg-noir-300 border-noir-400 text-noir-txt-primary font-mono text-right rounded-br-none" 
+                              : "bg-noir-200 border-noir-400 text-stone-300 font-serif leading-relaxed rounded-bl-none"
+                      )}>
                           {log.text}
                       </div>
                       {log.subtext && (
-                          <span className={`text-[10px] font-mono font-bold mt-1 px-1 ${log.sentiment === 'negative' ? 'text-red-500' : 'text-stone-500'}`}>
+                          <span className={cn(
+                              "text-[9px] font-mono font-bold mt-1 px-1 uppercase tracking-wider",
+                              log.sentiment === 'negative' ? "text-red-500" : "text-noir-txt-muted"
+                          )}>
                               {log.subtext}
                           </span>
                       )}
@@ -528,178 +460,144 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           {!isBinaryChoice && <NegotiationHistory history={offerHistory} />}
       </div>
 
-      {!isBinaryChoice && (
-          <div className="bg-[#0c0a09] border-t border-b border-[#292524] p-3 shadow-md grid grid-cols-2 gap-4">
-              <div className="flex flex-col border-r border-[#292524] pr-4">
-                  <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-1">Customer Ask</span>
-                  <div className="flex items-center gap-3">
-                      <span className="text-xl font-mono font-bold text-stone-200">
-                         ${currentAskPrice}
-                      </span>
-                      {currentCustomer.desiredAmount > currentAskPrice && (
-                          <span className="text-sm font-mono text-stone-500 line-through decoration-stone-500 decoration-2">
-                              ${currentCustomer.desiredAmount}
-                          </span>
-                      )}
-                      <span className="text-[9px] text-stone-600 bg-stone-900 px-1 rounded ml-auto">ASK</span>
-                  </div>
-              </div>
-              
-              <div className="flex flex-col pl-2">
-                  <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-1">Projected Profit</span>
-                  <div className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-pawn-green" />
-                      <span className="text-xl font-mono font-bold text-pawn-green">
-                         +${profit}
-                      </span>
-                  </div>
-              </div>
-          </div>
+      {/* Instinct HUD */}
+      {instinct.text && !isBinaryChoice && (
+        <div className="bg-black/60 border-y border-noir-400 p-2 backdrop-blur-sm flex justify-center">
+            <div className={cn("text-xs font-mono flex items-center gap-2", instinct.color)}>
+                <BrainCircuit className="w-3 h-3 animate-pulse" />
+                <span className="uppercase font-bold tracking-wider mr-2">Instinct:</span>
+                <span className="italic font-serif">"{instinct.text}"</span>
+            </div>
+        </div>
       )}
 
-      <div className="bg-[#1c1917] p-4 border-t border-[#44403c] shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-10 flex flex-col gap-3">
+      {/* Control Deck */}
+      <div className="bg-noir-200 border-t border-noir-400 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-20">
          
          {isBinaryChoice ? (
-             <div className="flex flex-col gap-4 py-2">
-                 <div className="text-center">
-                    <span className="text-stone-500 text-xs font-bold uppercase tracking-widest block mb-2">OFFER RECEIVED</span>
-                    <div className="inline-block px-6 py-2 bg-[#0c0a09] border border-stone-700 rounded-lg relative">
-                        <span className="text-4xl font-mono font-black text-white tracking-widest">${currentAskPrice}</span>
-                        <div className="absolute -top-3 -right-3">
-                            <Stamp className="w-6 h-6 text-pawn-accent rotate-[15deg]" />
-                        </div>
-                    </div>
+             <div className="flex flex-col gap-4">
+                 <div className="flex justify-between items-end border-b border-noir-300 pb-2">
+                    <span className="text-xs font-bold text-noir-txt-muted uppercase tracking-widest">Fixed Offer</span>
+                    <span className="text-3xl font-mono font-bold text-noir-txt-primary">${currentAskPrice}</span>
                  </div>
                  
-                 <div className="flex gap-4 items-center">
-                     <Button 
-                        variant="danger" 
-                        onClick={handleManualReject} 
-                        className="flex-1 h-14 flex flex-col items-center justify-center gap-1 border-red-900 hover:bg-red-950"
-                     >
-                        <span className="font-bold text-lg">拒绝</span>
-                        <span className="text-[10px] opacity-70">REJECT OFFER</span>
+                 <div className="flex gap-3">
+                     <Button variant="danger" onClick={handleManualReject} className="flex-1">
+                        REJECT
                      </Button>
-                     
-                     <Button 
-                        variant="primary" 
-                        onClick={handleBinaryAccept}
-                        disabled={!canFulfillDeal} 
-                        className={`flex-[2] h-14 flex flex-col items-center justify-center gap-1 border-pawn-accent shadow-[0_0_15px_rgba(217,119,6,0.3)] ${!canFulfillDeal ? 'grayscale opacity-50 cursor-not-allowed border-stone-600 shadow-none' : ''}`}
-                     >
-                        <span className="font-bold text-lg flex items-center gap-2">
-                            {canFulfillDeal ? <Handshake className="w-5 h-5"/> : <AlertTriangle className="w-5 h-5 text-red-500"/>} 
-                            {canFulfillDeal ? "成交" : "无法成交"}
-                        </span>
-                        <span className={`text-[10px] opacity-70 ${!canFulfillDeal ? 'text-red-400 font-bold' : 'text-black'}`}>
-                            {canFulfillDeal ? "ACCEPT DEAL" : (fulfillmentError || "ITEM MISSING")}
-                        </span>
+                     <Button variant="primary" onClick={handleBinaryAccept} disabled={!canFulfillDeal} className="flex-[2]">
+                        {canFulfillDeal ? "ACCEPT DEAL" : fulfillmentError}
                      </Button>
                  </div>
              </div>
          ) : (
-             <>
-                 <div>
-                     <div className="flex gap-2">
-                        <RateCard rate={0} label="Charity" />
-                        <RateCard rate={0.05} label="Standard" />
-                        <RateCard rate={0.10} label="High" />
-                        <RateCard rate={0.20} label="Shark" />
-                     </div>
+             <div className="space-y-4">
+                 {/* Financials Row */}
+                 <div className="flex justify-between items-center text-xs font-mono bg-black/20 p-2 rounded border border-noir-300">
+                      <div className="flex items-center gap-2 text-noir-txt-muted">
+                          <DollarSign className="w-3 h-3" />
+                          <span>ASK: <span className="text-noir-txt-primary font-bold">${currentAskPrice}</span></span>
+                      </div>
+                      <div className="flex items-center gap-2 text-pawn-green">
+                          <TrendingUp className="w-3 h-3" />
+                          <span>PROFIT: <span className="font-bold">+${profit}</span></span>
+                      </div>
                  </div>
 
-                 <div>
-                     <div className="flex items-center gap-1 bg-[#0c0a09] border border-[#292524] rounded p-1 justify-between">
-                         
-                         <div className="flex gap-1">
-                             <AdjustButton amount={-100} icon={<ChevronsLeft className="w-4 h-4"/>} label="-100" />
-                             <AdjustButton amount={-10} icon={<ChevronLeft className="w-4 h-4"/>} label="-10" />
-                         </div>
-                         
-                         <div className="flex-1 flex flex-col items-center justify-center min-w-[80px]">
-                             <button 
-                                 onClick={handleMatchAsk}
-                                 disabled={!canInteract}
-                                 className="text-[10px] text-pawn-accent/80 hover:text-pawn-accent hover:underline uppercase font-bold tracking-widest mb-1 flex items-center gap-1 transition-all active:scale-95"
-                                 title={`Set to $${currentAskPrice}`}
-                             >
-                                 <Target className="w-3 h-3" />
-                                 MATCH
-                             </button>
-                             <span className="text-2xl font-mono font-bold text-white tracking-wider">
-                                ${offerPrincipal}
-                             </span>
-                         </div>
+                 {/* Rate Selectors */}
+                 <div className="flex gap-2">
+                    <RateToggle rate={0} label="Charity" />
+                    <RateToggle rate={0.05} label="Std" />
+                    <RateToggle rate={0.10} label="High" />
+                    <RateToggle rate={0.20} label="Shark" />
+                 </div>
 
-                         <div className="flex gap-1">
-                             <AdjustButton amount={10} icon={<ChevronRight className="w-4 h-4"/>} label="+10" />
-                             <AdjustButton amount={100} icon={<ChevronsRight className="w-4 h-4"/>} label="+100" />
-                         </div>
-                     </div>
+                 {/* Principal Dial */}
+                 <div className="flex items-center gap-2">
+                     <button
+                         onMouseDown={() => startAdjusting(-100)}
+                         onMouseUp={stopAdjusting}
+                         onMouseLeave={stopAdjusting}
+                         className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
+                     >
+                         <ChevronsLeft className="w-4 h-4"/>
+                     </button>
+                     <button
+                         onMouseDown={() => startAdjusting(-10)}
+                         onMouseUp={stopAdjusting}
+                         onMouseLeave={stopAdjusting}
+                         className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
+                     >
+                         <ChevronLeft className="w-4 h-4"/>
+                     </button>
                      
-                     <div className="flex justify-center gap-2 mt-2">
-                        <button 
-                            onClick={handleQuickDesired}
-                            disabled={!canInteract}
-                            className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-[10px] font-mono text-stone-400 rounded border border-stone-700 transition-colors"
-                        >
-                            [期望]
-                        </button>
-                        <button 
-                            onClick={handleQuickValuation}
-                            disabled={!canInteract}
-                            className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-[10px] font-mono text-stone-400 rounded border border-stone-700 transition-colors"
-                        >
-                            [估值]
-                        </button>
-                        {revealedMinimum && (
-                            <button 
-                                onClick={handleQuickFloor}
-                                disabled={!canInteract}
-                                className="px-2 py-1 bg-red-950/30 hover:bg-red-900/50 text-[10px] font-mono text-red-400 rounded border border-red-900/50 transition-colors animate-in fade-in"
-                            >
-                                [底价]
-                            </button>
-                        )}
+                     <div className="flex-1 bg-black border border-noir-400 h-12 flex items-center justify-center relative rounded overflow-hidden">
+                         <div className="absolute inset-0 bg-amber-900/10 animate-pulse"></div>
+                         <span className="relative z-10 text-3xl font-mono font-bold text-amber-500 tracking-widest drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                            <RollingNumber value={offerPrincipal} prefix="$" />
+                         </span>
                      </div>
+
+                     <button
+                         onMouseDown={() => startAdjusting(10)}
+                         onMouseUp={stopAdjusting}
+                         onMouseLeave={stopAdjusting}
+                         className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
+                     >
+                         <ChevronRight className="w-4 h-4"/>
+                     </button>
+                     <button
+                         onMouseDown={() => startAdjusting(100)}
+                         onMouseUp={stopAdjusting}
+                         onMouseLeave={stopAdjusting}
+                         className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
+                     >
+                         <ChevronsRight className="w-4 h-4"/>
+                     </button>
+                 </div>
+                 
+                 {/* Quick Setters */}
+                 <div className="flex justify-center gap-2">
+                    <button onClick={handleMatchAsk} disabled={!canInteract} className="text-[10px] font-mono uppercase text-noir-txt-muted hover:text-noir-accent border-b border-transparent hover:border-noir-accent transition-colors">
+                        Match Ask
+                    </button>
+                    <span className="text-noir-400">|</span>
+                    <button onClick={handleQuickValuation} disabled={!canInteract} className="text-[10px] font-mono uppercase text-noir-txt-muted hover:text-noir-accent border-b border-transparent hover:border-noir-accent transition-colors">
+                        Est. Value
+                    </button>
+                    {revealedMinimum && (
+                        <>
+                            <span className="text-noir-400">|</span>
+                            <button onClick={handleQuickFloor} disabled={!canInteract} className="text-[10px] font-mono uppercase text-red-400 hover:text-red-300 border-b border-transparent hover:border-red-400 transition-colors animate-in fade-in">
+                                Reveal Floor
+                            </button>
+                        </>
+                    )}
                  </div>
 
-                 {instinct.text && (
-                    <div className="py-2 -mx-2 flex flex-col items-center justify-center min-h-[3rem] animate-in fade-in duration-300">
-                        <div className={`flex items-center gap-2 opacity-80 mb-1 ${instinct.color}`}>
-                             <BrainCircuit className="w-3 h-3" />
-                             <span className="text-[9px] font-mono uppercase tracking-widest font-bold">
-                                 直觉
-                             </span>
-                        </div>
-                        <p className={`text-center font-serif italic text-sm ${instinct.color} leading-snug transition-all`}>
-                            "{instinct.text}"
-                        </p>
-                    </div>
-                 )}
-
-                 <div className="flex gap-3 mt-1">
+                 {/* Main Action */}
+                 <div className="flex gap-3">
                     <Button 
                       variant="danger" 
                       onClick={handleManualReject}
                       disabled={!canInteract}
-                      className="w-16 h-14 border-2 hover:bg-red-900/40 flex items-center justify-center group opacity-80 hover:opacity-100"
+                      className="w-16 h-14 border-2 border-red-900/50 hover:bg-red-950/50 flex items-center justify-center"
                       title="Reject"
                     >
-                      <XCircle className="w-6 h-6 group-hover:rotate-90 transition-transform"/>
+                      <XCircle className="w-6 h-6"/>
                     </Button>
 
                     <Button 
                       variant="primary" 
                       onClick={handleOffer} 
                       disabled={!canInteract || !canAfford}
-                      className={`flex-1 h-14 text-xl tracking-[0.2em] relative overflow-hidden flex items-center justify-center gap-3 shadow-lg ${!canInteract || !canAfford ? 'grayscale opacity-50 cursor-not-allowed' : ''}`}
+                      className="flex-1 h-14 text-xl tracking-[0.2em] relative overflow-hidden shadow-[0_0_20px_rgba(217,119,6,0.3)]"
                     >
-                       <Stamp className="w-5 h-5" />
-                       SUBMIT OFFER
+                       <Stamp className="w-5 h-5 mr-3" />
+                       SUBMIT
                     </Button>
                  </div>
-             </>
+             </div>
          )}
       </div>
     </div>

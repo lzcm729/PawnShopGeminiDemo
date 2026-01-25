@@ -6,6 +6,7 @@ import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCirc
 import { Button } from './ui/Button';
 import { ItemTrait } from '../types';
 import { getUncertaintyRisk } from '../systems/items/utils';
+import { DecryptionText } from './ui/TextEffects';
 
 const getIcon = (category: string) => {
     switch(category) {
@@ -468,14 +469,14 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                                  <div className="flex justify-between items-start mb-1 relative z-10">
                                      <div className="font-bold text-xs flex items-center gap-1.5">
                                          {icon}
-                                         {trait.name}
+                                         <DecryptionText text={trait.name} speed={30} revealSpeed={100} />
                                      </div>
                                      <span className="text-[9px] font-mono px-1 py-0.5 bg-stone-200/80 rounded text-stone-600 uppercase">
                                         {trait.type}
                                      </span>
                                  </div>
                                  <p className="text-[11px] text-stone-600 leading-snug relative z-10">
-                                     {trait.description}
+                                     <DecryptionText text={trait.description} speed={10} revealSpeed={30} />
                                  </p>
                                  
                                  {isUsed && (

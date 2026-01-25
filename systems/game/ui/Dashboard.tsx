@@ -1,13 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { DollarSign, Calendar, Heart, Briefcase, Skull, Package, AlertOctagon, Mail, Volume2, VolumeX } from 'lucide-react';
 import { ReputationType } from '../../core/types';
 import { Button } from '../../../components/ui/Button';
+import { StatDisplay } from '../../../components/ui/StatDisplay';
+import { Tooltip } from '../../../components/ui/Tooltip';
 import { ValidationModal } from '../../../components/ValidationModal';
 import { validateEvents, ValidationIssue } from '../../narrative/validator';
-import { EMMA_EVENTS } from '../../narrative/storyRegistry';
-import { toggleMute, getMuteState, playSfx } from '../../game/audio';
+import { toggleMute, getMuteState, playSfx, startAmbience, stopAmbience } from '../../game/audio';
 
 export const Dashboard: React.FC = () => {
     const { state, dispatch } = useGame();
@@ -25,7 +26,12 @@ export const Dashboard: React.FC = () => {
     const handleMuteToggle = () => {
         const newState = toggleMute();
         setIsMuted(newState);
-        if (!newState) playSfx('CLICK');
+        if (!newState) {
+            playSfx('CLICK');
+            startAmbience();
+        } else {
+            stopAmbience();
+        }
     };
 
     const toggleFinancials = () => {
@@ -33,8 +39,15 @@ export const Dashboard: React.FC = () => {
         dispatch({ type: 'TOGGLE_FINANCIALS' });
     };
 
+    // Helper for Rep Tooltip
+    const RepTooltip = ({ label, value }: { label: string, value: number }) => (
+        <div className="text-xs">
+            <span className="font-bold">{label}:</span> {value}%
+        </div>
+    );
+
     return (
-    <div className="w-full bg-pawn-panel border-b border-white/10 p-4 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-50 shadow-lg">
+    <div className="w-full bg-noir-200 border-b border-noir-300 p-3 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-50 shadow-xl">
         <ValidationModal 
             isOpen={showValidation} 
             onClose={() => setShowValidation(false)} 
@@ -42,104 +55,97 @@ export const Dashboard: React.FC = () => {
             issues={validationIssues}
         />
 
+        {/* Stats Group */}
+        <div className="flex items-center gap-4">
+            <StatDisplay 
+                icon={<Calendar className="w-4 h-4" />}
+                label="CYCLE"
+                value={`DAY ${stats.day}`}
+                variant="accent"
+                onClick={toggleFinancials}
+                tooltip="Open Financial Projection"
+            />
+            
+            <StatDisplay 
+                icon={<DollarSign className="w-4 h-4" />}
+                label="LIQUIDITY"
+                value={`$${stats.cash}`}
+                variant="success"
+            />
+
+            <StatDisplay 
+                icon={<AlertOctagon className="w-4 h-4" />}
+                label={`RENT (D-${daysUntilRent})`}
+                value={`$${stats.rentDue}`}
+                variant={daysUntilRent <= 2 ? 'danger' : 'default'}
+                className={daysUntilRent <= 2 ? 'animate-pulse' : ''}
+            />
+        </div>
+
+        {/* Reputation & Tools Group */}
         <div className="flex items-center gap-6">
-        <button 
-            onClick={toggleFinancials}
-            className="flex items-center gap-2 text-pawn-accent bg-amber-950/20 px-3 py-1 rounded border border-amber-900/50 hover:bg-amber-900/40 hover:scale-105 hover:border-pawn-accent transition-all cursor-pointer shadow-[0_0_10px_rgba(217,119,6,0.1)] group"
-            title="Open Financial Calendar"
-        >
-            <Calendar className="w-5 h-5 group-hover:text-white transition-colors" />
-            <span className="font-mono text-xl font-bold">DAY {stats.day}</span>
-        </button>
-        
-        <div 
-            className="flex items-center gap-2 text-pawn-green bg-green-950/30 px-3 py-1 rounded border border-green-900/50 shadow-[0_0_10px_rgba(34,197,94,0.1)] cursor-default"
-        >
-            <DollarSign className="w-5 h-5" />
-            <span className="font-mono text-xl font-bold tracking-widest">{stats.cash}</span>
-        </div>
+            
+            {/* Compact Reputation Bars */}
+            <div className="flex items-center gap-3 bg-noir-100 p-2 rounded border border-noir-300">
+                <Tooltip content={<RepTooltip label="Humanity" value={reputation[ReputationType.HUMANITY]} />}>
+                    <div className="flex items-center gap-2">
+                        <Heart className="w-3 h-3 text-noir-humanity" />
+                        <div className="w-12 h-1.5 bg-noir-300 rounded-full overflow-hidden">
+                            <div className="h-full bg-noir-humanity" style={{ width: `${reputation[ReputationType.HUMANITY]}%` }}></div>
+                        </div>
+                    </div>
+                </Tooltip>
 
-        <div className={`flex items-center gap-2 px-3 py-1 rounded border ${daysUntilRent <= 2 ? 'bg-red-950/30 text-red-500 border-red-900 animate-pulse' : 'bg-stone-800 text-stone-400 border-stone-700'}`}>
-            <AlertOctagon className="w-4 h-4" />
-            <span className="font-mono text-sm font-bold">
-                房租: {daysUntilRent}天后 (${stats.rentDue})
-            </span>
-        </div>
-        </div>
+                <Tooltip content={<RepTooltip label="Credibility" value={reputation[ReputationType.CREDIBILITY]} />}>
+                    <div className="flex items-center gap-2">
+                        <Briefcase className="w-3 h-3 text-noir-credibility" />
+                        <div className="w-12 h-1.5 bg-noir-300 rounded-full overflow-hidden">
+                            <div className="h-full bg-noir-credibility" style={{ width: `${reputation[ReputationType.CREDIBILITY]}%` }}></div>
+                        </div>
+                    </div>
+                </Tooltip>
 
-        <div className="flex items-center gap-6">
-        <div className="flex items-center gap-4 text-xs font-mono">
-            <div className="flex flex-col items-center group relative cursor-help">
-            <Heart className="w-4 h-4 text-rose-500 mb-1" />
-            <div className="w-16 h-1 bg-gray-700 rounded-full overflow-hidden">
-                <div className="h-full bg-rose-500" style={{ width: `${reputation[ReputationType.HUMANITY]}%` }}></div>
-            </div>
-            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-black border border-stone-700 text-white p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                <p className="font-bold text-rose-500">人情 (Humanity): {reputation[ReputationType.HUMANITY]}</p>
-            </div>
+                <Tooltip content={<RepTooltip label="Underworld" value={reputation[ReputationType.UNDERWORLD]} />}>
+                    <div className="flex items-center gap-2">
+                        <Skull className="w-3 h-3 text-noir-underworld" />
+                        <div className="w-12 h-1.5 bg-noir-300 rounded-full overflow-hidden">
+                            <div className="h-full bg-noir-underworld" style={{ width: `${reputation[ReputationType.UNDERWORLD]}%` }}></div>
+                        </div>
+                    </div>
+                </Tooltip>
             </div>
 
-            <div className="flex flex-col items-center group relative cursor-help">
-            <Briefcase className="w-4 h-4 text-blue-400 mb-1" />
-            <div className="w-16 h-1 bg-gray-700 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-400" style={{ width: `${reputation[ReputationType.CREDIBILITY]}%` }}></div>
-            </div>
-            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-black border border-stone-700 text-white p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                <p className="font-bold text-blue-400">信誉 (Credibility): {reputation[ReputationType.CREDIBILITY]}</p>
-            </div>
-            </div>
+            <div className="h-8 w-px bg-noir-400 mx-2 hidden md:block"></div>
 
-            <div className="flex flex-col items-center group relative cursor-help">
-            <Skull className="w-4 h-4 text-purple-500 mb-1" />
-            <div className="w-16 h-1 bg-gray-700 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500" style={{ width: `${reputation[ReputationType.UNDERWORLD]}%` }}></div>
+            {/* Quick Actions */}
+            <div className="flex items-center gap-2">
+                <button 
+                    onClick={handleMuteToggle}
+                    className="p-2 text-noir-txt-muted hover:text-noir-txt-primary hover:bg-noir-300 rounded transition-colors"
+                    title={isMuted ? "Unmute" : "Mute"}
+                >
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+
+                <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => dispatch({type: 'TOGGLE_MAIL'})}
+                    className={unreadMailCount > 0 ? "border-green-600 text-green-500" : ""}
+                    leftIcon={<Mail className={unreadMailCount > 0 ? "animate-bounce" : ""} size={14} />}
+                >
+                    MAIL {unreadMailCount > 0 && `(${unreadMailCount})`}
+                </Button>
+
+                <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => dispatch({type: 'TOGGLE_INVENTORY'})}
+                    leftIcon={<Package size={14} />}
+                >
+                    VAULT ({activeItems})
+                </Button>
             </div>
-            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-black border border-stone-700 text-white p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                <p className="font-bold text-purple-500">地下 (Underworld): {reputation[ReputationType.UNDERWORLD]}</p>
-            </div>
-            </div>
-        </div>
-
-        <div className="h-8 w-px bg-stone-700 mx-2"></div>
-
-        <button 
-            onClick={handleMuteToggle}
-            className="text-stone-500 hover:text-white transition-colors"
-            title={isMuted ? "Unmute" : "Mute"}
-        >
-            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-        </button>
-
-        <Button 
-            variant="secondary" 
-            onClick={toggleFinancials}
-            className="flex items-center gap-2 px-3 py-1"
-        >
-            <Calendar className="w-4 h-4" />
-            <span>日历</span>
-        </Button>
-
-        <Button 
-            variant="secondary" 
-            onClick={() => dispatch({type: 'TOGGLE_MAIL'})}
-            className={`flex items-center gap-2 px-3 py-1 relative transition-colors ${unreadMailCount > 0 ? 'border-green-600 text-green-500 bg-green-900/10' : ''}`}
-        >
-            <Mail className={`w-4 h-4 ${unreadMailCount > 0 ? 'animate-bounce' : ''}`} />
-            {unreadMailCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-[#1c1917] shadow-sm">
-                    {unreadMailCount}
-                </span>
-            )}
-        </Button>
-
-        <Button 
-            variant="secondary" 
-            onClick={() => dispatch({type: 'TOGGLE_INVENTORY'})}
-            className="flex items-center gap-2 px-3 py-1"
-        >
-            <Package className="w-4 h-4" />
-            <span>背包 ({activeItems})</span>
-        </Button>
         </div>
     </div>
     );

@@ -2,335 +2,205 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
-import { X, PackageOpen, AlertTriangle, Clock, Skull, ShieldCheck, Heart, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, DollarSign, AlertOctagon, BookOpen, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { PackageOpen, AlertOctagon, DollarSign, Archive, Clock, ShieldAlert, FileOutput } from 'lucide-react';
 import { ItemStatus, Item } from '../types';
 import { Button } from './ui/Button';
+import { Modal } from './ui/Modal';
+import { ItemCard } from './ui/ItemCard';
 import { playSfx } from '../systems/game/audio';
+import { cn } from '../lib/utils';
 
-const getCategoryIcon = (category: string) => {
-    switch(category) {
-        case '服饰': return <Shirt className="w-8 h-8 text-stone-500" />;
-        case '奢侈品': return <ShoppingBag className="w-8 h-8 text-stone-500" />;
-        case '电子产品': return <Smartphone className="w-8 h-8 text-stone-500" />;
-        case '珠宝': return <Gem className="w-8 h-8 text-stone-500" />;
-        case '违禁品': return <Skull className="w-8 h-8 text-stone-500" />;
-        case '古玩': return <Archive className="w-8 h-8 text-stone-500" />;
-        case '玩具': return <Gamepad2 className="w-8 h-8 text-stone-500" />;
-        case '乐器': return <Music className="w-8 h-8 text-stone-500" />;
-        default: return <Package className="w-8 h-8 text-stone-500" />;
-    }
-}
-
-const LOG_TYPE_COLORS: Record<string, string> = {
-    'ENTRY': 'text-blue-400',
-    'REDEEM': 'text-green-400',
-    'FORFEIT': 'text-red-400',
-    'SOLD': 'text-amber-400',
-    'INFO': 'text-stone-400',
-    'APPRAISAL': 'text-orange-400'
-};
-
-const CHAIN_MARKERS: Record<string, { color: string; label: string; bg: string }> = {
-    'chain_emma': { color: 'border-purple-500', label: '艾', bg: 'bg-purple-900/80' },
-    'chain_susan': { color: 'border-pink-500', label: '苏', bg: 'bg-pink-900/80' },
-    'chain_zhao': { color: 'border-green-500', label: '赵', bg: 'bg-green-900/80' },
-    'chain_lin': { color: 'border-blue-500', label: '林', bg: 'bg-blue-900/80' },
-    'chain_underworld': { color: 'border-red-600', label: '黑', bg: 'bg-red-900/80' },
-};
+type InventoryTab = 'ACTIVE' | 'EXPIRING' | 'ARCHIVE';
 
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
   const { sellActivePawn } = usePawnShop();
   
+  const [activeTab, setActiveTab] = useState<InventoryTab>('ACTIVE');
   const [forceSellConfirm, setForceSellConfirm] = useState<string | null>(null);
-  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
 
   if (!state.showInventory) return null;
 
-  // Show ACTIVE, FORFEIT, and SOLD (to allow seeing breach status)
-  // Filter out REDEEMED as they are gone.
-  let items = state.inventory.filter(i => i.status !== ItemStatus.REDEEMED);
+  const currentDay = state.stats.day;
 
-  const calculateDaysLeft = (item: Item) => {
-    if (item.status === ItemStatus.FORFEIT) return 0;
-    if (!item.pawnInfo) return 0;
-    return Math.max(0, item.pawnInfo.dueDate - state.stats.day);
-  };
+  // Filter Logic
+  const allItems = state.inventory;
+  
+  const expiringItems = allItems.filter(i => 
+      i.status === ItemStatus.ACTIVE && 
+      i.pawnInfo && 
+      (i.pawnInfo.dueDate - currentDay <= 2)
+  );
 
-  // Sort: Active with low days left -> Forfeit -> Active with high days -> Sold
-  items.sort((a, b) => {
-      const aDays = calculateDaysLeft(a);
-      const bDays = calculateDaysLeft(b);
-      
-      const aPriority = a.status === ItemStatus.FORFEIT ? 1 : a.status === ItemStatus.ACTIVE ? 0 : 2;
-      const bPriority = b.status === ItemStatus.FORFEIT ? 1 : b.status === ItemStatus.ACTIVE ? 0 : 2;
-      
-      if (aPriority !== bPriority) return aPriority - bPriority;
-      
-      // If both active, sort by days left asc
-      if (a.status === ItemStatus.ACTIVE && b.status === ItemStatus.ACTIVE) {
-          return aDays - bDays;
+  const activeItems = allItems.filter(i => i.status === ItemStatus.ACTIVE);
+  
+  const archiveItems = allItems.filter(i => 
+      i.status === ItemStatus.SOLD || 
+      i.status === ItemStatus.FORFEIT || 
+      i.status === ItemStatus.REDEEMED
+  );
+
+  let displayItems: Item[] = [];
+  if (activeTab === 'ACTIVE') displayItems = activeItems;
+  if (activeTab === 'EXPIRING') displayItems = expiringItems;
+  if (activeTab === 'ARCHIVE') displayItems = archiveItems;
+
+  // Sort Logic: Default to Day Ascending (Oldest first)
+  displayItems.sort((a, b) => {
+      // Prioritize Forfeit in Archive
+      if (activeTab === 'ARCHIVE') {
+          if (a.status === ItemStatus.FORFEIT && b.status !== ItemStatus.FORFEIT) return -1;
+          if (b.status === ItemStatus.FORFEIT && a.status !== ItemStatus.FORFEIT) return 1;
       }
-      return 0;
+      return (a.pawnDate || 0) - (b.pawnDate || 0);
   });
 
   const handleForceSell = (item: Item) => {
       sellActivePawn(item);
       setForceSellConfirm(null);
   };
-  
-  const toggleExpand = (itemId: string) => {
-    playSfx('CLICK');
-    setExpandedLogs(prev => {
-        const next = new Set(prev);
-        if (next.has(itemId)) next.delete(itemId);
-        else next.add(itemId);
-        return next;
-    });
+
+  const renderActions = (item: Item) => {
+      const isForfeit = item.status === ItemStatus.FORFEIT;
+      const isActive = item.status === ItemStatus.ACTIVE;
+      const isSold = item.status === ItemStatus.SOLD;
+      const confirmingSell = forceSellConfirm === item.id;
+
+      if (isForfeit) {
+          return (
+            <div className="flex items-center text-amber-500 text-[10px] font-bold">
+                <DollarSign className="w-3 h-3 mr-1" />
+                LIQUIDATE IN E.O.D.
+            </div>
+          );
+      }
+
+      if (isSold) {
+          return (
+            <span className="text-[10px] text-noir-txt-muted w-full text-center py-1 font-mono uppercase">
+                Transaction Closed
+            </span>
+          );
+      }
+
+      if (isActive) {
+          if (confirmingSell) {
+              return (
+                <Button 
+                    variant="danger" 
+                    size="sm"
+                    className="w-full text-[10px] h-7"
+                    onClick={() => handleForceSell(item)}
+                >
+                    CONFIRM BREACH?
+                </Button>
+              );
+          }
+          return (
+            <Button 
+                variant="ghost" 
+                size="sm"
+                className="w-full text-[10px] h-7 text-noir-txt-muted hover:text-red-500 hover:bg-red-950/10 border border-transparent hover:border-red-900/30"
+                onClick={() => { setForceSellConfirm(item.id); playSfx('WARNING'); }}
+                title="Sell item before due date (Breach of Contract)"
+            >
+                <ShieldAlert className="w-3 h-3 mr-1" />
+                BREACH & SELL
+            </Button>
+          );
+      }
+      return null;
   };
 
+  // Stats
+  const totalActiveValue = activeItems.reduce((acc, i) => acc + i.pawnAmount, 0);
+  const potentialProfit = activeItems.reduce((acc, i) => {
+      const interest = i.pawnInfo ? Math.ceil(i.pawnInfo.principal * i.pawnInfo.interestRate) : 0;
+      return acc + interest;
+  }, 0);
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div 
-        className="w-full max-w-5xl h-[85vh] bg-[#1c1917] border-2 border-[#44403c] rounded-lg shadow-2xl flex flex-col relative overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="bg-[#292524] p-4 flex justify-between items-center border-b border-[#44403c]">
-          <h2 className="text-xl font-mono font-bold text-pawn-accent flex items-center gap-3">
-            <PackageOpen className="w-6 h-6" />
-            库存管理 (INVENTORY CONTROL)
-          </h2>
-          <button 
-            onClick={() => dispatch({ type: 'TOGGLE_INVENTORY' })}
-            className="text-stone-500 hover:text-white transition-colors"
-          >
-            <X className="w-8 h-8" />
-          </button>
-        </div>
+    <Modal
+      isOpen={state.showInventory}
+      onClose={() => dispatch({ type: 'TOGGLE_INVENTORY' })}
+      title={<span className="font-mono tracking-widest flex items-center gap-2"><PackageOpen className="w-5 h-5" /> VAULT_MANAGEMENT_SYS</span>}
+      size="xl"
+      noPadding
+    >
+      <div className="flex flex-col h-[700px] bg-noir-100">
+          
+          {/* Dashboard Header */}
+          <div className="bg-black border-b border-noir-400 p-4 grid grid-cols-4 gap-4 shadow-md z-10">
+              <div className="bg-noir-200 border border-noir-300 p-2 rounded flex flex-col items-center justify-center">
+                  <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1">Total Active Principal</span>
+                  <span className="text-lg font-mono font-bold text-noir-txt-primary">${totalActiveValue}</span>
+              </div>
+              <div className="bg-noir-200 border border-noir-300 p-2 rounded flex flex-col items-center justify-center">
+                  <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1">Proj. Interest</span>
+                  <span className="text-lg font-mono font-bold text-green-500">+${potentialProfit}</span>
+              </div>
+              <div className="bg-noir-200 border border-noir-300 p-2 rounded flex flex-col items-center justify-center">
+                  <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1">Vault Capacity</span>
+                  <span className="text-lg font-mono font-bold text-noir-txt-primary">{activeItems.length} / 50</span>
+              </div>
+              <div className="bg-noir-200 border border-noir-300 p-2 rounded flex flex-col items-center justify-center">
+                  <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1">Critical Alerts</span>
+                  <span className={cn("text-lg font-mono font-bold", expiringItems.length > 0 ? "text-red-500 animate-pulse" : "text-noir-txt-muted")}>
+                      {expiringItems.length}
+                  </span>
+              </div>
+          </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-stone-900/50 custom-scrollbar">
-          {items.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-stone-600 font-mono">
-              <PackageOpen className="w-16 h-16 mb-4 opacity-20" />
-              <p>保险柜是空的。</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {items.map(item => {
-                const isForfeit = item.status === ItemStatus.FORFEIT;
-                const isActive = item.status === ItemStatus.ACTIVE;
-                const isSold = item.status === ItemStatus.SOLD;
-                
-                const daysLeft = calculateDaysLeft(item);
-                const confirmingSell = forceSellConfirm === item.id;
-                
-                // NPC Marker
-                const chainMarker = item.relatedChainId ? CHAIN_MARKERS[item.relatedChainId] : null;
-                
-                let statusColor = 'bg-yellow-600';
-                let statusText = 'ACTIVE';
-                let borderColor = 'border-[#292524]';
-                
-                // Urgency Styling for Active Items
-                if (isActive) {
-                    if (daysLeft <= 1) {
-                        borderColor = 'border-red-500 animate-pulse';
-                    } else if (daysLeft <= 3) {
-                        borderColor = 'border-yellow-500';
-                    }
-                }
-                
-                // Override border color if marked
-                if (chainMarker && !isActive) { // Only show colored border if not urgent red
-                     borderColor = chainMarker.color;
-                }
-
-                if (isForfeit) { statusColor = 'bg-red-600'; statusText = 'FORFEIT'; }
-                if (isSold) { statusColor = 'bg-stone-600'; statusText = 'SOLD'; borderColor = 'border-red-900/30 bg-red-950/10'; }
-                
-                // Logs logic
-                const isExpanded = expandedLogs.has(item.id);
-                const displayLogs = isExpanded ? item.logs : (item.logs || []).slice(-1);
-                const hiddenCount = (item.logs || []).length - displayLogs.length;
-
-                return (
-                  <div key={item.id} className={`bg-[#0c0a09] border ${borderColor} rounded group hover:border-stone-500 transition-colors relative overflow-hidden flex flex-col`}>
-                    
-                    {/* NPC Marker Badge */}
-                    {chainMarker && (
-                        <div className={`absolute top-0 left-0 w-6 h-6 rounded-br-lg ${chainMarker.bg} text-white flex items-center justify-center text-[10px] font-bold z-10 shadow-sm border-r border-b ${chainMarker.color}`}>
-                            {chainMarker.label}
-                        </div>
+          {/* Navigation Tabs */}
+          <div className="flex border-b border-noir-400 bg-noir-200">
+              {[
+                  { id: 'ACTIVE', label: 'ACTIVE PAWNS', icon: Clock, count: activeItems.length },
+                  { id: 'EXPIRING', label: 'CRITICAL / DUE', icon: AlertOctagon, count: expiringItems.length, color: 'text-red-500' },
+                  { id: 'ARCHIVE', label: 'ARCHIVE / LOGS', icon: Archive, count: archiveItems.length }
+              ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => { setActiveTab(tab.id as InventoryTab); playSfx('CLICK'); }}
+                    className={cn(
+                        "flex-1 py-3 px-4 flex items-center justify-center gap-2 text-xs font-bold tracking-widest uppercase transition-all relative overflow-hidden",
+                        activeTab === tab.id 
+                            ? "bg-noir-100 text-noir-txt-primary" 
+                            : "bg-noir-300 text-noir-txt-muted hover:bg-noir-200 hover:text-noir-txt-secondary"
                     )}
+                  >
+                      {activeTab === tab.id && <div className="absolute top-0 left-0 right-0 h-0.5 bg-pawn-accent shadow-[0_0_10px_var(--accent-primary)]"></div>}
+                      <tab.icon className={cn("w-4 h-4", tab.color)} />
+                      {tab.label} 
+                      <span className="bg-black/30 px-1.5 py-0.5 rounded text-[9px] ml-1">{tab.count}</span>
+                  </button>
+              ))}
+          </div>
 
-                    {/* Status Stripe */}
-                    <div className={`h-1 w-full ${statusColor}`}></div>
-                    
-                    <div className="p-4 flex-1">
-                      <div className="flex justify-between items-start mb-2 pl-4"> {/* Added padding left for badge */}
-                        <h3 className="font-bold text-stone-200 truncate pr-2 w-2/3">{item.name}</h3>
-                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
-                          isForfeit 
-                            ? 'bg-red-950 text-red-500 border-red-900' 
-                            : isSold 
-                            ? 'bg-stone-800 text-stone-500 border-stone-600'
-                            : 'bg-yellow-950 text-yellow-500 border-yellow-900'
-                        }`}>
-                          {statusText}
-                        </span>
+          {/* Grid Content */}
+          <div className="flex-1 overflow-y-auto p-4 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] relative">
+              <div className="absolute inset-0 bg-black/50 pointer-events-none fixed"></div>
+              
+              {displayItems.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-noir-400 font-mono relative z-10">
+                      <div className="w-20 h-20 border-2 border-dashed border-noir-400 rounded-full flex items-center justify-center mb-4">
+                          <PackageOpen className="w-10 h-10 opacity-50" />
                       </div>
-                      
-                      <div className="flex gap-2 mb-3">
-                         <div className="w-16 h-16 bg-stone-800 rounded overflow-hidden flex-shrink-0 flex items-center justify-center border border-stone-700 relative">
-                           {getCategoryIcon(item.category)}
-                           {isSold && <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-stone-500 font-black rotate-[-15deg] border-2 border-stone-500 m-1">SOLD</div>}
-                         </div>
-                         <div className="text-xs text-stone-500 space-y-1">
-                            <p>类别: {item.category}</p>
-                            <p>成色: {item.condition}</p>
-                            <div className="flex gap-1 mt-1">
-                               {item.isFake && <AlertTriangle className="w-3 h-3 text-red-500"/>}
-                               {item.isStolen && <Skull className="w-3 h-3 text-purple-500"/>}
-                               {item.sentimentalValue && <Heart className="w-3 h-3 text-rose-500"/>}
-                               {!item.isFake && !item.isStolen && item.appraised && <ShieldCheck className="w-3 h-3 text-green-500"/>}
-                            </div>
-                         </div>
-                      </div>
-
-                      {/* Financials */}
-                      <div className="bg-[#1c1917] p-2 rounded text-xs font-mono grid grid-cols-2 gap-2 border border-[#292524] mb-3">
-                         <div>
-                            <span className="block text-stone-600">已付当金</span>
-                            <span className="text-stone-300">${item.pawnAmount}</span>
-                         </div>
-                         <div>
-                            <span className="block text-stone-600">真实估值</span>
-                            {item.appraised || isSold ? (
-                                <span className="text-pawn-green">${item.realValue}</span>
-                            ) : (
-                                <span className="text-stone-700">???</span>
-                            )}
-                         </div>
-                      </div>
-                      
-                      {/* NARRATIVE LOG DISPLAY (New Feature) */}
-                      {item.logs && item.logs.length > 0 ? (
-                          <div className="mb-3">
-                              <div className="flex items-center justify-between text-[10px] text-stone-500 mb-1 font-bold uppercase tracking-wider">
-                                  <div className="flex items-center gap-1">
-                                    <BookOpen className="w-3 h-3"/> 档案记录 (Journal)
-                                  </div>
-                              </div>
-                              <div className={`bg-stone-900/30 border border-stone-800 rounded p-2 text-[10px] text-stone-400 font-serif leading-relaxed ${isExpanded ? 'max-h-60 overflow-y-auto' : 'h-auto'} custom-scrollbar-light transition-all duration-300`}>
-                                  {displayLogs.map(log => (
-                                      <div key={log.id} className="mb-2 last:mb-0 border-b border-stone-800/50 pb-1 last:border-0">
-                                          <span className="text-stone-600 font-sans mr-1">[Day {log.day}]</span>
-                                          {log.type === 'APPRAISAL' && <Search className="w-3 h-3 inline mr-1 text-orange-400" />}
-                                          <span className={LOG_TYPE_COLORS[log.type] || 'text-stone-400'}>
-                                              {log.content}
-                                          </span>
-                                      </div>
-                                  ))}
-                                  
-                                  {/* Expand/Collapse Control */}
-                                  {!isExpanded && hiddenCount > 0 && (
-                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); toggleExpand(item.id); }}
-                                        className="w-full text-center text-stone-600 hover:text-stone-400 mt-1 pt-1 border-t border-stone-800/30 flex items-center justify-center gap-1"
-                                     >
-                                         <ChevronDown className="w-3 h-3" /> ...还有 {hiddenCount} 条记录
-                                     </button>
-                                  )}
-                                  
-                                  {isExpanded && (item.logs.length > 1) && (
-                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); toggleExpand(item.id); }}
-                                        className="w-full text-center text-stone-600 hover:text-stone-400 mt-1 pt-1 border-t border-stone-800/30 flex items-center justify-center gap-1"
-                                     >
-                                         <ChevronUp className="w-3 h-3" /> 收起
-                                     </button>
-                                  )}
-                              </div>
-                          </div>
-                      ) : (
-                          // Fallback to description if no logs
-                          <div className="mb-3 text-[10px] text-stone-600 italic border-l-2 border-stone-700 pl-2">
-                             "{item.historySnippet}"
-                          </div>
-                      )}
-
-                      {!isSold && !isForfeit && (
-                        <div className={`flex items-center gap-2 text-xs bg-stone-900/50 p-1.5 rounded mb-2 ${daysLeft <= 3 ? 'text-red-400 font-bold border border-red-900/30' : 'text-stone-400'}`}>
-                           <Clock className="w-3 h-3" />
-                           <span>到期: {daysLeft} 天</span>
-                           {daysLeft <= 1 && <span className="text-[10px] bg-red-600 text-white px-1 rounded animate-pulse">EXPIRING</span>}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Footer */}
-                    <div className="bg-[#141211] p-2 border-t border-[#292524] grid grid-cols-2 gap-2">
-                        
-                        {/* LEFT: Status Info (No Interactions) */}
-                        <div className="flex items-center justify-center">
-                            {isSold && (
-                                <span className="text-[10px] text-stone-600 font-mono bg-stone-900/50 px-2 py-1 rounded w-full text-center">
-                                    等待事件触发
-                                </span>
-                            )}
-                        </div>
-
-                        {/* RIGHT: Force Sell (Active) or Liquidate (Forfeit) */}
-                        {isForfeit && (
-                             <Button 
-                                variant="primary" 
-                                className="h-8 text-xs px-1"
-                                onClick={() => {/* Handled in EndOfDay */}}
-                                disabled={true} 
-                                title="请在每日结算时处理绝当"
-                            >
-                                <DollarSign className="w-3 h-3 mr-1 inline" />
-                                待结算
-                            </Button>
-                        )}
-                        
-                        {isActive && !confirmingSell && (
-                            <Button 
-                                variant="danger" 
-                                className="h-8 text-xs px-1 border-stone-700 text-stone-500 hover:text-red-500 hover:border-red-500 bg-transparent"
-                                onClick={() => { setForceSellConfirm(item.id); playSfx('CLICK'); }}
-                            >
-                                <AlertOctagon className="w-3 h-3 mr-1 inline" />
-                                违约出售
-                            </Button>
-                        )}
-
-                        {isActive && confirmingSell && (
-                             <Button 
-                                variant="danger" 
-                                className="h-8 text-xs px-1 animate-pulse"
-                                onClick={() => handleForceSell(item)}
-                            >
-                                确定卖出?
-                            </Button>
-                        )}
-                    </div>
-
+                      <p className="text-sm tracking-widest uppercase">NO ASSETS FOUND IN SECTOR</p>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        
-        {/* Footer Summary */}
-        <div className="bg-[#1c1917] p-3 border-t border-[#44403c] text-xs font-mono text-stone-500 flex justify-between px-6">
-           <span>库存: {items.length}</span>
-           <span>本金占用: ${items.filter(i => i.status === 'ACTIVE').reduce((acc, i) => acc + i.pawnAmount, 0)}</span>
-        </div>
+              ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10 pb-10">
+                      {displayItems.map(item => (
+                          <ItemCard 
+                              key={item.id} 
+                              item={item} 
+                              currentDay={currentDay} 
+                              actions={renderActions(item)}
+                          />
+                      ))}
+                  </div>
+              )}
+          </div>
       </div>
-    </div>
+    </Modal>
   );
 };

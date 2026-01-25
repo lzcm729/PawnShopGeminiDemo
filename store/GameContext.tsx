@@ -92,7 +92,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'START_GAME':
       clearSave();
-      playSfx('BOOT');
+      // BOOT sound played in component
       return { ...initialState, phase: GamePhase.MORNING_BRIEF };
       
     case 'START_DAY': {
@@ -182,8 +182,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'RESOLVE_TRANSACTION': {
       const { cashDelta, reputationDelta, item, log, customerName } = action.payload;
-      if (cashDelta > 0) playSfx('SUCCESS');
-      else if (cashDelta < 0) playSfx('CLICK'); // Spending money
+      if (cashDelta > 0) playSfx('CASH'); // Earning Money
+      else if (cashDelta < 0) playSfx('CLICK'); // Spending Money (Sound played by button mostly, but good for feedback)
 
       const newRep = { ...state.reputation };
       if (reputationDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += reputationDelta[ReputationType.HUMANITY]!;
@@ -215,7 +215,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'LIQUIDATE_ITEM': {
       const { itemId, amount, name } = action.payload;
-      playSfx('SUCCESS');
+      playSfx('CASH');
       const soldInventory = state.inventory.map(item => {
         if (item.id === itemId) {
              const soldLog = generateSoldLog(item, state.stats.day, amount);
@@ -235,7 +235,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'REDEEM_ITEM': {
         const { itemId, paymentAmount, name } = action.payload;
-        playSfx('SUCCESS');
+        playSfx('CASH');
         const updatedInventory = state.inventory.map(item => {
              if (item.id === itemId) {
                  const redeemLog = generateRedeemLog(state.currentCustomer?.name || "顾客", item, state.stats.day, paymentAmount);
@@ -255,7 +255,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'EXTEND_PAWN': {
         const { itemId, interestPaid, newDueDate, name } = action.payload;
-        playSfx('SUCCESS');
+        playSfx('CASH');
         const updatedInventory = state.inventory.map(item => {
             if (item.id === itemId && item.pawnInfo) {
                 return { ...item, pawnInfo: { ...item.pawnInfo, dueDate: newDueDate, extensionCount: (item.pawnInfo.extensionCount || 0) + 1 } };
@@ -325,7 +325,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
 
     case 'DEFAULT_SELL_ITEM': {
         const { itemId, amount, name } = action.payload;
-        playSfx('SUCCESS');
+        playSfx('CASH');
         const soldInventory = state.inventory.map(item => {
             if (item.id === itemId) {
                 const soldLog = generateSoldLog(item, state.stats.day, amount);
@@ -377,7 +377,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return { ...state, phase: GamePhase.END_OF_DAY };
 
     case 'PAY_RENT':
-      playSfx('CLICK');
+      playSfx('CLICK'); // Should technically be money sound, but money leaving
       const rentRecord: TransactionRecord = { id: crypto.randomUUID(), description: "缴纳房租", amount: -state.stats.rentDue, type: 'RENT' };
       return { ...state, stats: { ...state.stats, cash: state.stats.cash - state.stats.rentDue, rentDueDate: state.stats.rentDueDate + 7 }, dayEvents: [...state.dayEvents, `Paid Rent: $${state.stats.rentDue}`] };
 
@@ -453,7 +453,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         let cashDelta = 0;
         let newInventory = [...state.inventory];
         let transaction: TransactionRecord | null = null;
-        playSfx('SUCCESS');
+        playSfx('CASH');
         if (template.attachments.cash) {
             cashDelta = template.attachments.cash;
             transaction = { id: crypto.randomUUID(), description: `邮件奖励: ${template.sender}`, amount: cashDelta, type: 'REWARD' };
