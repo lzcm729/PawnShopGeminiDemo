@@ -7,7 +7,7 @@ export const EMMA_CHAIN_INIT: EventChainState = {
   npcName: "艾玛",
   isActive: false, 
   stage: 0,
-  variables: { funds: 0, hope: 50, job_chance: 0, has_laptop: 0, redeem_attempted: 0, struggle_occurred: 0 },
+  variables: { funds: 0, hope: 50, job_chance: 0, has_laptop: 0, redeem_attempted: 0, struggle_occurred: 0, breakdown_timer: 0 },
   simulationLog: [],
   simulationRules: [
       { type: 'DELTA', targetVar: 'funds', value: -150 },
@@ -50,6 +50,16 @@ export const EMMA_CHAIN_INIT: EventChainState = {
               { type: 'SCHEDULE_MAIL', templateId: 'mail_emma_boyfriend_left', delayDays: 0 }
           ],
           triggerLog: "彻底崩溃，男友离开了她"
+      },
+      // Logic for delay between breakdown and chip pawn
+      { 
+          type: 'COMPOUND', 
+          sourceVar: 'stage', 
+          operator: '==', 
+          threshold: 4, 
+          targetVar: 'breakdown_timer', 
+          effect: 1,
+          logMessage: "绝望在蔓延... (Days since breakdown +1)" 
       },
       { 
           type: 'CHANCE', 
@@ -118,7 +128,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
       name: "贵妇面霜礼盒",
       category: "奢侈品",
       visualDescription: "一套未拆封的高级护肤品，包装精美。",
-      historySnippet: "本来是买给自己当生日礼物的... 现在吃饭都成问题。",
+      historySnippet: "本来是男友说好送我的生日礼物... 后来他失业了，这还是我自己刷卡买的。",
       appraisalNote: "虽然未拆封，但生产日期是一年前。",
       archiveSummary: "艾玛的生活质量正在急剧下降。",
       realValue: 600,
@@ -387,7 +397,11 @@ export const EMMA_EVENTS: StoryEvent[] = [
   {
     id: "emma_05_chip",
     chainId: "chain_emma",
-    triggerConditions: [{ variable: "stage", operator: "==", value: 4 }, { variable: "funds", operator: "<=", value: 0 }],
+    triggerConditions: [
+        { variable: "stage", operator: "==", value: 4 }, 
+        { variable: "breakdown_timer", operator: ">=", value: 2 }, // Ensures mail was sent at least 1 day prior
+        { variable: "funds", operator: "<=", value: 0 }
+    ],
     item: makeItem({ 
         id: "emma_item_chip", 
         name: "身份芯片", 
@@ -408,7 +422,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
           pawnReason: "只要切断这个芯片，我就不在系统里了。没有信用记录，没有催债电话，没有失败的艾玛。只有... 空白。", 
           redemptionPlea: "赎回？哈... 谁会想赎回一个'失败者'的标签呢？我是来销毁它的。", 
           negotiationDynamic: "价格无所谓。只要能让我买张去地下的单程票。听说那里不看芯片，只看拳头。", 
-          accepted: { fair: "成交。动手吧，给我个痛快。", fleeced: "无所谓了。反正这条命也不值钱。", premium: "这些钱... 够我在地下城换个机械义肢了。谢谢。" }, 
+          accepted: { fair: "成交。动手吧，给我个痛快。", fleeced: "无所谓了。反正这条命也不值钱。", premium: "这些钱... 够我在地下城换个机械义肢了。谢谢。", }, 
           rejected: "看来我连当垃圾的资格都没有。", 
           rejectionLines: { standard: "...", angry: "...", desperate: "..." } 
       },

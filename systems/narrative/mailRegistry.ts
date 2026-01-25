@@ -20,7 +20,7 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
     id: "mail_emma_boyfriend_left",
     sender: "艾玛",
     subject: "一切都结束了",
-    body: `他走了。今早我醒来，发现他的东西都不见了，只留下一张字条说受够了这种没有希望的日子。\n\n电脑赎不回来，工作也没指望了，现在连他也走了。\n\n我觉得好累。这个世界也许真的不适合我。`,
+    body: `我的男朋友走了。\n\n今早我醒来，发现他的东西都不见了，只留下一张字条，说受够了这种和我一起还要背债、看不到希望的日子。\n\n之前当在店里的东西，我恐怕永远也没能力赎回来了。工作没指望，现在连他也走了。\n\n我觉得好累。这个世界也许真的不适合我。`,
     attachments: { cash: 0 }
   },
   "mail_emma_plea": {
