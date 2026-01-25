@@ -28,14 +28,23 @@ export interface MedicalBill {
   status: 'PENDING' | 'PAID' | 'OVERDUE';
 }
 
+export interface MotherCondition {
+  health: number; // 0-100
+  status: 'Stable' | 'Critical' | 'Improving' | 'Worsening';
+  risk: number; // 0-100% chance of complication
+  careLevel: 'None' | 'Basic' | 'Premium';
+}
+
 export interface DailyStats {
   day: number;
   cash: number;
   
   // New Core Loop Fields
   targetSavings: number;
-  motherStatus: string;
+  motherStatus: MotherCondition; // Updated from string
   medicalBill: MedicalBill;
+  
+  visitedToday: boolean; // Tracks if player visited hospital tonight
 
   dailyExpenses: number; 
   actionPoints: number; // Resource for appraisal

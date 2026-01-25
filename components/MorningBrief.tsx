@@ -4,15 +4,13 @@ import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
 import { NewsCategory, ItemStatus, GamePhase } from '../types';
-import { Sun, CloudRain, Wind, TrendingUp, Newspaper, AlertOctagon, Radio, DollarSign, Calendar, Coffee, ArrowRight, Droplets } from 'lucide-react';
+import { Sun, CloudRain, Wind, TrendingUp, Newspaper, AlertOctagon, Radio, DollarSign, Calendar, Coffee, ArrowRight, Droplets, Moon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/Badge';
 
 export const MorningBrief: React.FC = () => {
   const { state, dispatch } = useGame();
-  const { startNewDay } = useGameEngine(); // This actually runs daily setup logic, we might need it? 
-  // Wait, startNewDay in engine calls START_DAY which resets phase to MORNING_BRIEF.
-  // The button here should actually be "OPEN_SHOP".
+  // ... (startNewDay usage if needed later)
 
   const narratives = state.dailyNews.filter(n => n.category === NewsCategory.NARRATIVE);
   const markets = state.dailyNews.filter(n => n.category === NewsCategory.MARKET);
@@ -52,9 +50,10 @@ export const MorningBrief: React.FC = () => {
               </div>
             </div>
             
-            {/* Financial Status */}
+            {/* Scroll Area */}
             <div className="space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-2">
               
+              {/* Financial Status */}
               <div className="bg-noir-200 p-4 rounded border border-noir-400 space-y-3">
                  <div className="text-xs font-bold text-noir-txt-muted uppercase tracking-wider mb-2 flex items-center gap-2">
                     <DollarSign className="w-3 h-3" /> Asset Liquidity
@@ -70,6 +69,25 @@ export const MorningBrief: React.FC = () => {
                     </span>
                     <span className="font-bold">${state.stats.rentDue}</span>
                  </div>
+              </div>
+
+              {/* NIGHT REPORT (New) */}
+              <div className="bg-black/30 p-3 rounded border border-noir-400/50">
+                  <div className="flex items-center gap-2 text-xs font-bold text-noir-txt-muted uppercase mb-2 border-b border-noir-500 pb-1">
+                      <Moon className="w-3 h-3" /> Night Report
+                  </div>
+                  <div className="space-y-1">
+                      {state.dayEvents.length === 0 ? (
+                          <span className="text-[10px] text-stone-600 italic">No significant events overnight.</span>
+                      ) : (
+                          state.dayEvents.map((event, idx) => (
+                              <div key={idx} className="text-[9px] font-mono text-stone-400 flex gap-2 leading-snug">
+                                  <span className="text-stone-600">-</span>
+                                  <span>{event}</span>
+                              </div>
+                          ))
+                      )}
+                  </div>
               </div>
 
               {/* Mail Notification */}
@@ -127,7 +145,7 @@ export const MorningBrief: React.FC = () => {
             </Button>
          </div>
 
-         {/* RIGHT CONTENT: The City Chronicle */}
+         {/* RIGHT CONTENT: The City Chronicle (Unchanged) */}
          <div className="flex-1 bg-[#e7e5e4] text-stone-900 relative flex flex-col min-w-0">
              {/* ... existing right content ... */}
              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-60 pointer-events-none mix-blend-multiply"></div>

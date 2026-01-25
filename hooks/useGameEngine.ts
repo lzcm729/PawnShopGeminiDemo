@@ -4,17 +4,17 @@ import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolv
 import { generateDailyNews } from '../systems/news/engine';
 import { generatePawnLog } from '../systems/game/utils/logGenerator';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
-import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect } from '../types';
+import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect, MotherCondition } from '../types';
 import { usePawnShop } from './usePawnShop';
 import { GAME_CONFIG } from '../systems/game/config';
 import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
-// import { generateCustomer } from '../systems/npc/generator'; // Removed: No longer generating random customers
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
   const { checkDailyExpirations, calculateRedemptionCost } = usePawnShop();
 
   const performNightCycle = () => {
+    // 1. Narrative Side Effects
     const { chains: simulatedChains, sideEffects } = runDailySimulation(state.activeChains);
     
     sideEffects.forEach(({ chainId, op }) => {
@@ -43,6 +43,7 @@ export const useGameEngine = () => {
 
     dispatch({ type: 'UPDATE_CHAINS', payload: simulatedChains });
 
+    // 2. News Generation
     const newsResult = generateDailyNews(tempState);
     dispatch({ type: 'UPDATE_NEWS', payload: newsResult });
     
@@ -50,17 +51,115 @@ export const useGameEngine = () => {
         dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: mailId, delayDays: 0 } });
     });
 
+    // 3. Random Night Events
+    const rollEvent = Math.random();
+    if (rollEvent < 0.3) {
+        const events = [
+            { text: "Security System Glitch: Maintenance required.", cash: -30 },
+            { text: "Street Rat Infestation: Pest control fee.", cash: -20 },
+            { text: "Found loose credits in the sofa cushions.", cash: 15 },
+            { text: "Local kid returned extra change. (Humanity +1)", reputation: { [ReputationType.HUMANITY]: 1 }, cash: 5 },
+            { text: "Vandals cracked the window. Repairs needed.", cash: -50 },
+            { text: "Peaceful night. Slept well. (Health +1)", health: 1 },
+            { text: "Nightmares about debt. (Health -1)", health: -1 }
+        ];
+        
+        const evt = events[Math.floor(Math.random() * events.length)];
+        
+        dispatch({ 
+            type: 'RESOLVE_TRANSACTION', 
+            payload: { 
+                cashDelta: evt.cash || 0, 
+                reputationDelta: evt.reputation || {}, 
+                item: null, 
+                log: `[Night Event] ${evt.text}`, 
+                customerName: "System" 
+            } 
+        });
+
+        if (evt.health) {
+             const mother = state.stats.motherStatus;
+             dispatch({
+                 type: 'UPDATE_MOTHER_STATUS',
+                 payload: { ...mother, health: Math.min(100, Math.max(0, mother.health + evt.health)) }
+             });
+        }
+    }
+
+    // 4. Rent Check
+    if (state.stats.day >= state.stats.rentDueDate) {
+        if (state.stats.cash >= state.stats.rentDue) {
+            dispatch({ type: 'PAY_RENT' });
+        } else {
+            dispatch({ type: 'GAME_OVER', payload: "EVICTED: Unable to pay rent." });
+            return;
+        }
+    }
+
+    // 5. Medical Bill Rotation & Status
+    if (state.stats.medicalBill.status === 'PAID') {
+        dispatch({ type: 'ROTATE_MEDICAL_BILL' });
+    } else if (state.stats.day >= state.stats.medicalBill.dueDate) {
+        dispatch({ type: 'MARK_BILL_OVERDUE' });
+    }
+
+    // 6. Mother Health Calculation (Standard Decay + Status)
+    const currentMother = state.stats.motherStatus;
+    const { medicalBill, day } = state.stats;
+    let newHealth = currentMother.health;
+    let newStatus = currentMother.status;
+    let newRisk = currentMother.risk;
+    let newCareLevel = currentMother.careLevel;
+    let logMessage = '';
+
+    const isBillOverdue = day >= medicalBill.dueDate && medicalBill.status !== 'PAID';
+    
+    if (medicalBill.status === 'PAID') {
+        newCareLevel = 'Premium';
+        newHealth += 2; 
+        newRisk = Math.max(5, newRisk - 5); 
+        newStatus = 'Improving';
+        // logMessage handled by payment action
+    } else if (isBillOverdue) {
+        newCareLevel = 'None';
+        newHealth -= 15; 
+        newRisk = Math.min(100, newRisk + 10); 
+        newStatus = 'Worsening';
+        logMessage = "警告：医药费断缴！药物已停供，母亲病情急剧恶化。";
+    } else {
+        newCareLevel = 'Basic';
+        newHealth -= 1; 
+        newStatus = 'Stable';
+    }
+
+    const complicationRoll = Math.random() * 100;
+    if (complicationRoll < newRisk) {
+        newHealth -= 10;
+        newStatus = 'Critical';
+        logMessage += " 深夜突发并发症！医生进行了紧急抢救。";
+        dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: {}, item: null, log: logMessage, customerName: "Hospital" } });
+    } else if (logMessage) {
+        dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: {}, item: null, log: logMessage, customerName: "Hospital" } });
+    }
+
+    newHealth = Math.max(0, Math.min(100, newHealth));
+
+    const updatedMother: MotherCondition = {
+        health: newHealth,
+        status: newStatus,
+        risk: newRisk,
+        careLevel: newCareLevel
+    };
+
+    dispatch({ type: 'UPDATE_MOTHER_STATUS', payload: updatedMother });
+
+    // 7. End Day (Transition to Morning)
     dispatch({ type: 'END_DAY' });
   };
 
   const startNewDay = () => {
     dispatch({ type: 'PROCESS_DAILY_MAIL' });
     checkDailyExpirations();
-
-    const { medicalBill, day } = state.stats;
-    const cycleStartDay = medicalBill.dueDate - GAME_CONFIG.BILL_CYCLE + 1;
-    // Logic to reset bill status if needed could go here, relying on manual logic for now.
-
     dispatch({ type: 'START_DAY' });
   };
 

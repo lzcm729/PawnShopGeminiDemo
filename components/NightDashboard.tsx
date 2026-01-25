@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Moon, Mail, Package, Calendar, Power, Coffee, Activity } from 'lucide-react';
+import { Moon, Mail, Package, Calendar, Power, Coffee, Activity, AlertCircle, Heart } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 
@@ -18,7 +18,7 @@ export const NightDashboard: React.FC = () => {
     // Medical Bill Logic
     const bill = stats.medicalBill;
     const daysUntilBill = bill.dueDate - stats.day;
-    const canPayBill = stats.cash >= bill.amount && bill.status !== 'PAID';
+    const isOverdue = bill.status === 'OVERDUE' || (daysUntilBill <= 0 && bill.status !== 'PAID');
 
     // Ambience: Lamp flicker logic
     const [lampFlicker, setLampFlicker] = useState(1);
@@ -48,7 +48,7 @@ export const NightDashboard: React.FC = () => {
                 style={{ opacity: lampFlicker * 0.5 }}
             ></div>
 
-            <div className="relative z-10 w-full max-w-5xl h-[80vh] flex gap-8 p-8">
+            <div className="relative z-10 w-full max-w-6xl h-[80vh] flex gap-8 p-8">
                 
                 {/* Left: Desk Area / Menu */}
                 <div className="flex-1 flex flex-col justify-end gap-6">
@@ -61,7 +61,7 @@ export const NightDashboard: React.FC = () => {
                     </div>
 
                     {/* Admin Actions */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                         <button
                             onClick={() => dispatch({ type: 'TOGGLE_MAIL' })}
                             className={cn(
@@ -82,7 +82,7 @@ export const NightDashboard: React.FC = () => {
                         >
                             <Calendar className="w-8 h-8 text-stone-500 group-hover:text-stone-300 group-hover:scale-110 transition-transform" />
                             <span className="text-xs uppercase tracking-widest group-hover:text-white">
-                                Financial Projections
+                                Financials
                             </span>
                         </button>
 
@@ -92,28 +92,55 @@ export const NightDashboard: React.FC = () => {
                         >
                             <Package className="w-8 h-8 text-stone-500 group-hover:text-stone-300 group-hover:scale-110 transition-transform" />
                             <span className="text-xs uppercase tracking-widest group-hover:text-white">
-                                Vault / Inventory ({activeItems})
+                                Vault ({activeItems})
                             </span>
                         </button>
 
-                        {/* Medical Bill Button */}
+                        {/* Medical Terminal Button */}
                         <button
-                            disabled={bill.status === 'PAID' || !canPayBill}
-                            onClick={() => dispatch({ type: 'PAY_MEDICAL_BILL' })}
+                            onClick={() => dispatch({ type: 'TOGGLE_MEDICAL' })}
                             className={cn(
                                 "h-32 border bg-stone-900/50 hover:bg-stone-800 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
-                                bill.status === 'PENDING' ? "border-red-500/50" : "border-stone-800",
-                                bill.status === 'PAID' && "opacity-50 grayscale"
+                                isOverdue ? "border-red-500 animate-pulse bg-red-950/20" : (bill.status === 'PENDING' ? "border-teal-800" : "border-stone-800")
                             )}
                         >
-                            <Activity className={cn("w-8 h-8 transition-transform group-hover:scale-110", bill.status === 'PENDING' ? "text-red-500" : "text-stone-500")} />
+                            <div className="absolute top-2 right-2 flex items-center gap-1">
+                                {isOverdue && <AlertCircle className="w-4 h-4 text-red-500" />}
+                                <span className={cn("text-[9px] font-bold uppercase", stats.motherStatus.health < 50 ? "text-red-500" : "text-stone-500")}>
+                                    HP: {Math.round(stats.motherStatus.health)}%
+                                </span>
+                            </div>
+
+                            <Activity className={cn("w-8 h-8 transition-transform group-hover:scale-110", bill.status === 'PENDING' ? "text-teal-500" : "text-stone-500")} />
                             <div className="flex flex-col items-center">
                                 <span className="text-xs uppercase tracking-widest group-hover:text-white">
-                                    {bill.status === 'PAID' ? "Bills Paid" : "Pay Medical Bill"}
+                                    Medical Admin
                                 </span>
-                                {bill.status !== 'PAID' && (
-                                    <span className="text-[10px] font-mono text-stone-400 mt-1">
-                                        ${bill.amount} (Due: T-{daysUntilBill})
+                                {isOverdue && (
+                                    <span className="text-[9px] text-red-500 font-bold mt-1">
+                                        ! CRITICAL !
+                                    </span>
+                                )}
+                            </div>
+                        </button>
+
+                        {/* NEW: Visit Hospital Button */}
+                        <button
+                            onClick={() => dispatch({ type: 'TOGGLE_VISIT' })}
+                            disabled={stats.visitedToday}
+                            className={cn(
+                                "h-32 border bg-stone-900/50 hover:bg-stone-800 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden col-span-2",
+                                stats.visitedToday ? "border-stone-800 opacity-50 grayscale" : "border-blue-900 hover:border-blue-700"
+                            )}
+                        >
+                            <Heart className={cn("w-8 h-8 transition-transform group-hover:scale-110", stats.visitedToday ? "text-stone-600" : "text-blue-500")} />
+                            <div className="flex flex-col items-center">
+                                <span className={cn("text-xs uppercase tracking-widest font-bold", stats.visitedToday ? "text-stone-500" : "text-blue-200")}>
+                                    {stats.visitedToday ? "Visit Complete" : "Visit Hospital (Action)"}
+                                </span>
+                                {!stats.visitedToday && (
+                                    <span className="text-[9px] text-blue-500/70 mt-1">
+                                        Humanity +2 / Risk -1%
                                     </span>
                                 )}
                             </div>

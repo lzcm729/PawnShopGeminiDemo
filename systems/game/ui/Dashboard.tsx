@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { DollarSign, Calendar, Heart, Briefcase, Skull, Package, Mail, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2 } from 'lucide-react';
+import { DollarSign, Calendar, Heart, Briefcase, Skull, Package, Mail, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2, TrendingDown, TrendingUp } from 'lucide-react';
 import { ReputationType, GamePhase } from '../../core/types';
 import { Button } from '../../../components/ui/Button';
 import { StatDisplay } from '../../../components/ui/StatDisplay';
@@ -21,11 +21,15 @@ export const Dashboard: React.FC = () => {
     const activeItems = inventory.filter(i => i.status !== 'SOLD').length;
     const unreadMailCount = inbox.filter(m => !m.isRead).length;
 
-    // Medical Bill Logic
-    const bill = stats.medicalBill;
-    const daysUntilBill = bill.dueDate - stats.day;
-    const isBillCritical = daysUntilBill <= 2 && bill.status !== 'PAID';
+    // Mother Status Logic
+    const { motherStatus } = stats;
+    const healthPercent = motherStatus.health;
+    const isCritical = motherStatus.status === 'Critical' || motherStatus.status === 'Worsening';
+    const isStable = motherStatus.status === 'Stable' || motherStatus.status === 'Improving';
     
+    // Pulse Speed based on Risk
+    const pulseSpeed = motherStatus.risk > 50 ? '0.5s' : (motherStatus.risk > 20 ? '1s' : '2s');
+
     // Goal Logic
     const goalProgress = Math.min(100, (stats.cash / stats.targetSavings) * 100);
     const canPaySurgery = stats.cash >= stats.targetSavings;
@@ -73,30 +77,43 @@ export const Dashboard: React.FC = () => {
             issues={validationIssues}
         />
 
-        {/* LEFT: SURVIVAL (Medical Bill Monitor) */}
+        {/* LEFT: LIFE MONITOR */}
         <div className="flex items-center gap-4 w-1/3">
             <div 
                 className={cn(
                     "flex-1 relative overflow-hidden rounded border p-2 flex items-center justify-between transition-all group",
-                    isBillCritical ? "bg-red-950/30 border-red-500 animate-pulse" : "bg-noir-200 border-noir-400"
+                    isCritical ? "bg-red-950/30 border-red-500 animate-pulse" : "bg-noir-200 border-noir-400"
                 )}
             >
-                <div className="flex items-center gap-3">
-                    <div className={cn("p-2 rounded-full border", isBillCritical ? "bg-red-900 text-red-100 border-red-500" : "bg-noir-300 border-noir-500 text-red-500")}>
-                        <Activity className={cn("w-5 h-5", isBillCritical && "animate-[ping_1s_ease-in-out_infinite]")} />
+                <div className="flex items-center gap-3 w-full">
+                    {/* Heartbeat Icon */}
+                    <div className={cn("p-2 rounded-full border relative", isCritical ? "bg-red-900 text-red-100 border-red-500" : "bg-noir-300 border-noir-500 text-green-500")}>
+                        <Activity className="w-5 h-5" style={{ animation: `pulse ${pulseSpeed} infinite` }} />
                     </div>
-                    <div>
-                        <div className="text-[10px] uppercase font-bold text-noir-txt-muted tracking-wider">Life Support</div>
-                        <div className={cn("text-sm font-mono font-bold flex items-center gap-2", isBillCritical ? "text-red-500" : "text-noir-txt-primary")}>
-                            {bill.status === 'PAID' ? (
-                                <span className="text-green-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> STABLE</span>
-                            ) : (
-                                <span>-${bill.amount} (T-{daysUntilBill})</span>
-                            )}
+                    
+                    <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-end mb-1">
+                            <span className="text-[10px] uppercase font-bold text-noir-txt-muted tracking-wider">Patient Status</span>
+                            <span className={cn("text-[10px] font-bold uppercase", isCritical ? "text-red-500" : "text-green-500")}>
+                                {motherStatus.status}
+                            </span>
+                        </div>
+                        
+                        {/* Health Bar */}
+                        <div className="w-full h-2 bg-black rounded-full overflow-hidden border border-stone-800 relative">
+                            <div 
+                                className={cn("h-full transition-all duration-1000", 
+                                    healthPercent < 30 ? "bg-red-600" : (healthPercent < 60 ? "bg-amber-500" : "bg-green-500")
+                                )}
+                                style={{ width: `${healthPercent}%` }}
+                            />
+                        </div>
+                        <div className="flex justify-between mt-1 text-[9px] font-mono text-stone-500">
+                            <span>BPM: {isCritical ? "120" : "75"}</span>
+                            <span>Risk: {motherStatus.risk}%</span>
                         </div>
                     </div>
                 </div>
-                {/* Button removed here, moved to NightDashboard */}
             </div>
         </div>
 

@@ -28,7 +28,9 @@ export interface GameState {
   showInventory: boolean;
   showMail: boolean; 
   showDebug: boolean; 
-  showFinancials: boolean; // New Flag for Calendar
+  showFinancials: boolean; 
+  showMedical: boolean; 
+  showVisit: boolean; // New Flag for Hospital Visit
   activeChains: EventChainState[]; 
   inbox: MailInstance[];
   pendingMails: MailInstance[];

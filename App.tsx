@@ -12,12 +12,15 @@ import { EndOfDaySummary } from './components/EndOfDaySummary';
 import { InventoryModal } from './components/InventoryModal'; 
 import { MailModal } from './components/MailModal';
 import { FinancialCalendar } from './components/FinancialCalendar';
+import { MedicalModal } from './components/MedicalModal';
+import { HospitalVisitModal } from './components/HospitalVisitModal'; 
 import { DebugPanel } from './components/DebugPanel';
-import { DepartureView } from './components/ShopClosedView'; // Renamed file export
+import { DepartureView } from './components/ShopClosedView'; 
 import { StartScreen } from './components/StartScreen';
 import { MorningBrief } from './components/MorningBrief';
-import { NightDashboard } from './components/NightDashboard'; // New Component
+import { NightDashboard } from './components/NightDashboard'; 
 import { GameOverScreen } from './components/GameOverScreen';
+import { VictoryScreen } from './components/VictoryScreen'; // New Import
 import { GamePhase } from './types';
 import { playSfx } from './systems/game/audio';
 import { Button } from './components/ui/Button';
@@ -85,6 +88,8 @@ const GameContent: React.FC = () => {
         <InventoryModal />
         <MailModal />
         <FinancialCalendar />
+        <MedicalModal />
+        <HospitalVisitModal />
         <DebugPanel />
       </>
     );
@@ -105,9 +110,10 @@ const GameContent: React.FC = () => {
 
   if (state.phase === GamePhase.VICTORY) {
       return (
-          <div className="h-screen flex items-center justify-center bg-white text-black font-serif text-3xl">
-              VICTORY - MOTHER SAVED
-          </div>
+          <>
+            <VictoryScreen onRestart={() => window.location.reload()} />
+            <DebugPanel />
+          </>
       )
   }
 
@@ -127,6 +133,9 @@ const GameContent: React.FC = () => {
       <InventoryModal />
       <MailModal />
       <FinancialCalendar />
+      <MedicalModal />
+      {/* HospitalVisitModal is typically only Night, but safe to include if guarded by showVisit */}
+      <HospitalVisitModal /> 
       <DebugPanel />
 
       <main className="flex-1 overflow-hidden relative">

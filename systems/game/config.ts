@@ -13,6 +13,13 @@ export const GAME_CONFIG = {
   RENT_CYCLE: 7,             // 租金缴纳周期 (Days)
   DAILY_EXPENSES: 50,        // 每日运营/生活成本 (Burn Rate)
   
+  INITIAL_MOTHER_STATUS: {
+      health: 80,
+      status: 'Stable',
+      risk: 10,
+      careLevel: 'Basic'
+  } as const,
+  
   // --- GAMEPLAY SETTINGS ---
   INITIAL_ACTION_POINTS: 10, // 每日行动点上限 (用于鉴定)
   MAX_CUSTOMERS_PER_DAY: 1,  // 每日营业接待顾客数量上限
