@@ -435,12 +435,28 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           
           {chatLog.map((log, idx) => {
               const isPlayer = log.sender === 'player';
+              const isSystem = log.sender === 'system';
+
+              // Task 3.2: System Message Divider
+              if (isSystem) {
+                  return (
+                    <div key={log.id} className="flex items-center justify-center my-3 gap-3 opacity-0 animate-[fadeIn_0.2s_ease-out_forwards]">
+                        <div className="flex-1 h-px bg-gradient-to-r from-transparent to-noir-400" />
+                        <span className="text-[10px] text-noir-txt-muted font-mono uppercase tracking-wider px-2">
+                            {log.text}
+                        </span>
+                        <div className="flex-1 h-px bg-gradient-to-l from-transparent to-noir-400" />
+                    </div>
+                  );
+              }
+
+              // Task 3.1: Player Bubble Stripe
               return (
                   <div key={log.id} className={cn("flex flex-col max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300", isPlayer ? "items-end ml-auto" : "items-start")}>
                       <div className={cn(
                           "px-4 py-3 rounded-lg relative shadow-sm text-sm border",
                           isPlayer 
-                              ? "bg-noir-300 border-noir-400 text-noir-txt-primary font-mono text-right rounded-br-none" 
+                              ? "bg-noir-300 border-noir-400 text-noir-txt-primary font-mono text-right rounded-br-none border-l-[3px] border-l-amber-600" 
                               : "bg-noir-200 border-noir-400 text-stone-300 font-serif leading-relaxed rounded-bl-none"
                       )}>
                           {log.text}
@@ -512,7 +528,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                     <RateToggle rate={0.20} label="Shark" />
                  </div>
 
-                 {/* Principal Dial */}
+                 {/* Principal Dial - Task 2.1: Adjusted Glow */}
                  <div className="flex items-center gap-2">
                      <button
                          onMouseDown={() => startAdjusting(-100)}
@@ -533,7 +549,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                      
                      <div className="flex-1 bg-black border border-noir-400 h-12 flex items-center justify-center relative rounded overflow-hidden">
                          <div className="absolute inset-0 bg-amber-900/10 animate-pulse"></div>
-                         <span className="relative z-10 text-3xl font-mono font-bold text-amber-500 tracking-widest drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                         <span className="relative z-10 text-3xl font-mono font-bold text-amber-500 tracking-widest drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">
                             <RollingNumber value={offerPrincipal} prefix="$" />
                          </span>
                      </div>
@@ -575,7 +591,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                     )}
                  </div>
 
-                 {/* Main Action */}
+                 {/* Main Action - Task 2.2: Submit Button Shadow */}
                  <div className="flex gap-3">
                     <Button 
                       variant="danger" 
@@ -591,7 +607,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                       variant="primary" 
                       onClick={handleOffer} 
                       disabled={!canInteract || !canAfford}
-                      className="flex-1 h-14 text-xl tracking-[0.2em] relative overflow-hidden shadow-[0_0_20px_rgba(217,119,6,0.3)]"
+                      className="flex-1 h-14 text-xl tracking-[0.2em] relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)]"
                     >
                        <Stamp className="w-5 h-5 mr-3" />
                        SUBMIT

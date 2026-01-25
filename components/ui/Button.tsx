@@ -27,7 +27,8 @@ export const Button: React.FC<ButtonProps> = ({
   ...props 
 }) => {
   
-  const baseStyles = "relative inline-flex items-center justify-center font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-accent focus-visible:ring-offset-2 focus-visible:ring-offset-noir-100";
+  // Task 1.2: Added hover:scale-[1.02]
+  const baseStyles = "relative inline-flex items-center justify-center font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-accent focus-visible:ring-offset-2 focus-visible:ring-offset-noir-100 hover:scale-[1.02]";
   
   const variants = {
     primary: "bg-noir-accent text-noir-txt-inverse shadow-[0_0_15px_rgba(217,119,6,0.3)] hover:bg-amber-500 hover:shadow-[0_0_20px_rgba(217,119,6,0.5)] border border-transparent",
