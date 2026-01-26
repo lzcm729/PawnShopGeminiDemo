@@ -108,14 +108,18 @@ export interface SimOperation {
   delayDays?: number;
 }
 
-export interface RuleDelta {
+export interface RuleBase {
+    condition?: TriggerCondition;
+}
+
+export interface RuleDelta extends RuleBase {
   type: 'DELTA';
   targetVar: string;
   value: number; 
   logMessage?: string;
 }
 
-export interface RuleChance {
+export interface RuleChance extends RuleBase {
   type: 'CHANCE';
   chanceVar?: string; 
   chanceFixed?: number; 
@@ -125,7 +129,7 @@ export interface RuleChance {
   failLog?: string; 
 }
 
-export interface RuleThreshold {
+export interface RuleThreshold extends RuleBase {
   type: 'THRESHOLD';
   targetVar: string;
   operator: '>' | '<' | '>=' | '<=' | '==';
@@ -134,7 +138,7 @@ export interface RuleThreshold {
   triggerLog?: string; 
 }
 
-export interface RuleCompound {
+export interface RuleCompound extends RuleBase {
     type: 'COMPOUND';
     sourceVar: string;      
     operator: '>' | '<' | '>=' | '<=' | '==';

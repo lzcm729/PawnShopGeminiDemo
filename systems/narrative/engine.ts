@@ -144,6 +144,11 @@ export const runDailySimulation = (chains: EventChainState[]): { chains: EventCh
     if (!newChain.simulationRules) return newChain;
 
     newChain.simulationRules.forEach(rule => {
+        // Check generic condition if present
+        if (rule.condition && !checkCondition(rule.condition, newChain)) {
+            return;
+        }
+
         if (rule.type === 'DELTA') {
             const current = newChain.variables[rule.targetVar] || 0;
             newChain.variables[rule.targetVar] = current + rule.value;

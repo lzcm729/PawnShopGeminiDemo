@@ -1,6 +1,17 @@
 
-import { EventChainState, StoryEvent, ItemStatus } from '../../../types';
+import { EventChainState, StoryEvent, ItemStatus, MailTemplate } from '../../../types';
 import { makeItem } from '../utils';
+
+// --- UNDERWORLD MAILS ---
+export const UNDERWORLD_MAILS: Record<string, MailTemplate> = {
+  "mail_underworld_warning": {
+    id: "mail_underworld_warning",
+    sender: "[未知]",
+    subject: "你会后悔的",
+    body: `老板，\n\n听说你店里收了一个不该收的东西 ({{relatedItemName}})。\n我们的人很快会来"取回"它。\n\n如果东西还在，我们可以当作什么都没发生。\n如果不在... 夜路走多了，小心影子。\n\n别报警。你知道的。`,
+    attachments: { cash: 0 }
+  }
+};
 
 export const UNDERWORLD_CHAIN_INIT: EventChainState = {
     id: "chain_underworld",
