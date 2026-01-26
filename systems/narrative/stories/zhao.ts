@@ -8,7 +8,7 @@ export const ZHAO_MAILS: Record<string, MailTemplate> = {
       id: "mail_zhao_offer",
       sender: "匿名收藏顾问",
       subject: "关于那套勋章的报价",
-      body: `老板，\n\n我看到你店里收了一张立功证书。如果我没猜错，那枚编号029的勋章也在你手里吧？\n\n单卖勋章不值钱，但如果证书和勋章能凑成一套，那就是另一回事了。\n\n我代表一位海外买家出价：$38,000 收购整套（勋章+证书+合影）。\n\n我会在 Day 8 下午再次登门。希望到时候东西还在你店里（或者在你手里，我不介意你是怎么弄到它们的）。`,
+      body: `老板，\n\n我看到你店里收了一张立功证书。如果我没猜错，那枚编号029的勋章也在你手里吧？\n\n单卖勋章不值钱，但如果证书和勋章能凑成一套，那就是另一回事了。\n\n我代表一位海外买家出价：$38,000 收购整套（勋章+证书+合影）。\n\n我会在 Day 10 左右再次登门。届时离婚礼（27号）只剩一周多，那老头应该急着要东西。\n\n希望到时候东西还在你店里。`,
       attachments: { cash: 0 }
   },
   "mail_zhao_good": {
@@ -57,7 +57,7 @@ export const ZHAO_MAILS: Record<string, MailTemplate> = {
       id: "mail_zhao_rumor",
       sender: "同行老李",
       subject: "有人在打听老物件",
-      body: `老弟：\n\n最近有个穿西装的在咱们这片转悠，专门打听老军功章的事。听说他背后是个大买家，出手很阔绰。\n\n你店里如果有这类东西，可得留个心眼。这种人看着体面，背后的道道多着呢。\n\n提醒你一句，别让人给套路了。\n\n老李`,
+      body: `老弟：\n\n最近有个穿西装的在咱们这片转悠，专门打听老军功章的事。听说他背后是个大买家，出手很阔绰。\n\n你店里如果有这类东西，可得留个心眼。这种人看着体面，背后的道道多着呢。\n\n对了，听说那老兵的孙子婚礼是27号。你可得把东西保管好了。\n\n老李`,
       attachments: { cash: 0 }
   },
   "mail_zhao_hospital": {
@@ -72,6 +72,70 @@ export const ZHAO_MAILS: Record<string, MailTemplate> = {
       sender: "社区通知",
       subject: "关于周守义老人的情况",
       body: `致相关人士：\n\n周守义老人因经济困难和精神压力，于昨日被送往医院。他的孙子婚礼已推迟。\n\n老人在病床上一直念叨着什么"勋章"和"老伙计"。如果您知道相关情况，请与我们联系。`,
+      attachments: { cash: 0 }
+  },
+  
+  // Phase 1: 交易即时反馈
+  "mail_zhao_01_charity": {
+      id: "mail_zhao_01_charity",
+      sender: "周守义",
+      subject: "谢谢你，老板",
+      body: `老板，\n\n今天多谢你帮忙。这个价格比我预想的好。\n\n孙子的婚礼是27号，我得抓紧时间把红包凑齐。等退休金一到账，我第一时间来赎。\n\n你是个公道人。\n\n老周`,
+      attachments: { cash: 0 }
+  },
+  "mail_zhao_01_shark": {
+      id: "mail_zhao_01_shark",
+      sender: "周守义",
+      subject: "（无主题）",
+      body: `老板，\n\n钱是少了点，但有总比没有好。\n\n我得去医院看看腿了。这老毛病，一受气就犯。\n\n老周`,
+      attachments: { cash: 0 }
+  },
+  "mail_zhao_03_charity": {
+      id: "mail_zhao_03_charity",
+      sender: "周守义",
+      subject: "住院押金交了",
+      body: `老板，\n\n多亏你今天帮我一把，住院押金总算交上了。医生说要观察几天。\n\n证书放你那，我放心。千万别跟勋章拆散了。\n\n老周`,
+      attachments: { cash: 0 }
+  },
+  "mail_zhao_03_shark": {
+      id: "mail_zhao_03_shark",
+      sender: "周守义",
+      subject: "...",
+      body: `老板，\n\n这点钱... 也就够交一半押金。剩下的我再想办法吧。\n\n腿疼得厉害，心里也堵得慌。\n\n老周`,
+      attachments: { cash: 0 }
+  },
+
+  // Phase 2: Stress Warning Mails
+  "mail_zhao_stress_warning": {
+      id: "mail_zhao_stress_warning",
+      sender: "孙子 小周",
+      subject: "关于我爷爷",
+      body: `当铺老板：\n\n我是周守义的孙子。最近爷爷的状态不太好，血压一直高。\n\n他不愿意告诉我发生了什么，但我看到他整夜整夜睡不着，嘴里念叨着什么勋章的事。\n\n如果你知道什么，请告诉我。谢谢。\n\n小周`,
+      attachments: { cash: 0 }
+  },
+  "mail_zhao_health_warning": {
+      id: "mail_zhao_health_warning",
+      sender: "社区医院",
+      subject: "患者周守义的健康提醒",
+      body: `致相关人士：\n\n患者周守义近日血压持续偏高，情绪波动较大。\n\n医生建议患者减少压力，避免剧烈情绪起伏。如有相关事宜，请尽量给予老人关照。\n\n此致`,
+      attachments: { cash: 0 }
+  },
+
+  // Phase 3: Hospital Update
+  "mail_zhao_hospital_update": {
+      id: "mail_zhao_hospital_update",
+      sender: "孙子 小周",
+      subject: "爷爷的情况",
+      body: `当铺老板：\n\n爷爷的腿犯了老毛病，这两天一直在医院。医生说是老伤复发，加上最近压力大。\n\n他一直念叨着什么勋章的事，说那是老战友的命。我不太懂你们之间的事，但爷爷说你是个好人。\n\n等爷爷好点了，他会去你那取东西的。拜托照顾好那些东西。\n\n小周`,
+      attachments: { cash: 0 }
+  },
+
+  // Phase 4: Redeem Success
+  "mail_zhao_redeem_success": {
+      id: "mail_zhao_redeem_success",
+      sender: "周守义",
+      subject: "老伙计回家了",
+      body: `老板，\n\n勋章拿回来了，放在枕头底下，心里踏实多了。\n\n孙子的婚礼定在27号。我想穿着军装、戴着这枚勋章去证婚。这是我这辈子最体面的事。\n\n等证书也赎回来，我请你喝喜酒。\n\n老周`,
       attachments: { cash: 0 }
   }
 };
@@ -94,13 +158,34 @@ export const ZHAO_CHAIN_INIT: EventChainState = {
         { type: 'THRESHOLD', targetVar: 'day', operator: '==', value: 7, onTrigger: [{ type: 'MOD_VAR', target: 'funds', value: 600 }] },
         { type: 'THRESHOLD', targetVar: 'day', operator: '==', value: 11, onTrigger: [{ type: 'MOD_VAR', target: 'funds', value: 1500 }] },
         { type: 'THRESHOLD', targetVar: 'day', operator: '==', value: 14, onTrigger: [{ type: 'MOD_VAR', target: 'funds', value: 1000 }] },
-        // New Stress Rule - Only trigger if stage < 99 (Active story)
+        // Phase 2: Stress Warnings
+        {
+            type: 'THRESHOLD',
+            targetVar: 'stress',
+            operator: '>=',
+            value: 15,
+            onTrigger: [
+                { type: 'SCHEDULE_MAIL', templateId: 'mail_zhao_stress_warning', delayDays: 0 }
+            ],
+            triggerLog: "周老压力初显，孙子发来担忧"
+        },
+        {
+            type: 'THRESHOLD',
+            targetVar: 'stress',
+            operator: '>=',
+            value: 25,
+            onTrigger: [
+                { type: 'SCHEDULE_MAIL', templateId: 'mail_zhao_health_warning', delayDays: 0 }
+            ],
+            triggerLog: "周老健康状况恶化，医院发来警告"
+        },
+        // Hospital Trigger
         {
             type: 'THRESHOLD',
             condition: { variable: 'stage', operator: '<', value: 99 },
             targetVar: 'stress',
             operator: '>=',
-            value: 30,
+            value: 35, // Increased from 30 to allow player more agency
             onTrigger: [
                 { type: 'SET_STAGE', value: 99 },
                 { type: 'SCHEDULE_MAIL', templateId: 'mail_zhao_hospital', delayDays: 0 }
@@ -156,10 +241,33 @@ export const ZHAO_EVENTS: StoryEvent[] = [
             redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 4, mood: 'Neutral', tags: ["Emotional", "HighMoralStake"]
         },
         outcomes: {
-            "deal_charity": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "trust", value: 10 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 }],
-            "deal_aid":     [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "trust", value: 5 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 }],
-            "deal_standard":[{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 }],
-            "deal_shark":   [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "stress", value: 10 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 }]
+            "deal_charity": [
+                { type: "ADD_FUNDS_DEAL" }, 
+                { type: "SET_STAGE", value: 1 }, 
+                { type: "MODIFY_VAR", variable: "trust", value: 10 }, 
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 },
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_01_charity", delayDays: 0 } // Immediate Feedback
+            ],
+            "deal_aid": [
+                { type: "ADD_FUNDS_DEAL" }, 
+                { type: "SET_STAGE", value: 1 }, 
+                { type: "MODIFY_VAR", variable: "trust", value: 5 }, 
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 },
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_01_charity", delayDays: 0 } // Immediate Feedback
+            ],
+            "deal_standard": [
+                { type: "ADD_FUNDS_DEAL" }, 
+                { type: "SET_STAGE", value: 1 }, 
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 }
+            ],
+            "deal_shark": [
+                { type: "ADD_FUNDS_DEAL" }, 
+                { type: "SET_STAGE", value: 1 }, 
+                { type: "MODIFY_VAR", variable: "stress", value: 10 }, 
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_rumor", delayDays: 2 },
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_01_shark", delayDays: 0 }, // Immediate Feedback
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_hospital_update", delayDays: 4 } // Bridge to next appearance
+            ]
         },
         onReject: [{ type: "DEACTIVATE_CHAIN" }]
     },
@@ -228,6 +336,8 @@ export const ZHAO_EVENTS: StoryEvent[] = [
             desiredAmount: 3000, minimumAmount: 2000, maxRepayment: 4000,
             dialogue: {
                 greeting: [
+                    { condition: { variable: "stress", operator: ">=", value: 20 }, text: "老板... [老人的手在发抖，脸色发白] 我... 我又来了..." },
+                    { condition: { variable: "stress", operator: ">=", value: 10 }, text: "老板... [老人脸色不太好] 我又来了。" },
                     { condition: { variable: "funds", operator: "<", value: 0 }, text: "老板... 我又来了。这次是真的没办法了。" },
                     { text: "老板... 我又来了。" }
                 ],
@@ -250,10 +360,32 @@ export const ZHAO_EVENTS: StoryEvent[] = [
             redemptionResolve: "Strong", negotiationStyle: "Desperate", patience: 3, mood: 'Neutral', tags: ["Emotional"]
         },
         outcomes: {
-            "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "trust", value: 5 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }],
-            "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "MODIFY_VAR", variable: "trust", value: 3 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }],
-            "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }],
-            "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 3 }, { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }, { type: "MODIFY_VAR", variable: "stress", value: 20 }]
+            "deal_charity": [
+                { type: "ADD_FUNDS_DEAL" }, 
+                { type: "SET_STAGE", value: 3 }, 
+                { type: "MODIFY_VAR", variable: "trust", value: 5 }, 
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 },
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_03_charity", delayDays: 0 } // Immediate Feedback
+            ],
+            "deal_aid": [
+                { type: "ADD_FUNDS_DEAL" }, 
+                { type: "SET_STAGE", value: 3 }, 
+                { type: "MODIFY_VAR", variable: "trust", value: 3 }, 
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 },
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_03_charity", delayDays: 0 } // Immediate Feedback
+            ],
+            "deal_standard": [
+                { type: "ADD_FUNDS_DEAL" }, 
+                { type: "SET_STAGE", value: 3 }, 
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }
+            ],
+            "deal_shark": [
+                { type: "ADD_FUNDS_DEAL" }, 
+                { type: "SET_STAGE", value: 3 }, 
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }, 
+                { type: "MODIFY_VAR", variable: "stress", value: 20 },
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_03_shark", delayDays: 0 } // Immediate Feedback
+            ]
         },
         onReject: [{ type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_REP", value: -10 }]
     },
@@ -301,11 +433,19 @@ export const ZHAO_EVENTS: StoryEvent[] = [
             },
             "all_safe": {
                 dialogue: "老板，钱凑齐了。连本带利，我想把勋章赎回去。只有放在自己枕头底下，心里才踏实。", 
-                outcome: [{ type: "REDEEM_TARGET_ONLY" }, { type: "SET_STAGE", value: 4 }]
+                outcome: [
+                    { type: "REDEEM_TARGET_ONLY" }, 
+                    { type: "SET_STAGE", value: 4 },
+                    { type: "SCHEDULE_MAIL", templateId: "mail_zhao_redeem_success", delayDays: 0 } // Good Ending Path
+                ]
             },
             "core_safe": {
                 dialogue: "老板，钱凑齐了。连本带利，我想把勋章赎回去。只有放在自己枕头底下，心里才踏实。", 
-                outcome: [{ type: "REDEEM_TARGET_ONLY" }, { type: "SET_STAGE", value: 4 }]
+                outcome: [
+                    { type: "REDEEM_TARGET_ONLY" }, 
+                    { type: "SET_STAGE", value: 4 },
+                    { type: "SCHEDULE_MAIL", templateId: "mail_zhao_redeem_success", delayDays: 0 } // Good Ending Path
+                ]
             },
             "hostile_takeover": {
                 dialogue: "强买强卖？好... 好... 你们这些吸血鬼。",
