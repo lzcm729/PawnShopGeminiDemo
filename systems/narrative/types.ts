@@ -162,6 +162,12 @@ export interface ChainVariables {
   [key: string]: any; 
 }
 
+export interface FateHintDefinition {
+    condition: TriggerCondition;
+    hints: string[];
+    priority: number;
+}
+
 export interface EventChainState {
   id: string; 
   npcName: string;
@@ -169,7 +175,8 @@ export interface EventChainState {
   stage: number; 
   variables: ChainVariables;
   simulationRules: SimRule[]; 
-  simulationLog?: SimLogEntry[]; 
+  simulationLog?: SimLogEntry[];
+  fateHints?: FateHintDefinition[]; // NEW: Character specific hints
 }
 
 // --- EFFECTS & EVENTS ---

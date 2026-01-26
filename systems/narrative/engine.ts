@@ -1,7 +1,6 @@
 
 import { EventChainState, StoryEvent, TriggerCondition, Dialogue, DialogueText, SimOperation, Customer, Item, ItemStatus, DynamicFlowOutcome } from '../../types';
 import { GameState } from '../game/types';
-import { generateFateHint } from './fateHints';
 
 // Helper: Evaluate a single condition
 export const checkCondition = (condition: TriggerCondition, chain: EventChainState): boolean => {
@@ -304,6 +303,27 @@ const generateRenewalCustomer = (item: Item, chain: EventChainState, currentDay:
     };
 };
 
+const resolveFateHint = (chain: EventChainState): string | undefined => {
+    if (!chain.fateHints || chain.fateHints.length === 0) return undefined;
+
+    let highestPriority = -1;
+    let candidates: string[] = [];
+
+    for (const hintDef of chain.fateHints) {
+        if (checkCondition(hintDef.condition, chain)) {
+            if (hintDef.priority > highestPriority) {
+                highestPriority = hintDef.priority;
+                candidates = [...hintDef.hints];
+            } else if (hintDef.priority === highestPriority) {
+                candidates.push(...hintDef.hints);
+            }
+        }
+    }
+
+    if (candidates.length === 0) return undefined;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+};
+
 export const instantiateStoryCustomer = (
     event: StoryEvent, 
     inventory: Item[] = [], 
@@ -314,15 +334,12 @@ export const instantiateStoryCustomer = (
     const baseItem = event.item || template.item || {};
     const deepItem = JSON.parse(JSON.stringify(baseItem));
     
-    // Fate Hint Logic: Inject observation, do NOT modify dialogue
+    // Fate Hint Logic: Inject observation using chain-specific data
     let dialogue = template.dialogue;
     let observation: string | undefined;
 
     if (chainState) {
-        const fateHint = generateFateHint(chainState.variables);
-        if (fateHint) {
-            observation = fateHint;
-        }
+        observation = resolveFateHint(chainState);
     }
 
     const resolvedDialogue = resolveCustomerDialogue(dialogue, chainState);
