@@ -59,6 +59,7 @@ export const EMMA_CHAIN_INIT: EventChainState = {
           threshold: 4, 
           targetVar: 'breakdown_timer', 
           effect: 1,
+          cap: { min: 0, max: 7 },
           logMessage: "绝望在蔓延... (Days since breakdown +1)" 
       },
       { 
@@ -118,10 +119,10 @@ export const EMMA_EVENTS: StoryEvent[] = [
       redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 3, mood: 'Neutral', tags: ["Story", "LowRisk"]
     },
     outcomes: {
-      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 70 }, { type: "MODIFY_VAR", variable: "job_chance", value: 30 }],
-      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 65 }, { type: "MODIFY_VAR", variable: "job_chance", value: 25 }],
-      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 60 }, { type: "MODIFY_VAR", variable: "job_chance", value: 20 }],
-      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "ADD_FUNDS", value: -900 }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 40 }, { type: "MODIFY_VAR", variable: "job_chance", value: 10 }]
+      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 70 }, { type: "MODIFY_VAR", variable: "job_chance", value: 30 }],
+      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 65 }, { type: "MODIFY_VAR", variable: "job_chance", value: 25 }],
+      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 60 }, { type: "MODIFY_VAR", variable: "job_chance", value: 20 }],
+      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 40 }, { type: "MODIFY_VAR", variable: "job_chance", value: 10 }]
     },
     onReject: [{ type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 40 }]
   },
@@ -167,17 +168,17 @@ export const EMMA_EVENTS: StoryEvent[] = [
         exitDialogues: {
             grateful: "我不会忘记你的帮助的... 等我发了工资就来。",
             neutral: "走了。",
-            resentful: "这点钱... 也就够买几天面包。",
+            resentful: "点这点钱... 也就够买几天面包。",
             desperate: "[她拿着钱的手在发抖，似乎想说什么，但最后只是匆匆离开了]"
         }
       },
       redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 3, mood: 'Neutral', tags: ["Story"]
     },
     outcomes: {
-      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 10 }, { type: "MODIFY_VAR", variable: "job_chance", delta: 10 }],
-      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 0 }, { type: "MODIFY_VAR", variable: "job_chance", delta: 5 }],
-      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -5 }, { type: "MODIFY_VAR", variable: "job_chance", delta: 0 }],
-      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -15 }, { type: "MODIFY_VAR", variable: "job_chance", delta: -5 }]
+      "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", delta: 10 }, { type: "MODIFY_VAR", variable: "job_chance", delta: 10 }],
+      "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", delta: 0 }, { type: "MODIFY_VAR", variable: "job_chance", delta: 5 }],
+      "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", delta: -5 }, { type: "MODIFY_VAR", variable: "job_chance", delta: 0 }],
+      "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", delta: -15 }, { type: "MODIFY_VAR", variable: "job_chance", delta: -5 }]
     },
     onReject: [{ type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: -20 }]
   },
@@ -330,7 +331,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
         { variable: "stage", operator: "==", value: 3 },
         { variable: "redeem_attempted", operator: "==", value: 1 },
         { variable: "struggle_occurred", operator: "==", value: 0 },
-        { variable: "funds", operator: ">", value: 0 } 
+        { variable: "funds", operator: ">", value: -500 } 
     ],
     item: makeItem({
         id: "emma_item_watch",
@@ -373,10 +374,10 @@ export const EMMA_EVENTS: StoryEvent[] = [
         redemptionResolve: "Weak", negotiationStyle: "Desperate", patience: 2, mood: 'Neutral', tags: ["Story"]
     },
     outcomes: {
-        "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", value: 8 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }],
-        "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", value: 3 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }],
-        "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", value: -3 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }],
-        "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", value: -10 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }]
+        "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", delta: 8 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }],
+        "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", delta: 3 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }],
+        "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", delta: -3 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }],
+        "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "MODIFY_VAR", variable: "hope", delta: -10 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }]
     },
     onReject: [{ type: "MODIFY_VAR", variable: "hope", value: -15 }, { type: "MODIFY_VAR", variable: "struggle_occurred", value: 1 }]
   },
@@ -423,10 +424,10 @@ export const EMMA_EVENTS: StoryEvent[] = [
       redemptionResolve: "None", negotiationStyle: "Desperate", patience: 1, mood: "Neutral", tags: ["Tragedy"]
     },
     outcomes: { 
-        "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", value: 5 }], 
-        "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", value: 0 }],
-        "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", value: -5 }],
-        "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", value: -15 }]
+        "deal_charity":  [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", delta: 5 }], 
+        "deal_aid":      [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", delta: 0 }],
+        "deal_standard": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", delta: -5 }],
+        "deal_shark":    [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 4 }, { type: "MODIFY_VAR", variable: "hope", delta: -15 }]
     },
     onReject: [{ type: "SET_STAGE", value: 4 }]
   },

@@ -280,12 +280,29 @@ export const useGameEngine = () => {
           }
 
           if (narrativeEvent.type === 'REDEMPTION_CHECK') {
-              const flowResult = resolveRedemptionFlow(narrativeEvent, state.inventory, chainState?.variables?.targetItemId);
+              // Determine if forced sale happened (Sold while active)
+              let forceSold = false;
+              const tId = narrativeEvent.targetItemId || chainState?.variables?.targetItemId;
+              
+              if (tId) {
+                  const item = state.inventory.find(i => i.id === tId);
+                  if (item && item.status === ItemStatus.SOLD) {
+                      // Check logs to see if it was forfeit. If NO 'FORFEIT' log, it was a breach sale.
+                      const wasForfeit = item.logs.some(l => l.type === 'FORFEIT');
+                      if (!wasForfeit) {
+                          forceSold = true;
+                      }
+                  }
+              }
+
+              const flowResult = resolveRedemptionFlow(narrativeEvent, state.inventory, chainState?.variables?.targetItemId, forceSold);
+              
               if (flowResult) {
                   const intent = storyCustomer.redemptionIntent;
                   const isItemLost = flowResult.flowKey === 'core_lost';
+                  const isHostile = flowResult.flowKey === 'hostile_takeover';
 
-                  if (isItemLost) {
+                  if (isItemLost || isHostile) {
                        storyCustomer.dialogue.greeting = resolveDialogue(flowResult.flow.dialogue, chainState);
                        (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
                   } else if (intent === 'EXTEND') {
@@ -296,7 +313,6 @@ export const useGameEngine = () => {
                        (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
                   }
                   
-                  const tId = narrativeEvent.targetItemId || chainState?.variables?.targetItemId;
                   if (tId) {
                       const realItem = state.inventory.find(i => i.id === tId);
                       if (realItem) {

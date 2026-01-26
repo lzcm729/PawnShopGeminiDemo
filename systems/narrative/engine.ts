@@ -383,7 +383,12 @@ export const instantiateStoryCustomer = (
     };
 };
 
-export const resolveRedemptionFlow = (event: StoryEvent, inventory: Item[], dynamicTargetId?: string): { flowKey: string, flow: DynamicFlowOutcome } | null => {
+export const resolveRedemptionFlow = (
+    event: StoryEvent, 
+    inventory: Item[], 
+    dynamicTargetId?: string,
+    forceSoldBeforeDue?: boolean
+): { flowKey: string, flow: DynamicFlowOutcome } | null => {
     if (event.type !== 'REDEMPTION_CHECK' || !event.dynamicFlows) return null;
     const targetId = event.targetItemId || dynamicTargetId;
     if (!targetId) return null;
@@ -394,9 +399,13 @@ export const resolveRedemptionFlow = (event: StoryEvent, inventory: Item[], dyna
     const othersSafe = otherChainItems.every(i => i.status !== ItemStatus.SOLD);
 
     let flowKey = "core_lost";
-    if (coreSafe) {
+    
+    if (forceSoldBeforeDue && event.dynamicFlows["hostile_takeover"]) {
+        flowKey = "hostile_takeover";
+    } else if (coreSafe) {
         flowKey = othersSafe ? "all_safe" : "core_safe";
     }
+    
     const flow = event.dynamicFlows[flowKey];
     return flow ? { flowKey, flow } : null;
 };
