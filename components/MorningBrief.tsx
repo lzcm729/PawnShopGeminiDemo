@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
 import { NewsCategory, ItemStatus, GamePhase } from '../types';
-import { Sun, CloudRain, Wind, TrendingUp, Newspaper, AlertOctagon, Radio, DollarSign, Calendar, Coffee, ArrowRight, Droplets, Moon } from 'lucide-react';
+import { Sun, CloudRain, Wind, TrendingUp, Newspaper, AlertOctagon, Radio, DollarSign, Calendar, Coffee, ArrowRight, Droplets, Moon, Activity, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/Badge';
 
@@ -25,8 +25,15 @@ export const MorningBrief: React.FC = () => {
       (i.pawnInfo.dueDate - state.stats.day <= 3)
   ).sort((a,b) => (a.pawnInfo!.dueDate - state.stats.day) - (b.pawnInfo!.dueDate - state.stats.day));
 
-  const rentDaysLeft = state.stats.rentDueDate - state.stats.day;
-  const isRentCritical = rentDaysLeft <= 3;
+  // Bill Logic
+  const { medicalBill } = state.stats;
+  const medicalDaysLeft = medicalBill.dueDate - state.stats.day;
+  
+  const isBillPaid = medicalBill.status === 'PAID';
+  const urgentBillLabel = "Medical Bill";
+  const urgentBillAmount = medicalBill.amount;
+  const urgentBillDays = medicalDaysLeft;
+  const isBillCritical = !isBillPaid && (urgentBillDays <= 1 || medicalBill.status === 'OVERDUE');
 
   return (
     <div className="h-screen w-full flex items-center justify-center bg-noir-100 text-noir-txt-primary p-4 md:p-8 relative overflow-hidden font-mono">
@@ -63,11 +70,16 @@ export const MorningBrief: React.FC = () => {
                     <span className="text-xs text-red-500 font-mono mb-1">-${state.stats.dailyExpenses} / day</span>
                  </div>
                  
-                 <div className={cn("mt-2 pt-2 border-t border-noir-300 flex justify-between items-center text-xs font-mono", isRentCritical ? "text-red-500 animate-pulse" : "text-noir-txt-secondary")}>
+                 <div className={cn("mt-2 pt-2 border-t border-noir-300 flex justify-between items-center text-xs font-mono", isBillCritical ? "text-red-500 animate-pulse" : "text-noir-txt-secondary")}>
                     <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> Rent Due (T-{rentDaysLeft})
+                        <Activity className="w-3 h-3" />
+                        {isBillPaid ? "Coverage Active" : `${urgentBillLabel} (T${urgentBillDays >= 0 ? '-' : '+'}${Math.abs(urgentBillDays)})`}
                     </span>
-                    <span className="font-bold">${state.stats.rentDue}</span>
+                    {isBillPaid ? (
+                        <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                        <span className="font-bold">${urgentBillAmount}</span>
+                    )}
                  </div>
               </div>
 

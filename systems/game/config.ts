@@ -9,7 +9,7 @@ export const GAME_CONFIG = {
   GOAL_AMOUNT: 100000,       // 终极目标 (Surgery Cost)
   WEEKLY_MEDICAL_COST: 1000, // 每周医药费
   BILL_CYCLE: 7,             // 医药费缴纳周期 (Days)
-  WEEKLY_RENT: 500,          // 店铺周租
+  WEEKLY_RENT: 0,            // 店铺周租 (DISABLED: Game focus is on Medical Bill)
   RENT_CYCLE: 7,             // 租金缴纳周期 (Days)
   DAILY_EXPENSES: 50,        // 每日运营/生活成本 (Burn Rate)
   

@@ -118,7 +118,8 @@ export const useGameEngine = () => {
         }
     }
 
-    // 4. Rent Check
+    // 4. Rent Check - REMOVED (Legacy mechanic disabled in favor of Medical Bill pressure)
+    /*
     if (state.stats.day >= state.stats.rentDueDate) {
         if (state.stats.cash >= state.stats.rentDue) {
             dispatch({ type: 'PAY_RENT' });
@@ -127,6 +128,7 @@ export const useGameEngine = () => {
             return;
         }
     }
+    */
 
     // 5. Medical Bill Rotation & Status
     if (state.stats.medicalBill.status === 'PAID') {

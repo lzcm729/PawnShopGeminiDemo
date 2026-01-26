@@ -9,6 +9,7 @@ import { saveGame, clearSave } from '../systems/core/persistence';
 import { playSfx } from '../systems/game/audio';
 import { GAME_CONFIG } from '../systems/game/config';
 
+// ... initialState ...
 const initialState: GameState = {
   phase: GamePhase.START_SCREEN,
   stats: {
@@ -58,6 +59,7 @@ const initialState: GameState = {
   activeMilestones: [] // New State
 };
 
+// ... Actions type definition ...
 type Action =
   | { type: 'LOAD_GAME'; payload: GameState }
   | { type: 'START_GAME' }
@@ -145,13 +147,30 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       };
     }
 
-    case 'OPEN_SHOP':
-      return { ...state, phase: GamePhase.BUSINESS };
+    case 'OPEN_SHOP': {
+      // FIX: Process Daily Mail on Shop Open
+      // This ensures that pending mails seen in Morning Brief are actually delivered to the Inbox
+      const today = state.stats.day;
+      const arrivingMails = state.pendingMails.filter(m => m.arrivalDay <= today);
+      const remainingPending = state.pendingMails.filter(m => m.arrivalDay > today);
+      
+      const newInbox = arrivingMails.length > 0 
+          ? [...arrivingMails, ...state.inbox] 
+          : state.inbox;
+
+      return { 
+          ...state, 
+          phase: GamePhase.BUSINESS,
+          inbox: newInbox,
+          pendingMails: remainingPending
+      };
+    }
 
     case 'START_NIGHT':
-      playSfx('CLICK');
+      // Sound effect removed to prevent duplicate play with UI interaction
       return { ...state, phase: GamePhase.NIGHT, currentCustomer: null, lastSatisfaction: null };
 
+    // ... rest of the reducer cases (SET_PHASE, SET_LOADING, etc) unchanged ...
     case 'SET_PHASE': return { ...state, phase: action.payload };
     case 'SET_LOADING': return { ...state, isLoading: action.payload };
     case 'SET_CUSTOMER': if (!action.payload) return { ...state, currentCustomer: null }; const customerInit = { ...action.payload, mood: 'Neutral' as Mood }; return { ...state, currentCustomer: customerInit, phase: GamePhase.NEGOTIATION, lastSatisfaction: null };
