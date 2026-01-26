@@ -28,8 +28,8 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
   "mail_emma_plea": {
     id: "mail_emma_plea",
     sender: "艾玛",
-    subject: "关于电脑...",
-    body: `老板，\n\n我现在还没凑齐赎金。面试结果还没出来，我还在等通知。\n\n那台{{relatedItemName}}对我真的很重要，里面的资料是我所有的心血。请千万不要把它挂牌出售，再宽限我几天，我一定想办法凑钱。\n\n拜托了。`,
+    subject: "关于那套衣服...",
+    body: `老板，\n\n我现在还没凑齐赎金。面试结果还没出来，我还在等通知。\n\n那套衣服对我真的很重要——如果拿到offer，入职第一天必须穿它。请千万不要把它挂牌出售，再宽限我几天。\n\n拜托了。`,
     attachments: { cash: 0 }
   },
   "mail_emma_01_charity": {
@@ -106,7 +106,7 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
     id: "mail_emma_got_job",
     sender: "艾玛",
     subject: "我拿到 Offer 了！！！",
-    body: `老板！！！\n\n我拿到 Offer 了！！！是那家跨国公司！\n\n等我入职拿了安家费，我马上来赎东西！谢谢你一直没放弃我！\n\n艾玛`,
+    body: `老板！！！\n\n我拿到 Offer 了！！！是那家跨国公司！\n\n下周一入职，我得穿那套衣服去报到。等我入职拿了安家费，马上来赎！千万帮我留着！\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_interview_failed_3x": {
@@ -142,6 +142,20 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
     sender: "艾玛",
     subject: "（无主题）",
     body: `老板，\n\n我不知道还能撑多久。\n\n他最近总是很晚回家，回来也不怎么说话。\n\n也许他也在想办法离开我吧。`,
+    attachments: { cash: 0 }
+  },
+  "mail_emma_interview_failed_once": {
+    id: "mail_emma_interview_failed_once",
+    sender: "艾玛",
+    subject: "今天的面试",
+    body: `老板，\n\n今天的面试没过。HR说我"经验不够匹配"。\n\n没关系，还有其他机会。我不会放弃的。\n\n艾玛`,
+    attachments: { cash: 0 }
+  },
+  "mail_emma_interview_failed_twice": {
+    id: "mail_emma_interview_failed_twice",
+    sender: "艾玛",
+    subject: "又被拒了",
+    body: `老板，\n\n又被拒了。这次HR说我"状态不太好"。\n\n也许他们说得对。最近确实睡不好，他也开始冷落我了。\n\n但我还会继续试的。\n\n艾玛`,
     attachments: { cash: 0 }
   }
 };
@@ -230,6 +244,30 @@ export const EMMA_CHAIN_INIT: EventChainState = {
               { type: 'MOD_VAR', target: 'interview_failures', value: 0, op: 'SET' } 
           ],
           triggerLog: "连续面试失败，信心受挫"
+      },
+      // Single Failure Mail (New)
+      {
+          type: 'THRESHOLD',
+          condition: { variable: 'stage', operator: '==', value: 3 },
+          targetVar: 'interview_failures',
+          operator: '==',
+          value: 1,
+          onTrigger: [
+              { type: 'SCHEDULE_MAIL', templateId: 'mail_emma_interview_failed_once', delayDays: 0 }
+          ],
+          triggerLog: "第一次面试失败"
+      },
+      // Second Failure Mail (New)
+      {
+          type: 'THRESHOLD',
+          condition: { variable: 'stage', operator: '==', value: 3 },
+          targetVar: 'interview_failures',
+          operator: '==',
+          value: 2,
+          onTrigger: [
+              { type: 'SCHEDULE_MAIL', templateId: 'mail_emma_interview_failed_twice', delayDays: 0 }
+          ],
+          triggerLog: "第二次面试失败"
       }
   ]
 };
@@ -261,16 +299,22 @@ export const EMMA_EVENTS: StoryEvent[] = [
       desiredAmount: 1000, minimumAmount: 800, maxRepayment: 1500,
       dialogue: {
         greeting: "你好，老板。这些衣服还要吗？",
-        pawnReason: "刚收到裁员通知... 不过别担心，这只是暂时的，我很快就能找到下家。",
-        redemptionPlea: "我面试一旦通过，拿了安家费就会来赎回。",
+        pawnReason: "刚收到裁员通知... 不过别担心，这只是暂时的，我很快就能找到下家。这套衣服是我的战袍，面试和入职都得穿它。",
+        redemptionPlea: "我面试一旦通过，拿了安家费就会来赎。入职第一天必须穿这套，这是我的幸运战袍。",
         negotiationDynamic: "能不能再高一点？这可是去年的走秀款。",
         accepted: { fair: "谢谢。我会回来的。", fleeced: "谢谢... 至少够付房租了。", premium: "天哪，你真是个好人！这对我帮助太大了。" },
         rejected: "好吧... 我再去别家问问，也许有人识货。",
         rejectionLines: { standard: "谢谢。", angry: "这衣服这价？开玩笑。", desperate: "..." },
         exitDialogues: {
-            grateful: "真的很感谢你！等我找到工作，第一时间来赎！",
+            grateful: [
+                { condition: { variable: "hope", operator: ">=", value: 65 }, text: "真的很感谢你！我回去告诉男朋友这个好消息，他一直很担心我。" },
+                { text: "真的很感谢你！等我找到工作，第一时间来赎！" }
+            ],
             neutral: "回见。帮我保管好它。",
-            resentful: "没想到这行也这么黑... 算了。",
+            resentful: [
+                { condition: { variable: "hope", operator: "<", value: 45 }, text: "没想到这行也这么黑... 回去又要被他念叨了。" },
+                { text: "没想到这行也这么黑... 算了。" }
+            ],
             desperate: "[她默默地把钱塞进包里，低着头快步走了出去]"
         }
       },
@@ -351,9 +395,15 @@ export const EMMA_EVENTS: StoryEvent[] = [
         rejected: "求你了... 再看看吧...",
         rejectionLines: { standard: "打扰了。", angry: "...", desperate: "哪怕少给点也行啊..." },
         exitDialogues: {
-            grateful: "谢谢你，真的。我会记住你的恩情。",
+            grateful: [
+                { condition: { variable: "hope", operator: ">=", value: 60 }, text: "谢谢你，真的。我男朋友说只要能撑过这个月就好。" },
+                { text: "谢谢你，真的。我会记住你的恩情。" }
+            ],
             neutral: "走了。",
-            resentful: "...",
+            resentful: [
+                { condition: { variable: "hope", operator: "<", value: 35 }, text: "[她攥着钱，嘴唇颤抖] 回去... 他又要发火了..." },
+                { text: "..." }
+            ],
             desperate: "[她紧紧攥着那几张钞票，像是抓着最后一根稻草]"
         }
       },
@@ -364,18 +414,28 @@ export const EMMA_EVENTS: StoryEvent[] = [
             { type: "ADD_FUNDS_DEAL" }, 
             { type: "SET_STAGE", value: 2 }, 
             { type: "MODIFY_VAR", variable: "hope", value: 65 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_02_charity", delayDays: 0 }
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_02_charity", delayDays: 0 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage2_struggling", delayDays: 2 }
+        ],
+        "deal_aid": [
+            { type: "ADD_FUNDS_DEAL" },
+            { type: "SET_STAGE", value: 2 },
+            { type: "MODIFY_VAR", variable: "hope", value: 60 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_02_charity", delayDays: 0 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage2_struggling", delayDays: 2 }
         ],
         "deal_standard": [
             { type: "ADD_FUNDS_DEAL" }, 
             { type: "SET_STAGE", value: 2 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_02_charity", delayDays: 0 }
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_02_charity", delayDays: 0 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage2_struggling", delayDays: 2 }
         ],
         "deal_shark":    [
             { type: "ADD_FUNDS_DEAL" }, 
             { type: "SET_STAGE", value: 2 }, 
             { type: "MODIFY_VAR", variable: "hope", value: 30 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_02_shark", delayDays: 0 }
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_02_shark", delayDays: 0 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage2_struggling", delayDays: 1 }
         ]
     },
     onReject: [{ type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 30 }]
@@ -413,9 +473,15 @@ export const EMMA_EVENTS: StoryEvent[] = [
         rejected: "不... 不行... 没有这个钱我会死的...",
         rejectionLines: { standard: "...", angry: "...", desperate: "求求你... 救救我..." },
         exitDialogues: {
-            grateful: "谢谢... 谢谢... (语无伦次)",
+            grateful: [
+                { condition: { variable: "hope", operator: ">=", value: 55 }, text: "谢谢... 我会回来的。他说只要我找到工作，一切都会好起来的。" },
+                { text: "谢谢... 谢谢... (语无伦次)" }
+            ],
             neutral: "我会回来的。",
-            resentful: "...",
+            resentful: [
+                { condition: { variable: "hope", operator: "<", value: 25 }, text: "[她的手在发抖] 他说得对... 我就是个废物..." },
+                { text: "..." }
+            ],
             desperate: "[她一步三回头地看着那台电脑，眼神里充满了恐惧]"
         }
       },
@@ -427,13 +493,23 @@ export const EMMA_EVENTS: StoryEvent[] = [
             { type: "SET_STAGE", value: 3 }, 
             { type: "MODIFY_VAR", variable: "hope", value: 60 },
             { type: "MODIFY_VAR", variable: "has_laptop", value: 0 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_charity", delayDays: 0 }
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_charity", delayDays: 0 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 2 }
+        ],
+        "deal_aid": [
+            { type: "ADD_FUNDS_DEAL" },
+            { type: "SET_STAGE", value: 3 },
+            { type: "MODIFY_VAR", variable: "hope", value: 55 },
+            { type: "MODIFY_VAR", variable: "has_laptop", value: 0 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_charity", delayDays: 0 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 2 }
         ],
         "deal_standard": [
             { type: "ADD_FUNDS_DEAL" }, 
             { type: "SET_STAGE", value: 3 },
             { type: "MODIFY_VAR", variable: "has_laptop", value: 0 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_charity", delayDays: 0 }
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_charity", delayDays: 0 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 2 }
         ],
         "deal_shark":    [
             { type: "ADD_FUNDS_DEAL" }, 
@@ -441,7 +517,8 @@ export const EMMA_EVENTS: StoryEvent[] = [
             { type: "MODIFY_VAR", variable: "hope", value: 20 }, 
             { type: "MODIFY_VAR", variable: "job_chance", value: -10 },
             { type: "MODIFY_VAR", variable: "has_laptop", value: 0 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_shark", delayDays: 0 }
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_shark", delayDays: 0 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 1 }
         ]
     },
     onReject: [
