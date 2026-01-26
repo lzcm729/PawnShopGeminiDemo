@@ -1,1 +1,0 @@
-// DEPRECATED - MOVED TO systems/news/registry.ts
