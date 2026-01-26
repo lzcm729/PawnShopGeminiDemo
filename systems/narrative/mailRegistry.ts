@@ -6,7 +6,7 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
     id: "mail_emma_success",
     sender: "艾玛",
     subject: "我入职了！",
-    body: `老板：\n\n告诉你一个好消息，我被那家跨国公司录取了！\n\n还记得那天我拿着笔记本电脑去你店里吗？如果那时候你像别人一样狠狠宰我一笔，或者因为我没钱就赶我走，我可能早就崩溃了。\n\n这笔钱是我多付的利息，或者是... 感谢费。请你务必收下。\n\n另外，那枚婚戒我也不打算卖了。生活好像又有希望了。\n\n祝好，\n\n艾玛`,
+    body: `老板：\n\n告诉你一个好消息，我被那家跨国公司录取了！\n\n还记得那台{{relatedItemName}}吗？如果那时候你像别人一样狠狠宰我一笔，或者因为我没钱就赶我走，我可能早就崩溃了。\n\n这笔钱({{amount}})是我多付的利息，或者是... 感谢费。请你务必收下。\n\n另外，那枚婚戒我也不打算卖了。生活好像又有希望了。\n\n祝好，\n\n艾玛`,
     attachments: { cash: 500 }
   },
   "mail_emma_hate": {
@@ -20,14 +20,14 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
     id: "mail_emma_boyfriend_left",
     sender: "艾玛",
     subject: "一切都结束了",
-    body: `我的男朋友走了。\n\n今早我醒来，发现他的东西都不见了，只留下一张字条，说受够了这种和我一起还要背债、看不到希望的日子。\n\n之前当在店里的东西，我恐怕永远也没能力赎回来了。工作没指望，现在连他也走了。\n\n我觉得好累。这个世界也许真的不适合我。`,
+    body: `我的男朋友走了。\n\n今早我醒来，发现他的东西都不见了，只留下一张字条，说受够了这种和我一起还要背债、看不到希望的日子。\n\n之前当在店里的{{relatedItemName}}，我恐怕永远也没能力赎回来了。工作没指望，现在连他也走了。\n\n我觉得好累。这个世界也许真的不适合我。`,
     attachments: { cash: 0 }
   },
   "mail_emma_plea": {
     id: "mail_emma_plea",
     sender: "艾玛",
     subject: "关于电脑...",
-    body: `老板，\n\n我现在还没凑齐赎金。面试结果还没出来，我还在等通知。\n\n那台电脑对我真的很重要，里面的资料是我所有的心血。请千万不要把它挂牌出售，再宽限我几天，我一定想办法凑钱。\n\n拜托了。`,
+    body: `老板，\n\n我现在还没凑齐赎金。面试结果还没出来，我还在等通知。\n\n那台{{relatedItemName}}对我真的很重要，里面的资料是我所有的心血。请千万不要把它挂牌出售，再宽限我几天，我一定想办法凑钱。\n\n拜托了。`,
     attachments: { cash: 0 }
   },
   "mail_welcome": {
@@ -48,14 +48,14 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
       id: "mail_zhao_good",
       sender: "小孙子",
       subject: "爷爷的婚礼致辞",
-      body: `当铺老板：\n\n爷爷让我给您发这封邮件。昨天的婚礼上，爷爷穿着旧军装，胸前戴着那枚勋章给我们证婚。虽然他腿脚不好，但那天他站得比谁都直。\n\n他说那是他这辈子最体面的一天。谢谢您没让他把荣誉给卖了。\n\n附上几张喜糖的照片，和一点心意。`,
+      body: `当铺老板：\n\n爷爷让我给您发这封邮件。昨天的婚礼上，爷爷穿着旧军装，胸前戴着那枚勋章给我们证婚。虽然他腿脚不好，但那天他站得比谁都直。\n\n他说那是他这辈子最体面的一天。谢谢您没让他把荣誉给卖了。\n\n附上几张喜糖的照片，和一点心意（{{amount}}）。`,
       attachments: { cash: 200 }
   },
   "mail_zhao_good_extended": {
       id: "mail_zhao_good_extended",
       sender: "小孙子",
       subject: "爷爷说你是好人",
-      body: `当铺老板：\n\n爷爷让我特别感谢你当时同意延期。他说如果不是你通融，勋章早就没了。\n\n婚礼上爷爷戴着那枚勋章，站得笔直。他说那是他这辈子最体面的一天。\n\n附上喜糖和一点心意。爷爷说，做生意讲究诚信，但更难得的是讲义气。\n\n祝生意兴隆！`,
+      body: `当铺老板：\n\n爷爷让我特别感谢你当时同意延期。他说如果不是你通融，勋章早就没了。\n\n婚礼上爷爷戴着那枚勋章，站得笔直。他说那是他这辈子最体面的一天。\n\n附上喜糖和一点心意（{{amount}}）。爷爷说，做生意讲究诚信，但更难得的是讲义气。\n\n祝生意兴隆！`,
       attachments: { cash: 300 }
   },
   "mail_zhao_evil": {
@@ -111,15 +111,23 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
       id: "mail_generic_plea",
       sender: "顾客",
       subject: "关于我的当品",
-      body: `老板，\n\n我现在手头有点紧，没法按时去赎回 {{itemName}} 了。但我真的不想失去它。\n\n请不要把它挂牌出售，我会尽快凑钱回来的。拜托了。`,
+      body: `老板，\n\n我现在手头有点紧，没法按时去赎回 {{relatedItemName}} 了。但我真的不想失去它。\n\n请不要把它挂牌出售，我会尽快凑钱回来的。拜托了。`,
       attachments: { cash: 0 }
   },
   "mail_underworld_warning": {
     id: "mail_underworld_warning",
     sender: "[未知]",
     subject: "你会后悔的",
-    body: `老板，\n\n听说你店里收了一个不该收的东西 ({{itemName}})。\n我们的人很快会来"取回"它。\n\n如果东西还在，我们可以当作什么都没发生。\n如果不在... 夜路走多了，小心影子。\n\n别报警。你知道的。`,
+    body: `老板，\n\n听说你店里收了一个不该收的东西 ({{relatedItemName}})。\n我们的人很快会来"取回"它。\n\n如果东西还在，我们可以当作什么都没发生。\n如果不在... 夜路走多了，小心影子。\n\n别报警。你知道的。`,
     attachments: { cash: 0 }
+  },
+  // NEW: Market Crash Mail
+  "mail_market_crash_tip": {
+      id: "mail_market_crash_tip",
+      sender: "电子城老张",
+      subject: "这日子没法过了",
+      body: `老兄，听说了吗？芯片厂库存积压，全新显卡当废铁卖。\n\n我这仓库里压了几百万的货，现在连本都回不来。这几天如果有学生仔或者小年轻来你那出电子产品，千万压低点收，搞不好明天还得跌。\n\n这年头，除了黄金，啥都不保值。`,
+      attachments: { cash: 0 }
   }
 };
 

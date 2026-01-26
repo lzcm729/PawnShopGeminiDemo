@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren, useEffect } from 'react';
 import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry, DailyFinancialSnapshot, SatisfactionLevel, MotherCondition } from '../types';
 import { getMailTemplate } from '../systems/narrative/mailRegistry';
+import { interpolateMailBody } from '../systems/narrative/mailUtils';
 import { generateValuationRange } from '../systems/items/utils';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../systems/game/utils/logGenerator';
 import { saveGame, clearSave } from '../systems/core/persistence';
@@ -53,7 +54,8 @@ const initialState: GameState = {
   activeMarketEffects: [],
   violationFlags: [],
   financialHistory: [],
-  lastSatisfaction: null
+  lastSatisfaction: null,
+  activeMilestones: [] // New State
 };
 
 type Action =
@@ -70,6 +72,7 @@ type Action =
   | { type: 'APPRAISE_ITEM' } 
   | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: any[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry } } 
   | { type: 'REALIZE_ITEM_TRUTH'; payload: { itemId: string } }
+  | { type: 'MARK_TRAIT_USED'; payload: { traitId: string } }
   | { type: 'CONSUME_AP'; payload: number } 
   | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string } }
   | { type: 'LIQUIDATE_ITEM'; payload: { itemId: string; amount: number; name: string } }
@@ -107,7 +110,11 @@ type Action =
   | { type: 'UPDATE_NEWS'; payload: { news: ActiveNewsInstance[], modifiers: MarketModifier[] } }
   | { type: 'ADD_VIOLATION'; payload: string }
   | { type: 'CLEAR_VIOLATIONS' }
-  | { type: 'SET_SATISFACTION'; payload: SatisfactionLevel };
+  | { type: 'SET_SATISFACTION'; payload: SatisfactionLevel }
+  | { type: 'UNLOCK_MILESTONE'; payload: string }
+  | { type: 'ACCEPT_RENEWAL'; payload: { itemId: string; extensionDays: number; interestBonus: number; name: string } }
+  | { type: 'REJECT_RENEWAL'; payload: { itemId: string; name: string } }
+  | { type: 'RESOLVE_POST_FORFEIT'; payload: { itemId: string; action: 'SELL_LOW' | 'GIFT' | 'REFUSE'; name: string; value: number } };
 
 const gameReducer = (state: GameState, action: Action): GameState => {
   switch (action.type) {
@@ -120,7 +127,12 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       
     case 'START_DAY': {
       const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
-      const effectiveMaxAP = Math.max(1, state.stats.maxActionPoints + apModifier);
+      
+      // Milestone Effect: Gold Standard (+2 AP)
+      const hasGoldStandard = state.activeMilestones.includes('cred_expert');
+      const baseAP = state.stats.maxActionPoints + (hasGoldStandard ? 2 : 0);
+
+      const effectiveMaxAP = Math.max(1, baseAP + apModifier);
       return { 
         ...state, 
         customersServedToday: 0,
@@ -147,11 +159,69 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'UPDATE_CUSTOMER_STATUS': if (!state.currentCustomer) return state; return { ...state, currentCustomer: { ...state.currentCustomer, patience: action.payload.patience, mood: action.payload.mood, currentAskPrice: action.payload.currentAskPrice } };
     case 'UPDATE_ITEM_KNOWLEDGE': if (!state.currentCustomer || state.currentCustomer.item.id !== action.payload.itemId) return state; const prevCount = state.currentCustomer.item.appraisalCount || 0; const prevNegative = state.currentCustomer.item.hasNegativeAppraisalEvent || false; const prevLogs = state.currentCustomer.item.logs || []; const newLogs = action.payload.log ? [...prevLogs, action.payload.log] : prevLogs; return { ...state, currentCustomer: { ...state.currentCustomer, item: { ...state.currentCustomer.item, currentRange: action.payload.newRange, revealedTraits: action.payload.revealedTraits, uncertainty: action.payload.newUncertainty, perceivedValue: action.payload.newPerceived, appraised: true, appraisalCount: action.payload.incrementAppraisalCount ? prevCount + 1 : prevCount, hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : prevNegative, logs: newLogs } } };
     case 'REALIZE_ITEM_TRUTH': { if (!state.currentCustomer || state.currentCustomer.item.id !== action.payload.itemId) return state; const item = state.currentCustomer.item; const newUncertainty = 0.1; const trueRange = generateValuationRange(item.realValue, undefined, newUncertainty); const newInitialRange = generateValuationRange(item.realValue, undefined, 0.4); return { ...state, currentCustomer: { ...state.currentCustomer, item: { ...item, perceivedValue: undefined, uncertainty: newUncertainty, currentRange: trueRange, initialRange: newInitialRange, appraised: false } } }; }
+    case 'MARK_TRAIT_USED': {
+        if (!state.currentCustomer) return state;
+        const currentItem = state.currentCustomer.item;
+        const newUsed = [...(currentItem.usedTraitIds || []), action.payload.traitId];
+        return {
+            ...state,
+            currentCustomer: {
+                ...state.currentCustomer,
+                item: {
+                    ...currentItem,
+                    usedTraitIds: newUsed
+                }
+            }
+        };
+    }
+
     case 'CONSUME_AP': return { ...state, stats: { ...state.stats, actionPoints: Math.max(0, state.stats.actionPoints - action.payload) } };
     case 'APPRAISE_ITEM': if (!state.currentCustomer) return state; return { ...state, currentCustomer: { ...state.currentCustomer, item: { ...state.currentCustomer.item, appraised: true } } };
     case 'SET_SATISFACTION': return { ...state, lastSatisfaction: action.payload };
 
-    case 'RESOLVE_TRANSACTION': { const { cashDelta, reputationDelta, item, log, customerName } = action.payload; if (cashDelta > 0) playSfx('CASH'); else if (cashDelta < 0) playSfx('CLICK'); const newRep = { ...state.reputation }; if (reputationDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += reputationDelta[ReputationType.HUMANITY]!; if (reputationDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += reputationDelta[ReputationType.CREDIBILITY]!; if (reputationDelta[ReputationType.UNDERWORLD]) newRep[ReputationType.UNDERWORLD] += reputationDelta[ReputationType.UNDERWORLD]!; Object.keys(newRep).forEach(key => { newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType])); }); const newInventory = item ? [...state.inventory, item] : state.inventory; const newTransaction: TransactionRecord | null = item ? { id: crypto.randomUUID(), description: `收当: ${item.name}`, amount: cashDelta, type: 'PAWN' } : null; const updatedTransactions = newTransaction ? [...state.todayTransactions, newTransaction] : state.todayTransactions; const servedCount = state.customersServedToday + 1; const completedId = state.currentCustomer?.id; const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds; return { ...state, stats: { ...state.stats, cash: state.stats.cash + cashDelta }, reputation: newRep, inventory: newInventory, dayEvents: [...state.dayEvents, log], todayTransactions: updatedTransactions, customersServedToday: servedCount, phase: GamePhase.DEPARTURE, completedScenarioIds: newCompletedIds }; }
+    case 'RESOLVE_TRANSACTION': { 
+        const { cashDelta, reputationDelta, item, log, customerName } = action.payload; 
+        if (cashDelta > 0) playSfx('CASH'); else if (cashDelta < 0) playSfx('CLICK'); 
+        
+        // --- VIOLATION CHECK (Task 11 Fix) ---
+        // Verify if we accepted an illicit item during a crackdown
+        let newViolationFlags = [...state.violationFlags];
+        const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
+        
+        if (item && (item.isStolen || (item.category === '违禁品' && !item.isSuspicious))) {
+            if (currentRisk > 0 && !newViolationFlags.includes('police_risk_ignored')) {
+                newViolationFlags.push('police_risk_ignored');
+            }
+        }
+        // -------------------------------------
+
+        const newRep = { ...state.reputation }; 
+        if (reputationDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += reputationDelta[ReputationType.HUMANITY]!; 
+        if (reputationDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += reputationDelta[ReputationType.CREDIBILITY]!; 
+        if (reputationDelta[ReputationType.UNDERWORLD]) newRep[ReputationType.UNDERWORLD] += reputationDelta[ReputationType.UNDERWORLD]!; 
+        Object.keys(newRep).forEach(key => { newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType])); }); 
+        
+        const newInventory = item ? [...state.inventory, item] : state.inventory; 
+        const newTransaction: TransactionRecord | null = item ? { id: crypto.randomUUID(), description: `收当: ${item.name}`, amount: cashDelta, type: 'PAWN' } : null; 
+        const updatedTransactions = newTransaction ? [...state.todayTransactions, newTransaction] : state.todayTransactions; 
+        const servedCount = state.customersServedToday + 1; 
+        const completedId = state.currentCustomer?.id; 
+        const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds; 
+        
+        return { 
+            ...state, 
+            stats: { ...state.stats, cash: state.stats.cash + cashDelta }, 
+            reputation: newRep, 
+            inventory: newInventory, 
+            dayEvents: [...state.dayEvents, log], 
+            todayTransactions: updatedTransactions, 
+            customersServedToday: servedCount, 
+            phase: GamePhase.DEPARTURE, 
+            completedScenarioIds: newCompletedIds,
+            violationFlags: newViolationFlags
+        }; 
+    }
+    
     case 'REJECT_DEAL': { const servedCount = state.customersServedToday + 1; const completedId = state.currentCustomer?.id; const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds; playSfx('CLICK'); return { ...state, dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`], customersServedToday: servedCount, phase: GamePhase.DEPARTURE, completedScenarioIds: newCompletedIds }; }
     case 'LIQUIDATE_ITEM': { const { itemId, amount, name } = action.payload; playSfx('CASH'); const soldInventory = state.inventory.map(item => { if (item.id === itemId) { const soldLog = generateSoldLog(item, state.stats.day, amount); return { ...item, status: ItemStatus.SOLD, logs: [...(item.logs || []), soldLog] }; } return item; }); const saleRecord: TransactionRecord = { id: crypto.randomUUID(), description: `绝当变现: ${name}`, amount: amount, type: 'SELL' }; return { ...state, stats: { ...state.stats, cash: state.stats.cash + amount }, inventory: soldInventory, todayTransactions: [...state.todayTransactions, saleRecord], dayEvents: [...state.dayEvents, `出售过期物品: ${name} (+$${amount})`] }; }
     case 'REDEEM_ITEM': { const { itemId, paymentAmount, name } = action.payload; playSfx('CASH'); const updatedInventory = state.inventory.map(item => { if (item.id === itemId) { const redeemLog = generateRedeemLog(state.currentCustomer?.name || "顾客", item, state.stats.day, paymentAmount); return { ...item, status: ItemStatus.REDEEMED, logs: [...(item.logs || []), redeemLog] }; } return item; }); const record: TransactionRecord = { id: crypto.randomUUID(), description: `顾客赎回: ${name}`, amount: paymentAmount, type: 'REDEEM' }; return { ...state, stats: { ...state.stats, cash: state.stats.cash + paymentAmount }, inventory: updatedInventory, todayTransactions: [...state.todayTransactions, record], dayEvents: [...state.dayEvents, `${name} 已被赎回 (收回资金 $${paymentAmount})`] }; }
@@ -164,11 +234,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'HOSTILE_TAKEOVER': { const { itemId, penalty, name } = action.payload; playSfx('FAIL'); const updatedInventory = state.inventory.map(item => { if (item.id === itemId) { const log = generateForfeitLog(item, state.stats.day, "恶意买断"); return { ...item, status: ItemStatus.FORFEIT, logs: [...(item.logs || []), log] }; } return item; }); const newRep = { ...state.reputation }; newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 50); newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 20); const record: TransactionRecord = { id: crypto.randomUUID(), description: `强制买断: ${name}`, amount: -penalty, type: 'PENALTY' }; return { ...state, stats: { ...state.stats, cash: state.stats.cash - penalty }, inventory: updatedInventory, reputation: newRep, todayTransactions: [...state.todayTransactions, record], dayEvents: [...state.dayEvents, `恶意违约/强制买断: ${name} (-$${penalty})。顾客极度愤怒。`] }; }
     case 'MANUAL_CLOSE_SHOP': playSfx('CLICK'); return { ...state, phase: GamePhase.NIGHT };
     case 'PAY_MEDICAL_BILL': { playSfx('SUCCESS'); const billAmount = state.stats.medicalBill.amount; const billRecord: TransactionRecord = { id: crypto.randomUUID(), description: "支付母亲医药费", amount: -billAmount, type: 'MEDICAL' }; const currentMother = state.stats.motherStatus; const newMother = { ...currentMother, careLevel: 'Premium' as const, risk: Math.max(0, currentMother.risk - 5), status: 'Improving' as const }; return { ...state, stats: { ...state.stats, cash: state.stats.cash - billAmount, motherStatus: newMother, medicalBill: { ...state.stats.medicalBill, status: 'PAID' } }, todayTransactions: [...state.todayTransactions, billRecord], dayEvents: [...state.dayEvents, `Paid Medical Bill: $${billAmount}. Treatment plan secured.`] }; }
-    
-    // NEW: Rotate Medical Bill (New Week)
     case 'ROTATE_MEDICAL_BILL': {
         const baseCost = GAME_CONFIG.WEEKLY_MEDICAL_COST;
-        // Fluctuate between 80% and 120%
         const fluctuation = 0.8 + (Math.random() * 0.4); 
         const newAmount = Math.floor(baseCost * fluctuation);
         const newDueDate = state.stats.medicalBill.dueDate + 7;
@@ -186,41 +253,16 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             dayEvents: [...state.dayEvents, `Medical Bill Updated: $${newAmount} due by Day ${newDueDate}.`]
         };
     }
-
-    // NEW: Mark Bill Overdue
     case 'MARK_BILL_OVERDUE': {
         if (state.stats.medicalBill.status === 'OVERDUE') return state;
-        return {
-            ...state,
-            stats: {
-                ...state.stats,
-                medicalBill: { ...state.stats.medicalBill, status: 'OVERDUE' }
-            }
-        };
+        return { ...state, stats: { ...state.stats, medicalBill: { ...state.stats.medicalBill, status: 'OVERDUE' } } };
     }
-
-    // NEW: Pay Rent
     case 'PAY_RENT': {
         const rentAmount = state.stats.rentDue;
         const newDueDate = state.stats.rentDueDate + GAME_CONFIG.RENT_CYCLE;
-        const rentRecord: TransactionRecord = {
-            id: crypto.randomUUID(),
-            description: "支付店铺租金",
-            amount: -rentAmount,
-            type: 'RENT'
-        };
-        return {
-            ...state,
-            stats: {
-                ...state.stats,
-                cash: state.stats.cash - rentAmount,
-                rentDueDate: newDueDate
-            },
-            todayTransactions: [...state.todayTransactions, rentRecord],
-            dayEvents: [...state.dayEvents, `Rent Deducted: $${rentAmount}. Next due Day ${newDueDate}.`]
-        };
+        const rentRecord: TransactionRecord = { id: crypto.randomUUID(), description: "支付店铺租金", amount: -rentAmount, type: 'RENT' };
+        return { ...state, stats: { ...state.stats, cash: state.stats.cash - rentAmount, rentDueDate: newDueDate }, todayTransactions: [...state.todayTransactions, rentRecord], dayEvents: [...state.dayEvents, `Rent Deducted: $${rentAmount}. Next due Day ${newDueDate}.`] };
     }
-
     case 'PURCHASE_TREATMENT': { const { type, cost } = action.payload; playSfx('SUCCESS'); let newMother = { ...state.stats.motherStatus }; let desc = ""; if (type === 'STABILIZE') { newMother.health = Math.min(100, newMother.health + 5); desc = "额外治疗: 急救注射"; } else if (type === 'REDUCE_RISK') { newMother.risk = Math.max(0, newMother.risk - 3); desc = "额外治疗: 靶向疗法"; } const record: TransactionRecord = { id: crypto.randomUUID(), description: desc, amount: -cost, type: 'MEDICAL' }; return { ...state, stats: { ...state.stats, cash: state.stats.cash - cost, motherStatus: newMother }, todayTransactions: [...state.todayTransactions, record] }; }
     case 'VISIT_MOTHER': { const { motherStatus, visitedToday } = state.stats; if (visitedToday) return state; const newMother = { ...motherStatus, risk: Math.max(0, motherStatus.risk - 1) }; const newRep = { ...state.reputation }; newRep[ReputationType.HUMANITY] = Math.min(100, newRep[ReputationType.HUMANITY] + 2); return { ...state, stats: { ...state.stats, motherStatus: newMother, visitedToday: true }, reputation: newRep, dayEvents: [...state.dayEvents, "前往医院探望了母亲。(Humanity +2, Risk -1%)"] }; }
     case 'PAY_SURGERY': { const surgeryCost = GAME_CONFIG.GOAL_AMOUNT; const record: TransactionRecord = { id: crypto.randomUUID(), description: "支付终极手术费", amount: -surgeryCost, type: 'SURGERY' }; return { ...state, phase: GamePhase.VICTORY, stats: { ...state.stats, cash: state.stats.cash - surgeryCost }, todayTransactions: [...state.todayTransactions, record] }; }
@@ -230,46 +272,16 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       const nextDay = state.stats.day + 1;
       const expense = state.stats.dailyExpenses;
       const endingCash = state.stats.cash - expense;
-      
       const income = state.todayTransactions.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
       const txExpenses = state.todayTransactions.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0);
       const netChange = income + txExpenses - expense;
-      
-      const snapshotEvents = state.todayTransactions.map(t => ({
-          type: t.amount > 0 ? 'INCOME' as const : 'EXPENSE' as const,
-          amount: t.amount,
-          label: t.description
-      }));
+      const snapshotEvents = state.todayTransactions.map(t => ({ type: t.amount > 0 ? 'INCOME' as const : 'EXPENSE' as const, amount: t.amount, label: t.description }));
       snapshotEvents.push({ type: 'EXPENSE', amount: -expense, label: '店铺运营 (Burn)' });
-
-      const newSnapshot: DailyFinancialSnapshot = {
-          day: currentDay,
-          startingCash: state.stats.cash - (income + txExpenses), 
-          endingCash: endingCash,
-          netChange: netChange,
-          events: snapshotEvents
-      };
-
-      if (endingCash < 0) {
-          clearSave();
-          playSfx('FAIL');
-          return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "Bankrupt: Daily expenses exceeded cash."] };
-      }
-
-      if (state.stats.motherStatus.health <= 0) {
-          clearSave();
-          playSfx('FAIL');
-          return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "GAME OVER: 母亲病情恶化去世。"] };
-      }
-
-      return { 
-          ...state, 
-          stats: { ...state.stats, day: nextDay, cash: endingCash, actionPoints: state.stats.maxActionPoints }, 
-          financialHistory: [...state.financialHistory, newSnapshot],
-          phase: GamePhase.MORNING_BRIEF 
-      };
+      const newSnapshot: DailyFinancialSnapshot = { day: currentDay, startingCash: state.stats.cash - (income + txExpenses), endingCash: endingCash, netChange: netChange, events: snapshotEvents };
+      if (endingCash < 0) { clearSave(); playSfx('FAIL'); return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "Bankrupt: Daily expenses exceeded cash."] }; }
+      if (state.stats.motherStatus.health <= 0) { clearSave(); playSfx('FAIL'); return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "GAME OVER: 母亲病情恶化去世。"] }; }
+      return { ...state, stats: { ...state.stats, day: nextDay, cash: endingCash, actionPoints: state.stats.maxActionPoints }, financialHistory: [...state.financialHistory, newSnapshot], phase: GamePhase.MORNING_BRIEF };
     }
-      
     case 'GAME_OVER': clearSave(); playSfx('FAIL'); return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, action.payload] };
     case 'TOGGLE_INVENTORY': playSfx('HOVER'); return { ...state, showInventory: !state.showInventory };
     case 'TOGGLE_MAIL': playSfx('HOVER'); return { ...state, showMail: !state.showMail };
@@ -279,12 +291,126 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'TOGGLE_VISIT': playSfx('HOVER'); return { ...state, showVisit: !state.showVisit };
     case 'UPDATE_CHAINS': return { ...state, activeChains: action.payload };
     case 'SCHEDULE_MAIL': { const { templateId, delayDays, metadata } = action.payload; const newMail: MailInstance = { uniqueId: crypto.randomUUID(), templateId, arrivalDay: state.stats.day + delayDays, isRead: false, isClaimed: false, metadata }; return { ...state, pendingMails: [...state.pendingMails, newMail] }; }
-    case 'PROCESS_DAILY_MAIL': { const today = state.stats.day; const arrivingMails = state.pendingMails.filter(m => m.arrivalDay <= today); const remainingPending = state.pendingMails.filter(m => m.arrivalDay > today); if (arrivingMails.length === 0) return state; return { ...state, inbox: [...arrivingMails, ...state.inbox], pendingMails: remainingPending }; }
+    case 'PROCESS_DAILY_MAIL': { const today = state.stats.day; const arrivingMails = state.pendingMails.filter(m => m.arrivalDay <= today).map(m => { return m; }); const remainingPending = state.pendingMails.filter(m => m.arrivalDay > today); if (arrivingMails.length === 0) return state; return { ...state, inbox: [...arrivingMails, ...state.inbox], pendingMails: remainingPending }; }
     case 'READ_MAIL': return { ...state, inbox: state.inbox.map(m => m.uniqueId === action.payload ? { ...m, isRead: true } : m) };
     case 'CLAIM_MAIL_REWARD': { const mail = state.inbox.find(m => m.uniqueId === action.payload); if (!mail || mail.isClaimed) return state; const template = getMailTemplate(mail.templateId); if (!template || !template.attachments) return state; let cashDelta = 0; let newInventory = [...state.inventory]; let transaction: TransactionRecord | null = null; playSfx('CASH'); if (template.attachments.cash) { cashDelta = template.attachments.cash; transaction = { id: crypto.randomUUID(), description: `邮件奖励: ${template.sender}`, amount: cashDelta, type: 'REWARD' }; } if (template.attachments.item) newInventory.push(template.attachments.item); const updatedInbox = state.inbox.map(m => m.uniqueId === action.payload ? { ...m, isClaimed: true } : m); const updatedTransactions = transaction ? [...state.todayTransactions, transaction] : state.todayTransactions; return { ...state, stats: { ...state.stats, cash: state.stats.cash + cashDelta }, inventory: newInventory, inbox: updatedInbox, todayTransactions: updatedTransactions }; }
     case 'UPDATE_NEWS': return { ...state, dailyNews: action.payload.news, activeMarketEffects: action.payload.modifiers };
     case 'ADD_VIOLATION': if (state.violationFlags.includes(action.payload)) return state; return { ...state, violationFlags: [...state.violationFlags, action.payload] };
     case 'CLEAR_VIOLATIONS': return { ...state, violationFlags: [] };
+    
+    // NEW: Unlock Milestone
+    case 'UNLOCK_MILESTONE': {
+        if (state.activeMilestones.includes(action.payload)) return state;
+        playSfx('SUCCESS');
+        return {
+            ...state,
+            activeMilestones: [...state.activeMilestones, action.payload],
+            dayEvents: [...state.dayEvents, `获得成就: ${action.payload}`] // Log internally
+        };
+    }
+
+    // NEW: Renewal Logic
+    case 'ACCEPT_RENEWAL': {
+        const { itemId, extensionDays, interestBonus, name } = action.payload;
+        playSfx('STAMP');
+        const updatedInventory = state.inventory.map(item => {
+            if (item.id === itemId && item.pawnInfo) {
+                return {
+                    ...item,
+                    pawnInfo: {
+                        ...item.pawnInfo,
+                        dueDate: item.pawnInfo.dueDate + extensionDays,
+                        interestRate: item.pawnInfo.interestRate + interestBonus,
+                        extensionCount: (item.pawnInfo.extensionCount || 0) + 1
+                    }
+                };
+            }
+            return item;
+        });
+        const servedCount = state.customersServedToday + 1;
+        return {
+            ...state,
+            inventory: updatedInventory,
+            customersServedToday: servedCount,
+            phase: GamePhase.DEPARTURE,
+            lastSatisfaction: 'GRATEFUL',
+            dayEvents: [...state.dayEvents, `同意续当请求: ${name} (利息 +${(interestBonus * 100).toFixed(0)}%)`]
+        };
+    }
+
+    case 'REJECT_RENEWAL': {
+        const { itemId, name } = action.payload;
+        const servedCount = state.customersServedToday + 1;
+        // No item change, just letting it expire later
+        return {
+            ...state,
+            customersServedToday: servedCount,
+            phase: GamePhase.DEPARTURE,
+            lastSatisfaction: 'DESPERATE',
+            dayEvents: [...state.dayEvents, `拒绝续当请求: ${name}`]
+        };
+    }
+
+    // NEW: Post-Forfeit Logic
+    case 'RESOLVE_POST_FORFEIT': {
+        const { itemId, action: decision, name, value } = action.payload;
+        
+        let newInventory = [...state.inventory];
+        let cashDelta = 0;
+        let repDelta: Partial<ReputationProfile> = {};
+        let log = "";
+        let satisfaction: SatisfactionLevel = 'NEUTRAL';
+
+        if (decision === 'SELL_LOW') {
+            playSfx('CASH');
+            cashDelta = value;
+            newInventory = newInventory.map(i => i.id === itemId ? { ...i, status: ItemStatus.SOLD } : i);
+            repDelta = { [ReputationType.HUMANITY]: 10 };
+            log = `低价回售: ${name} 的物品以 $${value} 成交。`;
+            satisfaction = 'GRATEFUL';
+        } 
+        else if (decision === 'GIFT') {
+            playSfx('SUCCESS');
+            newInventory = newInventory.map(i => i.id === itemId ? { ...i, status: ItemStatus.REDEEMED } : i); // Treated as redeemed but free
+            repDelta = { [ReputationType.HUMANITY]: 25, [ReputationType.CREDIBILITY]: -5 };
+            log = `赠还物品: ${name} (Humanity +25)`;
+            satisfaction = 'GRATEFUL';
+        }
+        else if (decision === 'REFUSE') {
+            playSfx('CLICK');
+            // Item stays Forfeit
+            repDelta = { [ReputationType.HUMANITY]: -10, [ReputationType.CREDIBILITY]: 5 };
+            log = `拒绝回购请求: ${name} (Humanity -10)`;
+            satisfaction = 'DESPERATE';
+        }
+
+        const servedCount = state.customersServedToday + 1;
+        
+        // Apply Rep Changes
+        const newRep = { ...state.reputation };
+        if (repDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += repDelta[ReputationType.HUMANITY]!;
+        if (repDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += repDelta[ReputationType.CREDIBILITY]!;
+        Object.keys(newRep).forEach(key => { newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType])); });
+
+        const transaction: TransactionRecord | null = cashDelta !== 0 ? {
+            id: crypto.randomUUID(),
+            description: `绝当回售: ${name}`,
+            amount: cashDelta,
+            type: 'SELL'
+        } : null;
+
+        return {
+            ...state,
+            stats: { ...state.stats, cash: state.stats.cash + cashDelta },
+            reputation: newRep,
+            inventory: newInventory,
+            customersServedToday: servedCount,
+            todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
+            dayEvents: [...state.dayEvents, log],
+            phase: GamePhase.DEPARTURE,
+            lastSatisfaction: satisfaction
+        };
+    }
 
     default: return state;
   }

@@ -9,3 +9,4 @@ export * from './systems/narrative/types';
 export * from './systems/npc/types';
 export * from './systems/news/types';
 export * from './systems/game/types';
+export * from './systems/reputation/types'; // New Export

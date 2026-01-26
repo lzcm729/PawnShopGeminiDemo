@@ -3,10 +3,11 @@ import { useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { CalendarDayData, CalendarEvent } from '../systems/economy/types';
 import { ItemStatus } from '../systems/items/types';
+import { getMailTemplate } from '../systems/narrative/mailRegistry';
 
 export const useFinancialProjection = () => {
     const { state } = useGame();
-    const { stats, inventory, financialHistory } = state;
+    const { stats, inventory, financialHistory, pendingMails } = state;
 
     const projection = useMemo(() => {
         const days: CalendarDayData[] = [];
@@ -79,7 +80,7 @@ export const useFinancialProjection = () => {
                 });
             }
 
-            // 4. Potential Income (Pawn Redemptions)
+            // 4. Potential Income (Pawn Redemptions) & Story Moments
             const expiringItems = inventory.filter(item => 
                 item.status === ItemStatus.ACTIVE && 
                 item.pawnInfo && 
@@ -90,19 +91,32 @@ export const useFinancialProjection = () => {
                 if (item.pawnInfo) {
                     const interest = Math.ceil(item.pawnInfo.principal * item.pawnInfo.interestRate);
                     const totalIncome = item.pawnInfo.principal + interest;
+                    const isStory = !!item.relatedChainId;
                     
                     runningBalance += totalIncome;
                     dailyEvents.push({
-                        type: 'INCOME_POTENTIAL',
+                        type: isStory ? 'STORY_MOMENT' : 'INCOME_POTENTIAL',
                         amount: totalIncome,
-                        label: `赎回: ${item.name}`,
+                        label: isStory ? `剧情节点: ${item.name}` : `赎回: ${item.name}`,
                         isCertain: false,
                         relatedId: item.id
                     });
                 }
             });
 
-            // 5. Determine Risk Level
+            // 5. Incoming Mails (Narrative)
+            const arrivingMails = pendingMails.filter(m => m.arrivalDay === currentProjectionDay);
+            arrivingMails.forEach(m => {
+                const tpl = getMailTemplate(m.templateId);
+                dailyEvents.push({
+                    type: 'MAIL',
+                    amount: 0,
+                    label: `信件: ${tpl?.sender || '未知发件人'}`,
+                    isCertain: true
+                });
+            });
+
+            // 6. Determine Risk Level
             const riskLevel = runningBalance < 0 ? 'CRITICAL' : 'SAFE';
 
             days.push({
@@ -116,7 +130,7 @@ export const useFinancialProjection = () => {
         }
 
         return days;
-    }, [stats.day, stats.cash, stats.rentDue, stats.rentDueDate, stats.dailyExpenses, inventory, financialHistory]);
+    }, [stats.day, stats.cash, stats.rentDue, stats.rentDueDate, stats.dailyExpenses, inventory, financialHistory, pendingMails]);
 
     return projection;
 };

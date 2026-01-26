@@ -43,4 +43,5 @@ export interface GameState {
   financialHistory: DailyFinancialSnapshot[]; // History of past days
   
   lastSatisfaction: SatisfactionLevel | null; // Tracks the emotional outcome of the last deal
+  activeMilestones: string[];
 }

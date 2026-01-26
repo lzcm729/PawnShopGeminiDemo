@@ -82,6 +82,7 @@ export const enrichItemWithTraits = (item: any): Item => {
         initialRange: range, 
         hiddenTraits: hidden,
         revealedTraits: item.revealedTraits || [],
+        usedTraitIds: [], // Initialize empty
         logs: item.logs || [], 
         pawnAmount: 0, 
         appraisalCount: item.appraisalCount || 0,

@@ -1,5 +1,7 @@
 
 import { EventChainState, StoryEvent, TriggerCondition, Dialogue, DialogueText, SimOperation, Customer, Item, ItemStatus, DynamicFlowOutcome } from '../../types';
+import { GameState } from '../game/types';
+import { generateFateHint } from './fateHints';
 
 // Helper: Evaluate a single condition
 export const checkCondition = (condition: TriggerCondition, chain: EventChainState): boolean => {
@@ -212,6 +214,91 @@ export const findEligibleEvent = (chains: EventChainState[], events: StoryEvent[
   return null;
 };
 
+// NEW: Renewal Request Logic
+export const checkRenewalRequests = (state: GameState): Customer | null => {
+    const { inventory, activeChains, stats } = state;
+    const day = stats.day;
+
+    const expiringItems = inventory.filter(item => 
+        item.status === ItemStatus.ACTIVE &&
+        item.pawnInfo &&
+        item.pawnInfo.dueDate - day <= 2 && 
+        item.pawnInfo.dueDate - day >= 0 &&
+        item.relatedChainId
+    );
+
+    if (expiringItems.length === 0) return null;
+
+    // Pick one candidate randomly
+    const candidateItem = expiringItems[Math.floor(Math.random() * expiringItems.length)];
+    const chain = activeChains.find(c => c.id === candidateItem.relatedChainId);
+
+    if (!chain || !chain.isActive) return null;
+
+    // Logic: Do they want to renew?
+    // Basic heuristics based on common variables. 
+    // If specific logic is needed, we could add 'renewal_desire' to chain vars.
+    // For now: High Hope or Trust + Low Funds = Renewal Request
+    const funds = chain.variables.funds || 0;
+    const hope = chain.variables.hope || 50;
+    const trust = chain.variables.trust || 50;
+    const debt = chain.variables.debt || 0;
+
+    // Default "Desperate but hopeful" check
+    const wantsToRenew = (funds < 500 && hope > 20) || (trust > 60 && funds < 1000) || (debt > 1000);
+
+    if (!wantsToRenew) return null;
+
+    // Construct Renewal Customer
+    return generateRenewalCustomer(candidateItem, chain, day);
+};
+
+const generateRenewalCustomer = (item: Item, chain: EventChainState, currentDay: number): Customer => {
+    // Generate avatar seed consistent with NPC
+    const avatarSeed = `${chain.npcName}_renewal`;
+    
+    return {
+        id: crypto.randomUUID(),
+        name: chain.npcName,
+        description: "行色匆匆，面带难色。",
+        avatarSeed: avatarSeed,
+        interactionType: 'RENEWAL',
+        dialogue: {
+            greeting: `老板，打扰了。关于那个${item.name}...`,
+            pawnReason: "最近手头实在太紧了，眼看就要到期了，但我真的凑不齐赎金。",
+            redemptionPlea: "那东西对我真的很重要，绝对不能死当。能不能... 再宽限我几天？",
+            negotiationDynamic: "我也知道规矩... 我愿意加点利息。",
+            accepted: { fair: "谢谢！大恩大德！", fleeced: "谢谢老板通融。", premium: "你是个好人。" },
+            rejected: "好吧... 看来是留不住了。",
+            rejectionLines: { standard: "打扰了。", angry: "...", desperate: "求你了..." },
+            exitDialogues: {
+                grateful: "谢谢老板！",
+                neutral: "走了。",
+                resentful: "...",
+                desperate: "..."
+            }
+        },
+        item: item,
+        redemptionResolve: "Strong",
+        negotiationStyle: "Desperate",
+        patience: 3,
+        mood: "Neutral",
+        tags: ["Renewal"],
+        desiredAmount: 0,
+        minimumAmount: 0,
+        maxRepayment: 0,
+        chainId: chain.id,
+        renewalProposal: {
+            itemId: item.id,
+            itemName: item.name,
+            currentDueDate: item.pawnInfo!.dueDate,
+            proposedExtensionDays: 7,
+            currentInterestRate: item.pawnInfo!.interestRate,
+            proposedInterestBonus: 0.05 // +5% penalty interest offer
+        }
+    };
+};
+
 export const instantiateStoryCustomer = (
     event: StoryEvent, 
     inventory: Item[] = [], 
@@ -222,7 +309,19 @@ export const instantiateStoryCustomer = (
     const baseItem = event.item || template.item || {};
     const deepItem = JSON.parse(JSON.stringify(baseItem));
     
-    const resolvedDialogue = resolveCustomerDialogue(template.dialogue, chainState);
+    // Fate Hint Logic: Inject atmosphere
+    let dialogue = template.dialogue;
+    if (chainState) {
+        const fateHint = generateFateHint(chainState.variables);
+        if (fateHint) {
+            // Clone template dialogue to avoid mutating const
+            dialogue = JSON.parse(JSON.stringify(template.dialogue));
+            const baseGreeting = resolveDialogue(template.dialogue.greeting, chainState);
+            dialogue.greeting = `${fateHint}\n\n${baseGreeting}`;
+        }
+    }
+
+    const resolvedDialogue = resolveCustomerDialogue(dialogue, chainState);
     if (!deepItem.initialValuationRange && deepItem.valuationRange) {
         deepItem.initialValuationRange = { ...deepItem.valuationRange };
     }
@@ -232,6 +331,13 @@ export const instantiateStoryCustomer = (
         : ((template as any).currentWallet || template.maxRepayment || 1000);
     
     let intent: 'REDEEM' | 'EXTEND' | 'LEAVE' | undefined;
+    let interactionType = (template as any).interactionType || 'PAWN';
+
+    // POST_FORFEIT OVERRIDE
+    if (event.type === 'POST_FORFEIT_VISIT') {
+        interactionType = 'POST_FORFEIT';
+    }
+
     let logicItem = deepItem;
     if (event.type === 'REDEMPTION_CHECK' && event.targetItemId) {
         const realItem = inventory.find(i => i.id === event.targetItemId);
@@ -240,7 +346,7 @@ export const instantiateStoryCustomer = (
     
     if (template.redemptionIntent) {
         intent = template.redemptionIntent;
-    } else if ((template as any).interactionType === 'REDEEM' && logicItem.pawnInfo) {
+    } else if (interactionType === 'REDEEM' && logicItem.pawnInfo) {
         const p = logicItem.pawnInfo.principal;
         const rate = logicItem.pawnInfo.interestRate;
         const interest = Math.ceil(p * rate); 
@@ -255,7 +361,7 @@ export const instantiateStoryCustomer = (
         name: template.name || "Unknown",
         description: template.description || "",
         avatarSeed: template.avatarSeed || "default",
-        portraits: template.portraits, // Pass portraits through
+        portraits: template.portraits, 
         dialogue: resolvedDialogue,
         redemptionResolve: template.redemptionResolve || "Medium",
         negotiationStyle: template.negotiationStyle || "Professional",
@@ -266,7 +372,7 @@ export const instantiateStoryCustomer = (
         desiredAmount: template.desiredAmount || 0,
         minimumAmount: template.minimumAmount || 0,
         maxRepayment: template.maxRepayment || ((template.minimumAmount || 0) * 1.5),
-        interactionType: (template as any).interactionType || 'PAWN',
+        interactionType: interactionType,
         redemptionIntent: intent,
         currentWallet: currentWallet, 
         currentAskPrice: (template as any).currentAskPrice,

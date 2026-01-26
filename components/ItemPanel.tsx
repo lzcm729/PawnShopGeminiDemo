@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
 import { useAppraisal } from '../hooks/useAppraisal';
-import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert } from 'lucide-react';
+import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { ItemTrait } from '../types';
 import { getUncertaintyRisk } from '../systems/items/utils';
 import { DecryptionText } from './ui/TextEffects';
+import { playSfx } from '../systems/game/audio';
 
 const getIcon = (category: string) => {
     switch(category) {
@@ -36,12 +37,10 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
   const { performAppraisal } = useAppraisal();
   
   const [appraising, setAppraising] = useState(false);
-  const [usedLeverageIds, setUsedLeverageIds] = useState<string[]>([]);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'warning' | 'error', text: string } | null>(null);
   const [hoveredTrait, setHoveredTrait] = useState<ItemTrait | null>(null);
 
   useEffect(() => {
-    setUsedLeverageIds([]);
     setFeedbackMsg(null);
   }, [currentCustomer?.id]);
 
@@ -202,7 +201,8 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
   };
 
   const handleTraitClick = (trait: ItemTrait) => {
-      if (usedLeverageIds.includes(trait.id) || !canInteract) return;
+      const isUsed = item.usedTraitIds?.includes(trait.id);
+      if (isUsed || !canInteract) return;
       
       const power = Math.abs(trait.valueImpact);
 
@@ -211,17 +211,20 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
           setFeedbackMsg({ type: 'error', text: "价值崩塌 (VALUE CRASH)" });
       }
 
+      // 1. Dispatch global usage state (Locks trait)
+      dispatch({ type: 'MARK_TRAIT_USED', payload: { traitId: trait.id } });
+
+      // 2. Dispatch negotiation impact
       if (trait.type === 'FLAW' || trait.type === 'FAKE') {
           applyLeverage(power, trait.name);
-          setUsedLeverageIds(prev => [...prev, trait.id]);
       } else if (trait.type === 'STORY') {
           if (trait.dialogueTrigger) {
               triggerNarrative(trait.dialogueTrigger.playerLine, trait.dialogueTrigger.customerLine, power);
           } else {
               applyLeverage(0.05, `话题: ${trait.name}`); 
           }
-          setUsedLeverageIds(prev => [...prev, trait.id]);
       }
+      playSfx('STAMP');
   };
 
   const currentRange = item.currentRange || [0, 0];
@@ -416,28 +419,36 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                      </div>
 
                      {revealedTraits.map((trait) => {
-                         const isUsed = usedLeverageIds.includes(trait.id);
+                         const isUsed = item.usedTraitIds?.includes(trait.id);
+                         
                          let borderColor = "border-stone-400";
                          let bgColor = "bg-white";
                          let icon = <HelpCircle className="w-4 h-4"/>;
-                         let label = "点击对话";
+                         let label = "点击压价";
                          let impactText = "";
+                         let impactColor = "text-stone-500";
                          
                          if (trait.type === 'FLAW') {
                              borderColor = "border-red-400";
-                             bgColor = "bg-red-50";
-                             icon = <AlertCircle className="w-4 h-4 text-red-600"/>;
-                             label = "点击压价";
+                             bgColor = isUsed ? "bg-stone-200" : "bg-red-50";
+                             icon = <AlertCircle className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-red-600'}`}/>;
                              impactText = `-${Math.abs(trait.valueImpact * 100)}%`;
+                             impactColor = "text-red-600";
                          } else if (trait.type === 'STORY') {
                              borderColor = "border-blue-400";
-                             bgColor = "bg-blue-50";
-                             icon = <Quote className="w-4 h-4 text-blue-600"/>;
+                             bgColor = isUsed ? "bg-stone-200" : "bg-blue-50";
+                             icon = <Quote className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-blue-600'}`}/>;
+                             label = "点击对话";
                          } else if (trait.type === 'FAKE') {
                              borderColor = "border-purple-600";
-                             bgColor = "bg-purple-50";
-                             icon = <Skull className="w-4 h-4 text-purple-600"/>;
+                             bgColor = isUsed ? "bg-stone-200" : "bg-purple-50";
+                             icon = <Skull className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-purple-600'}`}/>;
                              label = "点击揭穿";
+                         }
+                         
+                         if (isUsed) {
+                             borderColor = "border-stone-300";
+                             impactColor = "text-stone-400";
                          }
                          
                          const cashImpact = Math.floor(currentAskPrice * Math.abs(trait.valueImpact));
@@ -452,7 +463,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                                 className={`
                                     w-full text-left p-2 rounded border-l-4 shadow-sm transition-all duration-500 group relative overflow-visible animate-in zoom-in-95
                                     ${borderColor} ${bgColor}
-                                    ${isUsed ? 'opacity-50 grayscale-[0.3]' : 'hover:translate-x-1 hover:shadow-md'}
+                                    ${isUsed ? 'opacity-60 grayscale-[0.5] cursor-not-allowed' : 'hover:translate-x-1 hover:shadow-md cursor-pointer'}
                                 `}
                              >
                                  {hoveredTrait?.id === trait.id && !isUsed && canInteract && (trait.type === 'FLAW' || trait.type === 'FAKE') && (
@@ -467,7 +478,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                                  )}
 
                                  <div className="flex justify-between items-start mb-1 relative z-10">
-                                     <div className="font-bold text-xs flex items-center gap-1.5">
+                                     <div className={`font-bold text-xs flex items-center gap-1.5 ${isUsed ? 'text-stone-500' : 'text-stone-700'}`}>
                                          {icon}
                                          <DecryptionText text={trait.name} speed={30} revealSpeed={100} />
                                      </div>
@@ -475,13 +486,13 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                                         {trait.type}
                                      </span>
                                  </div>
-                                 <p className="text-[11px] text-stone-600 leading-snug relative z-10">
+                                 <p className={`text-[11px] leading-snug relative z-10 ${isUsed ? 'text-stone-400' : 'text-stone-600'}`}>
                                      <DecryptionText text={trait.description} speed={10} revealSpeed={30} />
                                  </p>
                                  
                                  {isUsed && (
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 border-2 border-stone-800 text-stone-800 font-black text-xs uppercase px-1 rotate-[-15deg] opacity-80 z-20 pointer-events-none mix-blend-multiply bg-stone-300/20 backdrop-blur-[1px]">
-                                        已使用
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 border-2 border-stone-500 text-stone-500 font-black text-xs uppercase px-1 rotate-[-12deg] opacity-70 z-20 pointer-events-none mix-blend-multiply backdrop-blur-[1px] flex items-center gap-1">
+                                        <CheckCircle2 className="w-3 h-3" /> APPLIED
                                     </div>
                                  )}
                                  

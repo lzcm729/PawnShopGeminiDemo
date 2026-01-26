@@ -1,6 +1,6 @@
 
 import { useGame } from '../store/GameContext';
-import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow, checkCondition, resolveDialogue } from '../systems/narrative/engine';
+import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow, checkCondition, resolveDialogue, checkRenewalRequests } from '../systems/narrative/engine';
 import { generateDailyNews } from '../systems/news/engine';
 import { generatePawnLog } from '../systems/game/utils/logGenerator';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
@@ -8,10 +8,27 @@ import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEve
 import { usePawnShop } from './usePawnShop';
 import { GAME_CONFIG } from '../systems/game/config';
 import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
+import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
   const { checkDailyExpirations, calculateRedemptionCost } = usePawnShop();
+
+  // Helper to check for new milestones
+  const checkMilestones = (reputation: any) => {
+      REPUTATION_MILESTONES.forEach(ms => {
+          if (state.activeMilestones.includes(ms.id)) return;
+          
+          const currentVal = reputation[ms.trigger.type];
+          let met = false;
+          if (ms.trigger.operator === '>=') met = currentVal >= ms.trigger.value;
+          else if (ms.trigger.operator === '<=') met = currentVal <= ms.trigger.value;
+          
+          if (met) {
+              dispatch({ type: 'UNLOCK_MILESTONE', payload: ms.id });
+          }
+      });
+  };
 
   const performNightCycle = () => {
     // 1. Narrative Side Effects
@@ -53,7 +70,16 @@ export const useGameEngine = () => {
 
     // 3. Random Night Events
     const rollEvent = Math.random();
-    if (rollEvent < 0.3) {
+    
+    // Milestone Effect: The Fixer (Reduces negative night events)
+    const hasFixer = state.activeMilestones.includes('und_fixer');
+    const hasSoftTarget = state.activeMilestones.includes('und_target');
+    
+    let eventChance = 0.3;
+    if (hasFixer) eventChance = 0.15;
+    if (hasSoftTarget) eventChance = 0.5;
+
+    if (rollEvent < eventChance) {
         const events = [
             { text: "Security System Glitch: Maintenance required.", cash: -30 },
             { text: "Street Rat Infestation: Pest control fee.", cash: -20 },
@@ -64,7 +90,13 @@ export const useGameEngine = () => {
             { text: "Nightmares about debt. (Health -1)", health: -1 }
         ];
         
-        const evt = events[Math.floor(Math.random() * events.length)];
+        // Filter negative events if Fixer
+        let pool = events;
+        if (hasFixer) {
+            pool = events.filter(e => !e.text.includes("Vandals") && !e.text.includes("Security"));
+        }
+
+        const evt = pool[Math.floor(Math.random() * pool.length)];
         
         dispatch({ 
             type: 'RESOLVE_TRANSACTION', 
@@ -114,9 +146,13 @@ export const useGameEngine = () => {
 
     const isBillOverdue = day >= medicalBill.dueDate && medicalBill.status !== 'PAID';
     
+    // Milestone Effect: Saint (Health decay reduced)
+    const hasSaint = state.activeMilestones.includes('hum_saint');
+    const decayModifier = hasSaint ? 1 : 0; // +1 health offset (reduces decay)
+
     if (medicalBill.status === 'PAID') {
         newCareLevel = 'Premium';
-        newHealth += 2; 
+        newHealth += (2 + decayModifier); 
         newRisk = Math.max(5, newRisk - 5); 
         newStatus = 'Improving';
         // logMessage handled by payment action
@@ -128,7 +164,7 @@ export const useGameEngine = () => {
         logMessage = "警告：医药费断缴！药物已停供，母亲病情急剧恶化。";
     } else {
         newCareLevel = 'Basic';
-        newHealth -= 1; 
+        newHealth = newHealth - 1 + decayModifier; 
         newStatus = 'Stable';
     }
 
@@ -168,6 +204,17 @@ export const useGameEngine = () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     
     try {
+      // 1. Check for Renewal Requests FIRST (Priority: Expiring Items)
+      const renewalCustomer = checkRenewalRequests(state);
+      if (renewalCustomer) {
+          setTimeout(() => {
+              dispatch({ type: 'SET_CUSTOMER', payload: renewalCustomer });
+              dispatch({ type: 'SET_LOADING', payload: false });
+          }, 800);
+          return;
+      }
+
+      // 2. Standard Story Events
       const narrativeEvent = findEligibleEvent(state.activeChains, ALL_STORY_EVENTS);
       
       if (narrativeEvent) {
@@ -330,10 +377,12 @@ export const useGameEngine = () => {
       repDelta[ReputationType.UNDERWORLD] += 5;
       repDelta[ReputationType.CREDIBILITY] -= 2; 
       
+      // Removed automatic violation flagging from here.
+      // Now handled in Reducer to ensure it only applies if deal is committed.
       if (currentRisk > 0) {
+          // Additional immediate rep penalty for risk taking
           repDelta[ReputationType.CREDIBILITY] -= 20; 
           repDelta[ReputationType.UNDERWORLD] += 5;
-          dispatch({ type: 'ADD_VIOLATION', payload: 'police_risk_ignored' });
       }
     }
     
@@ -544,6 +593,16 @@ export const useGameEngine = () => {
     } else {
       dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: result.reputationDelta, item: null, log: `与 ${state.currentCustomer?.name} 的交易告吹: ${result.message}`, customerName: state.currentCustomer?.name || "Customer" } });
     }
+
+    // NEW: Check Milestones based on updated reputation
+    // We construct a projected reputation object
+    const currentRep = state.reputation;
+    const projectedRep = {
+        [ReputationType.HUMANITY]: currentRep[ReputationType.HUMANITY] + (result.reputationDelta[ReputationType.HUMANITY] || 0),
+        [ReputationType.CREDIBILITY]: currentRep[ReputationType.CREDIBILITY] + (result.reputationDelta[ReputationType.CREDIBILITY] || 0),
+        [ReputationType.UNDERWORLD]: currentRep[ReputationType.UNDERWORLD] + (result.reputationDelta[ReputationType.UNDERWORLD] || 0)
+    };
+    checkMilestones(projectedRep);
   };
 
   const rejectCustomer = () => {

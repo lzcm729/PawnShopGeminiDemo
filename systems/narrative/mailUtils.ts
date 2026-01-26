@@ -11,22 +11,33 @@ export interface InterpolationContext {
     [key: string]: any;
 }
 
+const formatCurrency = (amount: number): string => {
+    return `$${amount.toLocaleString()}`;
+};
+
 export const interpolateMailBody = (templateBody: string, context: InterpolationContext = {}): string => {
     let result = templateBody;
     
-    for (const key in context) {
-        const placeholder = `{{${key}}}`;
-        const value = context[key] !== undefined ? String(context[key]) : '???';
-        result = result.replace(new RegExp(placeholder, 'g'), value);
-    }
-    
-    if (context.recentNews) {
-        result = result.replace(/{{recent_news.headline}}/g, context.recentNews.headline);
-    }
+    // Default replacements
+    const safeContext = {
+        itemName: "那件物品",
+        amount: 0,
+        playerName: "老板",
+        npcName: "顾客",
+        daysPassed: 0,
+        ...context
+    };
 
-    if (!context.itemName) result = result.replace(/{{itemName}}/g, "那件物品");
-    if (!context.amount) result = result.replace(/{{amount}}/g, "钱");
-    if (!context.recentNews) result = result.replace(/{{recent_news.headline}}/g, "最近的新闻");
+    // Replace strict double curly braces
+    result = result.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+        if (key === 'amount' && typeof safeContext.amount === 'number') {
+            return formatCurrency(safeContext.amount);
+        }
+        if (key === 'recent_news.headline' && safeContext.recentNews) {
+            return safeContext.recentNews.headline;
+        }
+        return safeContext[key] !== undefined ? String(safeContext[key]) : match;
+    });
     
     return result;
 };

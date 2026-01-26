@@ -82,6 +82,7 @@ export interface Item {
   
   hiddenTraits: ItemTrait[];    // Traits yet to be discovered
   revealedTraits: ItemTrait[];  // Traits found by player
+  usedTraitIds: string[];       // Traits used in negotiation leverage (New)
   
   logs: ItemLogEntry[]; 
   

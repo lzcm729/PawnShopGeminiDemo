@@ -8,6 +8,8 @@ import { CustomerView } from './components/CustomerView';
 import { ItemPanel } from './components/ItemPanel';
 import { NegotiationPanel } from './components/NegotiationPanel';
 import { SettlementInterface } from './components/RedemptionInterface';
+import { RenewalRequestPanel } from './components/RenewalRequestPanel';
+import { PostForfeitPanel } from './components/PostForfeitPanel';
 import { EndOfDaySummary } from './components/EndOfDaySummary';
 import { InventoryModal } from './components/InventoryModal'; 
 import { MailModal } from './components/MailModal';
@@ -156,7 +158,12 @@ const GameContent: React.FC = () => {
 
   const isNegotiating = state.phase === GamePhase.NEGOTIATION;
   const isDeparture = state.phase === GamePhase.DEPARTURE;
-  const isSettlement = isNegotiating && state.currentCustomer?.interactionType === 'REDEEM';
+  const interactionType = state.currentCustomer?.interactionType;
+  
+  const isSettlement = isNegotiating && interactionType === 'REDEEM';
+  const isRenewal = isNegotiating && interactionType === 'RENEWAL';
+  const isPostForfeit = isNegotiating && interactionType === 'POST_FORFEIT';
+  
   const isBusiness = state.phase === GamePhase.BUSINESS;
   const isShopClosed = isBusiness && state.customersServedToday >= state.maxCustomersPerDay;
 
@@ -192,6 +199,30 @@ const GameContent: React.FC = () => {
             
             {isSettlement ? (
                 <SettlementInterface />
+            ) : (isRenewal || isPostForfeit) ? (
+                <>
+                    {/* Left Panel: Item Context */}
+                    <div className="lg:col-span-6 h-full border-r border-white/10 overflow-hidden relative bg-[#1c1917]">
+                        <div className="h-full flex flex-col items-center justify-center text-stone-600">
+                            <span className="text-4xl font-serif opacity-30 tracking-widest rotate-90">ARCHIVE</span>
+                        </div>
+                    </div>
+                    {/* Right Panel: Special Interaction */}
+                    <div className="lg:col-span-6 h-full overflow-hidden relative">
+                        <div className="flex flex-col h-full bg-[#1c1917] border-l border-[#44403c]">
+                            <div className="flex-1 overflow-hidden relative border-b border-[#44403c]">
+                                <CustomerView />
+                            </div>
+                            <div className="flex-1 relative z-10">
+                                {state.currentCustomer && (
+                                    isRenewal 
+                                        ? <RenewalRequestPanel customer={state.currentCustomer} />
+                                        : <PostForfeitPanel customer={state.currentCustomer} />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </>
             ) : (
                 <>
                     {/* Left Panel: Item / Contract / Closed Sign */}

@@ -235,7 +235,8 @@ export const ALL_NEWS_DATA: NewsItem[] = [
         effect: {
             categoryTarget: "电子产品",
             priceMultiplier: 0.7
-        }
+        },
+        triggerMailId: "mail_market_crash_tip"
     },
     {
         id: "news_market_art_scam",

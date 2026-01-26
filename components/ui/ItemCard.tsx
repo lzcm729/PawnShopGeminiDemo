@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Badge } from './Badge';
 import { CategoryIcon } from './CategoryIcon';
 import { Item, ItemStatus } from '../../types';
-import { AlertTriangle, ShieldCheck, Heart, Skull, BookOpen, ChevronDown, ChevronUp, Barcode, CalendarClock, DollarSign } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Heart, Skull, BookOpen, ChevronDown, ChevronUp, Barcode, CalendarClock, DollarSign, LogIn, Search, FileX, ArrowRightCircle, CheckCircle2, History } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface ItemCardProps {
@@ -12,6 +12,29 @@ interface ItemCardProps {
   actions?: React.ReactNode;
   showLogs?: boolean;
 }
+
+const getLogIcon = (type: string) => {
+    switch (type) {
+        case 'ENTRY': return <LogIn className="w-3 h-3" />;
+        case 'APPRAISAL': return <Search className="w-3 h-3" />;
+        case 'FORFEIT': return <FileX className="w-3 h-3" />;
+        case 'SOLD': return <DollarSign className="w-3 h-3" />;
+        case 'REDEEM': return <CheckCircle2 className="w-3 h-3" />;
+        case 'INFO': return <History className="w-3 h-3" />;
+        default: return <BookOpen className="w-3 h-3" />;
+    }
+};
+
+const getLogStyle = (type: string) => {
+    switch (type) {
+        case 'ENTRY': return "border-blue-500 text-blue-500 bg-blue-950/20";
+        case 'APPRAISAL': return "border-amber-500 text-amber-500 bg-amber-950/20";
+        case 'FORFEIT': return "border-red-500 text-red-500 bg-red-950/20";
+        case 'SOLD': return "border-green-500 text-green-500 bg-green-950/20";
+        case 'REDEEM': return "border-emerald-500 text-emerald-500 bg-emerald-950/20";
+        default: return "border-stone-500 text-stone-500 bg-stone-900";
+    }
+};
 
 export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions, showLogs = true }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -55,8 +78,10 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions, s
     }
   }
 
-  const displayLogs = isExpanded ? item.logs : (item.logs || []).slice(-1);
-  const hiddenCount = (item.logs || []).length - displayLogs.length;
+  // Logic: Show all logs if expanded, otherwise show only the last one (current status)
+  // We reverse logs for display so newest is top if we want, but timeline usually goes down.
+  // Let's keep chronological order (Oldest -> Newest) to tell the story.
+  const logsToDisplay = item.logs || []; 
 
   return (
     <div className={cn("relative flex flex-col bg-noir-200 border-l-4 shadow-sm transition-all duration-300 group overflow-hidden font-mono", borderColor)}>
@@ -124,24 +149,48 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions, s
             </div>
         )}
 
-        {/* Logs */}
-        {showLogs && item.logs && item.logs.length > 0 && (
+        {/* Audit Timeline */}
+        {showLogs && logsToDisplay.length > 0 && (
             <div className="mt-auto">
                 <button 
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="w-full flex items-center justify-between py-1 border-b border-noir-400/50 text-[9px] uppercase font-bold text-noir-txt-muted hover:text-noir-txt-secondary transition-colors"
+                    className="w-full flex items-center justify-between py-1 border-b border-noir-400/50 text-[9px] uppercase font-bold text-noir-txt-muted hover:text-noir-txt-secondary transition-colors mb-2"
                 >
-                    <span className="flex items-center gap-1"><BookOpen className="w-3 h-3"/> Audit Log</span>
-                    {isExpanded ? <ChevronUp className="w-3 h-3"/> : <ChevronDown className="w-3 h-3"/>}
+                    <span className="flex items-center gap-1"><BookOpen className="w-3 h-3"/> Life Cycle Log</span>
+                    <div className="flex items-center gap-1">
+                        {!isExpanded && <span className="text-[8px] bg-noir-400 px-1 rounded text-stone-300">Latest</span>}
+                        {isExpanded ? <ChevronUp className="w-3 h-3"/> : <ChevronDown className="w-3 h-3"/>}
+                    </div>
                 </button>
                 
-                <div className={cn("text-[9px] font-mono space-y-1 pt-1 overflow-hidden transition-all", isExpanded ? "max-h-32 overflow-y-auto custom-scrollbar-light" : "")}>
-                    {displayLogs.map(log => (
-                        <div key={log.id} className="text-noir-txt-muted leading-snug">
-                            <span className="text-noir-accent mr-1">[{log.day}]</span>
-                            {log.content}
-                        </div>
-                    ))}
+                <div className={cn("relative transition-all duration-500 overflow-hidden", isExpanded ? "max-h-60" : "max-h-20")}>
+                    {/* Vertical Line */}
+                    <div className="absolute left-[11px] top-2 bottom-2 w-px bg-noir-400 z-0"></div>
+
+                    <div className={cn("space-y-3 pl-1 pb-1", !isExpanded && "mask-gradient-bottom")}>
+                        {(isExpanded ? logsToDisplay : logsToDisplay.slice(-1)).map((log, index) => (
+                            <div key={log.id} className="relative flex items-start gap-3 text-[10px] z-10 animate-in fade-in slide-in-from-left-1 duration-300">
+                                {/* Node */}
+                                <div className={cn(
+                                    "relative w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 shadow-sm",
+                                    getLogStyle(log.type)
+                                )}>
+                                    {getLogIcon(log.type)}
+                                </div>
+                                
+                                {/* Content */}
+                                <div className="flex-1 pt-0.5 min-w-0">
+                                    <div className="flex justify-between items-baseline mb-0.5">
+                                        <span className="font-bold font-mono text-noir-txt-secondary">DAY {log.day}</span>
+                                        <span className="text-[8px] uppercase tracking-wider opacity-50">{log.type}</span>
+                                    </div>
+                                    <p className="text-noir-txt-muted leading-relaxed break-words border-b border-dashed border-noir-400/30 pb-2">
+                                        {log.content}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         )}
