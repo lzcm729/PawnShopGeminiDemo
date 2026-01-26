@@ -55,14 +55,14 @@ export const MailModal: React.FC = () => {
             {/* Sidebar: Message List */}
             <div className="w-1/3 border-r border-green-900/50 flex flex-col bg-black relative z-10">
                 <div className="p-3 border-b border-green-900/50 bg-green-950/10 text-[10px] font-bold uppercase tracking-widest flex justify-between items-center">
-                    <span>> INBOX_DIR</span>
+                    <span>{'>'} INBOX_DIR</span>
                     <span>[{state.inbox.length}]</span>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {state.inbox.length === 0 ? (
                         <div className="p-4 text-green-900 text-xs text-center mt-10">
-                            > NO_DATA_FOUND_
+                            {'>'} NO_DATA_FOUND_
                         </div>
                     ) : (
                         state.inbox.map(mail => {

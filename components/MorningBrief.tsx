@@ -269,7 +269,7 @@ export const MorningBrief: React.FC = () => {
                                    <div className="text-[10px] opacity-70 mb-2">{activeFlavor.body}</div>
                                    {activeFlavor.effect && activeFlavor.effect.actionPointsModifier && (
                                        <div className="text-[10px] font-mono text-red-400 mt-2 pt-2 border-t border-stone-700">
-                                           >> DAILY AP MODIFIER: {activeFlavor.effect.actionPointsModifier}
+                                           {'>'}{'>'} DAILY AP MODIFIER: {activeFlavor.effect.actionPointsModifier}
                                        </div>
                                    )}
                                </>

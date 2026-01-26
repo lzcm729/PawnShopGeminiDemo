@@ -94,10 +94,10 @@ export const MedicalModal: React.FC = () => {
                         <div className="border-t border-teal-900 pt-4 mt-2">
                             <div className="text-xs text-teal-700 mb-2 uppercase font-bold">[ SYSTEM LOG ]</div>
                             <div className="text-[10px] space-y-1 text-teal-600 opacity-80">
-                                <div>> Vitals monitoring active...</div>
-                                <div>> Connection stable. Latency 12ms.</div>
-                                <div>> Care Level: {motherStatus.careLevel.toUpperCase()}</div>
-                                {isBillOverdue && <div className="text-red-500 font-bold">> ALERT: PAYMENT OVERDUE. MEDICATION SUSPENDED.</div>}
+                                <div>{'>'} Vitals monitoring active...</div>
+                                <div>{'>'} Connection stable. Latency 12ms.</div>
+                                <div>{'>'} Care Level: {motherStatus.careLevel.toUpperCase()}</div>
+                                {isBillOverdue && <div className="text-red-500 font-bold">{'>'} ALERT: PAYMENT OVERDUE. MEDICATION SUSPENDED.</div>}
                             </div>
                         </div>
                     </div>

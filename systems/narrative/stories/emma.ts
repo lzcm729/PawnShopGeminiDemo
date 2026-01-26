@@ -22,7 +22,7 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
     id: "mail_emma_boyfriend_left",
     sender: "艾玛",
     subject: "一切都结束了",
-    body: `我的男朋友走了。\n\n今早我醒来，发现他的东西都不见了，只留下一张字条，说受够了这种和我一起还要背债、看不到希望的日子。\n\n之前当在店里的{{relatedItemName}}，我恐怕永远也没能力赎回来了。工作没指望，现在连他也走了。\n\n我觉得好累。这个世界也许真的不适合我。`,
+    body: `我的男朋友走了。\n\n今早我醒来，发现他的东西都不见了，只留下一张字条，说"你好自为之吧"。\n\n我仔细想了想，从认识他到现在，好像... 我一直都是错的那个人。\n\n之前当在店里的{{relatedItemName}}，我恐怕永远也没能力赎回来了。工作没指望，现在连他也走了。\n\n我觉得好累。这个世界也许真的不需要我。`,
     attachments: { cash: 0 }
   },
   "mail_emma_plea": {
@@ -36,42 +36,42 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
     id: "mail_emma_01_charity",
     sender: "艾玛",
     subject: "谢谢你",
-    body: `老板，\n\n真的很感谢你。这个价格比我预期的高很多。\n\n有你这样的人在，也许这个世界还没那么糟。等我找到工作，第一个来赎！\n\n艾玛`,
+    body: `老板，\n\n真的很感谢你。这个价格比我预期的高很多。\n\n回去告诉他，他松了口气说"看吧，天无绝人之路"。\n\n等我找到工作，第一个来赎！\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_01_shark": {
     id: "mail_emma_01_shark",
     sender: "艾玛",
     subject: "（无主题）",
-    body: `好吧。有总比没有好。\n\n希望面试顺利，不然下次见面可能更惨。`,
+    body: `好吧。有总比没有好。\n\n回去他问我拿了多少，听完叹了口气没说话。\n\n希望面试顺利吧。`,
     attachments: { cash: 0 }
   },
   "mail_emma_02_charity": {
     id: "mail_emma_02_charity",
     sender: "艾玛",
     subject: "撑过这周",
-    body: `老板，\n\n谢谢你又帮了我一把。这周的房租有着落了。\n\n面试还在继续，我不会放弃的。\n\n艾玛`,
+    body: `老板，\n\n谢谢你又帮了我一把。这周的房租有着落了。\n\n我把钱交给他，他数了数说"勉强够吧"。\n\n面试还在继续，我不会放弃的。\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_02_shark": {
     id: "mail_emma_02_shark",
     sender: "艾玛",
     subject: "...",
-    body: `这点钱... 也就够买几天泡面。\n\n算了，有总比没有强。`,
+    body: `这点钱... 也就够买几天泡面。\n\n他看了一眼说"就这么点？你那破瓶子不是挺贵的吗"。\n\n我没解释。解释也没用。`,
     attachments: { cash: 0 }
   },
   "mail_emma_03_charity": {
     id: "mail_emma_03_charity",
     sender: "艾玛",
     subject: "电脑的事",
-    body: `老板，\n\n谢谢你给了一个公道的价格。我知道这台电脑对我意味着什么，你也知道。\n\n我会回来赎它的。一定。\n\n艾玛`,
+    body: `老板，\n\n谢谢你给了一个公道的价格。我知道这台电脑对我意味着什么，你也知道。\n\n回去告诉他，他只是"哦"了一声就继续玩手机。\n\n我会回来赎它的。一定。\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_03_shark": {
     id: "mail_emma_03_shark",
     sender: "艾玛",
     subject: "再见，老伙计",
-    body: `这个价格... 算了，我没得选。\n\n希望你对它好一点。里面有我五年的心血。`,
+    body: `这个价格... 算了，我没得选。\n\n他说"你连台破电脑都卖不出好价钱"。\n\n也许他说得对。我什么都做不好。`,
     attachments: { cash: 0 }
   },
   "mail_emma_03b_charity": {
@@ -98,8 +98,8 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
   "mail_emma_coming_for_ring": {
     id: "mail_emma_coming_for_ring",
     sender: "艾玛",
-    subject: "他走了",
-    body: `老板，\n\n他走了。今天早上醒来，他的东西都不见了。\n\n我手上还有一枚戒指。明天我会来的。\n\n也许这是最后一次了。`,
+    subject: "他说要走了",
+    body: `老板，\n\n他跟我摊牌了。\n\n他说受够了"和一个只会拖后腿的人在一起"。说我让他"每天都很压抑"。说当初就不该"可怜我"。\n\n我求他再给我一点时间。他说"给你时间就是在浪费我的时间"。\n\n也许... 他说得对。\n\n如果他真的走了，我不知道还能撑多久。\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_got_job": {
@@ -113,49 +113,63 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
     id: "mail_emma_interview_failed_3x",
     sender: "艾玛",
     subject: "我是不是真的不行",
-    body: `老板，\n\n又被拒了。这已经是第三次了。\n\nHR 说我"气质不够自信"。也许他们说得对。\n\n我开始怀疑自己了。`,
+    body: `老板，\n\n又被拒了。这已经是第三次了。\n\nHR说我"气质不够自信"。\n\n也许他说得对。也许面试官说得对。也许所有人都对。只有我自己是错的。\n\n我好累。`,
     attachments: { cash: 0 }
   },
   "mail_emma_stage1_hopeful": {
     id: "mail_emma_stage1_hopeful",
     sender: "艾玛",
     subject: "近况汇报",
-    body: `老板，\n\n这几天投了很多简历，有几家已经约了面试。感觉事情在往好的方向发展。\n\n等我有好消息，第一时间告诉你！\n\n艾玛`,
+    body: `老板，\n\n这几天投了很多简历，有几家已经约了面试。感觉事情在往好的方向发展。\n\n他说让我专心准备，家务他来做。也许... 一切都会好起来的。\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_stage1_anxious": {
     id: "mail_emma_stage1_anxious",
     sender: "艾玛",
     subject: "有点焦虑",
-    body: `老板，\n\n简历投了很多，但都石沉大海。房东又开始催租了。\n\n如果这周还没消息，我可能还要来找你...\n\n艾玛`,
+    body: `老板，\n\n简历投了很多，但都石沉大海。房东又开始催租了。\n\n昨晚他翻了一下我的手机，说"你是不是偷偷买咖啡了"。我解释了半天...\n\n如果这周还没消息，我可能还要来找你...\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_stage2_struggling": {
     id: "mail_emma_stage2_struggling",
     sender: "艾玛",
     subject: "快撑不住了",
-    body: `老板，\n\n男朋友开始抱怨我整天愁眉苦脸。我也知道这样不好，但我控制不住。\n\n冰箱空了，存款也快见底了。\n\n艾玛`,
+    body: `老板，\n\n他开始抱怨我整天愁眉苦脸，说"你能不能振作点，我每天回来看你这张脸也很累"。\n\n我也知道这样不好。但我控制不住。\n\n冰箱空了，他说让我自己解决午饭。\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_stage3_desperate": {
     id: "mail_emma_stage3_desperate",
     sender: "艾玛",
     subject: "（无主题）",
-    body: `老板，\n\n我不知道还能撑多久。\n\n他最近总是很晚回家，回来也不怎么说话。\n\n也许他也在想办法离开我吧。`,
+    body: `老板，\n\n我不知道还能撑多久。\n\n他最近总是很晚回家，回来也不怎么说话。我问他是不是在外面有事，他说"你管那么多干嘛，先把自己的事搞定"。\n\n也许他也在想办法离开我吧。`,
+    attachments: { cash: 0 }
+  },
+  "mail_emma_stage3_waiting": {
+    id: "mail_emma_stage3_waiting",
+    sender: "艾玛",
+    subject: "还在等",
+    body: `老板，\n\n面试已经过去三天了，还没收到回复。\n\n我每天都在刷新邮箱。网吧的电脑太卡了，但我还是每天去。\n\n他问我"有消息了吗"，我说还没，他就不再说话了。\n\n那种沉默比骂我还难受。\n\n艾玛`,
+    attachments: { cash: 0 }
+  },
+  "mail_emma_stage3_nervous": {
+    id: "mail_emma_stage3_nervous",
+    sender: "艾玛",
+    subject: "是不是没戏了",
+    body: `老板，\n\n还是没消息。网上说如果一周没回复基本就凉了。\n\n昨晚回去，他在收拾行李。我问他要去哪，他说"出差"。\n\n可是他从来没出过差。\n\n我没敢再问。\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_interview_failed_once": {
     id: "mail_emma_interview_failed_once",
     sender: "艾玛",
     subject: "今天的面试",
-    body: `老板，\n\n今天的面试没过。HR说我"经验不够匹配"。\n\n没关系，还有其他机会。我不会放弃的。\n\n艾玛`,
+    body: `老板，\n\n今天的面试没过。HR说我"经验不够匹配"。\n\n没关系，还有其他机会。我不会放弃的。\n\n回去跟他说了，他说"意料之中"。\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_interview_failed_twice": {
     id: "mail_emma_interview_failed_twice",
     sender: "艾玛",
     subject: "又被拒了",
-    body: `老板，\n\n又被拒了。这次HR说我"状态不太好"。\n\n也许他们说得对。最近确实睡不好，他也开始冷落我了。\n\n但我还会继续试的。\n\n艾玛`,
+    body: `老板，\n\n又被拒了。这次HR说我"状态不太好"。\n\n也许他们说得对。最近确实睡不好，黑眼圈都遮不住了。\n\n昨晚他说："你看你现在这样，谁敢要你？"\n\n我知道他是在陈述事实。\n\n艾玛`,
     attachments: { cash: 0 }
   }
 };
@@ -254,6 +268,26 @@ export const EMMA_CHAIN_INIT: EventChainState = {
               '（手里攥着一张皱巴巴的纸，上面写着什么联系方式）',
               '（指甲被咬得参差不齐，透露着焦虑）'
           ]
+      },
+
+      // --- PSYCHOLOGICAL STATE (隐性压力暗示) ---
+      {
+          condition: { variable: 'hope', operator: '<=', value: 30 },
+          priority: 9,
+          hints: [
+              '（她说话时总是下意识看向地面，好像在躲避什么）',
+              '（每说完一句话都要停顿一下，像是在确认自己有没有说错）',
+              '（她的肩膀微微向内缩，整个人看起来比上次更小了）'
+          ]
+      },
+      {
+          condition: { variable: 'hope', operator: '<=', value: 40 },
+          priority: 7,
+          hints: [
+              '（她的指甲缝有咬过的痕迹，边缘参差不齐）',
+              '（她不时看一眼手机，又马上把它塞回口袋）',
+              '（她的笑容持续不到一秒就消失了）'
+          ]
       }
   ],
   simulationRules: [
@@ -347,6 +381,18 @@ export const EMMA_CHAIN_INIT: EventChainState = {
               { type: 'SCHEDULE_MAIL', templateId: 'mail_emma_interview_failed_twice', delayDays: 0 }
           ],
           triggerLog: "第二次面试失败"
+      },
+      // Pre-breakdown Warning Mail (男友即将离开的预警)
+      {
+          type: 'THRESHOLD',
+          condition: { variable: 'stage', operator: '<', value: 5 },
+          targetVar: 'hope',
+          operator: '<=',
+          value: 15,
+          onTrigger: [
+              { type: 'SCHEDULE_MAIL', templateId: 'mail_emma_coming_for_ring', delayDays: 0 }
+          ],
+          triggerLog: "男友即将离开的预警"
       }
   ]
 };
@@ -378,7 +424,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
       desiredAmount: 1000, minimumAmount: 800, maxRepayment: 1500,
       dialogue: {
         greeting: "你好，老板。这些衣服还要吗？",
-        pawnReason: "刚收到裁员通知... 不过别担心，这只是暂时的，我很快就能找到下家。这套衣服是我的战袍，面试和入职都得穿它。",
+        pawnReason: "刚收到裁员通知... 不过别担心，这只是暂时的周转。他说让我放轻松，反正房租他能撑一个月。这套衣服是我的战袍，面试和入职都得穿它。",
         redemptionPlea: "我面试一旦通过，拿了安家费就会来赎。入职第一天必须穿这套，这是我的幸运战袍。",
         negotiationDynamic: "能不能再高一点？这可是去年的走秀款。",
         accepted: { fair: "谢谢。我会回来的。", fleeced: "谢谢... 至少够付房租了。", premium: "天哪，你真是个好人！这对我帮助太大了。" },
@@ -386,12 +432,12 @@ export const EMMA_EVENTS: StoryEvent[] = [
         rejectionLines: { standard: "谢谢。", angry: "这衣服这价？开玩笑。", desperate: "..." },
         exitDialogues: {
             grateful: [
-                { condition: { variable: "hope", operator: ">=", value: 65 }, text: "真的很感谢你！我回去告诉男朋友这个好消息，他一直很担心我。" },
+                { condition: { variable: "hope", operator: ">=", value: 65 }, text: "谢谢！回去告诉他这个好消息，他最近也挺烦的。" },
                 { text: "真的很感谢你！等我找到工作，第一时间来赎！" }
             ],
             neutral: "回见。帮我保管好它。",
             resentful: [
-                { condition: { variable: "hope", operator: "<", value: 45 }, text: "没想到这行也这么黑... 回去又要被他念叨了。" },
+                { condition: { variable: "hope", operator: "<", value: 45 }, text: "算了... 回去再想办法吧。" },
                 { text: "没想到这行也这么黑... 算了。" }
             ],
             desperate: "[她默默地把钱塞进包里，低着头快步走了出去]"
@@ -443,7 +489,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
       name: "贵妇面霜礼盒",
       category: "奢侈品",
       visualDescription: "一套未拆封的高级护肤品，包装精美。",
-      historySnippet: "本来是男友说好送我的生日礼物... 后来他失业了，这还是我自己刷卡买的。",
+      historySnippet: "去年生日他说要送我这个，结果到了那天说'最近手头紧，你先垫一下，回头给你'。后来... 算了，不重要了。",
       appraisalNote: "虽然未拆封，但生产日期是一年前。",
       archiveSummary: "艾玛的生活质量正在急剧下降。",
       realValue: 600,
@@ -465,8 +511,8 @@ export const EMMA_EVENTS: StoryEvent[] = [
             { text: "老板，又见面了。" }
         ],
         pawnReason: [
-            { condition: { variable: "job_chance", operator: "<", value: 20 }, text: "投出去的简历都石沉大海... 房东又在催了。这可是全新的，连塑封都没拆。" },
-            { text: "面试还算顺利，但在发offer前，我得先解决房租问题。这可是全新的。" }
+            { condition: { variable: "hope", operator: "<", value: 50 }, text: "投出去的简历都石沉大海... 房东又在催了。他说我得自己想办法，他已经帮了很多了。这可是全新的，连塑封都没拆。" },
+            { text: "面试还算顺利，但在发offer前，我得先解决房租问题。他说这两个月已经超支了。这可是全新的。" }
         ],
         redemptionPlea: "希望能撑过这一周... 只要撑过去就好。",
         negotiationDynamic: "别压太狠了，专柜卖两千多的。",
@@ -475,12 +521,12 @@ export const EMMA_EVENTS: StoryEvent[] = [
         rejectionLines: { standard: "打扰了。", angry: "...", desperate: "哪怕少给点也行啊..." },
         exitDialogues: {
             grateful: [
-                { condition: { variable: "hope", operator: ">=", value: 60 }, text: "谢谢你，真的。我男朋友说只要能撑过这个月就好。" },
+                { condition: { variable: "hope", operator: ">=", value: 60 }, text: "谢谢你！这下能撑过这周了。回去... 应该不会再被念叨了。" },
                 { text: "谢谢你，真的。我会记住你的恩情。" }
             ],
             neutral: "走了。",
             resentful: [
-                { condition: { variable: "hope", operator: "<", value: 35 }, text: "[她攥着钱，嘴唇颤抖] 回去... 他又要发火了..." },
+                { condition: { variable: "hope", operator: "<", value: 35 }, text: "[攥着钱，嘴唇颤抖] 我... 我得赶紧回去，他在等..." },
                 { text: "..." }
             ],
             desperate: "[她紧紧攥着那几张钞票，像是抓着最后一根稻草]"
@@ -540,25 +586,25 @@ export const EMMA_EVENTS: StoryEvent[] = [
     }, "chain_emma"),
     template: {
       name: "艾玛",
-      description: "头发有些凌乱，黑眼圈很重。",
+      description: "头发凌乱，黑眼圈很重。说话时目光总是往下看，声音比上次小了很多。",
       avatarSeed: "emma_desperate",
       desiredAmount: 1200, minimumAmount: 800, maxRepayment: 2000,
       dialogue: {
         greeting: "老板... 这是我最后值钱的东西了。",
-        pawnReason: "下周一就要交最终测试作品了... 但是我现在连电费都交不起了。我只能先把电脑当了，去网吧做完作业。",
+        pawnReason: "下周一就要交最终测试作品了... 但是我现在连电费都交不起了。昨晚给他打了几个电话，都没接。我只能先把电脑当了，去网吧做完作业。",
         redemptionPlea: "千万千万别开机，别动里面的文件！我只要凑够钱马上来赎！",
-        negotiationDynamic: "求你了，这里面是我的命...",
+        negotiationDynamic: "求你了，这里面是我的命... 虽然也许不值什么钱。",
         accepted: { fair: "谢谢！我发誓一定会回来的！", fleeced: "好... 只要能撑过这一周...", premium: "你是天使吗？谢谢！" },
         rejected: "不... 不行... 没有这个钱我会死的...",
         rejectionLines: { standard: "...", angry: "...", desperate: "求求你... 救救我..." },
         exitDialogues: {
             grateful: [
-                { condition: { variable: "hope", operator: ">=", value: 55 }, text: "谢谢... 我会回来的。他说只要我找到工作，一切都会好起来的。" },
+                { condition: { variable: "hope", operator: ">=", value: 55 }, text: "谢谢... 他说只要我找到工作，一切都会好起来的。一定会的。" },
                 { text: "谢谢... 谢谢... (语无伦次)" }
             ],
             neutral: "我会回来的。",
             resentful: [
-                { condition: { variable: "hope", operator: "<", value: 25 }, text: "[她的手在发抖] 他说得对... 我就是个废物..." },
+                { condition: { variable: "hope", operator: "<", value: 25 }, text: "[眼神空洞] 也许... 他说得对，我就是个拖累。" },
                 { text: "..." }
             ],
             desperate: "[她一步三回头地看着那台电脑，眼神里充满了恐惧]"
@@ -568,12 +614,13 @@ export const EMMA_EVENTS: StoryEvent[] = [
     },
     outcomes: {
         "deal_charity":  [
-            { type: "ADD_FUNDS_DEAL" }, 
-            { type: "SET_STAGE", value: 3 }, 
+            { type: "ADD_FUNDS_DEAL" },
+            { type: "SET_STAGE", value: 3 },
             { type: "MODIFY_VAR", variable: "hope", value: 60 },
             { type: "MODIFY_VAR", variable: "has_laptop", value: 0 },
             { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_charity", delayDays: 0 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 2 }
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_waiting", delayDays: 3 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 5 }
         ],
         "deal_aid": [
             { type: "ADD_FUNDS_DEAL" },
@@ -581,23 +628,26 @@ export const EMMA_EVENTS: StoryEvent[] = [
             { type: "MODIFY_VAR", variable: "hope", value: 55 },
             { type: "MODIFY_VAR", variable: "has_laptop", value: 0 },
             { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_charity", delayDays: 0 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 2 }
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_waiting", delayDays: 3 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 5 }
         ],
         "deal_standard": [
-            { type: "ADD_FUNDS_DEAL" }, 
+            { type: "ADD_FUNDS_DEAL" },
             { type: "SET_STAGE", value: 3 },
             { type: "MODIFY_VAR", variable: "has_laptop", value: 0 },
             { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_charity", delayDays: 0 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 2 }
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_waiting", delayDays: 3 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 5 }
         ],
         "deal_shark":    [
-            { type: "ADD_FUNDS_DEAL" }, 
-            { type: "SET_STAGE", value: 3 }, 
-            { type: "MODIFY_VAR", variable: "hope", value: 20 }, 
+            { type: "ADD_FUNDS_DEAL" },
+            { type: "SET_STAGE", value: 3 },
+            { type: "MODIFY_VAR", variable: "hope", value: 20 },
             { type: "MODIFY_VAR", variable: "job_chance", value: -10 },
             { type: "MODIFY_VAR", variable: "has_laptop", value: 0 },
             { type: "SCHEDULE_MAIL", templateId: "mail_emma_03_shark", delayDays: 0 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 1 }
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_nervous", delayDays: 2 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage3_desperate", delayDays: 4 }
         ]
     },
     onReject: [
@@ -620,7 +670,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
       archiveSummary: "艾玛为了最后一点希望，典当了前男友的遗弃物。",
       realValue: 800,
       hiddenTraits: [
-        { id: "t_emma_04_engrave", name: "刻字", type: 'STORY', description: "表盖背面刻着 'To E, Forever'。", valueImpact: 0.1, discoveryDifficulty: 0.2 }
+        { id: "t_emma_04_engrave", name: "刻字", type: 'STORY', description: "表盖背面刻着 'To E, Forever'。但'Forever'被刮花了，像是故意划掉的。", valueImpact: 0.1, discoveryDifficulty: 0.2 }
       ],
       isStolen: false, isFake: false, sentimentalValue: true, appraised: false, status: ItemStatus.ACTIVE
     }, "chain_emma"),
@@ -631,17 +681,17 @@ export const EMMA_EVENTS: StoryEvent[] = [
       desiredAmount: 500, minimumAmount: 200, maxRepayment: 1000,
       dialogue: {
         greeting: "老板... 还要表吗？",
-        pawnReason: "他走了。这是他没带走的东西。我不想要了。",
+        pawnReason: "他走了。这是他没带走的东西。他说这不值钱。也许他说得对。我也不值什么钱。",
         redemptionPlea: "随便吧。也许哪天我会想把它拿回来砸了。",
         negotiationDynamic: "给多少都行。我想买张车票。",
         accepted: { fair: "行。", fleeced: "哦。", premium: "呵... 谢谢。" },
         rejected: "连这个都不值钱吗...",
         rejectionLines: { standard: "...", angry: "滚。", desperate: "..." },
         exitDialogues: {
-            grateful: "谢谢你。你是这个城市唯一对我好的人。",
+            grateful: "谢谢你。你是这个城市唯一... 愿意好好跟我说话的人。",
             neutral: "走了。",
             resentful: "...",
-            desperate: "..."
+            desperate: "[她的眼神空洞，像是已经放弃了什么]"
         }
       },
       redemptionResolve: "Weak", negotiationStyle: "Desperate", patience: 1, mood: 'Annoyed', tags: ["Breakdown"]
