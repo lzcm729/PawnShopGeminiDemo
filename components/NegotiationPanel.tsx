@@ -6,7 +6,7 @@ import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
-import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { DealSuccessModal } from './DealSuccessModal';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
@@ -100,6 +100,13 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
                           </div>
                       </div>
                   </div>
+
+                  {/* Narrative Observation */}
+                  {customer.observation && (
+                      <div className="mt-2 text-[11px] text-amber-500/80 font-serif italic border-t border-noir-400/50 pt-1 leading-snug animate-in fade-in">
+                          {customer.observation}
+                      </div>
+                  )}
              </div>
         </div>
     )
@@ -247,7 +254,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
       const defaultLines = { standard: "行吧，那我走了。", angry: "浪费时间！", desperate: "求求你了..." };
-      // GUARD: dialogue or rejectionLines might be missing
       const lines: RejectionLines = customer.dialogue?.rejectionLines || defaultLines;
       const rejectedText = customer.dialogue?.rejected || "再见。";
       
@@ -309,7 +315,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   };
 
   const handleBinaryAccept = () => {
-      // GUARD: Check if accepted exists
       const acceptedMsg = currentCustomer.dialogue?.accepted?.fair || "成交。";
       
       const mockResult: TransactionResult = {
@@ -410,6 +415,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
       </button>
   );
 
+  const estimatedValue = Math.floor((item.currentRange[0] + item.currentRange[1]) / 2);
+
   return (
     <div className="flex flex-col h-full relative bg-noir-100 border-l border-noir-400">
       <CustomerHeader customer={currentCustomer} patience={patience} mood={mood} />
@@ -450,7 +457,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
               const isPlayer = log.sender === 'player';
               const isSystem = log.sender === 'system';
 
-              // Task 3.2: System Message Divider
               if (isSystem) {
                   return (
                     <div key={log.id} className="flex items-center justify-center my-3 gap-3 opacity-0 animate-[fadeIn_0.2s_ease-out_forwards]">
@@ -463,7 +469,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                   );
               }
 
-              // Task 3.1: Player Bubble Stripe
               return (
                   <div key={log.id} className={cn("flex flex-col max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300", isPlayer ? "items-end ml-auto" : "items-start")}>
                       <div className={cn(
@@ -489,20 +494,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           {!isBinaryChoice && <NegotiationHistory history={offerHistory} />}
       </div>
 
-      {/* Instinct HUD */}
-      {instinct.text && !isBinaryChoice && (
-        <div className="bg-black/60 border-y border-noir-400 p-2 backdrop-blur-sm flex justify-center">
-            <div className={cn("text-xs font-mono flex items-center gap-2", instinct.color)}>
-                <BrainCircuit className="w-3 h-3 animate-pulse" />
-                <span className="uppercase font-bold tracking-wider mr-2">Instinct:</span>
-                <span className="italic font-serif">"{instinct.text}"</span>
-            </div>
-        </div>
-      )}
-
       {/* Control Deck */}
       <div className="bg-noir-200 border-t border-noir-400 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-20">
-         {/* ... existing control deck logic ... */}
          {isBinaryChoice ? (
              <div className="flex flex-col gap-4">
                  <div className="flex justify-between items-end border-b border-noir-300 pb-2">
@@ -586,21 +579,38 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                  </div>
                  
                  {/* Quick Setters */}
-                 <div className="flex justify-center gap-2">
-                    <button onClick={handleMatchAsk} disabled={!canInteract} className="text-[10px] font-mono uppercase text-noir-txt-muted hover:text-noir-accent border-b border-transparent hover:border-noir-accent transition-colors">
-                        Match Ask
+                 <div className="flex gap-2">
+                    <button
+                        onClick={handleMatchAsk}
+                        disabled={!canInteract}
+                        className="flex-1 bg-noir-300 border border-noir-400 hover:bg-noir-200 hover:border-noir-txt-primary hover:text-noir-txt-primary text-noir-txt-secondary transition-all p-2 rounded flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group"
+                    >
+                        <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider mb-0.5 opacity-80">
+                            <ArrowUpFromLine className="w-3 h-3"/> Match Ask
+                        </div>
+                        <span className="font-mono font-bold text-sm group-hover:text-pawn-accent transition-colors">${currentAskPrice}</span>
                     </button>
-                    <span className="text-noir-400">|</span>
-                    <button onClick={handleQuickValuation} disabled={!canInteract} className="text-[10px] font-mono uppercase text-noir-txt-muted hover:text-noir-accent border-b border-transparent hover:border-noir-accent transition-colors">
-                        Est. Value
+
+                    <button
+                        onClick={handleQuickValuation}
+                        disabled={!canInteract}
+                        className="flex-1 bg-noir-300 border border-noir-400 hover:bg-noir-200 hover:border-noir-txt-primary hover:text-noir-txt-primary text-noir-txt-secondary transition-all p-2 rounded flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group"
+                    >
+                        <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider mb-0.5 opacity-80">
+                            <Calculator className="w-3 h-3"/> Est. Value
+                        </div>
+                        <span className="font-mono font-bold text-sm group-hover:text-blue-400 transition-colors">${estimatedValue}</span>
                     </button>
+
                     {revealedMinimum && (
-                        <>
-                            <span className="text-noir-400">|</span>
-                            <button onClick={handleQuickFloor} disabled={!canInteract} className="text-[10px] font-mono uppercase text-red-400 hover:text-red-300 border-b border-transparent hover:border-red-400 transition-colors animate-in fade-in">
-                                Reveal Floor
-                            </button>
-                        </>
+                        <button
+                            onClick={handleQuickFloor}
+                            disabled={!canInteract}
+                            className="flex-1 bg-red-950/20 border border-red-900/50 hover:bg-red-900/40 hover:border-red-500 text-red-500 transition-all p-2 rounded flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group animate-in fade-in"
+                        >
+                            <span className="text-[10px] uppercase font-bold tracking-wider mb-0.5">Floor</span>
+                            <span className="font-mono font-bold text-sm">${currentCustomer.minimumAmount}</span>
+                        </button>
                     )}
                  </div>
 
@@ -610,7 +620,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                       variant="danger" 
                       onClick={handleManualReject}
                       disabled={!canInteract}
-                      className="w-16 h-14 border-2 border-red-900/50 hover:bg-red-950/50 flex items-center justify-center"
+                      className="w-16 h-16 border-2 border-red-900/50 hover:bg-red-950/50 flex items-center justify-center"
                       title="Reject"
                     >
                       <XCircle className="w-6 h-6"/>
@@ -620,10 +630,17 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                       variant="primary" 
                       onClick={handleOffer} 
                       disabled={!canInteract || !canAfford}
-                      className="flex-1 h-14 text-xl tracking-[0.2em] relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)]"
+                      className="flex-1 h-16 relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center gap-0.5"
                     >
-                       <Stamp className="w-5 h-5 mr-3" />
-                       SUBMIT
+                       <div className="flex items-center gap-2">
+                           <Stamp className="w-4 h-4" />
+                           <span className="text-sm font-bold tracking-[0.2em]">SUBMIT</span>
+                       </div>
+                       {instinct.text && (
+                           <span className="text-[10px] font-serif italic text-black/80 font-bold max-w-[95%] truncate px-2">
+                               "{instinct.text}"
+                           </span>
+                       )}
                     </Button>
                  </div>
              </div>

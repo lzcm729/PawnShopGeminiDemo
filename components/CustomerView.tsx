@@ -93,6 +93,13 @@ export const CustomerView: React.FC = () => {
             ID: {currentCustomer.id.slice(0, 8)}
           </p>
 
+          {/* NEW: Narrative Observation */}
+          {currentCustomer.observation && (
+              <div className="my-2 px-3 py-1 bg-black/40 rounded border border-amber-900/30 text-amber-500/80 text-xs font-serif italic leading-relaxed animate-in fade-in">
+                  {currentCustomer.observation}
+              </div>
+          )}
+
           <div className="flex justify-center gap-2 mb-2">
              {/* Patience/Mood Meter */}
              <div className="flex flex-col items-center">
@@ -172,7 +179,7 @@ export const CustomerView: React.FC = () => {
         {/* Narrative Details */}
         <div className="grid gap-4">
           
-          {/* PAWN REASON: Only show if pawning */}
+          {/* PAWN REASON: Only show if in Pawn Mode */}
           {showPawnReason && (
             <div className="group">
                 <h4 className="text-xs font-mono text-stone-500 mb-1 uppercase flex items-center gap-1">

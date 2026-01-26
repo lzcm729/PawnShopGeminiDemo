@@ -309,15 +309,14 @@ export const instantiateStoryCustomer = (
     const baseItem = event.item || template.item || {};
     const deepItem = JSON.parse(JSON.stringify(baseItem));
     
-    // Fate Hint Logic: Inject atmosphere
+    // Fate Hint Logic: Inject observation, do NOT modify dialogue
     let dialogue = template.dialogue;
+    let observation: string | undefined;
+
     if (chainState) {
         const fateHint = generateFateHint(chainState.variables);
         if (fateHint) {
-            // Clone template dialogue to avoid mutating const
-            dialogue = JSON.parse(JSON.stringify(template.dialogue));
-            const baseGreeting = resolveDialogue(template.dialogue.greeting, chainState);
-            dialogue.greeting = `${fateHint}\n\n${baseGreeting}`;
+            observation = fateHint;
         }
     }
 
@@ -379,7 +378,8 @@ export const instantiateStoryCustomer = (
         chainId: event.chainId,
         eventId: event.id,
         recapLog: chainState?.simulationLog ? chainState.simulationLog.slice(-5) : undefined,
-        allowFreeRedeem: template.allowFreeRedeem 
+        allowFreeRedeem: template.allowFreeRedeem,
+        observation // New Field
     };
 };
 

@@ -43,4 +43,6 @@ export interface Customer {
   recapLog?: SimLogEntry[];
   
   allowFreeRedeem?: boolean;
+  
+  observation?: string; // Narrative observation/hint
 }
