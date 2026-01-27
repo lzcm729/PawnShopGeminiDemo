@@ -193,6 +193,65 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
     subject: "我理解...",
     body: `老板，\n\n我理解你的决定。毕竟这是生意。\n\n只是... 那套衣服对我真的很重要。如果它被卖掉了...\n\n算了，也许这就是我的命。\n\n艾玛`,
     attachments: { cash: 0 }
+  },
+  // === 新增：拒绝路径邮件 ===
+  "mail_emma_01_rejected": {
+    id: "mail_emma_01_rejected",
+    sender: "艾玛",
+    subject: "也许我太骄傲了",
+    body: `老板，\n\n我带着衣服去了别家。\n\n那家给的更少。老板娘上下打量我，说"这种衣服现在不好卖"。\n\n我最后还是当了。比你开的价低30%。\n\n也许... 我不该那么骄傲。\n\n艾玛`,
+    attachments: { cash: 0 }
+  },
+  "mail_emma_laptop_rejected": {
+    id: "mail_emma_laptop_rejected",
+    sender: "艾玛",
+    subject: "我完了",
+    body: `老板，\n\n你不收我的电脑，我理解。也许它真的不值什么钱。\n\n可是没有它，我做不了面试作业。\n下周一就是截止日期了。\n\n我想过去网吧，但网吧的电脑没有我需要的软件。\n我想过借，但我不知道还能向谁开口。\n\n也许这就是命吧。\n\n艾玛`,
+    attachments: { cash: 0 }
+  },
+  // === 新增：笔记本到期邮件 ===
+  "mail_emma_laptop_sold": {
+    id: "mail_emma_laptop_sold",
+    sender: "艾玛",
+    subject: "你怎么能...！",
+    body: `你卖了我的电脑？！\n\n里面有我所有的作品集！有我三年的心血！\n我说过千万别动里面的文件！\n\n我求过你的... 我求过你的...\n\n你和其他人没什么两样。这个世界从来就不会帮我。`,
+    attachments: { cash: 0 }
+  },
+  "mail_emma_laptop_plea": {
+    id: "mail_emma_laptop_plea",
+    sender: "艾玛",
+    subject: "千万别卖电脑",
+    body: `老板，\n\n我算了一下，电脑的典当期快到了。\n\n我知道我还没凑够赎金。面试结果还没出来。\n\n但求你千万别把它卖掉。我的作品集还在里面。那是我唯一的机会了。\n\n再等我几天。求你了。\n\n艾玛`,
+    attachments: { cash: 0 }
+  },
+  "mail_emma_laptop_renewal_thanks": {
+    id: "mail_emma_laptop_renewal_thanks",
+    sender: "艾玛",
+    subject: "谢谢你等我",
+    body: `老板，\n\n谢谢你同意续当。\n\n我知道按规矩你不该等我，但你还是愿意帮我。\n\n电脑对我真的很重要。我会努力的。\n\n艾玛`,
+    attachments: { cash: 0 }
+  },
+  "mail_emma_laptop_renewal_refused": {
+    id: "mail_emma_laptop_renewal_refused",
+    sender: "艾玛",
+    subject: "我理解...",
+    body: `老板，\n\n我理解你的决定。毕竟这是生意。\n\n只是... 那台电脑里有我所有的东西。\n\n也许这就是我的命。\n\n艾玛`,
+    attachments: { cash: 0 }
+  },
+  // === Stage 3 借用电脑邮件 ===
+  "mail_emma_laptop_borrow_thanks": {
+    id: "mail_emma_laptop_borrow_thanks",
+    sender: "艾玛",
+    subject: "作品集弄好了",
+    body: `老板，\n\n谢谢你让我用电脑！\n\n作品集终于导出来了，U盘里存了一份。网吧的电脑连压缩包都解不开，我差点绝望了。\n\n面试官说三天内会有消息。我在等。\n\n艾玛`,
+    attachments: { cash: 0 }
+  },
+  "mail_emma_laptop_borrow_refused": {
+    id: "mail_emma_laptop_borrow_refused",
+    sender: "艾玛",
+    subject: "还是谢谢你",
+    body: `老板，\n\n我理解你的难处。这是你的店，你有权拒绝。\n\n我会想其他办法的。也许可以找图书馆...\n\n艾玛`,
+    attachments: { cash: 0 }
   }
 };
 
@@ -229,7 +288,7 @@ export const EMMA_CHAIN_INIT: EventChainState = {
           priority: 10,
           hints: [
               '（她的眼神空洞，仿佛灵魂已经被抽走了一半）',
-              '（他长时间地盯着地板，手指在无意识地抽搐）',
+              '（她长时间地盯着地板，手指在无意识地抽搐）',
               '（身上带着一股好几天没洗澡的颓废气息）'
           ]
       },
@@ -314,6 +373,14 @@ export const EMMA_CHAIN_INIT: EventChainState = {
   ],
   simulationRules: [
       { type: 'DELTA', targetVar: 'funds', value: -50 }, // Daily burn
+      // Stage 3: Track days since interview
+      {
+          type: 'DELTA',
+          condition: { variable: 'stage', operator: '==', value: 3 },
+          targetVar: 'days_since_interview',
+          value: 1,
+          logMessage: "等待面试结果中..."
+      },
       { 
           type: 'COMPOUND', 
           sourceVar: 'hope', 
@@ -405,14 +472,16 @@ export const EMMA_CHAIN_INIT: EventChainState = {
           triggerLog: "第二次面试失败"
       },
       // Pre-breakdown Warning Mail (男友即将离开的预警)
+      // 使用 breakdown_timer == 0 作为触发条件，触发后设为 1 避免重复
       {
           type: 'THRESHOLD',
-          condition: { variable: 'stage', operator: '<', value: 5 },
+          condition: { variable: 'breakdown_timer', operator: '==', value: 0 },
           targetVar: 'hope',
           operator: '<=',
           value: 15,
           onTrigger: [
-              { type: 'SCHEDULE_MAIL', templateId: 'mail_emma_coming_for_ring', delayDays: 0 }
+              { type: 'SCHEDULE_MAIL', templateId: 'mail_emma_coming_for_ring', delayDays: 0 },
+              { type: 'MOD_VAR', target: 'breakdown_timer', value: 1, op: 'SET' }
           ],
           triggerLog: "男友即将离开的预警"
       }
@@ -500,7 +569,11 @@ export const EMMA_EVENTS: StoryEvent[] = [
           { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage1_anxious", delayDays: 2 }
       ]
     },
-    onReject: [{ type: "SET_STAGE", value: 1 }, { type: "MODIFY_VAR", variable: "hope", value: 40 }],
+    onReject: [
+      { type: "SET_STAGE", value: 1 },
+      { type: "MODIFY_VAR", variable: "hope", value: 40 },
+      { type: "SCHEDULE_MAIL", templateId: "mail_emma_01_rejected", delayDays: 0 }
+    ],
     coreItemId: "emma_item_clothes",
     expiryFlows: {
       redemption: {
@@ -540,7 +613,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
   {
     id: "emma_02_skincare",
     chainId: "chain_emma",
-    triggerConditions: [{ variable: "stage", operator: "==", value: 1 }, { variable: "funds", operator: "<=", value: 200 }],
+    triggerConditions: [{ variable: "stage", operator: "==", value: 1 }, { variable: "funds", operator: "<=", value: 400 }],
     item: makeItem({
       id: "emma_item_skincare",
       name: "贵妇面霜礼盒",
@@ -622,7 +695,35 @@ export const EMMA_EVENTS: StoryEvent[] = [
             { type: "SCHEDULE_MAIL", templateId: "mail_emma_stage2_struggling", delayDays: 1 }
         ]
     },
-    onReject: [{ type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 30 }]
+    onReject: [{ type: "SET_STAGE", value: 2 }, { type: "MODIFY_VAR", variable: "hope", value: 30 }],
+    expiryFlows: {
+      redemption: {
+        accept: [
+          { type: "MODIFY_VAR", variable: "hope", value: 10 }
+        ],
+        chargeExtra: [
+          { type: "MODIFY_VAR", variable: "hope", value: -5 },
+          { type: "MODIFY_VAR", variable: "funds", value: -30 }
+        ],
+        refuse: [
+          { type: "MODIFY_VAR", variable: "hope", value: -15 }
+        ]
+      },
+      renewal: {
+        accept: [
+          { type: "MODIFY_VAR", variable: "hope", value: 8 }
+        ],
+        refuse: [
+          { type: "MODIFY_VAR", variable: "hope", value: -10 }
+        ]
+      },
+      noShow: {
+        sell: [
+          { type: "MODIFY_VAR", variable: "hope", value: -20 }
+        ],
+        keep: []
+      }
+    }
   },
   {
     id: "emma_03_laptop",
@@ -712,9 +813,127 @@ export const EMMA_EVENTS: StoryEvent[] = [
         ]
     },
     onReject: [
-        { type: "SET_STAGE", value: 3 }, 
-        { type: "MODIFY_VAR", variable: "hope", value: 10 }, 
-        { type: "MODIFY_VAR", variable: "has_laptop", value: 1 } // She keeps laptop but has no money
+        { type: "SET_STAGE", value: 4 }, // 致命：直接进入崩溃路径
+        { type: "MODIFY_VAR", variable: "hope", value: 10 },
+        { type: "MODIFY_VAR", variable: "has_laptop", value: 1 },
+        { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_rejected", delayDays: 0 }
+    ],
+    coreItemId: "emma_item_laptop",
+    expiryFlows: {
+      redemption: {
+        accept: [
+          { type: "MODIFY_VAR", variable: "hope", value: 20 },
+          { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_renewal_thanks", delayDays: 0 }
+        ],
+        chargeExtra: [
+          { type: "MODIFY_VAR", variable: "hope", value: -15 },
+          { type: "MODIFY_VAR", variable: "funds", value: -100 }
+        ],
+        refuse: [
+          { type: "MODIFY_VAR", variable: "hope", value: -40 },
+          { type: "SET_STAGE", value: 4 },
+          { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_renewal_refused", delayDays: 0 }
+        ]
+      },
+      renewal: {
+        accept: [
+          { type: "MODIFY_VAR", variable: "hope", value: 15 },
+          { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_renewal_thanks", delayDays: 0 }
+        ],
+        refuse: [
+          { type: "MODIFY_VAR", variable: "hope", value: -35 },
+          { type: "SET_STAGE", value: 4 },
+          { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_renewal_refused", delayDays: 0 }
+        ]
+      },
+      noShow: {
+        sell: [
+          { type: "MODIFY_VAR", variable: "hope", value: -60 },
+          { type: "SET_STAGE", value: 4 },
+          { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_sold", delayDays: 0 }
+        ],
+        keep: [
+          { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_plea", delayDays: 0 }
+        ]
+      }
+    }
+  },
+  // === Stage 3 互动事件：借用电脑请求 ===
+  {
+    id: "emma_03b_laptop_request",
+    chainId: "chain_emma",
+    triggerConditions: [
+        { variable: "stage", operator: "==", value: 3 },
+        { variable: "days_since_interview", operator: ">=", value: 3 }
+    ],
+    item: makeItem({
+        id: "emma_laptop_request",
+        name: "借用请求",
+        category: "其他",
+        visualDescription: "艾玛想借用她之前典当的电脑。",
+        historySnippet: "网吧的电脑太卡了，作品集打不开...",
+        appraisalNote: "这是一个人情请求，不涉及金钱交易。",
+        archiveSummary: "艾玛在最困难的时候请求帮助。",
+        realValue: 0,
+        isVirtual: true,
+        isStolen: false,
+        isFake: false,
+        sentimentalValue: false,
+        appraised: true,
+        status: ItemStatus.ACTIVE
+    }, "chain_emma"),
+    template: {
+        name: "艾玛",
+        description: "神色疲惫但眼中有光。",
+        avatarSeed: "emma_hopeful",
+        interactionType: 'NEGOTIATION',
+        desiredAmount: 0,
+        minimumAmount: 0,
+        maxRepayment: 0,
+        dialogue: {
+            greeting: "老板... 不好意思又来打扰你。",
+            pawnReason: "网吧的电脑太卡了，我的作品集根本打不开。能不能让我借用一下我的电脑？就半小时，我保证不动其他东西。",
+            redemptionPlea: "",
+            negotiationDynamic: "求你了... 这是我最后的机会。",
+            accepted: { fair: "谢谢！谢谢你！", fleeced: "...", premium: "..." },
+            rejected: "我理解... 这是你的店，你有权拒绝。",
+            rejectionLines: { standard: "好吧...", angry: "...", desperate: "..." },
+            exitDialogues: {
+                grateful: "谢谢你！我现在就去用！",
+                neutral: "...",
+                resentful: "[低头离开]",
+                desperate: "[眼眶泛红，默默转身]"
+            }
+        },
+        redemptionResolve: "Strong",
+        negotiationStyle: "Desperate",
+        patience: 3,
+        mood: 'Neutral',
+        tags: ["Story", "Request"]
+    },
+    outcomes: {
+        "deal_charity": [  // 允许借用
+            { type: "MODIFY_VAR", variable: "hope", value: 15 },
+            { type: "MODIFY_VAR", variable: "job_chance", value: 5 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_borrow_thanks", delayDays: 0 }
+        ],
+        "deal_aid": [  // 允许借用（较少热情）
+            { type: "MODIFY_VAR", variable: "hope", value: 10 },
+            { type: "MODIFY_VAR", variable: "job_chance", value: 3 },
+            { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_borrow_thanks", delayDays: 0 }
+        ],
+        "deal_standard": [  // 允许但收费
+            { type: "ADD_FUNDS", value: 20 },
+            { type: "MODIFY_VAR", variable: "hope", value: 5 }
+        ],
+        "deal_shark": [  // 收取较高费用
+            { type: "ADD_FUNDS", value: 50 },
+            { type: "MODIFY_VAR", variable: "hope", value: -5 }
+        ]
+    },
+    onReject: [
+        { type: "MODIFY_VAR", variable: "hope", value: -5 },
+        { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_borrow_refused", delayDays: 0 }
     ]
   },
   {
@@ -791,7 +1010,10 @@ export const EMMA_EVENTS: StoryEvent[] = [
     triggerConditions: [{ variable: "stage", operator: "==", value: 5 }],
     targetItemId: "emma_item_clothes", // Primary redemption target
     failureMailId: "mail_emma_plea",
-    onFailure: [{ type: "MODIFY_VAR", variable: "hope", value: -10 }],
+    onFailure: [
+      { type: "MODIFY_VAR", variable: "hope", value: -10 },
+      { type: "SCHEDULE_MAIL", templateId: "mail_emma_redeem_failed", delayDays: 0 }
+    ],
     template: {
       name: "艾玛",
       description: "焕然一新，穿着得体的职业装（借来的），眼神坚定。",
@@ -818,28 +1040,31 @@ export const EMMA_EVENTS: StoryEvent[] = [
     },
     dynamicFlows: {
         "all_safe": {
+            itemCondition: { targetItemId: "emma_item_clothes", targetStatus: 'SAFE', otherItemsStatus: 'ALL_SAFE' },
             dialogue: "太好了，都在！老板，我想把东西都赎回去。这笔钱是我预支的工资。",
             outcome: [
-                { type: "REDEEM_ALL" }, 
-                { type: "DEACTIVATE_CHAIN" }, 
+                { type: "REDEEM_ALL" },
+                { type: "DEACTIVATE_CHAIN" },
                 { type: "MODIFY_REP", value: 20 },
                 { type: "SCHEDULE_MAIL", templateId: "mail_emma_success", delayDays: 1 }
             ]
         },
         "core_safe": {
+            itemCondition: { targetItemId: "emma_item_clothes", targetStatus: 'SAFE', otherItemsStatus: 'ANY_LOST' },
             dialogue: "只要这套衣服还在就行... 其他的没了就没了吧，旧的不去新的不来。",
             outcome: [
-                { type: "REDEEM_TARGET_ONLY" }, 
+                { type: "REDEEM_TARGET_ONLY" },
                 { type: "DEACTIVATE_CHAIN" },
                 { type: "MODIFY_REP", value: 5 },
                 { type: "SCHEDULE_MAIL", templateId: "mail_emma_success", delayDays: 1 }
             ]
         },
         "core_lost": {
+            itemCondition: { targetItemId: "emma_item_clothes", targetStatus: 'SOLD' },
             dialogue: "衣服... 卖了？那我明天穿什么去入职？！你... 你毁了我的机会！",
             outcome: [
-                { type: "DEACTIVATE_CHAIN" }, 
-                { type: "MODIFY_REP", value: -30 }, 
+                { type: "DEACTIVATE_CHAIN" },
+                { type: "MODIFY_REP", value: -30 },
                 { type: "SCHEDULE_MAIL", templateId: "mail_emma_hate", delayDays: 1 }
             ]
         }

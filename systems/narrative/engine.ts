@@ -1,5 +1,5 @@
 
-import { EventChainState, StoryEvent, TriggerCondition, Dialogue, DialogueText, SimOperation, Customer, Item, ItemStatus, DynamicFlowOutcome } from '../../types';
+import { EventChainState, StoryEvent, TriggerCondition, Dialogue, DialogueText, SimOperation, Customer, Item, ItemStatus, DynamicFlowOutcome, ItemCondition } from '../../types';
 import { GameState } from '../game/types';
 
 // Helper: Evaluate a single condition
@@ -405,9 +405,41 @@ export const instantiateStoryCustomer = (
     };
 };
 
+// Helper: Match explicit item condition
+const matchesItemCondition = (
+    condition: ItemCondition,
+    event: StoryEvent,
+    inventory: Item[]
+): boolean => {
+    const targetId = condition.targetItemId || event.targetItemId;
+    if (!targetId) return false;
+
+    const coreItem = inventory.find(i => i.id === targetId);
+    const coreIsSafe = !!coreItem && coreItem.status !== ItemStatus.SOLD && coreItem.status !== ItemStatus.REDEEMED;
+
+    // Check core item status
+    if (condition.targetStatus === 'SAFE' && !coreIsSafe) return false;
+    if (condition.targetStatus === 'SOLD' && coreIsSafe) return false;
+
+    // Check other items status (if specified)
+    if (condition.otherItemsStatus && condition.otherItemsStatus !== 'IRRELEVANT') {
+        const others = inventory.filter(
+            i => i.relatedChainId === event.chainId &&
+                 i.id !== targetId &&
+                 i.status !== ItemStatus.REDEEMED
+        );
+        const allSafe = others.every(i => i.status !== ItemStatus.SOLD);
+
+        if (condition.otherItemsStatus === 'ALL_SAFE' && !allSafe) return false;
+        if (condition.otherItemsStatus === 'ANY_LOST' && allSafe) return false;
+    }
+
+    return true;
+};
+
 export const resolveRedemptionFlow = (
-    event: StoryEvent, 
-    inventory: Item[], 
+    event: StoryEvent,
+    inventory: Item[],
     dynamicTargetId?: string,
     forceSoldBeforeDue?: boolean
 ): { flowKey: string, flow: DynamicFlowOutcome } | null => {
@@ -415,19 +447,27 @@ export const resolveRedemptionFlow = (
     const targetId = event.targetItemId || dynamicTargetId;
     if (!targetId) return null;
 
+    // Priority 1: Try explicit itemCondition matching
+    for (const [key, flow] of Object.entries(event.dynamicFlows)) {
+        if (flow.itemCondition && matchesItemCondition(flow.itemCondition, event, inventory)) {
+            return { flowKey: key, flow };
+        }
+    }
+
+    // Priority 2: Fallback to original logic (for backward compatibility)
     const coreItem = inventory.find(i => i.id === targetId);
     const coreSafe = !!coreItem && coreItem.status !== ItemStatus.SOLD && coreItem.status !== ItemStatus.REDEEMED;
     const otherChainItems = inventory.filter(i => i.relatedChainId === event.chainId && i.id !== targetId && i.status !== ItemStatus.REDEEMED);
     const othersSafe = otherChainItems.every(i => i.status !== ItemStatus.SOLD);
 
     let flowKey = "core_lost";
-    
+
     if (forceSoldBeforeDue && event.dynamicFlows["hostile_takeover"]) {
         flowKey = "hostile_takeover";
     } else if (coreSafe) {
         flowKey = othersSafe ? "all_safe" : "core_safe";
     }
-    
+
     const flow = event.dynamicFlows[flowKey];
     return flow ? { flowKey, flow } : null;
 };

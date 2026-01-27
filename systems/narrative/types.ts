@@ -266,7 +266,15 @@ export interface ChainUpdateEffect {
   extraFee?: number;       // 额外费用百分比 (0.2 = 20%)
 }
 
+// NEW: Explicit item condition for dynamicFlows
+export interface ItemCondition {
+  targetItemId?: string;           // 要检查的核心物品 ID（可选，默认使用 event.targetItemId）
+  targetStatus: 'SAFE' | 'SOLD';   // 期望的核心物品状态
+  otherItemsStatus?: 'ALL_SAFE' | 'ANY_LOST' | 'IRRELEVANT';  // 其他物品状态
+}
+
 export interface DynamicFlowOutcome {
+  itemCondition?: ItemCondition;   // 显式条件（可选，用于明确匹配逻辑）
   dialogue: DialogueText;
   outcome: ChainUpdateEffect[];
 }
