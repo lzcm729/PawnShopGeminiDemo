@@ -470,14 +470,15 @@ export const useGameEngine = () => {
           return;
       }
 
-      // NO CUSTOMER FOUND (Directly enter Night Phase)
+      // NO CUSTOMER FOUND - Show "打烊" button instead of auto-transitioning to night
+      // This gives the user a chance to review their day and manually close the shop
       dispatch({ type: 'SET_LOADING', payload: false });
-      dispatch({ type: 'START_NIGHT' });
+      dispatch({ type: 'MARK_NO_MORE_CUSTOMERS' });
 
     } catch (error) {
       console.error("Event generation error:", error);
       dispatch({ type: 'SET_LOADING', payload: false });
-      dispatch({ type: 'START_NIGHT' });
+      dispatch({ type: 'MARK_NO_MORE_CUSTOMERS' });
     }
   };
 

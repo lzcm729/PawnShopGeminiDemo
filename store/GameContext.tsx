@@ -83,7 +83,8 @@ type Action =
   | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string } }
   | { type: 'LIQUIDATE_ITEM'; payload: { itemId: string; amount: number; name: string } }
   | { type: 'REJECT_DEAL' }
-  | { type: 'MANUAL_CLOSE_SHOP' } 
+  | { type: 'MANUAL_CLOSE_SHOP' }
+  | { type: 'MARK_NO_MORE_CUSTOMERS' }
   | { type: 'END_DAY' }
   | { type: 'UPDATE_MOTHER_STATUS'; payload: MotherCondition }
   | { type: 'PAY_MEDICAL_BILL' }
@@ -264,6 +265,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'RESOLVE_BREACH': { const { penalty, name } = action.payload; playSfx('FAIL'); const newRep = { ...state.reputation }; newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 50); const record: TransactionRecord = { id: crypto.randomUUID(), description: `违约赔偿: ${name}`, amount: -penalty, type: 'PENALTY' }; return { ...state, stats: { ...state.stats, cash: state.stats.cash - penalty }, reputation: newRep, todayTransactions: [...state.todayTransactions, record], dayEvents: [...state.dayEvents, `支付违约金: ${name} (-$${penalty})，信誉大幅下降。`] }; }
     case 'HOSTILE_TAKEOVER': { const { itemId, penalty, name } = action.payload; playSfx('FAIL'); const updatedInventory = state.inventory.map(item => { if (item.id === itemId) { const log = generateForfeitLog(item, state.stats.day, "恶意买断"); return { ...item, status: ItemStatus.FORFEIT, logs: [...(item.logs || []), log] }; } return item; }); const newRep = { ...state.reputation }; newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 50); newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 20); const record: TransactionRecord = { id: crypto.randomUUID(), description: `强制买断: ${name}`, amount: -penalty, type: 'PENALTY' }; return { ...state, stats: { ...state.stats, cash: state.stats.cash - penalty }, inventory: updatedInventory, reputation: newRep, todayTransactions: [...state.todayTransactions, record], dayEvents: [...state.dayEvents, `恶意违约/强制买断: ${name} (-$${penalty})。顾客极度愤怒。`] }; }
     case 'MANUAL_CLOSE_SHOP': playSfx('CLICK'); return { ...state, phase: GamePhase.NIGHT };
+    case 'MARK_NO_MORE_CUSTOMERS': return { ...state, customersServedToday: state.maxCustomersPerDay };
     case 'PAY_MEDICAL_BILL': { playSfx('SUCCESS'); const billAmount = state.stats.medicalBill.amount; const billRecord: TransactionRecord = { id: crypto.randomUUID(), description: "支付母亲医药费", amount: -billAmount, type: 'MEDICAL' }; const currentMother = state.stats.motherStatus; const newMother = { ...currentMother, careLevel: 'Premium' as const, risk: Math.max(0, currentMother.risk - 5), status: 'Improving' as const }; return { ...state, stats: { ...state.stats, cash: state.stats.cash - billAmount, motherStatus: newMother, medicalBill: { ...state.stats.medicalBill, status: 'PAID' } }, todayTransactions: [...state.todayTransactions, billRecord], dayEvents: [...state.dayEvents, `Paid Medical Bill: $${billAmount}. Treatment plan secured.`] }; }
     case 'ROTATE_MEDICAL_BILL': {
         const baseCost = GAME_CONFIG.WEEKLY_MEDICAL_COST;

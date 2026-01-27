@@ -307,7 +307,7 @@ export const SettlementInterface: React.FC = () => {
     const isExpirySettlement = state.expiryQueue && state.expiryQueue.length > 0;
     const currentExpiryEvent = isExpirySettlement ? state.expiryQueue.find(e => e.itemId === customer.item?.id) : null;
 
-    // Helper to apply expiry effects and continue to next event
+    // Helper to apply expiry effects (no auto-transition - let DepartureView handle it)
     const handleExpiryCompletion = (effectType: 'redeem_accept' | 'redeem_refuse' | 'renew_accept' | 'renew_refuse') => {
         if (!currentExpiryEvent) return;
 
@@ -339,10 +339,8 @@ export const SettlementInterface: React.FC = () => {
             }
         }
 
-        // Process next expiry event after a short delay
-        setTimeout(() => {
-            processNextExpiryEvent();
-        }, 500);
+        // Don't auto-transition here - let DepartureView handle the flow
+        // The user should click "送客" button first, then we process next event
     };
 
     let targetItems: Item[] = [];

@@ -124,6 +124,7 @@ const GameContent: React.FC = () => {
   const isRenewal = isNegotiating && interactionType === 'RENEWAL';
   const isPostForfeit = isNegotiating && interactionType === 'POST_FORFEIT';
   
+  // Shop is "closed" (show 打烊 button) when served max customers or no more events available
   const isShopClosed = isBusiness && state.customersServedToday >= state.maxCustomersPerDay;
   const hasExpiryQueue = state.expiryQueue && state.expiryQueue.length > 0;
 

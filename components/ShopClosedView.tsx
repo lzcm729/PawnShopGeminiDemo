@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
+import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
 import { ArrowRight, MessageSquare, Brain } from 'lucide-react';
 import { SatisfactionLevel } from '../systems/narrative/types';
@@ -12,13 +13,17 @@ import { cn } from '../lib/utils';
 
 export const DepartureView: React.FC = () => {
   const { state, dispatch } = useGame();
-  const { currentCustomer, lastSatisfaction } = state;
+  const { processNextExpiryEvent } = useGameEngine();
+  const { currentCustomer, lastSatisfaction, expiryQueue } = state;
 
   const [textComplete, setTextComplete] = useState(false);
   const [showInnerVoice, setShowInnerVoice] = useState(false);
   const [innerVoiceText, setInnerVoiceText] = useState("");
 
   const satisfaction = lastSatisfaction || 'NEUTRAL';
+
+  // Check if we're in an expiry settlement flow
+  const hasMoreExpiryEvents = expiryQueue && expiryQueue.length > 0;
 
   // Audio & Setup
   useEffect(() => {
@@ -30,9 +35,14 @@ export const DepartureView: React.FC = () => {
 
   const handleNext = () => {
       playSfx('FOOTSTEP');
-      // Always transition back to BUSINESS phase. 
-      dispatch({ type: 'CLEAR_CUSTOMER' }); 
-      dispatch({ type: 'SET_PHASE', payload: GamePhase.BUSINESS });
+      dispatch({ type: 'CLEAR_CUSTOMER' });
+
+      // If there are remaining expiry events, process them instead of going to BUSINESS
+      if (hasMoreExpiryEvents) {
+          processNextExpiryEvent();
+      } else {
+          dispatch({ type: 'SET_PHASE', payload: GamePhase.BUSINESS });
+      }
   };
 
   const onCustomerTextComplete = () => {
