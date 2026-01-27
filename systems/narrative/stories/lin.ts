@@ -5,10 +5,12 @@ import { makeItem } from '../utils';
 export const LIN_CHAIN_INIT: EventChainState = {
     id: "chain_lin",
     npcName: "小林",
-    isActive: false, 
+    isActive: true, 
     stage: 0,
-    variables: { tuition: 0 },
-    simulationRules: []
+    variables: { tuition: 0, days_waiting: 0, funds: 5000 },
+    simulationRules: [
+        { type: 'DELTA', targetVar: 'days_waiting', value: 1, condition: { variable: 'stage', operator: '==', value: 1 } }
+    ]
 };
 
 export const LIN_EVENTS: StoryEvent[] = [
@@ -57,11 +59,68 @@ export const LIN_EVENTS: StoryEvent[] = [
             redemptionResolve: "Weak", negotiationStyle: "Deceptive", patience: 5, mood: 'Neutral', tags: ["Opportunity"]
         },
         outcomes: {
-            "deal_charity": [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }], 
-            "deal_aid":     [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }],
-            "deal_standard":[{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }],
-            "deal_shark":   [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }] 
+            "deal_charity": [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }], 
+            "deal_aid":     [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }],
+            "deal_standard":[{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }],
+            "deal_shark":   [{ type: "ADD_FUNDS_DEAL" }, { type: "SET_STAGE", value: 1 }] 
         },
         onReject: [{ type: "DEACTIVATE_CHAIN" }]
+    },
+    {
+        id: "lin_02_redeem",
+        chainId: "chain_lin",
+        type: "REDEMPTION_CHECK",
+        // Removed days_waiting check to guarantee trigger if Stage is 1.
+        triggerConditions: [{ variable: "stage", operator: "==", value: 1 }],
+        targetItemId: "lin_item_watch",
+        template: {
+            name: "小林",
+            description: "气喘吁吁，满头大汗。",
+            avatarSeed: "student_lin",
+            interactionType: 'REDEEM',
+            dialogue: {
+                greeting: "老板！等等！我不卖了！",
+                pawnReason: "",
+                redemptionPlea: "我回去查了一下，那好像是真的很重要的东西... 而且我把显卡退了，钱都在这。",
+                negotiationDynamic: "...",
+                accepted: { fair: "太好了！吓死我了。", fleeced: "...", premium: "..." },
+                rejected: "...",
+                rejectionLines: { standard: "...", angry: "...", desperate: "..." },
+                exitDialogues: {
+                    grateful: "以后再也不乱动爷爷的东西了...",
+                    neutral: "走了。",
+                    resentful: "...",
+                    desperate: "..."
+                }
+            },
+            redemptionResolve: "Strong", negotiationStyle: "Desperate", patience: 3, mood: "Neutral",
+            desiredAmount: 0, minimumAmount: 0, maxRepayment: 0,
+            item: makeItem({ id: "lin_redeem_dummy", name: "赎回单", realValue: 0, isVirtual: true }, "chain_lin")
+        },
+        dynamicFlows: {
+            "all_safe": {
+                dialogue: "钱都在这，连本带利。快把表还给我吧，我还要赶着放回去，不然被爸妈发现就死定了。",
+                outcome: [
+                    { type: "REDEEM_TARGET_ONLY" }, 
+                    { type: "DEACTIVATE_CHAIN" }, 
+                    { type: "MODIFY_REP", value: 5 }
+                ]
+            },
+            "core_safe": {
+                dialogue: "钱都在这，连本带利。快把表还给我吧，我还要赶着放回去，不然被爸妈发现就死定了。",
+                outcome: [
+                    { type: "REDEEM_TARGET_ONLY" }, 
+                    { type: "DEACTIVATE_CHAIN" }, 
+                    { type: "MODIFY_REP", value: 5 }
+                ]
+            },
+            "core_lost": {
+                dialogue: "什么？卖了？！... 才过了一天啊！你... 你怎么能这样！那是我爷爷的遗物啊！",
+                outcome: [
+                    { type: "DEACTIVATE_CHAIN" }, 
+                    { type: "MODIFY_REP", value: -20 }
+                ]
+            }
+        }
     }
 ];

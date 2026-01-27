@@ -205,12 +205,23 @@ export const runDailySimulation = (chains: EventChainState[]): { chains: EventCh
   return { chains: newChains, sideEffects };
 };
 
-export const findEligibleEvent = (chains: EventChainState[], events: StoryEvent[]): StoryEvent | null => {
+export const findEligibleEvent = (chains: EventChainState[], events: StoryEvent[], allowedTypes?: string[]): StoryEvent | null => {
   const shuffledChains = [...chains].sort(() => Math.random() - 0.5);
+  
   for (const chain of shuffledChains) {
     if (!chain.isActive) continue;
+    
     const chainEvents = events.filter(e => e.chainId === chain.id);
+    
     for (const event of chainEvents) {
+       // Filter by Type logic
+       // If allowedTypes is provided, we check if event.type matches.
+       // Note: 'undefined' event.type usually means 'STANDARD'.
+       if (allowedTypes) {
+           const eventType = event.type || 'STANDARD';
+           if (!allowedTypes.includes(eventType)) continue;
+       }
+
        const allMet = event.triggerConditions.every(cond => checkCondition(cond, chain));
        if (allMet) return event;
     }

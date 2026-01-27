@@ -206,7 +206,17 @@ export const useGameEngine = () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     
     try {
-      // 1. Check for Renewal Requests FIRST (Priority: Expiring Items)
+      // PRIORITY 1: Narrative Critical Events (Redemptions, Closures)
+      // These MUST run before generic renewals, or we lose story continuity.
+      const criticalEvent = findEligibleEvent(state.activeChains, ALL_STORY_EVENTS, ['REDEMPTION_CHECK', 'POST_FORFEIT_VISIT']);
+      
+      if (criticalEvent) {
+          processEvent(criticalEvent);
+          return;
+      }
+
+      // PRIORITY 2: Generic Renewal Requests
+      // If no critical story beat is ready, we check if any active items are expiring
       const renewalCustomer = checkRenewalRequests(state);
       if (renewalCustomer) {
           setTimeout(() => {
@@ -216,124 +226,11 @@ export const useGameEngine = () => {
           return;
       }
 
-      // 2. Standard Story Events
-      const narrativeEvent = findEligibleEvent(state.activeChains, ALL_STORY_EVENTS);
+      // PRIORITY 3: Standard Story Events (New Arrivals / Middle Plot)
+      const standardEvent = findEligibleEvent(state.activeChains, ALL_STORY_EVENTS, ['STANDARD', 'NEGOTIATION']);
       
-      if (narrativeEvent) {
-          let targetId = narrativeEvent.targetItemId;
-          if (!targetId) {
-               const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
-               if (chainState && chainState.variables.targetItemId) {
-                   targetId = String(chainState.variables.targetItemId);
-               }
-          }
-
-          if (narrativeEvent.type === 'POST_FORFEIT_VISIT') {
-              const forfeitItem = state.inventory.find(i => i.id === targetId && i.status === ItemStatus.FORFEIT);
-              if (!forfeitItem) {
-                   console.log("Skipping event: Item not forfeit");
-                   dispatch({ type: 'SET_LOADING', payload: false });
-                   dispatch({ type: 'START_NIGHT' });
-                   return;
-              }
-          }
-
-          if (narrativeEvent.type === 'REDEMPTION_CHECK') {
-              if (targetId) {
-                  const item = state.inventory.find(i => i.id === targetId);
-                  const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
-                  const funds = chainState?.variables?.funds || 0;
-                  
-                  if (item && item.pawnInfo) {
-                      const cost = calculateRedemptionCost(item);
-                      const isBroke = funds < (cost?.total || 0);
-                      const canAffordInterest = funds >= (cost?.interest || 0);
-                      
-                      if (narrativeEvent.failureMailId && isBroke && !canAffordInterest) {
-                           const mailId = narrativeEvent.failureMailId || 'mail_generic_plea';
-                           dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: mailId, delayDays: 0, metadata: { relatedItemName: item.name } } });
-                           if (narrativeEvent.onFailure) applyChainEffects(narrativeEvent.chainId, narrativeEvent.onFailure);
-                           
-                           setTimeout(() => {
-                                dispatch({ type: 'SET_LOADING', payload: false });
-                                dispatch({ type: 'START_NIGHT' });
-                           }, 500);
-                           return;
-                      }
-                  }
-              }
-          }
-
-          const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
-          const currentFunds = chainState?.variables?.funds;
-
-          let storyCustomer = instantiateStoryCustomer(narrativeEvent, state.inventory, currentFunds, chainState);
-
-          if (narrativeEvent.type === 'POST_FORFEIT_VISIT' && targetId) {
-              const realItem = state.inventory.find(i => i.id === targetId);
-              if (realItem) {
-                  storyCustomer.item = { ...realItem };
-                  storyCustomer.interactionType = 'REDEEM'; 
-                  storyCustomer.redemptionIntent = 'REDEEM'; 
-                  storyCustomer.allowFreeRedeem = true; 
-              }
-          }
-
-          if (narrativeEvent.type === 'REDEMPTION_CHECK') {
-              // Determine if forced sale happened (Sold while active)
-              let forceSold = false;
-              const tId = narrativeEvent.targetItemId || chainState?.variables?.targetItemId;
-              
-              if (tId) {
-                  const item = state.inventory.find(i => i.id === tId);
-                  if (item && item.status === ItemStatus.SOLD) {
-                      // Check logs to see if it was forfeit. If NO 'FORFEIT' log, it was a breach sale.
-                      const wasForfeit = item.logs.some(l => l.type === 'FORFEIT');
-                      if (!wasForfeit) {
-                          forceSold = true;
-                      }
-                  }
-              }
-
-              const flowResult = resolveRedemptionFlow(narrativeEvent, state.inventory, chainState?.variables?.targetItemId, forceSold);
-              
-              if (flowResult) {
-                  const intent = storyCustomer.redemptionIntent;
-                  const isItemLost = flowResult.flowKey === 'core_lost';
-                  const isHostile = flowResult.flowKey === 'hostile_takeover';
-
-                  if (isItemLost || isHostile) {
-                       storyCustomer.dialogue.greeting = resolveDialogue(flowResult.flow.dialogue, chainState);
-                       (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
-                  } else if (intent === 'EXTEND') {
-                       storyCustomer.dialogue.greeting = "老板... 钱还没凑齐。能不能再宽限几天？我先付利息。";
-                  } else {
-                       storyCustomer.dialogue.greeting = resolveDialogue(flowResult.flow.dialogue, chainState);
-                       storyCustomer.dialogue.accepted.fair = "谢谢。";
-                       (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
-                  }
-                  
-                  if (tId) {
-                      const realItem = state.inventory.find(i => i.id === tId);
-                      if (realItem) {
-                           storyCustomer.item = { ...realItem };
-                           storyCustomer.interactionType = 'REDEEM';
-                           
-                           if (intent === 'REDEEM') {
-                               const cost = calculateRedemptionCost(realItem);
-                               if (cost && storyCustomer.currentWallet < cost.total) {
-                                   storyCustomer.currentWallet = cost.total + Math.floor(Math.random() * 50);
-                               }
-                           }
-                      }
-                  }
-              }
-          }
-
-          setTimeout(() => {
-              dispatch({ type: 'SET_CUSTOMER', payload: storyCustomer });
-              dispatch({ type: 'SET_LOADING', payload: false });
-          }, 800);
+      if (standardEvent) {
+          processEvent(standardEvent);
           return;
       }
 
@@ -346,6 +243,123 @@ export const useGameEngine = () => {
       dispatch({ type: 'SET_LOADING', payload: false });
       dispatch({ type: 'START_NIGHT' });
     }
+  };
+
+  const processEvent = (narrativeEvent: StoryEvent) => {
+      let targetId = narrativeEvent.targetItemId;
+      if (!targetId) {
+           const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
+           if (chainState && chainState.variables.targetItemId) {
+               targetId = String(chainState.variables.targetItemId);
+           }
+      }
+
+      if (narrativeEvent.type === 'POST_FORFEIT_VISIT') {
+          const forfeitItem = state.inventory.find(i => i.id === targetId && i.status === ItemStatus.FORFEIT);
+          if (!forfeitItem) {
+               console.log("Skipping event: Item not forfeit");
+               dispatch({ type: 'SET_LOADING', payload: false });
+               dispatch({ type: 'START_NIGHT' });
+               return;
+          }
+      }
+
+      if (narrativeEvent.type === 'REDEMPTION_CHECK') {
+          if (targetId) {
+              const item = state.inventory.find(i => i.id === targetId);
+              const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
+              const funds = chainState?.variables?.funds || 0;
+              
+              if (item && item.pawnInfo) {
+                  const cost = calculateRedemptionCost(item);
+                  const isBroke = funds < (cost?.total || 0);
+                  const canAffordInterest = funds >= (cost?.interest || 0);
+                  
+                  if (narrativeEvent.failureMailId && isBroke && !canAffordInterest) {
+                       const mailId = narrativeEvent.failureMailId || 'mail_generic_plea';
+                       dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: mailId, delayDays: 0, metadata: { relatedItemName: item.name } } });
+                       if (narrativeEvent.onFailure) applyChainEffects(narrativeEvent.chainId, narrativeEvent.onFailure);
+                       
+                       setTimeout(() => {
+                            dispatch({ type: 'SET_LOADING', payload: false });
+                            dispatch({ type: 'START_NIGHT' });
+                       }, 500);
+                       return;
+                  }
+              }
+          }
+      }
+
+      const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
+      const currentFunds = chainState?.variables?.funds;
+
+      let storyCustomer = instantiateStoryCustomer(narrativeEvent, state.inventory, currentFunds, chainState);
+
+      if (narrativeEvent.type === 'POST_FORFEIT_VISIT' && targetId) {
+          const realItem = state.inventory.find(i => i.id === targetId);
+          if (realItem) {
+              storyCustomer.item = { ...realItem };
+              storyCustomer.interactionType = 'REDEEM'; 
+              storyCustomer.redemptionIntent = 'REDEEM'; 
+              storyCustomer.allowFreeRedeem = true; 
+          }
+      }
+
+      if (narrativeEvent.type === 'REDEMPTION_CHECK') {
+          // Determine if forced sale happened (Sold while active)
+          let forceSold = false;
+          const tId = narrativeEvent.targetItemId || chainState?.variables?.targetItemId;
+          
+          if (tId) {
+              const item = state.inventory.find(i => i.id === tId);
+              if (item && item.status === ItemStatus.SOLD) {
+                  // Check logs to see if it was forfeit. If NO 'FORFEIT' log, it was a breach sale.
+                  const wasForfeit = item.logs.some(l => l.type === 'FORFEIT');
+                  if (!wasForfeit) {
+                      forceSold = true;
+                  }
+              }
+          }
+
+          const flowResult = resolveRedemptionFlow(narrativeEvent, state.inventory, chainState?.variables?.targetItemId, forceSold);
+          
+          if (flowResult) {
+              const intent = storyCustomer.redemptionIntent;
+              const isItemLost = flowResult.flowKey === 'core_lost';
+              const isHostile = flowResult.flowKey === 'hostile_takeover';
+
+              if (isItemLost || isHostile) {
+                   storyCustomer.dialogue.greeting = resolveDialogue(flowResult.flow.dialogue, chainState);
+                   (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
+              } else if (intent === 'EXTEND') {
+                   storyCustomer.dialogue.greeting = "老板... 钱还没凑齐。能不能再宽限几天？我先付利息。";
+              } else {
+                   storyCustomer.dialogue.greeting = resolveDialogue(flowResult.flow.dialogue, chainState);
+                   storyCustomer.dialogue.accepted.fair = "谢谢。";
+                   (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
+              }
+              
+              if (tId) {
+                  const realItem = state.inventory.find(i => i.id === tId);
+                  if (realItem) {
+                       storyCustomer.item = { ...realItem };
+                       storyCustomer.interactionType = 'REDEEM';
+                       
+                       if (intent === 'REDEEM') {
+                           const cost = calculateRedemptionCost(realItem);
+                           if (cost && storyCustomer.currentWallet < cost.total) {
+                               storyCustomer.currentWallet = cost.total + Math.floor(Math.random() * 50);
+                           }
+                       }
+                  }
+              }
+          }
+      }
+
+      setTimeout(() => {
+          dispatch({ type: 'SET_CUSTOMER', payload: storyCustomer });
+          dispatch({ type: 'SET_LOADING', payload: false });
+      }, 800);
   };
 
   const evaluateTransaction = (offer: number, rate: number = 0.05): TransactionResult => {

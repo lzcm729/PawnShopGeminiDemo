@@ -128,28 +128,15 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return { ...initialState, phase: GamePhase.MORNING_BRIEF };
       
     case 'START_DAY': {
-      const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
-      
-      // Milestone Effect: Gold Standard (+2 AP)
-      const hasGoldStandard = state.activeMilestones.includes('cred_expert');
-      const baseAP = state.stats.maxActionPoints + (hasGoldStandard ? 2 : 0);
-
-      const effectiveMaxAP = Math.max(1, baseAP + apModifier);
+      // Legacy action, mostly handled by OPEN_SHOP now, but kept for safe initialization if needed
       return { 
         ...state, 
-        customersServedToday: 0,
-        dayEvents: [],
-        todayTransactions: [], 
-        phase: GamePhase.MORNING_BRIEF,
-        stats: { ...state.stats, actionPoints: effectiveMaxAP, visitedToday: false }, // Reset visited status
-        violationFlags: [],
-        lastSatisfaction: null
+        phase: GamePhase.MORNING_BRIEF
       };
     }
 
     case 'OPEN_SHOP': {
-      // FIX: Process Daily Mail on Shop Open
-      // This ensures that pending mails seen in Morning Brief are actually delivered to the Inbox
+      // 1. Process Mail Arrival
       const today = state.stats.day;
       const arrivingMails = state.pendingMails.filter(m => m.arrivalDay <= today);
       const remainingPending = state.pendingMails.filter(m => m.arrivalDay > today);
@@ -158,11 +145,28 @@ const gameReducer = (state: GameState, action: Action): GameState => {
           ? [...arrivingMails, ...state.inbox] 
           : state.inbox;
 
+      // 2. Calculate Action Points (with Modifiers & Perks)
+      const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
+      const hasGoldStandard = state.activeMilestones.includes('cred_expert');
+      const baseAP = state.stats.maxActionPoints + (hasGoldStandard ? 2 : 0);
+      const effectiveMaxAP = Math.max(1, baseAP + apModifier);
+
       return { 
           ...state, 
           phase: GamePhase.BUSINESS,
           inbox: newInbox,
-          pendingMails: remainingPending
+          pendingMails: remainingPending,
+          // RESET DAILY COUNTERS HERE
+          customersServedToday: 0,
+          todayTransactions: [],
+          dayEvents: [], // Clear night report logs
+          violationFlags: [], // Reset daily violations
+          lastSatisfaction: null,
+          stats: {
+              ...state.stats,
+              actionPoints: effectiveMaxAP,
+              visitedToday: false
+          }
       };
     }
 

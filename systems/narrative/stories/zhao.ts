@@ -143,7 +143,7 @@ export const ZHAO_MAILS: Record<string, MailTemplate> = {
 export const ZHAO_CHAIN_INIT: EventChainState = {
     id: "chain_zhao",
     npcName: "周守义",
-    isActive: false, 
+    isActive: true, // Force Active
     stage: 0,
     variables: { 
         funds: 1000,
@@ -274,7 +274,8 @@ export const ZHAO_EVENTS: StoryEvent[] = [
     {
         id: "zhao_02_collector_low",
         chainId: "chain_zhao",
-        triggerConditions: [{ variable: "stage", operator: "==", value: 1 }, { variable: "day", operator: ">=", value: 4 }],
+        // Adjusted from day >= 4 to day >= 3 (Global Day 4) to ensure it happens mid-week
+        triggerConditions: [{ variable: "stage", operator: "==", value: 1 }, { variable: "day", operator: ">=", value: 3 }],
         item: makeItem({ id: "zhao_virtual_deal_low", name: "收购邀约：勋章029", category: "其他", visualDescription: "一份收购合同。", historySnippet: "我是来帮我的客户解决遗憾的。", appraisalNote: "这是违约出售客户当品。", archiveSummary: "玩家拒绝了第一次诱惑。", realValue: 5000, isVirtual: true, isStolen: false, isFake: false, sentimentalValue: false, appraised: true, status: ItemStatus.ACTIVE }, "chain_zhao"),
         template: {
             name: "收藏顾问",
@@ -314,7 +315,8 @@ export const ZHAO_EVENTS: StoryEvent[] = [
     {
         id: "zhao_03_cert",
         chainId: "chain_zhao",
-        triggerConditions: [{ variable: "stage", operator: "==", value: 2 }, { variable: "day", operator: ">=", value: 6 }],
+        // Adjusted from day >= 6 to day >= 5 (Global Day 6)
+        triggerConditions: [{ variable: "stage", operator: "==", value: 2 }, { variable: "day", operator: ">=", value: 5 }],
         item: makeItem({
             id: "zhao_item_cert",
             name: "立功证书与合影",
@@ -393,7 +395,11 @@ export const ZHAO_EVENTS: StoryEvent[] = [
         id: "zhao_04_redeem_medal",
         chainId: "chain_zhao",
         type: "REDEMPTION_CHECK",
-        triggerConditions: [{ variable: "stage", operator: "==", value: 3 }, { variable: "day", operator: ">=", value: 8 }],
+        // Adjusted from day >= 8 to day >= 7 (Global Day 8, The Due Date)
+        triggerConditions: [
+            { variable: "stage", operator: "<=", value: 3 }, 
+            { variable: "day", operator: ">=", value: 7 }
+        ],
         targetItemId: "zhao_item_medal",
         failureMailId: "mail_zhao_plea", 
         onFailure: [{ type: "SET_STAGE", value: 4 }], 
@@ -456,7 +462,8 @@ export const ZHAO_EVENTS: StoryEvent[] = [
     {
         id: "zhao_05_collector_high",
         chainId: "chain_zhao",
-        triggerConditions: [{ variable: "stage", operator: "==", value: 4 }, { variable: "day", operator: ">=", value: 10 }],
+        // Adjusted from day >= 10 to day >= 9 (Global Day 10)
+        triggerConditions: [{ variable: "stage", operator: "==", value: 4 }, { variable: "day", operator: ">=", value: 9 }],
         item: makeItem({ id: "zhao_virtual_deal_high", name: "收购邀约：全套立功档案", category: "其他", visualDescription: "一份加急的收购合同。", historySnippet: "客户说，这是最后一次报价。", appraisalNote: "这是出卖灵魂的价格。", archiveSummary: "玩家在巨大的金钱诱惑面前动摇了吗？", realValue: 38000, isVirtual: true, isStolen: false, isFake: false, sentimentalValue: false, appraised: true, status: ItemStatus.ACTIVE }, "chain_zhao"),
         template: {
             name: "收藏顾问",
@@ -498,7 +505,8 @@ export const ZHAO_EVENTS: StoryEvent[] = [
         id: "zhao_06_final_redemption",
         chainId: "chain_zhao",
         type: "REDEMPTION_CHECK",
-        triggerConditions: [{ variable: "stage", operator: "==", value: 5 }, { variable: "day", operator: ">=", value: 12 }],
+        // Adjusted from day >= 12 to day >= 11 (Global Day 12)
+        triggerConditions: [{ variable: "stage", operator: "==", value: 5 }, { variable: "day", operator: ">=", value: 11 }],
         targetItemId: "zhao_item_cert", 
         failureMailId: "mail_zhao_plea",
         onFailure: [
