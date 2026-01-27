@@ -298,10 +298,52 @@ const SettlementPanel: React.FC<{
 export const SettlementInterface: React.FC = () => {
     const { state, dispatch } = useGame();
     const { calculateRedemptionCost, calculatePenalty, processHostileTakeover, processForcedForfeiture } = usePawnShop();
-    const { commitTransaction, rejectCustomer, applyChainEffects } = useGameEngine();
-    
+    const { commitTransaction, rejectCustomer, applyChainEffects, processNextExpiryEvent } = useGameEngine();
+
     const customer = state.currentCustomer;
     if (!customer) return null;
+
+    // Check if this is an expiry settlement
+    const isExpirySettlement = state.expiryQueue && state.expiryQueue.length > 0;
+    const currentExpiryEvent = isExpirySettlement ? state.expiryQueue.find(e => e.itemId === customer.item?.id) : null;
+
+    // Helper to apply expiry effects and continue to next event
+    const handleExpiryCompletion = (effectType: 'redeem_accept' | 'redeem_refuse' | 'renew_accept' | 'renew_refuse') => {
+        if (!currentExpiryEvent) return;
+
+        const storyEvent = ALL_STORY_EVENTS.find(e =>
+            e.coreItemId === currentExpiryEvent.itemId || e.item?.id === currentExpiryEvent.itemId
+        );
+
+        if (storyEvent?.expiryFlows) {
+            const flows = storyEvent.expiryFlows;
+            let effects: any[] = [];
+
+            switch (effectType) {
+                case 'redeem_accept':
+                    effects = flows.redemption?.accept || [];
+                    break;
+                case 'redeem_refuse':
+                    effects = flows.redemption?.refuse || [];
+                    break;
+                case 'renew_accept':
+                    effects = flows.renewal?.accept || [];
+                    break;
+                case 'renew_refuse':
+                    effects = flows.renewal?.refuse || [];
+                    break;
+            }
+
+            if (effects.length > 0 && customer.chainId) {
+                applyChainEffects(customer.chainId, effects);
+            }
+        }
+
+        // Process next expiry event after a short delay
+        setTimeout(() => {
+            processNextExpiryEvent();
+        }, 500);
+    };
 
     let targetItems: Item[] = [];
     const eventId = customer.eventId;
@@ -355,7 +397,7 @@ export const SettlementInterface: React.FC = () => {
 
     const handleRedeem = () => {
         if (anySold) {
-            if (state.stats.cash < totalPenalty) return; 
+            if (state.stats.cash < totalPenalty) return;
             const res = {
                 success: true,
                 message: "支付赔偿金。",
@@ -364,6 +406,7 @@ export const SettlementInterface: React.FC = () => {
                 dealQuality: 'fair' as const
             };
             commitTransaction(res);
+            if (isExpirySettlement) handleExpiryCompletion('redeem_refuse');
         } else {
             const res = {
                 success: true,
@@ -373,6 +416,7 @@ export const SettlementInterface: React.FC = () => {
                 dealQuality: 'fair' as const
             };
             commitTransaction(res);
+            if (isExpirySettlement) handleExpiryCompletion('redeem_accept');
         }
     };
 
@@ -394,30 +438,32 @@ export const SettlementInterface: React.FC = () => {
             message: "续当成功。",
             cashDelta: totalInterest,
             reputationDelta: { Credibility: 1 },
-            dealQuality: 'fair' as const 
+            dealQuality: 'fair' as const
         };
-        
+
         targetItems.forEach(i => {
-            dispatch({ 
-                type: 'EXTEND_PAWN', 
-                payload: { itemId: i.id, interestPaid: 0, newDueDate: i.pawnInfo!.dueDate + 7, name: i.name } 
+            dispatch({
+                type: 'EXTEND_PAWN',
+                payload: { itemId: i.id, interestPaid: 0, newDueDate: i.pawnInfo!.dueDate + 7, name: i.name }
             });
         });
 
         if (event?.onExtend) {
             applyChainEffects(customer.chainId, event.onExtend);
         }
-        
-        dispatch({ 
-            type: 'RESOLVE_TRANSACTION', 
-            payload: { 
-                cashDelta: totalInterest, 
-                reputationDelta: {}, 
-                item: null, 
-                log: "续当交易完成", 
-                customerName: customer.name 
-            } 
+
+        dispatch({
+            type: 'RESOLVE_TRANSACTION',
+            payload: {
+                cashDelta: totalInterest,
+                reputationDelta: {},
+                item: null,
+                log: "续当交易完成",
+                customerName: customer.name
+            }
         });
+
+        if (isExpirySettlement) handleExpiryCompletion('renew_accept');
     };
 
     const handleDismiss = () => {
@@ -426,43 +472,40 @@ export const SettlementInterface: React.FC = () => {
 
     const handleRefuseExtension = () => {
         targetItems.forEach(i => processForcedForfeiture(i));
-        rejectCustomer(); 
+        rejectCustomer();
+        if (isExpirySettlement) handleExpiryCompletion('renew_refuse');
     };
 
     const handleHostileTakeover = () => {
         // Can be triggered for sold items OR active items (if player chooses to breach)
         // If items are SOLD, we must pay penalty to resolve.
         // If items are ACTIVE, we pay penalty to KEEP them (forced buy out).
-        
-        rejectCustomer(); 
-        
+
+        rejectCustomer();
+
         if (anySold) {
-             // Already handled by reject? No, we need transaction.
-             // But logic is complex. For now, Hostile Takeover button does the breach logic.
-             // Actually, if we are in "isBreach" mode (top of panel), we have specific buttons.
-             // If we are in "Redeem" mode, this button triggers the hostile takeover on active items.
-             
              // Check funds
              if (state.stats.cash < totalPenalty) {
-                 // Should have been disabled or game over handled elsewhere?
                  return;
              }
-             
-             dispatch({ 
-                type: 'HOSTILE_TAKEOVER', 
-                payload: { itemId: targetItems[0].id, penalty: totalPenalty, name: targetItems[0].name } 
+
+             dispatch({
+                type: 'HOSTILE_TAKEOVER',
+                payload: { itemId: targetItems[0].id, penalty: totalPenalty, name: targetItems[0].name }
              });
         } else {
              // Active Item Breach
-             dispatch({ 
-                type: 'HOSTILE_TAKEOVER', 
-                payload: { itemId: targetItems[0].id, penalty: totalPenalty, name: targetItems[0].name } 
+             dispatch({
+                type: 'HOSTILE_TAKEOVER',
+                payload: { itemId: targetItems[0].id, penalty: totalPenalty, name: targetItems[0].name }
              });
         }
 
         if (event?.dynamicFlows?.['hostile_takeover']) {
              applyChainEffects(customer.chainId, event.dynamicFlows['hostile_takeover'].outcome);
         }
+
+        if (isExpirySettlement) handleExpiryCompletion('redeem_refuse');
     };
 
     return (

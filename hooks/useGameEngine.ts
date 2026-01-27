@@ -4,11 +4,12 @@ import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolv
 import { generateDailyNews } from '../systems/news/engine';
 import { generatePawnLog } from '../systems/game/utils/logGenerator';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
-import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect, MotherCondition } from '../types';
+import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect, MotherCondition, ExpiryEvent } from '../types';
 import { usePawnShop } from './usePawnShop';
 import { GAME_CONFIG } from '../systems/game/config';
 import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
 import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
+import { Dialogue } from '../systems/narrative/types';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -195,6 +196,79 @@ export const useGameEngine = () => {
     dispatch({ type: 'END_DAY' });
   };
 
+  // Helper: Create a Customer from an ExpiryEvent for the settlement interface
+  const createExpiryCustomer = (event: ExpiryEvent): Customer | null => {
+      const item = state.inventory.find(i => i.id === event.itemId);
+      if (!item) return null;
+
+      const chain = state.activeChains.find(c => c.id === event.chainId);
+      const storyEvent = ALL_STORY_EVENTS.find(e =>
+          e.coreItemId === event.itemId || e.item?.id === event.itemId
+      );
+
+      // Determine redemptionIntent based on behavior
+      const intent = event.behavior === 'REDEEM' ? 'REDEEM' : 'EXTEND';
+
+      // Build greeting based on behavior
+      let greeting = "";
+      let redemptionPlea = "";
+      if (event.behavior === 'REDEEM') {
+          greeting = `钱都在这，连本带利。快把表还给我吧，我还要赶着放回去，不然被爸妈发现就完定了。`;
+          redemptionPlea = `我回去查了一下，那好像是真的很重要的东西... 而且我把显卡退了，钱都在这。`;
+      } else {
+          greeting = `老板，我... 现在还凑不够赎金。能不能再宽限几天？利息我先付着。`;
+          redemptionPlea = `求求你了，那东西对我很重要...`;
+      }
+
+      const dialogue: Dialogue = {
+          greeting,
+          pawnReason: "",
+          redemptionPlea,
+          negotiationDynamic: "",
+          accepted: { fair: "谢谢。", fleeced: "谢谢...", premium: "太感谢了！" },
+          rejected: "...",
+          rejectionLines: { standard: "...", angry: "你怎么能这样...", desperate: "..." },
+          exitDialogues: {
+              grateful: "谢谢老板！",
+              neutral: "那我走了。",
+              resentful: "......",
+              desperate: "[沉默地离开]"
+          }
+      };
+
+      // Use template dialogue if available
+      if (storyEvent?.template?.dialogue) {
+          const tpl = storyEvent.template.dialogue;
+          if (typeof tpl.redemptionPlea === 'string') {
+              dialogue.redemptionPlea = tpl.redemptionPlea;
+          }
+      }
+
+      const customer: Customer = {
+          id: crypto.randomUUID(),
+          name: event.npcName,
+          description: storyEvent?.template?.description || "到期结算",
+          avatarSeed: storyEvent?.template?.avatarSeed || "default",
+          dialogue,
+          redemptionResolve: intent === 'REDEEM' ? 'Strong' : 'Medium',
+          negotiationStyle: 'Professional',
+          patience: 3,
+          mood: 'Neutral',
+          tags: ['Settlement'],
+          item: { ...item },
+          desiredAmount: 0,
+          minimumAmount: 0,
+          maxRepayment: event.redemptionCost.total,
+          interactionType: 'REDEEM',
+          redemptionIntent: intent,
+          currentWallet: chain?.variables?.funds as number || event.redemptionCost.total + 100,
+          chainId: event.chainId,
+          eventId: storyEvent?.id
+      };
+
+      return customer;
+  };
+
   const startNewDay = () => {
     // 1. Process daily mail
     dispatch({ type: 'PROCESS_DAILY_MAIL' });
@@ -224,11 +298,16 @@ export const useGameEngine = () => {
         }
     });
 
-    // 4. If there are expiry events (REDEEM/RENEW), queue them for player decisions
+    // 4. If there are expiry events (REDEEM/RENEW), create customer for settlement interface
     if (expiryEvents.length > 0) {
         dispatch({ type: 'SET_EXPIRY_QUEUE', payload: expiryEvents });
-        dispatch({ type: 'TRIGGER_EXPIRY_EVENT', payload: expiryEvents[0] });
-        return; // Don't proceed to START_DAY until expiry events are resolved
+        const customer = createExpiryCustomer(expiryEvents[0]);
+        if (customer) {
+            dispatch({ type: 'SET_CUSTOMER', payload: customer });
+        } else {
+            dispatch({ type: 'START_DAY' });
+        }
+        return;
     }
 
     // 5. No expiry events, proceed normally
@@ -242,7 +321,12 @@ export const useGameEngine = () => {
           // More events to process
           const remaining = queue.slice(1);
           dispatch({ type: 'SET_EXPIRY_QUEUE', payload: remaining });
-          dispatch({ type: 'TRIGGER_EXPIRY_EVENT', payload: remaining[0] });
+          const customer = createExpiryCustomer(remaining[0]);
+          if (customer) {
+              dispatch({ type: 'SET_CUSTOMER', payload: customer });
+          } else {
+              dispatch({ type: 'START_DAY' });
+          }
       } else {
           // All expiry events handled, continue to normal day
           dispatch({ type: 'SET_EXPIRY_QUEUE', payload: [] });
@@ -456,7 +540,7 @@ export const useGameEngine = () => {
     if (item.isFake) repDelta[ReputationType.CREDIBILITY] -= 5; 
 
     const valuationBasis = item.perceivedValue !== undefined ? item.perceivedValue : item.realValue;
-    const termDays = 7;
+    const termDays = customer.pawnTermDays || 7;
     const pawnInfo = {
         principal: offer,
         interestRate: rate,

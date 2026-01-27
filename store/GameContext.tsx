@@ -101,6 +101,7 @@ type Action =
   | { type: 'TOGGLE_MEDICAL' }
   | { type: 'TOGGLE_VISIT' }
   | { type: 'UPDATE_CHAINS'; payload: EventChainState[] }
+  | { type: 'UPDATE_CHAIN_VAR'; payload: { chainId: string; variable: string; value: number } }
   | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number; metadata?: any } }
   | { type: 'PROCESS_DAILY_MAIL' }
   | { type: 'READ_MAIL'; payload: string } 
@@ -148,9 +149,10 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       return {
         ...state,
         customersServedToday: 0,
+        currentCustomer: null,  // FIX: Clear customer when starting new day
         dayEvents: [],
         todayTransactions: [],
-        phase: GamePhase.BUSINESS,  // FIX: Switch to BUSINESS phase
+        phase: GamePhase.BUSINESS,
         stats: { ...state.stats, actionPoints: effectiveMaxAP, visitedToday: false },
         violationFlags: [],
         lastSatisfaction: null

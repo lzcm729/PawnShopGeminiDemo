@@ -43,6 +43,7 @@ export interface Customer {
   recapLog?: SimLogEntry[];
   
   allowFreeRedeem?: boolean;
-  
+  pawnTermDays?: number;  // 自定义典当期限（默认7天）
+
   observation?: string; // Narrative observation/hint
 }

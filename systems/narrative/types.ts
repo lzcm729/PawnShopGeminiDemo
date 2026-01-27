@@ -306,8 +306,9 @@ export interface CustomerTemplate {
     currentWallet?: number;
     currentAskPrice?: number;
     redemptionIntent?: 'REDEEM' | 'EXTEND' | 'LEAVE';
-    item?: Partial<Item>; 
-    allowFreeRedeem?: boolean; 
+    item?: Partial<Item>;
+    allowFreeRedeem?: boolean;
+    pawnTermDays?: number;  // 自定义典当期限（默认7天）
 }
 
 export interface StoryEvent {

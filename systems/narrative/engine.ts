@@ -401,6 +401,7 @@ export const instantiateStoryCustomer = (
         eventId: event.id,
         recapLog: chainState?.simulationLog ? chainState.simulationLog.slice(-5) : undefined,
         allowFreeRedeem: template.allowFreeRedeem,
+        pawnTermDays: template.pawnTermDays,
         observation // New Field
     };
 };
