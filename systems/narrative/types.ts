@@ -19,15 +19,17 @@ export interface ExpiryEvent {
         interest: number;
         total: number;
     };
+    valuation: number;      // 物品估值（用于计算拒绝赎回的赔偿金）
+    interestRate: number;   // 利率（用于计算续当利息）
+    realValue: number;      // 实际价值（用于 NO_SHOW 出售价格显示）
     dueDate: number;
-    isCoreItem: boolean;  // 是否为核心物品（丢失会触发坏结局）
+    isCoreItem: boolean;    // 是否为核心物品（丢失会触发坏结局）
 }
 
 export type ExpiryChoice =
     | 'redeem_accept'      // 正常赎回
-    | 'redeem_extra'       // 要求额外费用
-    | 'redeem_refuse'      // 拒绝赎回
-    | 'renew_accept'       // 同意续当
+    | 'redeem_refuse'      // 拒绝赎回（需支付200%赔偿）
+    | 'renew_accept'       // 同意续当（收取当期利息）
     | 'renew_refuse'       // 拒绝续当
     | 'noshow_sell'        // 挂牌出售
     | 'noshow_keep';       // 继续保留
@@ -36,7 +38,6 @@ export interface ExpiryFlowDefinition {
     // 赎回场景的玩家选项
     redemption?: {
         accept?: ChainUpdateEffect[];      // 正常赎回
-        chargeExtra?: ChainUpdateEffect[]; // 要求额外费用
         refuse?: ChainUpdateEffect[];      // 拒绝赎回
     };
     // 续当场景的玩家选项

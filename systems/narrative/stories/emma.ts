@@ -612,10 +612,6 @@ export const EMMA_EVENTS: StoryEvent[] = [
           { type: "MODIFY_VAR", variable: "hope", value: 20 },
           { type: "SCHEDULE_MAIL", templateId: "mail_emma_renewal_thanks", delayDays: 0 }
         ],
-        chargeExtra: [
-          { type: "MODIFY_VAR", variable: "hope", value: -10 },
-          { type: "MODIFY_VAR", variable: "funds", value: -50 }
-        ],
         refuse: [
           { type: "MODIFY_VAR", variable: "hope", value: -30 },
           { type: "SCHEDULE_MAIL", templateId: "mail_emma_renewal_rejected", delayDays: 0 }
@@ -731,10 +727,6 @@ export const EMMA_EVENTS: StoryEvent[] = [
       redemption: {
         accept: [
           { type: "MODIFY_VAR", variable: "hope", value: 10 }
-        ],
-        chargeExtra: [
-          { type: "MODIFY_VAR", variable: "hope", value: -5 },
-          { type: "MODIFY_VAR", variable: "funds", value: -30 }
         ],
         refuse: [
           { type: "MODIFY_VAR", variable: "hope", value: -15 }
@@ -855,10 +847,6 @@ export const EMMA_EVENTS: StoryEvent[] = [
         accept: [
           { type: "MODIFY_VAR", variable: "hope", value: 20 },
           { type: "SCHEDULE_MAIL", templateId: "mail_emma_laptop_renewal_thanks", delayDays: 0 }
-        ],
-        chargeExtra: [
-          { type: "MODIFY_VAR", variable: "hope", value: -15 },
-          { type: "MODIFY_VAR", variable: "funds", value: -100 }
         ],
         refuse: [
           { type: "MODIFY_VAR", variable: "hope", value: -40 },

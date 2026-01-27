@@ -139,19 +139,19 @@ const gameReducer = (state: GameState, action: Action): GameState => {
       
     case 'START_DAY': {
       const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
-      
+
       // Milestone Effect: Gold Standard (+2 AP)
       const hasGoldStandard = state.activeMilestones.includes('cred_expert');
       const baseAP = state.stats.maxActionPoints + (hasGoldStandard ? 2 : 0);
 
       const effectiveMaxAP = Math.max(1, baseAP + apModifier);
-      return { 
-        ...state, 
+      return {
+        ...state,
         customersServedToday: 0,
         dayEvents: [],
-        todayTransactions: [], 
-        phase: GamePhase.MORNING_BRIEF,
-        stats: { ...state.stats, actionPoints: effectiveMaxAP, visitedToday: false }, // Reset visited status
+        todayTransactions: [],
+        phase: GamePhase.BUSINESS,  // FIX: Switch to BUSINESS phase
+        stats: { ...state.stats, actionPoints: effectiveMaxAP, visitedToday: false },
         violationFlags: [],
         lastSatisfaction: null
       };
@@ -466,7 +466,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     }
 
     case 'RESOLVE_EXPIRY': {
-        const { choice, itemId, extensionDays, extraFee, salePrice } = action.payload;
+        const { choice, itemId, extensionDays, salePrice } = action.payload;
         const item = state.inventory.find(i => i.id === itemId);
         if (!item) return state;
 
@@ -476,6 +476,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         let log = "";
         let satisfaction: SatisfactionLevel = 'NEUTRAL';
         const event = state.currentExpiryEvent;
+        const isNoShow = choice === 'noshow_sell' || choice === 'noshow_keep';
 
         switch (choice) {
             case 'redeem_accept': {
@@ -495,37 +496,29 @@ const gameReducer = (state: GameState, action: Action): GameState => {
                 }
                 break;
             }
-            case 'redeem_extra': {
-                // 要求额外费用 (+20%)
-                if (event) {
-                    const extra = Math.ceil(event.redemptionCost.total * (extraFee || 0.2));
-                    cashDelta = event.redemptionCost.total + extra;
-                    const redeemLog = generateRedeemLog(event.npcName, item, state.stats.day, cashDelta);
-                    newInventory = newInventory.map(i =>
-                        i.id === itemId
-                            ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || []), redeemLog] }
-                            : i
-                    );
-                    repDelta = { [ReputationType.HUMANITY]: -5, [ReputationType.CREDIBILITY]: -2 };
-                    log = `${item.name} 被赎回 (收款 $${cashDelta}，含额外费用)`;
-                    satisfaction = 'RESENTFUL';
-                    playSfx('CASH');
+            case 'redeem_refuse': {
+                // 拒绝赎回 - 需支付200%估值的赔偿金
+                if (event && item.pawnInfo) {
+                    const compensation = Math.ceil(item.pawnInfo.valuation * 2);
+                    cashDelta = -compensation;
+                    repDelta = {
+                        [ReputationType.HUMANITY]: -30,
+                        [ReputationType.CREDIBILITY]: -20,
+                        [ReputationType.UNDERWORLD]: 10
+                    };
+                    log = `拒绝赎回: ${item.name}，支付违约赔偿金 $${compensation}`;
+                    satisfaction = 'DESPERATE';
+                    playSfx('FAIL');
                 }
                 break;
             }
-            case 'redeem_refuse': {
-                // 拒绝赎回
-                repDelta = { [ReputationType.HUMANITY]: -15, [ReputationType.CREDIBILITY]: -10 };
-                log = `拒绝赎回: ${item.name}`;
-                satisfaction = 'DESPERATE';
-                playSfx('FAIL');
-                break;
-            }
             case 'renew_accept': {
-                // 同意续当
+                // 同意续当 - 收取当期利息
                 if (item.pawnInfo) {
                     const days = extensionDays || 7;
                     const newDueDate = item.pawnInfo.dueDate + days;
+                    const interest = Math.ceil(item.pawnInfo.principal * item.pawnInfo.interestRate);
+                    cashDelta = interest;
                     newInventory = newInventory.map(i =>
                         i.id === itemId && i.pawnInfo
                             ? {
@@ -539,9 +532,9 @@ const gameReducer = (state: GameState, action: Action): GameState => {
                             : i
                     );
                     repDelta = { [ReputationType.HUMANITY]: 5 };
-                    log = `同意续当: ${item.name} (延期 ${days} 天至 Day ${newDueDate})`;
+                    log = `同意续当: ${item.name} (收取利息 $${interest}，延期至 Day ${newDueDate})`;
                     satisfaction = 'GRATEFUL';
-                    playSfx('STAMP');
+                    playSfx('CASH');
                 }
                 break;
             }
@@ -601,7 +594,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             id: crypto.randomUUID(),
             description: log,
             amount: cashDelta,
-            type: cashDelta > 0 ? 'REDEEM' : 'EXPENSE'
+            type: cashDelta > 0 ? 'REDEEM' : 'PENALTY'
         } : null;
 
         return {
@@ -613,7 +606,8 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
             dayEvents: [...state.dayEvents, log],
             lastSatisfaction: satisfaction,
-            phase: GamePhase.DEPARTURE
+            // NO_SHOW 场景不进入 DEPARTURE（NPC 未出现，无需送客）
+            phase: isNoShow ? GamePhase.BUSINESS : GamePhase.DEPARTURE
         };
     }
 

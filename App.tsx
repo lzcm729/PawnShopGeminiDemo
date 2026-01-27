@@ -158,8 +158,7 @@ const GameContent: React.FC = () => {
               choice,
               itemId: event.itemId,
               extensionDays: 7,
-              extraFee: 0.2,
-              salePrice: Math.floor(event.redemptionCost.principal * 0.8)
+              salePrice: Math.floor(event.realValue * 0.8)
           }
       });
 
@@ -179,9 +178,6 @@ const GameContent: React.FC = () => {
           switch (choice) {
               case 'redeem_accept':
                   effects = flows.redemption?.accept || [];
-                  break;
-              case 'redeem_extra':
-                  effects = flows.redemption?.chargeExtra || [];
                   break;
               case 'redeem_refuse':
                   effects = flows.redemption?.refuse || [];

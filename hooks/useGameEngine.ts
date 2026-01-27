@@ -199,17 +199,39 @@ export const useGameEngine = () => {
     // 1. Process daily mail
     dispatch({ type: 'PROCESS_DAILY_MAIL' });
 
-    // 2. Check for expiry events (returns ExpiryEvent[] for story items)
-    const expiryEvents = checkDailyExpirations();
+    // 2. Check for expiry events (REDEEM/RENEW only, NO_SHOW auto-forfeits)
+    const { expiryEvents, noShowForfeits } = checkDailyExpirations();
 
-    // 3. If there are expiry events, queue them for player decisions
+    // 3. Apply expiryFlows.noShow.keep effects for auto-forfeited items
+    noShowForfeits.forEach(({ itemId, chainId }) => {
+        const storyEvent = ALL_STORY_EVENTS.find(e =>
+            e.coreItemId === itemId || e.item?.id === itemId
+        );
+        if (storyEvent?.expiryFlows?.noShow?.keep) {
+            storyEvent.expiryFlows.noShow.keep.forEach(effect => {
+                if (effect.type === 'MODIFY_VAR' && effect.variable && effect.value !== undefined) {
+                    dispatch({
+                        type: 'UPDATE_CHAIN_VAR',
+                        payload: { chainId, variable: effect.variable, value: effect.value }
+                    });
+                } else if (effect.type === 'SCHEDULE_MAIL' && effect.templateId) {
+                    dispatch({
+                        type: 'SCHEDULE_MAIL',
+                        payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0 }
+                    });
+                }
+            });
+        }
+    });
+
+    // 4. If there are expiry events (REDEEM/RENEW), queue them for player decisions
     if (expiryEvents.length > 0) {
         dispatch({ type: 'SET_EXPIRY_QUEUE', payload: expiryEvents });
         dispatch({ type: 'TRIGGER_EXPIRY_EVENT', payload: expiryEvents[0] });
         return; // Don't proceed to START_DAY until expiry events are resolved
     }
 
-    // 4. No expiry events, proceed normally
+    // 5. No expiry events, proceed normally
     dispatch({ type: 'START_DAY' });
   };
 

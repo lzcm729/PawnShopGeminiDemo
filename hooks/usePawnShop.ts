@@ -138,12 +138,17 @@ export const usePawnShop = () => {
         return null; // Will be implemented when we have story registry access
     }, []);
 
-    // 6. Check Daily Expirations - Enhanced to return ExpiryEvents
-    const checkDailyExpirations = useCallback((): ExpiryEvent[] => {
+    // 6. Check Daily Expirations - Returns ExpiryEvents for REDEEM/RENEW only
+    // NO_SHOW items are automatically forfeited (no player decision needed)
+    const checkDailyExpirations = useCallback((): {
+        expiryEvents: ExpiryEvent[];
+        noShowForfeits: { itemId: string; chainId: string; itemName: string }[]
+    } => {
         const currentDay = state.stats.day;
         const expiryEvents: ExpiryEvent[] = [];
         const autoForfeitIds: string[] = [];
         const autoForfeitLogs: string[] = [];
+        const noShowForfeits: { itemId: string; chainId: string; itemName: string }[] = [];
 
         state.inventory.forEach(item => {
             if (item.status !== ItemStatus.ACTIVE || !item.pawnInfo) return;
@@ -167,7 +172,15 @@ export const usePawnShop = () => {
 
             const behavior = determineExpiryBehavior(chain, item, cost.total);
 
-            // 检查是否为核心物品
+            // NO_SHOW: NPC 未现身，直接绝当（不触发结算节点）
+            if (behavior === 'NO_SHOW') {
+                autoForfeitIds.push(item.id);
+                autoForfeitLogs.push(`[系统] ${chain.npcName} 未现身，${item.name} 已绝当。`);
+                noShowForfeits.push({ itemId: item.id, chainId: chain.id, itemName: item.name });
+                return;
+            }
+
+            // REDEEM / RENEW: 触发结算节点让玩家决策
             const isCoreItem = item.id.includes('clothes') || item.id.includes('core');
 
             expiryEvents.push({
@@ -182,12 +195,15 @@ export const usePawnShop = () => {
                     interest: cost.interest,
                     total: cost.total
                 },
+                valuation: item.pawnInfo.valuation,
+                interestRate: item.pawnInfo.interestRate,
+                realValue: item.realValue,
                 dueDate: item.pawnInfo.dueDate,
                 isCoreItem
             });
         });
 
-        // 处理无故事链的自动绝当物品
+        // 处理自动绝当物品（包括无故事链和 NO_SHOW）
         if (autoForfeitIds.length > 0) {
             dispatch({
                 type: 'EXPIRE_ITEMS',
@@ -195,7 +211,7 @@ export const usePawnShop = () => {
             });
         }
 
-        return expiryEvents;
+        return { expiryEvents, noShowForfeits };
     }, [state.stats.day, state.inventory, state.activeChains, calculateRedemptionCost, determineExpiryBehavior, dispatch]);
 
     // 7. Check for overdue items (past due date, auto forfeit)

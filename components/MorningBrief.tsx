@@ -9,8 +9,8 @@ import { cn } from '../lib/utils';
 import { Badge } from './ui/Badge';
 
 export const MorningBrief: React.FC = () => {
-  const { state, dispatch } = useGame();
-  // ... (startNewDay usage if needed later)
+  const { state } = useGame();
+  const { startNewDay } = useGameEngine();
 
   const narratives = state.dailyNews.filter(n => n.category === NewsCategory.NARRATIVE);
   const markets = state.dailyNews.filter(n => n.category === NewsCategory.MARKET);
@@ -146,8 +146,8 @@ export const MorningBrief: React.FC = () => {
               )}
             </div>
 
-            <Button 
-                onClick={() => dispatch({ type: 'OPEN_SHOP' })} 
+            <Button
+                onClick={startNewDay}
                 className="w-full mt-6 h-14 text-lg tracking-widest border-noir-400 hover:border-noir-txt-primary hover:bg-noir-200 text-noir-txt-primary shadow-lg group relative overflow-hidden"
             >
                 <div className="absolute inset-0 bg-noir-accent/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
