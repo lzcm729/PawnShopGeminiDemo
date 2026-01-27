@@ -8,7 +8,7 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
     id: "mail_emma_success",
     sender: "艾玛",
     subject: "我入职了！",
-    body: `老板：\n\n告诉你一个好消息，我被那家跨国公司录取了！\n\n还记得那台{{relatedItemName}}吗？如果那时候你像别人一样狠狠宰我一笔，或者因为我没钱就赶我走，我可能早就崩溃了。\n\n这笔钱({{amount}})是我多付的利息，或者是... 感谢费。请你务必收下。\n\n另外，那枚婚戒我也不打算卖了。生活好像又有希望了。\n\n祝好，\n\n艾玛`,
+    body: `老板：\n\n告诉你一个好消息，我被那家跨国公司录取了！\n\n还记得那台{{relatedItemName}}吗？如果那时候你像别人一样狠狠宰我一笔，或者因为我没钱就赶我走，我可能早就崩溃了。\n\n面试官说我"状态很好，很有感染力"。我想，这是因为每次从你店里出来，我都觉得这个世界还有好人。你给我的不只是钱，还有信心。\n\n这笔钱({{amount}})是我多付的利息，或者是... 感谢费。请你务必收下。\n\n另外，那枚婚戒我也不打算卖了。生活好像又有希望了。\n\n祝好，\n\n艾玛`,
     attachments: { cash: 500 }
   },
   "mail_emma_hate": {
@@ -77,8 +77,8 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
   "mail_emma_03b_charity": {
     id: "mail_emma_03b_charity",
     sender: "艾玛",
-    subject: "最后的挣扎",
-    body: `老板，\n\n谢谢你还愿意收这块表。也许... 还有希望。\n\n我再试试。`,
+    subject: "也许还有希望",
+    body: `老板，\n\n谢谢你还愿意收这块表。\n\n我本来已经放弃了。从你店里出来那一刻，我甚至想过去桥上吹吹风。\n\n但你愿意帮我，哪怕是在我最落魄的时候。也许... 还有希望。\n\n我决定再试一次。投简历、准备面试... 从头开始。\n\n谢谢你没有放弃我。\n\n艾玛`,
     attachments: { cash: 0 }
   },
   "mail_emma_03b_shark": {
@@ -252,6 +252,22 @@ export const EMMA_MAILS: Record<string, MailTemplate> = {
     subject: "还是谢谢你",
     body: `老板，\n\n我理解你的难处。这是你的店，你有权拒绝。\n\n我会想其他办法的。也许可以找图书馆...\n\n艾玛`,
     attachments: { cash: 0 }
+  },
+  // === Stage 4 结局归因邮件 ===
+  "mail_emma_left_city_laptop": {
+    id: "mail_emma_left_city_laptop",
+    sender: "艾玛",
+    subject: "再见",
+    body: `老板，\n\n我要离开这座城市了。\n\n你还记得那天吗？我带着电脑来找你，求你帮帮我。你说不收。\n\n我理解，也许它真的不值什么钱。但那是我最后的机会了。\n\n没有电脑，我错过了面试作业的截止日期。没有面试，就没有工作。没有工作... 他也走了。\n\n我不怪你。这个世界本来就是这样的。\n\n再见。\n\n艾玛`,
+    attachments: { cash: 0 }
+  },
+  // === 崩溃预警邮件 ===
+  "mail_emma_breaking_point": {
+    id: "mail_emma_breaking_point",
+    sender: "艾玛",
+    subject: "快撑不住了",
+    body: `老板，\n\n我算了一下账。\n\n当铺的利息、房租、水电... 每一笔都在催命。\n\n有时候我会想，如果你当初给的价格再高一点，利息再低一点... 也许我不用这么拼命。\n\n但我也知道，这不能怪你。毕竟你也是做生意的。\n\n只是... 我快撑不住了。\n\n艾玛`,
+    attachments: { cash: 0 }
   }
 };
 
@@ -260,16 +276,17 @@ export const EMMA_CHAIN_INIT: EventChainState = {
   npcName: "艾玛",
   isActive: true, 
   stage: 0,
-  variables: { 
-      funds: 500, 
-      hope: 50, 
-      job_chance: 0, 
-      has_laptop: 1, 
-      redeem_attempted: 0, 
-      struggle_occurred: 0, 
+  variables: {
+      funds: 500,
+      hope: 50,
+      job_chance: 0,
+      has_laptop: 1,
+      redeem_attempted: 0,
+      struggle_occurred: 0,
       breakdown_timer: 0,
       interview_failures: 0,
-      days_since_interview: 0
+      days_since_interview: 0,
+      breaking_point_sent: 0
   },
   simulationLog: [],
   fateHints: [
@@ -484,6 +501,20 @@ export const EMMA_CHAIN_INIT: EventChainState = {
               { type: 'MOD_VAR', target: 'breakdown_timer', value: 1, op: 'SET' }
           ],
           triggerLog: "男友即将离开的预警"
+      },
+      // 崩溃预警邮件 (行为归因 - 提示玩家决策的累积影响)
+      // 在 hope 下降到 25 时触发，让玩家意识到 NPC 正在挣扎
+      {
+          type: 'THRESHOLD',
+          condition: { variable: 'breaking_point_sent', operator: '==', value: 0 },
+          targetVar: 'hope',
+          operator: '<=',
+          value: 25,
+          onTrigger: [
+              { type: 'SCHEDULE_MAIL', templateId: 'mail_emma_breaking_point', delayDays: 0 },
+              { type: 'MOD_VAR', target: 'breaking_point_sent', value: 1, op: 'SET' }
+          ],
+          triggerLog: "艾玛发来崩溃预警邮件"
       }
   ]
 };
@@ -528,7 +559,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
             ],
             neutral: "回见。帮我保管好它。——啊，得赶紧回去了，他不喜欢我在外面待太久。",
             resentful: [
-                { condition: { variable: "hope", operator: "<", value: 45 }, text: "算了... 回去再想办法吧。" },
+                { condition: { variable: "hope", operator: "<", value: 45 }, text: "二十的利... 算了，能拿多少是多少吧。回头还得算算怎么还得起。" },
                 { text: "没想到这行也这么黑... 算了。" }
             ],
             desperate: "[她默默地把钱塞进包里，低着头快步走了出去]"
@@ -968,7 +999,10 @@ export const EMMA_EVENTS: StoryEvent[] = [
         rejected: "连这个都不值钱吗...",
         rejectionLines: { standard: "...", angry: "滚。", desperate: "..." },
         exitDialogues: {
-            grateful: "谢谢你。你是这个城市唯一... 愿意好好跟我说话的人。",
+            grateful: [
+                { condition: { variable: "has_laptop", operator: "==", value: 0 }, text: "谢谢你。你是这个城市唯一... 愿意好好跟我说话的人。那天电脑的事... 算了，不提了。" },
+                { text: "谢谢你。你是这个城市唯一... 愿意好好跟我说话的人。" }
+            ],
             neutral: "走了。",
             resentful: "...",
             desperate: "[她的眼神空洞，像是已经放弃了什么]"
@@ -992,13 +1026,19 @@ export const EMMA_EVENTS: StoryEvent[] = [
         "deal_standard": [
             { type: "ADD_FUNDS_DEAL" },
             { type: "SET_STAGE", value: 99 }, // End chain (leaves city)
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_03b_shark", delayDays: 0 }
+            // 如果电脑被拒，归因于电脑被拒导致失去机会
+            { type: "CONDITIONAL_MAIL", templateId: "mail_emma_left_city_laptop", delayDays: 0, condition: { variable: "has_laptop", operator: "==", value: 0 } },
+            // 否则发送通用告别邮件
+            { type: "CONDITIONAL_MAIL", templateId: "mail_emma_03b_shark", delayDays: 0, condition: { variable: "has_laptop", operator: "==", value: 1 } }
         ],
         "deal_shark": [
             { type: "ADD_FUNDS_DEAL" },
             { type: "SET_STAGE", value: 99 },
             { type: "MODIFY_VAR", variable: "hope", value: 0 },
-            { type: "SCHEDULE_MAIL", templateId: "mail_emma_03b_shark", delayDays: 0 }
+            // 如果电脑被拒，归因于电脑被拒导致失去机会
+            { type: "CONDITIONAL_MAIL", templateId: "mail_emma_left_city_laptop", delayDays: 0, condition: { variable: "has_laptop", operator: "==", value: 0 } },
+            // 否则发送通用告别邮件
+            { type: "CONDITIONAL_MAIL", templateId: "mail_emma_03b_shark", delayDays: 0, condition: { variable: "has_laptop", operator: "==", value: 1 } }
         ]
     },
     onReject: [{ type: "SET_STAGE", value: 99 }, { type: "MODIFY_VAR", variable: "hope", value: 0 }]
