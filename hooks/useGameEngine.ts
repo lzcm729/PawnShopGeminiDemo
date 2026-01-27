@@ -196,9 +196,36 @@ export const useGameEngine = () => {
   };
 
   const startNewDay = () => {
+    // 1. Process daily mail
     dispatch({ type: 'PROCESS_DAILY_MAIL' });
-    checkDailyExpirations();
+
+    // 2. Check for expiry events (returns ExpiryEvent[] for story items)
+    const expiryEvents = checkDailyExpirations();
+
+    // 3. If there are expiry events, queue them for player decisions
+    if (expiryEvents.length > 0) {
+        dispatch({ type: 'SET_EXPIRY_QUEUE', payload: expiryEvents });
+        dispatch({ type: 'TRIGGER_EXPIRY_EVENT', payload: expiryEvents[0] });
+        return; // Don't proceed to START_DAY until expiry events are resolved
+    }
+
+    // 4. No expiry events, proceed normally
     dispatch({ type: 'START_DAY' });
+  };
+
+  // Process next expiry event in queue or continue to normal day
+  const processNextExpiryEvent = () => {
+      const queue = state.expiryQueue;
+      if (queue.length > 1) {
+          // More events to process
+          const remaining = queue.slice(1);
+          dispatch({ type: 'SET_EXPIRY_QUEUE', payload: remaining });
+          dispatch({ type: 'TRIGGER_EXPIRY_EVENT', payload: remaining[0] });
+      } else {
+          // All expiry events handled, continue to normal day
+          dispatch({ type: 'SET_EXPIRY_QUEUE', payload: [] });
+          dispatch({ type: 'START_DAY' });
+      }
   };
 
   const generateDailyEvent = async () => {
@@ -642,5 +669,5 @@ export const useGameEngine = () => {
       dispatch({ type: 'LIQUIDATE_ITEM', payload: { itemId: item.id, amount, name: item.name } });
   };
 
-  return { startNewDay, performNightCycle, generateDailyEvent, evaluateTransaction, commitTransaction, rejectCustomer, liquidateItem, applyChainEffects };
+  return { startNewDay, performNightCycle, generateDailyEvent, evaluateTransaction, commitTransaction, rejectCustomer, liquidateItem, applyChainEffects, processNextExpiryEvent };
 };

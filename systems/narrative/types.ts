@@ -4,6 +4,53 @@ import { Mood } from '../core/types';
 
 export type SatisfactionLevel = 'GRATEFUL' | 'NEUTRAL' | 'RESENTFUL' | 'DESPERATE';
 
+// === EXPIRY SYSTEM TYPES ===
+export type ExpiryBehavior = 'REDEEM' | 'RENEW' | 'NO_SHOW';
+
+export interface ExpiryEvent {
+    type: 'EXPIRY_CHECK';
+    chainId: string;
+    npcName: string;
+    itemId: string;
+    itemName: string;
+    behavior: ExpiryBehavior;
+    redemptionCost: {
+        principal: number;
+        interest: number;
+        total: number;
+    };
+    dueDate: number;
+    isCoreItem: boolean;  // 是否为核心物品（丢失会触发坏结局）
+}
+
+export type ExpiryChoice =
+    | 'redeem_accept'      // 正常赎回
+    | 'redeem_extra'       // 要求额外费用
+    | 'redeem_refuse'      // 拒绝赎回
+    | 'renew_accept'       // 同意续当
+    | 'renew_refuse'       // 拒绝续当
+    | 'noshow_sell'        // 挂牌出售
+    | 'noshow_keep';       // 继续保留
+
+export interface ExpiryFlowDefinition {
+    // 赎回场景的玩家选项
+    redemption?: {
+        accept?: ChainUpdateEffect[];      // 正常赎回
+        chargeExtra?: ChainUpdateEffect[]; // 要求额外费用
+        refuse?: ChainUpdateEffect[];      // 拒绝赎回
+    };
+    // 续当场景的玩家选项
+    renewal?: {
+        accept?: ChainUpdateEffect[];      // 同意续当
+        refuse?: ChainUpdateEffect[];      // 拒绝续当
+    };
+    // 绝当场景的玩家选项
+    noShow?: {
+        sell?: ChainUpdateEffect[];        // 挂牌出售
+        keep?: ChainUpdateEffect[];        // 继续保留
+    };
+}
+
 // --- DIALOGUE SYSTEM ---
 export interface RejectionLines {
   standard: string; 
@@ -180,33 +227,43 @@ export interface EventChainState {
 }
 
 // --- EFFECTS & EVENTS ---
-export type EffectType = 
-  | 'SET_STAGE' 
-  | 'ADD_FUNDS_DEAL' 
-  | 'ADD_FUNDS' 
-  | 'MODIFY_VAR' 
-  | 'DEACTIVATE' 
-  | 'DEACTIVATE_CHAIN' 
+export type EffectType =
+  | 'SET_STAGE'
+  | 'ADD_FUNDS_DEAL'
+  | 'ADD_FUNDS'
+  | 'MODIFY_VAR'
+  | 'DEACTIVATE'
+  | 'DEACTIVATE_CHAIN'
   | 'SCHEDULE_MAIL'
   | 'CONDITIONAL_MAIL'
-  | 'MODIFY_REP' 
+  | 'MODIFY_REP'
   | 'TRIGGER_NEWS'
   | 'REDEEM_ALL'
   | 'REDEEM_TARGET_ONLY'
   | 'ABANDON_OTHERS'
   | 'ABANDON_ALL'
-  | 'FORCE_SELL_ALL' 
-  | 'FORCE_SELL_TARGET'; 
+  | 'FORCE_SELL_ALL'
+  | 'FORCE_SELL_TARGET'
+  // === EXPIRY EFFECTS ===
+  | 'REDEEM_ITEM'         // 赎回物品
+  | 'EXTEND_PAWN'         // 续当延期
+  | 'FORFEIT_ITEM'        // 物品绝当
+  | 'SELL_ITEM'           // 出售物品
+  | 'KEEP_FORFEIT'        // 保留绝当物品
+  | 'MARK_CORE_LOST';     // 标记核心物品丢失 
 
 export interface ChainUpdateEffect {
   type: EffectType;
-  variable?: string; 
-  value?: number;    
+  variable?: string;
+  value?: number;
   delta?: number;
-  templateId?: string; 
-  delayDays?: number; 
-  id?: string; 
+  templateId?: string;
+  delayDays?: number;
+  id?: string;
   condition?: TriggerCondition;
+  // === EXPIRY EFFECT PARAMS ===
+  days?: number;           // 续当延期天数
+  extraFee?: number;       // 额外费用百分比 (0.2 = 20%)
 }
 
 export interface DynamicFlowOutcome {
@@ -245,26 +302,30 @@ export interface CustomerTemplate {
 }
 
 export interface StoryEvent {
-  id: string; 
-  chainId: string; 
+  id: string;
+  chainId: string;
   type?: 'STANDARD' | 'REDEMPTION_CHECK' | 'POST_FORFEIT_VISIT';
-  
+
   triggerConditions: TriggerCondition[];
-  
-  template: CustomerTemplate; 
-  item?: Partial<Item>; 
-  
-  onComplete?: ChainUpdateEffect[]; 
+
+  template: CustomerTemplate;
+  item?: Partial<Item>;
+
+  onComplete?: ChainUpdateEffect[];
   outcomes?: {
-      [key: string]: ChainUpdateEffect[]; 
+      [key: string]: ChainUpdateEffect[];
   };
   onReject?: ChainUpdateEffect[];
-  onExtend?: ChainUpdateEffect[]; 
-  onFailure?: ChainUpdateEffect[]; 
-  failureMailId?: string; 
+  onExtend?: ChainUpdateEffect[];
+  onFailure?: ChainUpdateEffect[];
+  failureMailId?: string;
 
-  targetItemId?: string; 
+  targetItemId?: string;
   dynamicFlows?: {
-      [key: string]: DynamicFlowOutcome; 
+      [key: string]: DynamicFlowOutcome;
   };
+
+  // === EXPIRY SYSTEM ===
+  coreItemId?: string;              // 标记此事件关联的核心物品（丢失会触发坏结局）
+  expiryFlows?: ExpiryFlowDefinition;  // 到期处理流程定义
 }

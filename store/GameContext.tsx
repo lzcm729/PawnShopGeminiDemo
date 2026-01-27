@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, ReactNode, PropsWithChildren, useEffect } from 'react';
-import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry, DailyFinancialSnapshot, SatisfactionLevel, MotherCondition } from '../types';
+import { GameState, GamePhase, ReputationType, Customer, Item, ReputationProfile, ItemStatus, TransactionRecord, Mood, EventChainState, MailInstance, ActiveNewsInstance, MarketModifier, ItemLogEntry, DailyFinancialSnapshot, SatisfactionLevel, MotherCondition, ExpiryEvent } from '../types';
 import { getMailTemplate } from '../systems/narrative/mailRegistry';
 import { interpolateMailBody } from '../systems/narrative/mailUtils';
 import { generateValuationRange } from '../systems/items/utils';
@@ -56,7 +56,11 @@ const initialState: GameState = {
   violationFlags: [],
   financialHistory: [],
   lastSatisfaction: null,
-  activeMilestones: [] // New State
+  activeMilestones: [], // New State
+  // === EXPIRY SYSTEM ===
+  currentExpiryEvent: null,
+  expiryQueue: [],
+  coreLostItems: []
 };
 
 // ... Actions type definition ...
@@ -116,7 +120,13 @@ type Action =
   | { type: 'UNLOCK_MILESTONE'; payload: string }
   | { type: 'ACCEPT_RENEWAL'; payload: { itemId: string; extensionDays: number; interestBonus: number; name: string } }
   | { type: 'REJECT_RENEWAL'; payload: { itemId: string; name: string } }
-  | { type: 'RESOLVE_POST_FORFEIT'; payload: { itemId: string; action: 'SELL_LOW' | 'GIFT' | 'REFUSE'; name: string; value: number } };
+  | { type: 'RESOLVE_POST_FORFEIT'; payload: { itemId: string; action: 'SELL_LOW' | 'GIFT' | 'REFUSE'; name: string; value: number } }
+  // === EXPIRY SYSTEM ACTIONS ===
+  | { type: 'SET_EXPIRY_QUEUE'; payload: ExpiryEvent[] }
+  | { type: 'TRIGGER_EXPIRY_EVENT'; payload: ExpiryEvent }
+  | { type: 'RESOLVE_EXPIRY'; payload: { choice: string; itemId: string; extensionDays?: number; extraFee?: number; salePrice?: number } }
+  | { type: 'CLEAR_EXPIRY_EVENT' }
+  | { type: 'MARK_CORE_LOST'; payload: { itemId: string } };
 
 const gameReducer = (state: GameState, action: Action): GameState => {
   switch (action.type) {
@@ -309,6 +319,17 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'TOGGLE_MEDICAL': playSfx('HOVER'); return { ...state, showMedical: !state.showMedical };
     case 'TOGGLE_VISIT': playSfx('HOVER'); return { ...state, showVisit: !state.showVisit };
     case 'UPDATE_CHAINS': return { ...state, activeChains: action.payload };
+    case 'UPDATE_CHAIN_VAR': {
+        const { chainId, variable, value } = action.payload;
+        return {
+            ...state,
+            activeChains: state.activeChains.map(chain =>
+                chain.id === chainId
+                    ? { ...chain, variables: { ...chain.variables, [variable]: (chain.variables[variable] || 0) + value } }
+                    : chain
+            )
+        };
+    }
     case 'SCHEDULE_MAIL': { const { templateId, delayDays, metadata } = action.payload; const newMail: MailInstance = { uniqueId: crypto.randomUUID(), templateId, arrivalDay: state.stats.day + delayDays, isRead: false, isClaimed: false, metadata }; return { ...state, pendingMails: [...state.pendingMails, newMail] }; }
     case 'PROCESS_DAILY_MAIL': { const today = state.stats.day; const arrivingMails = state.pendingMails.filter(m => m.arrivalDay <= today).map(m => { return m; }); const remainingPending = state.pendingMails.filter(m => m.arrivalDay > today); if (arrivingMails.length === 0) return state; return { ...state, inbox: [...arrivingMails, ...state.inbox], pendingMails: remainingPending }; }
     case 'READ_MAIL': return { ...state, inbox: state.inbox.map(m => m.uniqueId === action.payload ? { ...m, isRead: true } : m) };
@@ -428,6 +449,187 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             dayEvents: [...state.dayEvents, log],
             phase: GamePhase.DEPARTURE,
             lastSatisfaction: satisfaction
+        };
+    }
+
+    // === EXPIRY SYSTEM REDUCERS ===
+    case 'SET_EXPIRY_QUEUE': {
+        return { ...state, expiryQueue: action.payload };
+    }
+
+    case 'TRIGGER_EXPIRY_EVENT': {
+        return {
+            ...state,
+            currentExpiryEvent: action.payload,
+            phase: GamePhase.NEGOTIATION  // 切换到谈判阶段处理到期事件
+        };
+    }
+
+    case 'RESOLVE_EXPIRY': {
+        const { choice, itemId, extensionDays, extraFee, salePrice } = action.payload;
+        const item = state.inventory.find(i => i.id === itemId);
+        if (!item) return state;
+
+        let newInventory = [...state.inventory];
+        let cashDelta = 0;
+        let repDelta: Partial<ReputationProfile> = {};
+        let log = "";
+        let satisfaction: SatisfactionLevel = 'NEUTRAL';
+        const event = state.currentExpiryEvent;
+
+        switch (choice) {
+            case 'redeem_accept': {
+                // 正常赎回
+                if (event) {
+                    cashDelta = event.redemptionCost.total;
+                    const redeemLog = generateRedeemLog(event.npcName, item, state.stats.day, cashDelta);
+                    newInventory = newInventory.map(i =>
+                        i.id === itemId
+                            ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || []), redeemLog] }
+                            : i
+                    );
+                    repDelta = { [ReputationType.HUMANITY]: 3, [ReputationType.CREDIBILITY]: 2 };
+                    log = `${item.name} 被赎回 (收款 $${cashDelta})`;
+                    satisfaction = 'GRATEFUL';
+                    playSfx('CASH');
+                }
+                break;
+            }
+            case 'redeem_extra': {
+                // 要求额外费用 (+20%)
+                if (event) {
+                    const extra = Math.ceil(event.redemptionCost.total * (extraFee || 0.2));
+                    cashDelta = event.redemptionCost.total + extra;
+                    const redeemLog = generateRedeemLog(event.npcName, item, state.stats.day, cashDelta);
+                    newInventory = newInventory.map(i =>
+                        i.id === itemId
+                            ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || []), redeemLog] }
+                            : i
+                    );
+                    repDelta = { [ReputationType.HUMANITY]: -5, [ReputationType.CREDIBILITY]: -2 };
+                    log = `${item.name} 被赎回 (收款 $${cashDelta}，含额外费用)`;
+                    satisfaction = 'RESENTFUL';
+                    playSfx('CASH');
+                }
+                break;
+            }
+            case 'redeem_refuse': {
+                // 拒绝赎回
+                repDelta = { [ReputationType.HUMANITY]: -15, [ReputationType.CREDIBILITY]: -10 };
+                log = `拒绝赎回: ${item.name}`;
+                satisfaction = 'DESPERATE';
+                playSfx('FAIL');
+                break;
+            }
+            case 'renew_accept': {
+                // 同意续当
+                if (item.pawnInfo) {
+                    const days = extensionDays || 7;
+                    const newDueDate = item.pawnInfo.dueDate + days;
+                    newInventory = newInventory.map(i =>
+                        i.id === itemId && i.pawnInfo
+                            ? {
+                                ...i,
+                                pawnInfo: {
+                                    ...i.pawnInfo,
+                                    dueDate: newDueDate,
+                                    extensionCount: (i.pawnInfo.extensionCount || 0) + 1
+                                }
+                            }
+                            : i
+                    );
+                    repDelta = { [ReputationType.HUMANITY]: 5 };
+                    log = `同意续当: ${item.name} (延期 ${days} 天至 Day ${newDueDate})`;
+                    satisfaction = 'GRATEFUL';
+                    playSfx('STAMP');
+                }
+                break;
+            }
+            case 'renew_refuse': {
+                // 拒绝续当 → 绝当
+                const forfeitLog = generateForfeitLog(item, state.stats.day, "拒绝续当");
+                newInventory = newInventory.map(i =>
+                    i.id === itemId
+                        ? { ...i, status: ItemStatus.FORFEIT, logs: [...(i.logs || []), forfeitLog] }
+                        : i
+                );
+                repDelta = { [ReputationType.HUMANITY]: -10 };
+                log = `拒绝续当: ${item.name} 已绝当`;
+                satisfaction = 'DESPERATE';
+                playSfx('CLICK');
+                break;
+            }
+            case 'noshow_sell': {
+                // 挂牌出售
+                const price = salePrice || Math.floor(item.realValue * 0.8);
+                cashDelta = price;
+                const soldLog = generateSoldLog(item, state.stats.day, price);
+                newInventory = newInventory.map(i =>
+                    i.id === itemId
+                        ? { ...i, status: ItemStatus.SOLD, logs: [...(i.logs || []), soldLog] }
+                        : i
+                );
+                log = `绝当物品出售: ${item.name} ($${price})`;
+                playSfx('CASH');
+                break;
+            }
+            case 'noshow_keep': {
+                // 继续保留
+                const forfeitLog = generateForfeitLog(item, state.stats.day, "客户未现身");
+                newInventory = newInventory.map(i =>
+                    i.id === itemId
+                        ? { ...i, status: ItemStatus.FORFEIT, logs: [...(i.logs || []), forfeitLog] }
+                        : i
+                );
+                log = `保留绝当物品: ${item.name}`;
+                playSfx('CLICK');
+                break;
+            }
+        }
+
+        // 应用声誉变化
+        const newRep = { ...state.reputation };
+        if (repDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += repDelta[ReputationType.HUMANITY]!;
+        if (repDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += repDelta[ReputationType.CREDIBILITY]!;
+        if (repDelta[ReputationType.UNDERWORLD]) newRep[ReputationType.UNDERWORLD] += repDelta[ReputationType.UNDERWORLD]!;
+        Object.keys(newRep).forEach(key => {
+            newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType]));
+        });
+
+        // 创建交易记录
+        const transaction: TransactionRecord | null = cashDelta !== 0 ? {
+            id: crypto.randomUUID(),
+            description: log,
+            amount: cashDelta,
+            type: cashDelta > 0 ? 'REDEEM' : 'EXPENSE'
+        } : null;
+
+        return {
+            ...state,
+            stats: { ...state.stats, cash: state.stats.cash + cashDelta },
+            reputation: newRep,
+            inventory: newInventory,
+            currentExpiryEvent: null,
+            todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
+            dayEvents: [...state.dayEvents, log],
+            lastSatisfaction: satisfaction,
+            phase: GamePhase.DEPARTURE
+        };
+    }
+
+    case 'CLEAR_EXPIRY_EVENT': {
+        return {
+            ...state,
+            currentExpiryEvent: null
+        };
+    }
+
+    case 'MARK_CORE_LOST': {
+        const { itemId } = action.payload;
+        if (state.coreLostItems.includes(itemId)) return state;
+        return {
+            ...state,
+            coreLostItems: [...state.coreLostItems, itemId]
         };
     }
 

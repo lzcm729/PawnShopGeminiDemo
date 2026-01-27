@@ -28,10 +28,13 @@ import { Button } from './components/ui/Button';
 import { Moon } from 'lucide-react';
 import { DayToNightTransition } from './components/transitions/DayToNightTransition';
 import { NightToDayTransition } from './components/transitions/NightToDayTransition';
+import { ExpiryEventModal } from './components/ExpiryEventModal';
+import { ExpiryChoice, ChainUpdateEffect } from './types';
+import { ALL_STORY_EVENTS } from './systems/narrative/storyRegistry';
 
 const GameContent: React.FC = () => {
   const { state, dispatch } = useGame();
-  const { generateDailyEvent } = useGameEngine();
+  const { generateDailyEvent, processNextExpiryEvent } = useGameEngine();
   const [loadingText, setLoadingText] = useState("");
   const negotiation = useNegotiation(state.currentCustomer);
   
@@ -125,6 +128,88 @@ const GameContent: React.FC = () => {
   const isPostForfeit = isNegotiating && interactionType === 'POST_FORFEIT';
   
   const isShopClosed = isBusiness && state.customersServedToday >= state.maxCustomersPerDay;
+  const hasExpiryEvent = state.currentExpiryEvent !== null;
+
+  // Helper to apply expiryFlows effects
+  const applyExpiryEffects = useCallback((chainId: string, effects: ChainUpdateEffect[]) => {
+      effects.forEach(effect => {
+          if (effect.type === 'MODIFY_VAR' && effect.variable && effect.value !== undefined) {
+              dispatch({
+                  type: 'UPDATE_CHAIN_VAR',
+                  payload: { chainId, variable: effect.variable, value: effect.value }
+              });
+          } else if (effect.type === 'SCHEDULE_MAIL' && effect.templateId) {
+              dispatch({
+                  type: 'SCHEDULE_MAIL',
+                  payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0 }
+              });
+          }
+      });
+  }, [dispatch]);
+
+  // Handle Expiry Event Resolution
+  const handleExpiryResolve = useCallback((choice: ExpiryChoice) => {
+      if (!state.currentExpiryEvent) return;
+
+      const event = state.currentExpiryEvent;
+      dispatch({
+          type: 'RESOLVE_EXPIRY',
+          payload: {
+              choice,
+              itemId: event.itemId,
+              extensionDays: 7,
+              extraFee: 0.2,
+              salePrice: Math.floor(event.redemptionCost.principal * 0.8)
+          }
+      });
+
+      // Mark core item lost if refused/sold
+      if (event.isCoreItem && (choice === 'redeem_refuse' || choice === 'noshow_sell')) {
+          dispatch({ type: 'MARK_CORE_LOST', payload: { itemId: event.itemId } });
+      }
+
+      // Apply expiryFlows effects from story event
+      const storyEvent = ALL_STORY_EVENTS.find(e =>
+          e.coreItemId === event.itemId || e.item?.id === event.itemId
+      );
+      if (storyEvent?.expiryFlows) {
+          const flows = storyEvent.expiryFlows;
+          let effects: ChainUpdateEffect[] = [];
+
+          switch (choice) {
+              case 'redeem_accept':
+                  effects = flows.redemption?.accept || [];
+                  break;
+              case 'redeem_extra':
+                  effects = flows.redemption?.chargeExtra || [];
+                  break;
+              case 'redeem_refuse':
+                  effects = flows.redemption?.refuse || [];
+                  break;
+              case 'renew_accept':
+                  effects = flows.renewal?.accept || [];
+                  break;
+              case 'renew_refuse':
+                  effects = flows.renewal?.refuse || [];
+                  break;
+              case 'noshow_sell':
+                  effects = flows.noShow?.sell || [];
+                  break;
+              case 'noshow_keep':
+                  effects = flows.noShow?.keep || [];
+                  break;
+          }
+
+          if (effects.length > 0) {
+              applyExpiryEffects(event.chainId, effects);
+          }
+      }
+
+      // Process next expiry event or continue to normal day
+      setTimeout(() => {
+          processNextExpiryEvent();
+      }, 500);
+  }, [state.currentExpiryEvent, dispatch, processNextExpiryEvent, applyExpiryEffects]);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-pawn-dark text-pawn-text overflow-hidden font-sans relative">
@@ -136,6 +221,14 @@ const GameContent: React.FC = () => {
             <div className="w-16 h-16 border-4 border-pawn-accent border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="font-mono text-pawn-accent animate-pulse">{loadingText}</p>
           </div>
+      )}
+
+      {/* Expiry Event Modal */}
+      {hasExpiryEvent && state.currentExpiryEvent && (
+          <ExpiryEventModal
+              event={state.currentExpiryEvent}
+              onResolve={handleExpiryResolve}
+          />
       )}
 
       {state.phase === GamePhase.START_SCREEN && <StartScreen />}

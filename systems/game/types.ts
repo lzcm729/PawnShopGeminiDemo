@@ -3,7 +3,7 @@ import { GamePhase, DailyStats, ReputationProfile } from '../core/types';
 import { Item } from '../items/types';
 import { Customer } from '../npc/types';
 import { TransactionRecord } from '../economy/types';
-import { EventChainState, MailInstance, SatisfactionLevel } from '../narrative/types';
+import { EventChainState, MailInstance, SatisfactionLevel, ExpiryEvent } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier } from '../news/types';
 
 export interface DailyFinancialSnapshot {
@@ -44,4 +44,9 @@ export interface GameState {
   
   lastSatisfaction: SatisfactionLevel | null; // Tracks the emotional outcome of the last deal
   activeMilestones: string[];
+
+  // === EXPIRY SYSTEM ===
+  currentExpiryEvent: ExpiryEvent | null;  // 当前正在处理的到期事件
+  expiryQueue: ExpiryEvent[];              // 待处理的到期事件队列
+  coreLostItems: string[];                 // 已丢失的核心物品 ID 列表
 }

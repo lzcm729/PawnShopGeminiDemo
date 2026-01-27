@@ -1,7 +1,7 @@
 
 import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
-import { Item, ItemStatus } from '../types';
+import { Item, ItemStatus, ExpiryEvent, ExpiryBehavior, EventChainState, StoryEvent } from '../types';
 
 export const usePawnShop = () => {
     const { state, dispatch } = useGame();
@@ -108,25 +108,116 @@ export const usePawnShop = () => {
         });
     }, [dispatch]);
 
-    // 4. Check Daily Expirations
-    const checkDailyExpirations = useCallback(() => {
+    // 4. Determine NPC Expiry Behavior based on chain variables
+    const determineExpiryBehavior = useCallback((
+        chain: EventChainState,
+        item: Item,
+        redemptionTotal: number
+    ): ExpiryBehavior => {
+        const funds = (chain.variables.funds as number) ?? 0;
+        const hope = (chain.variables.hope as number) ?? 50;
+
+        // 有钱且有希望 → 来赎回
+        if (funds >= redemptionTotal && hope >= 40) {
+            return 'REDEEM';
+        }
+
+        // 没钱但有希望 → 来续当
+        if (funds < redemptionTotal && hope > 30) {
+            return 'RENEW';
+        }
+
+        // 绝望或资金极低 → 不出现
+        return 'NO_SHOW';
+    }, []);
+
+    // 5. Check if item is a core item for any story event
+    const findCoreItemEvent = useCallback((itemId: string): StoryEvent | null => {
+        // This would need to import story events registry
+        // For now, check if item has relatedChainId
+        return null; // Will be implemented when we have story registry access
+    }, []);
+
+    // 6. Check Daily Expirations - Enhanced to return ExpiryEvents
+    const checkDailyExpirations = useCallback((): ExpiryEvent[] => {
         const currentDay = state.stats.day;
-        const expiredItemIds: string[] = [];
+        const expiryEvents: ExpiryEvent[] = [];
+        const autoForfeitIds: string[] = [];
+        const autoForfeitLogs: string[] = [];
+
+        state.inventory.forEach(item => {
+            if (item.status !== ItemStatus.ACTIVE || !item.pawnInfo) return;
+
+            // 只处理今天到期的物品（精确匹配）
+            if (currentDay !== item.pawnInfo.dueDate) return;
+
+            // 找到关联的故事链
+            const chain = state.activeChains.find(c => c.id === item.relatedChainId);
+
+            if (!chain) {
+                // 无故事链的普通物品，直接加入自动绝当列表
+                autoForfeitIds.push(item.id);
+                autoForfeitLogs.push(`[系统] ${item.name} 已过期，自动转为绝当 (FORFEIT)。`);
+                return;
+            }
+
+            // 有故事链的物品，计算赎回费用并判断行为
+            const cost = calculateRedemptionCost(item);
+            if (!cost) return;
+
+            const behavior = determineExpiryBehavior(chain, item, cost.total);
+
+            // 检查是否为核心物品
+            const isCoreItem = item.id.includes('clothes') || item.id.includes('core');
+
+            expiryEvents.push({
+                type: 'EXPIRY_CHECK',
+                chainId: chain.id,
+                npcName: chain.npcName,
+                itemId: item.id,
+                itemName: item.name,
+                behavior,
+                redemptionCost: {
+                    principal: cost.principal,
+                    interest: cost.interest,
+                    total: cost.total
+                },
+                dueDate: item.pawnInfo.dueDate,
+                isCoreItem
+            });
+        });
+
+        // 处理无故事链的自动绝当物品
+        if (autoForfeitIds.length > 0) {
+            dispatch({
+                type: 'EXPIRE_ITEMS',
+                payload: { expiredItemIds: autoForfeitIds, logs: autoForfeitLogs }
+            });
+        }
+
+        return expiryEvents;
+    }, [state.stats.day, state.inventory, state.activeChains, calculateRedemptionCost, determineExpiryBehavior, dispatch]);
+
+    // 7. Check for overdue items (past due date, auto forfeit)
+    const checkOverdueItems = useCallback(() => {
+        const currentDay = state.stats.day;
+        const overdueIds: string[] = [];
         const logs: string[] = [];
 
         state.inventory.forEach(item => {
             if (item.status === ItemStatus.ACTIVE && item.pawnInfo) {
+                // 超过到期日的自动绝当
                 if (currentDay > item.pawnInfo.dueDate) {
-                    expiredItemIds.push(item.id);
-                    logs.push(`[系统] ${item.name} 已过期，自动转为绝当 (FORFEIT)。`);
+                    overdueIds.push(item.id);
+                    logs.push(`[系统] ${item.name} 已逾期，自动转为绝当 (FORFEIT)。`);
                 }
             }
         });
 
-        if (expiredItemIds.length > 0) {
+        if (overdueIds.length > 0) {
             dispatch({
                 type: 'EXPIRE_ITEMS',
-                payload: { expiredItemIds, logs }
+                payload: { expiredItemIds: overdueIds, logs }
             });
         }
     }, [state.stats.day, state.inventory, dispatch]);
@@ -202,9 +293,11 @@ export const usePawnShop = () => {
         processExtension,
         processRefuseExtension,
         checkDailyExpirations,
+        checkOverdueItems,
         handleLateRedemption,
         sellActivePawn,
         processHostileTakeover,
-        processForcedForfeiture
+        processForcedForfeiture,
+        determineExpiryBehavior
     };
 };
