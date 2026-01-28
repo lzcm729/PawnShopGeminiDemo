@@ -145,11 +145,12 @@ export const ZHAO_CHAIN_INIT: EventChainState = {
     npcName: "周守义",
     isActive: false, 
     stage: 0,
-    variables: { 
+    variables: {
         funds: 1000,
-        trust: 50, 
+        trust: 50,
         stress: 0,
-        medal_extended: 0, 
+        medal_extended: 0,
+        medal_sold_early: 0,
         day: 0
     },
     simulationRules: [
@@ -302,9 +303,10 @@ export const ZHAO_EVENTS: StoryEvent[] = [
         },
         outcomes: {
             "deal_standard": [
-                { type: "ADD_FUNDS", value: 5000 }, 
+                { type: "ADD_FUNDS", value: 5000 },
                 { type: "FORCE_SELL_TARGET", templateId: "zhao_item_medal" },
-                { type: "SET_STAGE", value: 2 }, 
+                { type: "SET_STAGE", value: 2 },
+                { type: "MODIFY_VAR", variable: "medal_sold_early", value: 1 },
                 { type: "MODIFY_REP", value: -10 }
             ]
         },
@@ -361,30 +363,30 @@ export const ZHAO_EVENTS: StoryEvent[] = [
         },
         outcomes: {
             "deal_charity": [
-                { type: "ADD_FUNDS_DEAL" }, 
-                { type: "SET_STAGE", value: 3 }, 
-                { type: "MODIFY_VAR", variable: "trust", value: 5 }, 
-                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 },
-                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_03_charity", delayDays: 0 } // Immediate Feedback
+                { type: "ADD_FUNDS_DEAL" },
+                { type: "SET_STAGE", value: 3 },
+                { type: "MODIFY_VAR", variable: "trust", value: 5 },
+                { type: "CONDITIONAL_MAIL", templateId: "mail_zhao_offer", delayDays: 1, condition: { variable: "medal_sold_early", operator: "==", value: 0 } },
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_03_charity", delayDays: 0 }
             ],
             "deal_aid": [
-                { type: "ADD_FUNDS_DEAL" }, 
-                { type: "SET_STAGE", value: 3 }, 
-                { type: "MODIFY_VAR", variable: "trust", value: 3 }, 
-                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 },
-                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_03_charity", delayDays: 0 } // Immediate Feedback
+                { type: "ADD_FUNDS_DEAL" },
+                { type: "SET_STAGE", value: 3 },
+                { type: "MODIFY_VAR", variable: "trust", value: 3 },
+                { type: "CONDITIONAL_MAIL", templateId: "mail_zhao_offer", delayDays: 1, condition: { variable: "medal_sold_early", operator: "==", value: 0 } },
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_03_charity", delayDays: 0 }
             ],
             "deal_standard": [
-                { type: "ADD_FUNDS_DEAL" }, 
-                { type: "SET_STAGE", value: 3 }, 
-                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }
+                { type: "ADD_FUNDS_DEAL" },
+                { type: "SET_STAGE", value: 3 },
+                { type: "CONDITIONAL_MAIL", templateId: "mail_zhao_offer", delayDays: 1, condition: { variable: "medal_sold_early", operator: "==", value: 0 } }
             ],
             "deal_shark": [
-                { type: "ADD_FUNDS_DEAL" }, 
-                { type: "SET_STAGE", value: 3 }, 
-                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_offer", delayDays: 1 }, 
+                { type: "ADD_FUNDS_DEAL" },
+                { type: "SET_STAGE", value: 3 },
+                { type: "CONDITIONAL_MAIL", templateId: "mail_zhao_offer", delayDays: 1, condition: { variable: "medal_sold_early", operator: "==", value: 0 } },
                 { type: "MODIFY_VAR", variable: "stress", value: 20 },
-                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_03_shark", delayDays: 0 } // Immediate Feedback
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_03_shark", delayDays: 0 }
             ]
         },
         onReject: [{ type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_REP", value: -10 }]
@@ -454,9 +456,50 @@ export const ZHAO_EVENTS: StoryEvent[] = [
         }
     },
     {
+        id: "zhao_05_collector_cert_only",
+        chainId: "chain_zhao",
+        triggerConditions: [{ variable: "stage", operator: "==", value: 4 }, { variable: "day", operator: ">=", value: 10 }, { variable: "medal_sold_early", operator: "==", value: 1 }],
+        item: makeItem({ id: "zhao_virtual_deal_cert", name: "收购邀约：证书与合影", category: "其他", visualDescription: "一份收购合同。", historySnippet: "勋章已经到手了，现在只差证书。", appraisalNote: "只买证书，价格自然低得多。", archiveSummary: "收藏家已拿到勋章，回来收购证书。", realValue: 8000, isVirtual: true, isStolen: false, isFake: false, sentimentalValue: false, appraised: true, status: ItemStatus.ACTIVE }, "chain_zhao"),
+        template: {
+            name: "收藏顾问",
+            description: "满面春风，手里拿着上次买的勋章。",
+            avatarSeed: "collector_agent",
+            interactionType: 'NEGOTIATION',
+            desiredAmount: 0, minimumAmount: 0, maxRepayment: 0,
+            dialogue: {
+                greeting: "老板，勋章我已经收到了。现在只差那张证书和合影就能凑齐整套了。",
+                pawnReason: "证书单卖不值钱，$8,000，我已经很厚道了。",
+                redemptionPlea: "配合一下，大家都方便。",
+                negotiationDynamic: "没有勋章，这证书也就是张废纸。想想清楚。",
+                accepted: { fair: "明智。", fleeced: "成交。", premium: "合作愉快。" },
+                rejected: "随便你。没有证书，那勋章也不完整。",
+                rejectionLines: { standard: "可惜了。", angry: "不识抬举。", desperate: "..." },
+                exitDialogues: {
+                    grateful: "这下整套齐了。",
+                    neutral: "回见。",
+                    resentful: "你会后悔的。",
+                    desperate: "..."
+                }
+            },
+            currentAskPrice: 8000,
+            redemptionResolve: "None", negotiationStyle: "Aggressive", patience: 3, mood: 'Happy', tags: ["HighRisk"]
+        },
+        outcomes: {
+            "deal_standard": [
+                { type: "ADD_FUNDS", value: 8000 },
+                { type: "FORCE_SELL_TARGET", templateId: "zhao_item_cert" },
+                { type: "SET_STAGE", value: 99 },
+                { type: "MODIFY_REP", value: -15 },
+                { type: "SCHEDULE_MAIL", templateId: "mail_zhao_evil", delayDays: 2 }
+            ]
+        },
+        targetItemId: "zhao_item_cert",
+        onReject: [{ type: "SET_STAGE", value: 5 }]
+    },
+    {
         id: "zhao_05_collector_high",
         chainId: "chain_zhao",
-        triggerConditions: [{ variable: "stage", operator: "==", value: 4 }, { variable: "day", operator: ">=", value: 10 }],
+        triggerConditions: [{ variable: "stage", operator: "==", value: 4 }, { variable: "day", operator: ">=", value: 10 }, { variable: "medal_sold_early", operator: "==", value: 0 }],
         item: makeItem({ id: "zhao_virtual_deal_high", name: "收购邀约：全套立功档案", category: "其他", visualDescription: "一份加急的收购合同。", historySnippet: "客户说，这是最后一次报价。", appraisalNote: "这是出卖灵魂的价格。", archiveSummary: "玩家在巨大的金钱诱惑面前动摇了吗？", realValue: 38000, isVirtual: true, isStolen: false, isFake: false, sentimentalValue: false, appraised: true, status: ItemStatus.ACTIVE }, "chain_zhao"),
         template: {
             name: "收藏顾问",

@@ -76,8 +76,8 @@ const TicketPanel: React.FC<{ items: Item[], cost: any, penalty: number, isBundl
                      {isSold ? (
                          <div className="space-y-2 font-mono">
                              <div className="flex justify-between text-sm text-red-400">
-                                 <span>CONTRACT VALUATION</span>
-                                 <span>${primaryItem.pawnInfo?.valuation}</span>
+                                 <span>PAWN AMOUNT (当金)</span>
+                                 <span>${primaryItem.pawnInfo?.principal}</span>
                              </div>
                              <div className="flex justify-between text-sm text-red-400">
                                  <span>BREACH MULTIPLIER</span>

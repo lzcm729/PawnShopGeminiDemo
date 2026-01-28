@@ -31,8 +31,8 @@ export const usePawnShop = () => {
     // NEW: Calculate Breach Penalty (Double Indemnity)
     const calculatePenalty = useCallback((item: Item) => {
         if (!item.pawnInfo) return 0;
-        // Penalty is 2x the Contract Valuation
-        return item.pawnInfo.valuation * 2.0;
+        // Penalty is 2x the Principal (pawn amount given to customer)
+        return item.pawnInfo.principal * 2.0;
     }, []);
 
     // 2. Process Redemption (Handles Standard and Breach)

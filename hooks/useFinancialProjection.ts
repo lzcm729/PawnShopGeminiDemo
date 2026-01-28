@@ -81,22 +81,28 @@ export const useFinancialProjection = () => {
             }
 
             // 4. Item Due Dates & Story Moments
+            // Include both ACTIVE and SOLD items - sold items still have due dates for breach redemption
             const expiringItems = inventory.filter(item =>
-                item.status === ItemStatus.ACTIVE &&
+                (item.status === ItemStatus.ACTIVE || item.status === ItemStatus.SOLD) &&
                 item.pawnInfo &&
                 item.pawnInfo.dueDate === currentProjectionDay
             );
 
             expiringItems.forEach(item => {
                 if (item.pawnInfo) {
+                    const isSold = item.status === ItemStatus.SOLD;
                     const interest = Math.ceil(item.pawnInfo.principal * item.pawnInfo.interestRate);
                     const totalIncome = item.pawnInfo.principal + interest;
 
-                    runningBalance += totalIncome;
+                    // For sold items, we won't receive income but might have to pay breach penalty
+                    if (!isSold) {
+                        runningBalance += totalIncome;
+                    }
+
                     dailyEvents.push({
                         type: 'ITEM_DUE',
-                        amount: totalIncome,
-                        label: `到期: ${item.name}`,
+                        amount: isSold ? 0 : totalIncome,
+                        label: isSold ? `到期(已售): ${item.name}` : `到期: ${item.name}`,
                         isCertain: false,
                         relatedId: item.id
                     });
