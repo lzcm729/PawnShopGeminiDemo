@@ -97,7 +97,8 @@ type Action =
   | { type: 'GAME_OVER'; payload: string }
   | { type: 'TOGGLE_INVENTORY' }
   | { type: 'TOGGLE_MAIL' }
-  | { type: 'TOGGLE_DEBUG' } 
+  | { type: 'TOGGLE_DEBUG' }
+  | { type: 'DEBUG_ADD_CASH'; payload: number }
   | { type: 'TOGGLE_FINANCIALS' } 
   | { type: 'TOGGLE_MEDICAL' }
   | { type: 'TOGGLE_VISIT' }
@@ -319,6 +320,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'TOGGLE_INVENTORY': playSfx('HOVER'); return { ...state, showInventory: !state.showInventory };
     case 'TOGGLE_MAIL': playSfx('HOVER'); return { ...state, showMail: !state.showMail };
     case 'TOGGLE_DEBUG': return { ...state, showDebug: !state.showDebug };
+    case 'DEBUG_ADD_CASH': playSfx('CASH'); return { ...state, stats: { ...state.stats, cash: state.stats.cash + action.payload } };
     case 'TOGGLE_FINANCIALS': playSfx('HOVER'); return { ...state, showFinancials: !state.showFinancials };
     case 'TOGGLE_MEDICAL': playSfx('HOVER'); return { ...state, showMedical: !state.showMedical };
     case 'TOGGLE_VISIT': playSfx('HOVER'); return { ...state, showVisit: !state.showVisit };
