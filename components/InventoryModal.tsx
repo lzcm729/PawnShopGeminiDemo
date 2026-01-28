@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
-import { PackageOpen, DollarSign, ShieldAlert } from 'lucide-react';
-import { ItemStatus, Item } from '../types';
+import { PackageOpen, DollarSign, ShieldAlert, Moon } from 'lucide-react';
+import { ItemStatus, Item, GamePhase } from '../types';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
 import { ItemCard } from './ui/ItemCard';
@@ -59,6 +59,8 @@ export const InventoryModal: React.FC = () => {
       setLiquidateConfirm(null);
   };
 
+  const isNightPhase = state.phase === GamePhase.NIGHT;
+
   const renderActions = (item: Item) => {
       const isForfeit = item.status === ItemStatus.FORFEIT;
       const isActive = item.status === ItemStatus.ACTIVE;
@@ -66,6 +68,19 @@ export const InventoryModal: React.FC = () => {
       const isRedeemed = item.status === ItemStatus.REDEEMED;
       const confirmingSell = forceSellConfirm === item.id;
       const confirmingLiquidate = liquidateConfirm === item.id;
+
+      // Selling/liquidating is only allowed at night
+      if (!isNightPhase) {
+          if (isForfeit || isActive) {
+              return (
+                <div className="flex items-center justify-center text-noir-txt-muted text-[10px] gap-1.5 py-1">
+                    <Moon className="w-3 h-3" />
+                    <span>夜间可售卖</span>
+                </div>
+              );
+          }
+          return null;
+      }
 
       if (isForfeit) {
           if (confirmingLiquidate) {
