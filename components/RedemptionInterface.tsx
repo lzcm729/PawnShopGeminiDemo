@@ -406,10 +406,23 @@ export const SettlementInterface: React.FC = () => {
             commitTransaction(res);
             if (isExpirySettlement) handleExpiryCompletion('redeem_refuse');
         } else {
+            // First, update each item's status to REDEEMED
+            targetItems.forEach(item => {
+                dispatch({
+                    type: 'REDEEM_ITEM',
+                    payload: {
+                        itemId: item.id,
+                        paymentAmount: calculateRedemptionCost(item)?.total || 0,
+                        name: item.name
+                    }
+                });
+            });
+
+            // Then handle chain effects and satisfaction (but don't add items to inventory)
             const res = {
                 success: true,
                 message: customer.dialogue.accepted.fair || "赎回成功。",
-                cashDelta: totalCost,
+                cashDelta: 0, // Cash already handled by REDEEM_ITEM
                 reputationDelta: { Credibility: 2 },
                 dealQuality: 'fair' as const
             };
