@@ -267,6 +267,24 @@ export const usePawnShop = () => {
 
     }, [dispatch]);
 
+    // Sell Forfeit Item (Player liquidation of owned items)
+    const sellForfeitItem = useCallback((item: Item) => {
+        if (item.status !== ItemStatus.FORFEIT) return;
+
+        // Sell for real value (100% since player owns it)
+        const amount = item.realValue;
+
+        dispatch({
+            type: 'SELL_FORFEIT_ITEM',
+            payload: {
+                itemId: item.id,
+                amount,
+                name: item.name
+            }
+        });
+
+    }, [dispatch]);
+
     // NEW: Hostile Takeover (Forced Buyout)
     const processHostileTakeover = useCallback((item: Item) => {
         const penalty = calculatePenalty(item);
@@ -312,6 +330,7 @@ export const usePawnShop = () => {
         checkOverdueItems,
         handleLateRedemption,
         sellActivePawn,
+        sellForfeitItem,
         processHostileTakeover,
         processForcedForfeiture,
         determineExpiryBehavior
