@@ -209,12 +209,12 @@ export const useGameEngine = () => {
       // Determine redemptionIntent based on behavior
       const intent = event.behavior === 'REDEEM' ? 'REDEEM' : 'EXTEND';
 
-      // Build greeting based on behavior
+      // Build greeting based on behavior - use generic defaults
       let greeting = "";
       let redemptionPlea = "";
       if (event.behavior === 'REDEEM') {
-          greeting = `钱都在这，连本带利。快把表还给我吧，我还要赶着放回去，不然被爸妈发现就完定了。`;
-          redemptionPlea = `我回去查了一下，那好像是真的很重要的东西... 而且我把显卡退了，钱都在这。`;
+          greeting = `老板，我来赎东西了。钱都在这，连本带利。`;
+          redemptionPlea = `那东西对我真的很重要，谢谢你帮我保管。`;
       } else {
           greeting = `老板，我... 现在还凑不够赎金。能不能再宽限几天？利息我先付着。`;
           redemptionPlea = `求求你了，那东西对我很重要...`;
@@ -236,9 +236,13 @@ export const useGameEngine = () => {
           }
       };
 
-      // Use template dialogue if available
+      // Use template dialogue if available (for character-specific text)
       if (storyEvent?.template?.dialogue) {
           const tpl = storyEvent.template.dialogue;
+          // Override greeting if template has one (can be string or conditional array)
+          if (typeof tpl.greeting === 'string') {
+              dialogue.greeting = tpl.greeting;
+          }
           if (typeof tpl.redemptionPlea === 'string') {
               dialogue.redemptionPlea = tpl.redemptionPlea;
           }
