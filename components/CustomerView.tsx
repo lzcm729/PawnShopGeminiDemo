@@ -108,13 +108,13 @@ export const CustomerView: React.FC = () => {
                 </span>
                 <div className="flex gap-1">
                    {Array.from({length: 5}).map((_, i) => (
-                      <Flame 
-                        key={i} 
+                      <Flame
+                        key={i}
                         className={`w-4 h-4 transition-all duration-300 ${
-                            i < patience 
-                                ? (isAngry ? 'text-red-600 fill-red-600 animate-pulse' : 'text-orange-500 fill-orange-500') 
+                            i < patience
+                                ? (isAngry ? 'text-red-600 fill-red-600 animate-pulse' : 'text-orange-500 fill-orange-500')
                                 : 'text-stone-800'
-                        }`} 
+                        }`}
                       />
                    ))}
                 </div>

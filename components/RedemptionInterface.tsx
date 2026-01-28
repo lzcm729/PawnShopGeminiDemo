@@ -6,7 +6,7 @@ import { useGameEngine } from '../hooks/useGameEngine';
 import { Item, ItemStatus, ChainUpdateEffect } from '../types';
 import { Button } from './ui/Button';
 import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, ShieldAlert, AlertTriangle, XCircle, Layers, Plus, Heart, HandHeart, Skull, Gavel } from 'lucide-react';
-import { CustomerView } from './CustomerView';
+import { SettlementCustomerView } from './SettlementCustomerView';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { playSfx } from '../systems/game/audio';
 
@@ -278,19 +278,15 @@ const SettlementPanel: React.FC<{
                 )}
             </div>
 
-            <div className="mt-1 text-center">
-                {((intent === 'REDEEM' && !canAffordRedeem) || (intent === 'EXTEND' && !canAffordInterest)) && !allowFree ? (
+            {/* Only show warning when customer can't afford - don't display wallet balance */}
+            {((intent === 'REDEEM' && !canAffordRedeem) || (intent === 'EXTEND' && !canAffordInterest)) && !allowFree && (
+                <div className="mt-1 text-center">
                     <span className="text-[10px] text-red-500 animate-pulse font-mono">
                         <AlertTriangle className="w-3 h-3 inline mr-1"/>
                         资金不足 (Insufficient Funds)
                     </span>
-                ) : (
-                    <span className="text-[10px] text-stone-600 font-mono">
-                        <Wallet className="w-3 h-3 inline mr-1"/>
-                        Customer Wallet: ${customer.currentWallet}
-                    </span>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -532,7 +528,7 @@ export const SettlementInterface: React.FC = () => {
 
             <div className="lg:col-span-6 h-full flex flex-col bg-[#1c1917] border-l border-[#44403c]">
                 <div className="flex-1 overflow-hidden relative border-b border-[#44403c]">
-                    <CustomerView />
+                    <SettlementCustomerView />
                 </div>
 
                 <div className="bg-[#141211] relative z-10 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
