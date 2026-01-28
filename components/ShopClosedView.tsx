@@ -171,6 +171,18 @@ export const DepartureView: React.FC = () => {
                       </>
                   )}
               </div>
+
+              {/* Inner Voice (The Merchant's Thoughts) - inside dialogue box */}
+              {showInnerVoice && (
+                  <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-1000">
+                      <div className="flex items-center justify-center gap-2 text-stone-600 text-[10px] uppercase tracking-widest mb-1">
+                          <Brain className="w-3 h-3" /> 玩家内心独白
+                      </div>
+                      <p className="text-stone-500 font-serif italic text-center text-sm">
+                          <TypewriterText text={innerVoiceText} speed={50} />
+                      </p>
+                  </div>
+              )}
           </div>
 
           {/* Deal Summary (if a deal was made) */}
@@ -207,18 +219,6 @@ export const DepartureView: React.FC = () => {
                           <PackageCheck className="w-4 h-4 text-green-500" />
                       </div>
                   </div>
-              </div>
-          )}
-
-          {/* Inner Voice Overlay (The Merchant's Thoughts) */}
-          {showInnerVoice && (
-              <div className="w-full max-w-lg animate-in fade-in slide-in-from-top-4 duration-1000 mb-8">
-                  <div className="flex items-center justify-center gap-2 text-stone-600 text-[10px] uppercase tracking-widest mb-1">
-                      <Brain className="w-3 h-3" /> Internal Monologue
-                  </div>
-                  <p className="text-stone-500 font-serif italic text-center text-sm">
-                      <TypewriterText text={innerVoiceText} speed={50} />
-                  </p>
               </div>
           )}
 
