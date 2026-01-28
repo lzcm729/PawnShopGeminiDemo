@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
@@ -40,37 +40,6 @@ export const DepartureView: React.FC = () => {
   // Check if we're in an expiry settlement flow
   const hasMoreExpiryEvents = expiryQueue && expiryQueue.length > 0;
 
-  // Audio & Setup
-  useEffect(() => {
-      if (lastSatisfaction) {
-          // Determine monologue
-          setInnerVoiceText(getDepartureMonologue(satisfaction));
-      }
-  }, [lastSatisfaction, satisfaction]);
-
-  const handleNext = () => {
-      playSfx('FOOTSTEP');
-      dispatch({ type: 'CLEAR_CUSTOMER' });
-
-      // If there are remaining expiry events, process them instead of going to BUSINESS
-      if (hasMoreExpiryEvents) {
-          processNextExpiryEvent();
-      } else {
-          dispatch({ type: 'SET_PHASE', payload: GamePhase.BUSINESS });
-      }
-  };
-
-  const onCustomerTextComplete = () => {
-      setTextComplete(true);
-      // Chance to trigger inner voice (higher for emotional extremes)
-      const chance = (satisfaction === 'GRATEFUL' || satisfaction === 'DESPERATE') ? 0.8 : 0.4;
-      if (Math.random() < chance) {
-          setTimeout(() => setShowInnerVoice(true), 800);
-      }
-  };
-
-  if (!currentCustomer) return null;
-
   // Default exit lines
   const defaultExitLines: Record<SatisfactionLevel, string> = {
       'GRATEFUL': "谢谢你... 你是个好人。我会永远记得今天的。",
@@ -87,21 +56,59 @@ export const DepartureView: React.FC = () => {
       'GRATEFUL': "[深深鞠了一躬，擦了擦眼角，转身离开]"
   };
 
-  // 1. Try to get specific line from story data
-  let exitText = currentCustomer.dialogue.exitDialogues?.[satisfaction];
-  
-  // 2. Fallback to default
-  if (!exitText) {
-      // 20% chance for silent variant if available
+  // Memoize exit text to prevent random change on re-render
+  const exitText = useMemo(() => {
+      if (!currentCustomer) return "";
+
+      // 1. Try to get specific line from story data
+      const storyLine = currentCustomer.dialogue.exitDialogues?.[satisfaction];
+      if (storyLine) return storyLine;
+
+      // 2. Fallback: 20% chance for silent variant if available
       if (Math.random() < 0.2 && silentExitLines[satisfaction]) {
-          exitText = silentExitLines[satisfaction];
-      } else {
-          exitText = defaultExitLines[satisfaction];
+          return silentExitLines[satisfaction]!;
       }
-  }
+      return defaultExitLines[satisfaction];
+  }, [currentCustomer?.id, satisfaction]);
 
   // Is this a silent/action line? (Check for brackets)
   const isSilentAction = exitText?.startsWith('[') && exitText?.endsWith(']');
+
+  // Audio & Setup
+  useEffect(() => {
+      if (lastSatisfaction) {
+          // Determine monologue
+          setInnerVoiceText(getDepartureMonologue(satisfaction));
+      }
+  }, [lastSatisfaction, satisfaction]);
+
+  // For silent actions, trigger inner voice immediately (no typewriter callback)
+  useEffect(() => {
+      if (isSilentAction && currentCustomer) {
+          setTextComplete(true);
+          setTimeout(() => setShowInnerVoice(true), 800);
+      }
+  }, [isSilentAction, currentCustomer?.id]);
+
+  const handleNext = () => {
+      playSfx('FOOTSTEP');
+      dispatch({ type: 'CLEAR_CUSTOMER' });
+
+      // If there are remaining expiry events, process them instead of going to BUSINESS
+      if (hasMoreExpiryEvents) {
+          processNextExpiryEvent();
+      } else {
+          dispatch({ type: 'SET_PHASE', payload: GamePhase.BUSINESS });
+      }
+  };
+
+  const onCustomerTextComplete = () => {
+      setTextComplete(true);
+      // Always show inner voice after customer dialogue completes
+      setTimeout(() => setShowInnerVoice(true), 800);
+  };
+
+  if (!currentCustomer) return null;
 
   // Avatar Variation
   // Logic: Prefer explicit portrait if available. If not, use seed + CSS filter.
@@ -174,14 +181,9 @@ export const DepartureView: React.FC = () => {
 
               {/* Inner Voice (The Merchant's Thoughts) - inside dialogue box */}
               {showInnerVoice && (
-                  <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-1000">
-                      <div className="flex items-center justify-center gap-2 text-stone-600 text-[10px] uppercase tracking-widest mb-1">
-                          <Brain className="w-3 h-3" /> 玩家内心独白
-                      </div>
-                      <p className="text-stone-500 font-serif italic text-center text-sm">
-                          <TypewriterText text={innerVoiceText} speed={50} />
-                      </p>
-                  </div>
+                  <p className="mt-4 text-stone-500 font-serif italic text-center text-sm animate-in fade-in duration-500">
+                      {innerVoiceText}
+                  </p>
               )}
           </div>
 
