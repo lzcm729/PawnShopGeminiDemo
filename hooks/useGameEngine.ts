@@ -202,8 +202,16 @@ export const useGameEngine = () => {
       if (!item) return null;
 
       const chain = state.activeChains.find(c => c.id === event.chainId);
-      const storyEvent = ALL_STORY_EVENTS.find(e =>
+
+      // Find the original pawn event (for description/avatar fallback)
+      const originalPawnEvent = ALL_STORY_EVENTS.find(e =>
           e.coreItemId === event.itemId || e.item?.id === event.itemId
+      );
+
+      // Try to find a dedicated redemption event for this chain (type: REDEMPTION_CHECK or interactionType: REDEEM)
+      const redemptionEvent = ALL_STORY_EVENTS.find(e =>
+          e.chainId === event.chainId &&
+          (e.type === 'REDEMPTION_CHECK' || e.template?.interactionType === 'REDEEM')
       );
 
       // Determine redemptionIntent based on behavior
@@ -211,19 +219,26 @@ export const useGameEngine = () => {
 
       // Build greeting based on behavior - use generic defaults
       let greeting = "";
-      let redemptionPlea = "";
       if (event.behavior === 'REDEEM') {
           greeting = `老板，我来赎东西了。钱都在这，连本带利。`;
-          redemptionPlea = `那东西对我真的很重要，谢谢你帮我保管。`;
       } else {
           greeting = `老板，我... 现在还凑不够赎金。能不能再宽限几天？利息我先付着。`;
-          redemptionPlea = `求求你了，那东西对我很重要...`;
       }
 
+      // If there's a dedicated redemption event with a greeting, use it
+      if (redemptionEvent?.template?.dialogue) {
+          const tpl = redemptionEvent.template.dialogue;
+          if (typeof tpl.greeting === 'string' && tpl.greeting) {
+              greeting = tpl.greeting;
+          }
+      }
+
+      // Note: redemptionPlea is for pawn time ("I promise to come back"), not redemption time
+      // So we leave it empty for settlement scenarios
       const dialogue: Dialogue = {
           greeting,
           pawnReason: "",
-          redemptionPlea,
+          redemptionPlea: "", // Not shown during redemption - it's a pawn-time promise
           negotiationDynamic: "",
           accepted: { fair: "谢谢。", fleeced: "谢谢...", premium: "太感谢了！" },
           rejected: "...",
@@ -236,23 +251,15 @@ export const useGameEngine = () => {
           }
       };
 
-      // Use template dialogue if available (for character-specific text)
-      if (storyEvent?.template?.dialogue) {
-          const tpl = storyEvent.template.dialogue;
-          // Override greeting if template has one (can be string or conditional array)
-          if (typeof tpl.greeting === 'string') {
-              dialogue.greeting = tpl.greeting;
-          }
-          if (typeof tpl.redemptionPlea === 'string') {
-              dialogue.redemptionPlea = tpl.redemptionPlea;
-          }
-      }
+      // Use redemption event's template if available, otherwise fall back to original pawn event
+      const templateSource = redemptionEvent?.template || originalPawnEvent?.template;
+      const eventSource = redemptionEvent || originalPawnEvent;
 
       const customer: Customer = {
           id: crypto.randomUUID(),
           name: event.npcName,
-          description: storyEvent?.template?.description || "到期结算",
-          avatarSeed: storyEvent?.template?.avatarSeed || "default",
+          description: templateSource?.description || "到期结算",
+          avatarSeed: templateSource?.avatarSeed || "default",
           dialogue,
           redemptionResolve: intent === 'REDEEM' ? 'Strong' : 'Medium',
           negotiationStyle: 'Professional',
@@ -267,7 +274,7 @@ export const useGameEngine = () => {
           redemptionIntent: intent,
           currentWallet: chain?.variables?.funds as number || event.redemptionCost.total + 100,
           chainId: event.chainId,
-          eventId: storyEvent?.id
+          eventId: eventSource?.id
       };
 
       return customer;

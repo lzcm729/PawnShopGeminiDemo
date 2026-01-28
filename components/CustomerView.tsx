@@ -191,12 +191,15 @@ export const CustomerView: React.FC = () => {
             </div>
           )}
           
-          <div className="group">
-            <h4 className="text-xs font-mono text-stone-500 mb-1 uppercase">赎回承诺</h4>
-            <p className="text-sm text-stone-400 italic border-b border-[#292524] pb-2 group-hover:text-stone-300 transition-colors">
-              "{dialogue.redemptionPlea}"
-            </p>
-          </div>
+          {/* REDEMPTION PLEA: Only show in Pawn Mode when there's content */}
+          {showPawnReason && dialogue.redemptionPlea && (
+            <div className="group">
+              <h4 className="text-xs font-mono text-stone-500 mb-1 uppercase">赎回承诺</h4>
+              <p className="text-sm text-stone-400 italic border-b border-[#292524] pb-2 group-hover:text-stone-300 transition-colors">
+                "{dialogue.redemptionPlea}"
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Tags */}
