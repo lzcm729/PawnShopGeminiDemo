@@ -23,7 +23,7 @@ export interface TransactionRecord {
 
 // --- FINANCIAL PROJECTION SYSTEM ---
 
-export type CalendarEventType = 'BILL' | 'INCOME_POTENTIAL' | 'STORY_MOMENT' | 'MAIL';
+export type CalendarEventType = 'BILL' | 'INCOME_POTENTIAL' | 'STORY_MOMENT' | 'MAIL' | 'ITEM_DUE';
 
 export interface CalendarEvent {
   type: CalendarEventType;

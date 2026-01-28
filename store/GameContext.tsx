@@ -56,6 +56,7 @@ const initialState: GameState = {
   violationFlags: [],
   financialHistory: [],
   lastSatisfaction: null,
+  lastDealSummary: null,
   activeMilestones: [], // New State
   // === EXPIRY SYSTEM ===
   currentExpiryEvent: null,
@@ -80,7 +81,7 @@ type Action =
   | { type: 'REALIZE_ITEM_TRUTH'; payload: { itemId: string } }
   | { type: 'MARK_TRAIT_USED'; payload: { traitId: string } }
   | { type: 'CONSUME_AP'; payload: number } 
-  | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string } }
+  | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string; dealQuality?: 'fleeced' | 'fair' | 'premium' } }
   | { type: 'LIQUIDATE_ITEM'; payload: { itemId: string; amount: number; name: string } }
   | { type: 'REJECT_DEAL' }
   | { type: 'MANUAL_CLOSE_SHOP' }
@@ -189,7 +190,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'SET_PHASE': return { ...state, phase: action.payload };
     case 'SET_LOADING': return { ...state, isLoading: action.payload };
     case 'SET_CUSTOMER': if (!action.payload) return { ...state, currentCustomer: null }; const customerInit = { ...action.payload, mood: 'Neutral' as Mood }; return { ...state, currentCustomer: customerInit, phase: GamePhase.NEGOTIATION, lastSatisfaction: null };
-    case 'CLEAR_CUSTOMER': return { ...state, currentCustomer: null };
+    case 'CLEAR_CUSTOMER': return { ...state, currentCustomer: null, lastDealSummary: null };
     case 'UPDATE_CUSTOMER_STATUS': if (!state.currentCustomer) return state; return { ...state, currentCustomer: { ...state.currentCustomer, patience: action.payload.patience, mood: action.payload.mood, currentAskPrice: action.payload.currentAskPrice } };
     case 'UPDATE_ITEM_KNOWLEDGE': if (!state.currentCustomer || state.currentCustomer.item.id !== action.payload.itemId) return state; const prevCount = state.currentCustomer.item.appraisalCount || 0; const prevNegative = state.currentCustomer.item.hasNegativeAppraisalEvent || false; const prevLogs = state.currentCustomer.item.logs || []; const newLogs = action.payload.log ? [...prevLogs, action.payload.log] : prevLogs; return { ...state, currentCustomer: { ...state.currentCustomer, item: { ...state.currentCustomer.item, currentRange: action.payload.newRange, revealedTraits: action.payload.revealedTraits, uncertainty: action.payload.newUncertainty, perceivedValue: action.payload.newPerceived, appraised: true, appraisalCount: action.payload.incrementAppraisalCount ? prevCount + 1 : prevCount, hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : prevNegative, logs: newLogs } } };
     case 'REALIZE_ITEM_TRUTH': { if (!state.currentCustomer || state.currentCustomer.item.id !== action.payload.itemId) return state; const item = state.currentCustomer.item; const newUncertainty = 0.1; const trueRange = generateValuationRange(item.realValue, undefined, newUncertainty); const newInitialRange = generateValuationRange(item.realValue, undefined, 0.4); return { ...state, currentCustomer: { ...state.currentCustomer, item: { ...item, perceivedValue: undefined, uncertainty: newUncertainty, currentRange: trueRange, initialRange: newInitialRange, appraised: false } } }; }
@@ -213,15 +214,15 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'APPRAISE_ITEM': if (!state.currentCustomer) return state; return { ...state, currentCustomer: { ...state.currentCustomer, item: { ...state.currentCustomer.item, appraised: true } } };
     case 'SET_SATISFACTION': return { ...state, lastSatisfaction: action.payload };
 
-    case 'RESOLVE_TRANSACTION': { 
-        const { cashDelta, reputationDelta, item, log, customerName } = action.payload; 
-        if (cashDelta > 0) playSfx('CASH'); else if (cashDelta < 0) playSfx('CLICK'); 
-        
+    case 'RESOLVE_TRANSACTION': {
+        const { cashDelta, reputationDelta, item, log, customerName, dealQuality } = action.payload;
+        if (cashDelta > 0) playSfx('CASH'); else if (cashDelta < 0) playSfx('CLICK');
+
         // --- VIOLATION CHECK (Task 11 Fix) ---
         // Verify if we accepted an illicit item during a crackdown
         let newViolationFlags = [...state.violationFlags];
         const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
-        
+
         if (item && (item.isStolen || (item.category === '违禁品' && !item.isSuspicious))) {
             if (currentRisk > 0 && !newViolationFlags.includes('police_risk_ignored')) {
                 newViolationFlags.push('police_risk_ignored');
@@ -229,31 +230,41 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         }
         // -------------------------------------
 
-        const newRep = { ...state.reputation }; 
-        if (reputationDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += reputationDelta[ReputationType.HUMANITY]!; 
-        if (reputationDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += reputationDelta[ReputationType.CREDIBILITY]!; 
-        if (reputationDelta[ReputationType.UNDERWORLD]) newRep[ReputationType.UNDERWORLD] += reputationDelta[ReputationType.UNDERWORLD]!; 
-        Object.keys(newRep).forEach(key => { newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType])); }); 
-        
-        const newInventory = item ? [...state.inventory, item] : state.inventory; 
-        const newTransaction: TransactionRecord | null = item ? { id: crypto.randomUUID(), description: `收当: ${item.name}`, amount: cashDelta, type: 'PAWN' } : null; 
-        const updatedTransactions = newTransaction ? [...state.todayTransactions, newTransaction] : state.todayTransactions; 
-        const servedCount = state.customersServedToday + 1; 
-        const completedId = state.currentCustomer?.id; 
-        const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds; 
-        
-        return { 
-            ...state, 
-            stats: { ...state.stats, cash: state.stats.cash + cashDelta }, 
-            reputation: newRep, 
-            inventory: newInventory, 
-            dayEvents: [...state.dayEvents, log], 
-            todayTransactions: updatedTransactions, 
-            customersServedToday: servedCount, 
-            phase: GamePhase.DEPARTURE, 
+        const newRep = { ...state.reputation };
+        if (reputationDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += reputationDelta[ReputationType.HUMANITY]!;
+        if (reputationDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += reputationDelta[ReputationType.CREDIBILITY]!;
+        if (reputationDelta[ReputationType.UNDERWORLD]) newRep[ReputationType.UNDERWORLD] += reputationDelta[ReputationType.UNDERWORLD]!;
+        Object.keys(newRep).forEach(key => { newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType])); });
+
+        const newInventory = item ? [...state.inventory, item] : state.inventory;
+        const newTransaction: TransactionRecord | null = item ? { id: crypto.randomUUID(), description: `收当: ${item.name}`, amount: cashDelta, type: 'PAWN' } : null;
+        const updatedTransactions = newTransaction ? [...state.todayTransactions, newTransaction] : state.todayTransactions;
+        const servedCount = state.customersServedToday + 1;
+        const completedId = state.currentCustomer?.id;
+        const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds;
+
+        // Build deal summary for departure view
+        const newDealSummary = item ? {
+            cashDelta,
+            reputationDelta,
+            itemName: item.name,
+            itemCategory: item.category,
+            dealQuality: dealQuality || 'fair'
+        } : null;
+
+        return {
+            ...state,
+            stats: { ...state.stats, cash: state.stats.cash + cashDelta },
+            reputation: newRep,
+            inventory: newInventory,
+            dayEvents: [...state.dayEvents, log],
+            todayTransactions: updatedTransactions,
+            customersServedToday: servedCount,
+            phase: GamePhase.DEPARTURE,
             completedScenarioIds: newCompletedIds,
-            violationFlags: newViolationFlags
-        }; 
+            violationFlags: newViolationFlags,
+            lastDealSummary: newDealSummary
+        };
     }
     
     case 'REJECT_DEAL': { const servedCount = state.customersServedToday + 1; const completedId = state.currentCustomer?.id; const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds; playSfx('CLICK'); return { ...state, dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`], customersServedToday: servedCount, phase: GamePhase.DEPARTURE, completedScenarioIds: newCompletedIds }; }

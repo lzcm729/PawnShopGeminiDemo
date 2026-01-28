@@ -80,10 +80,10 @@ export const useFinancialProjection = () => {
                 });
             }
 
-            // 4. Potential Income (Pawn Redemptions) & Story Moments
-            const expiringItems = inventory.filter(item => 
-                item.status === ItemStatus.ACTIVE && 
-                item.pawnInfo && 
+            // 4. Item Due Dates & Story Moments
+            const expiringItems = inventory.filter(item =>
+                item.status === ItemStatus.ACTIVE &&
+                item.pawnInfo &&
                 item.pawnInfo.dueDate === currentProjectionDay
             );
 
@@ -92,29 +92,31 @@ export const useFinancialProjection = () => {
                     const interest = Math.ceil(item.pawnInfo.principal * item.pawnInfo.interestRate);
                     const totalIncome = item.pawnInfo.principal + interest;
                     const isStory = !!item.relatedChainId;
-                    
+
                     runningBalance += totalIncome;
                     dailyEvents.push({
-                        type: isStory ? 'STORY_MOMENT' : 'INCOME_POTENTIAL',
+                        type: isStory ? 'STORY_MOMENT' : 'ITEM_DUE',
                         amount: totalIncome,
-                        label: isStory ? `剧情节点: ${item.name}` : `赎回: ${item.name}`,
+                        label: isStory ? `剧情节点: ${item.name}` : `到期: ${item.name}`,
                         isCertain: false,
                         relatedId: item.id
                     });
                 }
             });
 
-            // 5. Incoming Mails (Narrative)
-            const arrivingMails = pendingMails.filter(m => m.arrivalDay === currentProjectionDay);
-            arrivingMails.forEach(m => {
-                const tpl = getMailTemplate(m.templateId);
-                dailyEvents.push({
-                    type: 'MAIL',
-                    amount: 0,
-                    label: `信件: ${tpl?.sender || '未知发件人'}`,
-                    isCertain: true
+            // 5. Incoming Mails (Narrative) - Only show for today, not future (no spoilers!)
+            if (isToday) {
+                const arrivingMails = pendingMails.filter(m => m.arrivalDay === currentProjectionDay);
+                arrivingMails.forEach(m => {
+                    const tpl = getMailTemplate(m.templateId);
+                    dailyEvents.push({
+                        type: 'MAIL',
+                        amount: 0,
+                        label: `信件: ${tpl?.sender || '未知发件人'}`,
+                        isCertain: true
+                    });
                 });
-            });
+            }
 
             // 6. Determine Risk Level
             const riskLevel = runningBalance < 0 ? 'CRITICAL' : 'SAFE';

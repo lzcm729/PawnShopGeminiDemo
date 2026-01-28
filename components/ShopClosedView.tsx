@@ -3,18 +3,33 @@ import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { ArrowRight, MessageSquare, Brain } from 'lucide-react';
+import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Skull, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package } from 'lucide-react';
 import { SatisfactionLevel } from '../systems/narrative/types';
+import { ReputationType } from '../types';
 import { TypewriterText } from './ui/TextEffects';
 import { playSfx } from '../systems/game/audio';
 import { GamePhase } from '../types';
 import { getDepartureMonologue } from '../systems/narrative/innerVoiceRegistry';
 import { cn } from '../lib/utils';
 
+const getCategoryIcon = (category: string) => {
+    switch(category) {
+        case '服饰': return <Shirt className="w-5 h-5 text-stone-400" />;
+        case '奢侈品': return <ShoppingBag className="w-5 h-5 text-stone-400" />;
+        case '电子产品': return <Smartphone className="w-5 h-5 text-stone-400" />;
+        case '珠宝': return <Gem className="w-5 h-5 text-stone-400" />;
+        case '违禁品': return <Skull className="w-5 h-5 text-stone-400" />;
+        case '古玩': return <Archive className="w-5 h-5 text-stone-400" />;
+        case '玩具': return <Gamepad2 className="w-5 h-5 text-stone-400" />;
+        case '乐器': return <Music className="w-5 h-5 text-stone-400" />;
+        default: return <Package className="w-5 h-5 text-stone-400" />;
+    }
+};
+
 export const DepartureView: React.FC = () => {
   const { state, dispatch } = useGame();
   const { processNextExpiryEvent } = useGameEngine();
-  const { currentCustomer, lastSatisfaction, expiryQueue } = state;
+  const { currentCustomer, lastSatisfaction, lastDealSummary, expiryQueue } = state;
 
   const [textComplete, setTextComplete] = useState(false);
   const [showInnerVoice, setShowInnerVoice] = useState(false);
@@ -157,6 +172,43 @@ export const DepartureView: React.FC = () => {
                   )}
               </div>
           </div>
+
+          {/* Deal Summary (if a deal was made) */}
+          {lastDealSummary && (
+              <div className="w-full bg-stone-900/80 border border-stone-700 rounded p-4 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="flex items-center justify-between gap-4">
+                      {/* Cash */}
+                      <div className="flex items-center gap-2">
+                          <DollarSign className="w-4 h-4 text-red-500" />
+                          <span className="text-red-500 font-mono font-bold">${Math.abs(lastDealSummary.cashDelta)}</span>
+                      </div>
+
+                      {/* Reputation Changes */}
+                      <div className="flex items-center gap-3">
+                          {Object.entries(lastDealSummary.reputationDelta).map(([key, val]) => {
+                              const value = val as number;
+                              if (!value || value === 0) return null;
+                              let icon = <Briefcase className="w-3 h-3" />;
+                              let color = "text-blue-400";
+                              if (key === ReputationType.HUMANITY) { icon = <Heart className="w-3 h-3" />; color = "text-rose-500"; }
+                              if (key === ReputationType.UNDERWORLD) { icon = <Skull className="w-3 h-3" />; color = "text-purple-500"; }
+                              return (
+                                  <span key={key} className={`flex items-center gap-1 text-xs font-mono font-bold ${color}`}>
+                                      {icon} {value > 0 ? '+' : ''}{value}
+                                  </span>
+                              );
+                          })}
+                      </div>
+
+                      {/* Item */}
+                      <div className="flex items-center gap-2">
+                          {getCategoryIcon(lastDealSummary.itemCategory)}
+                          <span className="text-stone-300 text-sm">{lastDealSummary.itemName}</span>
+                          <PackageCheck className="w-4 h-4 text-green-500" />
+                      </div>
+                  </div>
+              </div>
+          )}
 
           {/* Inner Voice Overlay (The Merchant's Thoughts) */}
           {showInnerVoice && (

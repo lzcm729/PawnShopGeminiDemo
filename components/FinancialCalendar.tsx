@@ -2,7 +2,7 @@
 import React from 'react';
 import { useGame } from '../store/GameContext';
 import { useFinancialProjection } from '../hooks/useFinancialProjection';
-import { X, AlertTriangle, TrendingDown, DollarSign, Calendar, History, Mail, Star } from 'lucide-react';
+import { X, AlertTriangle, TrendingDown, DollarSign, Calendar, History, Mail, Star, Clock } from 'lucide-react';
 import { CalendarDayData } from '../systems/economy/types';
 
 export const FinancialCalendar: React.FC = () => {
@@ -51,13 +51,10 @@ export const FinancialCalendar: React.FC = () => {
                         <div className="w-2 h-2 rounded-full bg-red-500"></div> 硬性支出 (Bill)
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-pawn-green"></div> 潜在回款 (Income)
+                        <Clock className="w-3 h-3 text-cyan-500" /> 物品到期 (Due)
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div> 剧情节点 (Story)
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div> 信件 (Mail)
+                        <Star className="w-3 h-3 text-amber-500 fill-amber-500" /> 剧情节点 (Story)
                     </div>
                     <div className="flex items-center gap-2 ml-auto">
                         <AlertTriangle className="w-3 h-3 text-red-500" /> 破产风险
@@ -82,7 +79,7 @@ export const FinancialCalendar: React.FC = () => {
 const CalendarCell: React.FC<{ data: CalendarDayData }> = ({ data }) => {
     const isCritical = data.riskLevel === 'CRITICAL';
     const hasBill = data.events.some(e => e.type === 'BILL');
-    const hasIncome = data.events.some(e => e.type === 'INCOME_POTENTIAL');
+    const hasItemDue = data.events.some(e => e.type === 'ITEM_DUE');
     const hasStory = data.events.some(e => e.type === 'STORY_MOMENT');
     const hasMail = data.events.some(e => e.type === 'MAIL');
     
@@ -114,20 +111,24 @@ const CalendarCell: React.FC<{ data: CalendarDayData }> = ({ data }) => {
             {/* Content Dots */}
             <div className="flex gap-1.5 flex-wrap content-end">
                 {hasBill && <div className={`w-2.5 h-2.5 rounded-full ${isPast ? 'bg-red-900/50' : 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]'}`} title="Bill"></div>}
-                
+
                 {hasStory && (
                     <div className="w-3 h-3 flex items-center justify-center animate-pulse" title="Story Event">
                         <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                     </div>
                 )}
-                
+
+                {hasItemDue && !hasStory && (
+                    <div className="w-3 h-3 flex items-center justify-center" title="Item Due">
+                        <Clock className={`w-3 h-3 ${isPast ? 'text-cyan-900' : 'text-cyan-500'}`} />
+                    </div>
+                )}
+
                 {hasMail && (
                     <div className="w-3 h-3 flex items-center justify-center" title="Mail">
                         <Mail className="w-3 h-3 text-blue-500" />
                     </div>
                 )}
-
-                {hasIncome && !hasStory && <div className={`w-2.5 h-2.5 rounded-full ${isPast ? 'bg-green-900/50' : 'bg-pawn-green shadow-[0_0_5px_rgba(34,197,94,0.5)]'}`} title="Income"></div>}
             </div>
 
             {/* Tooltip (Custom Hover) */}
@@ -144,7 +145,7 @@ const CalendarCell: React.FC<{ data: CalendarDayData }> = ({ data }) => {
                             let color = "text-stone-300";
                             let icon = null;
                             if (e.type === 'BILL') color = "text-red-400";
-                            if (e.type === 'INCOME_POTENTIAL') color = "text-green-400";
+                            if (e.type === 'ITEM_DUE') { color = "text-cyan-400"; icon = "⏰ "; }
                             if (e.type === 'STORY_MOMENT') { color = "text-amber-400 font-bold"; icon = "★ "; }
                             if (e.type === 'MAIL') { color = "text-blue-400"; icon = "✉ "; }
 

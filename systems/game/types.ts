@@ -14,6 +14,15 @@ export interface DailyFinancialSnapshot {
   events: { type: 'INCOME' | 'EXPENSE'; amount: number; label: string }[];
 }
 
+// Summary of a completed deal for display in departure view
+export interface DealSummary {
+  cashDelta: number;
+  reputationDelta: Partial<ReputationProfile>;
+  itemName: string;
+  itemCategory: string;
+  dealQuality: 'fleeced' | 'fair' | 'premium';
+}
+
 export interface GameState {
   phase: GamePhase;
   stats: DailyStats;
@@ -43,6 +52,7 @@ export interface GameState {
   financialHistory: DailyFinancialSnapshot[]; // History of past days
   
   lastSatisfaction: SatisfactionLevel | null; // Tracks the emotional outcome of the last deal
+  lastDealSummary: DealSummary | null; // Summary of the last deal for departure view
   activeMilestones: string[];
 
   // === EXPIRY SYSTEM ===

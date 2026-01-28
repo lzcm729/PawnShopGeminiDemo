@@ -8,7 +8,6 @@ import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
 import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
-import { DealSuccessModal } from './DealSuccessModal';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
 import { NegotiationHistory } from './NegotiationHistory';
@@ -137,7 +136,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   const [chatLog, setChatLog] = useState<LogEntry[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [rejectionState, setRejectionState] = useState<{show: boolean, text: string}>({show: false, text: ''});
-  const [successModalData, setSuccessModalData] = useState<{result: TransactionResult, customer: Customer} | null>(null);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -184,8 +182,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   useEffect(() => {
     if (currentCustomer) {
       setRejectionState({show: false, text: ''});
-      setSuccessModalData(null);
-      
+
       // SAFEGUARD: Provide default dialogue if missing
       const greetingText = currentCustomer.dialogue?.greeting || "...";
       const pawnReasonText = currentCustomer.dialogue?.pawnReason;
@@ -263,11 +260,11 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   };
 
   useEffect(() => {
-      if (isWalkedAway && !rejectionState.show && currentCustomer && !successModalData) {
+      if (isWalkedAway && !rejectionState.show && currentCustomer) {
           const text = getRejectionText(currentCustomer, mood === 'Angry');
           setRejectionState({ show: true, text });
       }
-  }, [isWalkedAway, mood, currentCustomer, rejectionState.show, successModalData]);
+  }, [isWalkedAway, mood, currentCustomer, rejectionState.show]);
 
   if (!currentCustomer || !item) return null;
 
@@ -305,38 +302,28 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
     if (result.status === 'ACCEPTED') {
         const txResult = evaluateTransaction(offerPrincipal, selectedRate);
+        // Directly commit transaction - deal summary shown in departure view
         setTimeout(() => {
-            setSuccessModalData({
-                result: txResult,
-                customer: currentCustomer
-            });
+            commitTransaction(txResult);
         }, 800);
     }
   };
 
   const handleBinaryAccept = () => {
       const acceptedMsg = currentCustomer.dialogue?.accepted?.fair || "成交。";
-      
+
       const mockResult: TransactionResult = {
           success: true,
           message: acceptedMsg,
-          cashDelta: currentAskPrice, 
+          cashDelta: currentAskPrice,
           reputationDelta: {},
           item: currentCustomer.item,
           dealQuality: 'fair',
-          terms: { principal: 0, rate: 0.10 } 
+          terms: { principal: 0, rate: 0.10 }
       };
-      
-      setSuccessModalData({
-          result: mockResult,
-          customer: currentCustomer
-      });
-  };
 
-  const handleConfirmDeal = () => {
-      if (successModalData) {
-          commitTransaction(successModalData.result);
-      }
+      // Directly commit transaction - deal summary shown in departure view
+      commitTransaction(mockResult);
   };
 
   const handleManualReject = () => {
@@ -376,7 +363,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
   const cashAvailable = state.stats.cash;
   const canAfford = cashAvailable >= offerPrincipal;
-  const canInteract = !isWalkedAway && !rejectionState.show && !successModalData;
+  const canInteract = !isWalkedAway && !rejectionState.show;
   const repaymentAmount = Math.floor(offerPrincipal * (1 + selectedRate));
   const profit = repaymentAmount - offerPrincipal;
 
@@ -421,16 +408,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
     <div className="flex flex-col h-full relative bg-noir-100 border-l border-noir-400">
       <CustomerHeader customer={currentCustomer} patience={patience} mood={mood} />
 
-      {successModalData && (
-          <DealSuccessModal 
-             customer={successModalData.customer}
-             result={successModalData.result}
-             onClose={handleConfirmDeal}
-          />
-      )}
-
       {/* Rejection Overlay */}
-      {rejectionState.show && !successModalData && (
+      {rejectionState.show && (
             <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-300">
                 <div className="bg-noir-200 border-2 border-red-900/50 p-8 max-w-md w-full shadow-2xl relative flex flex-col items-center">
                     <div className="text-6xl font-serif text-noir-txt-muted opacity-20 absolute top-4 left-4">“</div>
