@@ -91,13 +91,12 @@ export const useFinancialProjection = () => {
                 if (item.pawnInfo) {
                     const interest = Math.ceil(item.pawnInfo.principal * item.pawnInfo.interestRate);
                     const totalIncome = item.pawnInfo.principal + interest;
-                    const isStory = !!item.relatedChainId;
 
                     runningBalance += totalIncome;
                     dailyEvents.push({
-                        type: isStory ? 'STORY_MOMENT' : 'ITEM_DUE',
+                        type: 'ITEM_DUE',
                         amount: totalIncome,
-                        label: isStory ? `剧情节点: ${item.name}` : `到期: ${item.name}`,
+                        label: `到期: ${item.name}`,
                         isCertain: false,
                         relatedId: item.id
                     });

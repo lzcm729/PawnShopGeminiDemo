@@ -2,7 +2,7 @@
 import React from 'react';
 import { useGame } from '../store/GameContext';
 import { useFinancialProjection } from '../hooks/useFinancialProjection';
-import { X, AlertTriangle, TrendingDown, DollarSign, Calendar, History, Mail, Star, Clock } from 'lucide-react';
+import { X, AlertTriangle, Calendar, Mail, Clock } from 'lucide-react';
 import { CalendarDayData } from '../systems/economy/types';
 
 export const FinancialCalendar: React.FC = () => {
@@ -53,9 +53,6 @@ export const FinancialCalendar: React.FC = () => {
                     <div className="flex items-center gap-2">
                         <Clock className="w-3 h-3 text-cyan-500" /> 物品到期 (Due)
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Star className="w-3 h-3 text-amber-500 fill-amber-500" /> 剧情节点 (Story)
-                    </div>
                     <div className="flex items-center gap-2 ml-auto">
                         <AlertTriangle className="w-3 h-3 text-red-500" /> 破产风险
                     </div>
@@ -63,8 +60,8 @@ export const FinancialCalendar: React.FC = () => {
 
                 {/* Grid */}
                 <div className="p-6 bg-[#0c0a09] grid grid-cols-7 gap-3 auto-rows-fr">
-                    {projection.map((day) => (
-                        <CalendarCell key={day.dayId} data={day} />
+                    {projection.map((day, index) => (
+                        <CalendarCell key={day.dayId} data={day} index={index} />
                     ))}
                 </div>
 
@@ -76,19 +73,29 @@ export const FinancialCalendar: React.FC = () => {
     );
 };
 
-const CalendarCell: React.FC<{ data: CalendarDayData }> = ({ data }) => {
+const CalendarCell: React.FC<{ data: CalendarDayData; index: number }> = ({ data, index }) => {
     const isCritical = data.riskLevel === 'CRITICAL';
     const hasBill = data.events.some(e => e.type === 'BILL');
     const hasItemDue = data.events.some(e => e.type === 'ITEM_DUE');
-    const hasStory = data.events.some(e => e.type === 'STORY_MOMENT');
     const hasMail = data.events.some(e => e.type === 'MAIL');
-    
+
     // Style adjustments for past days
     const isPast = data.isPast;
     const baseBg = isPast ? 'bg-[#0a0a0a]' : (isCritical ? 'bg-red-950/20' : 'bg-stone-900/40');
     const borderStyle = isPast ? 'border-stone-800/50' : (isCritical ? 'border-red-900/60' : 'border-stone-800');
     const hoverStyle = isPast ? '' : (isCritical ? 'hover:bg-red-900/30' : 'hover:bg-stone-800/60');
     const textStyle = isPast ? 'text-stone-700' : (data.isToday ? 'text-pawn-accent' : 'text-stone-500');
+
+    // Determine tooltip position based on cell location in grid
+    const column = index % 7;
+    const row = Math.floor(index / 7);
+    const isRightSide = column >= 5;
+    const isTopRow = row === 0;
+
+    // Position tooltip to avoid edge cutoff
+    const tooltipHorizontal = isRightSide ? 'right-0' : 'left-0';
+    const tooltipVertical = isTopRow ? 'top-full mt-2' : 'bottom-full mb-2';
+    const tooltipOrigin = isTopRow ? 'origin-top' : 'origin-bottom';
 
     return (
         <div className={`
@@ -112,13 +119,7 @@ const CalendarCell: React.FC<{ data: CalendarDayData }> = ({ data }) => {
             <div className="flex gap-1.5 flex-wrap content-end">
                 {hasBill && <div className={`w-2.5 h-2.5 rounded-full ${isPast ? 'bg-red-900/50' : 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]'}`} title="Bill"></div>}
 
-                {hasStory && (
-                    <div className="w-3 h-3 flex items-center justify-center animate-pulse" title="Story Event">
-                        <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                    </div>
-                )}
-
-                {hasItemDue && !hasStory && (
+                {hasItemDue && (
                     <div className="w-3 h-3 flex items-center justify-center" title="Item Due">
                         <Clock className={`w-3 h-3 ${isPast ? 'text-cyan-900' : 'text-cyan-500'}`} />
                     </div>
@@ -132,7 +133,7 @@ const CalendarCell: React.FC<{ data: CalendarDayData }> = ({ data }) => {
             </div>
 
             {/* Tooltip (Custom Hover) */}
-            <div className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-black border border-stone-600 p-3 rounded shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity flex flex-col gap-2 scale-95 group-hover:scale-100 origin-bottom">
+            <div className={`absolute z-50 ${tooltipHorizontal} ${tooltipVertical} w-48 bg-black border border-stone-600 p-3 rounded shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity flex flex-col gap-2 scale-95 group-hover:scale-100 ${tooltipOrigin}`}>
                 <div className="border-b border-stone-800 pb-1 mb-1 text-[10px] uppercase font-bold text-stone-500 flex justify-between">
                     <span>Day {data.dayId} {isPast ? 'Log' : 'Forecast'}</span>
                     {isCritical && !isPast && <span className="text-red-500">CRITICAL</span>}
@@ -143,19 +144,18 @@ const CalendarCell: React.FC<{ data: CalendarDayData }> = ({ data }) => {
                     <div className="space-y-1.5">
                         {data.events.map((e, idx) => {
                             let color = "text-stone-300";
-                            let icon = null;
-                            if (e.type === 'BILL') color = "text-red-400";
+                            let icon = "";
+                            if (e.type === 'BILL') { color = "text-red-400"; icon = ""; }
                             if (e.type === 'ITEM_DUE') { color = "text-cyan-400"; icon = "⏰ "; }
-                            if (e.type === 'STORY_MOMENT') { color = "text-amber-400 font-bold"; icon = "★ "; }
                             if (e.type === 'MAIL') { color = "text-blue-400"; icon = "✉ "; }
 
                             return (
-                                <div key={idx} className="flex justify-between text-[10px] font-mono leading-tight">
-                                    <span className={`${color} truncate max-w-[140px]`} title={e.label}>
+                                <div key={idx} className="flex justify-between text-[10px] font-mono leading-tight gap-2">
+                                    <span className={`${color} truncate flex-1`} title={e.label}>
                                         {icon}{e.label}
                                     </span>
                                     {e.amount !== 0 && (
-                                        <span className={e.amount > 0 ? 'text-green-500' : 'text-red-500'}>
+                                        <span className={`shrink-0 ${e.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
                                             {e.amount > 0 ? '+' : ''}{e.amount}
                                         </span>
                                     )}
@@ -164,7 +164,7 @@ const CalendarCell: React.FC<{ data: CalendarDayData }> = ({ data }) => {
                         })}
                     </div>
                 ) : (
-                    <div className="text-xs text-stone-600 italic text-center py-1">No significant events</div>
+                    <div className="text-xs text-stone-600 italic text-center py-1">No events</div>
                 )}
 
                 {/* Footer Balance */}
