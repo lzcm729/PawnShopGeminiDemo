@@ -18,7 +18,8 @@ export const NightDashboard: React.FC = () => {
     const [monologueText, setMonologueText] = useState("");
 
     const unreadMail = inbox.filter(m => !m.isRead).length;
-    const activeItems = inventory.filter(i => i.status !== 'SOLD').length;
+    // Count only items actually in inventory (ACTIVE or FORFEIT), not REDEEMED/SOLD
+    const activeItems = inventory.filter(i => i.status === 'ACTIVE' || i.status === 'FORFEIT').length;
 
     // Medical Bill Logic
     const bill = stats.medicalBill;

@@ -21,7 +21,8 @@ export const Dashboard: React.FC = () => {
     // If we are in Night phase, we hide the top dashboard because NightDashboard takes over full screen
     if (phase === GamePhase.NIGHT) return null;
 
-    const activeItems = inventory.filter(i => i.status !== 'SOLD').length;
+    // Count only items actually in inventory (ACTIVE or FORFEIT), not REDEEMED/SOLD
+    const activeItems = inventory.filter(i => i.status === 'ACTIVE' || i.status === 'FORFEIT').length;
     const unreadMailCount = inbox.filter(m => !m.isRead).length;
 
     // Mother Status Logic
