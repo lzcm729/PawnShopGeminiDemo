@@ -74,7 +74,7 @@ export const useFinancialProjection = () => {
                 dailyEvents.push({
                     type: 'BILL',
                     amount: -rentAmount,
-                    label: '店铺租金 (Rent)',
+                    label: '母亲医药费 (Medical)',
                     isCertain: true
                 });
             }
