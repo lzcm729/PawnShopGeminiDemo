@@ -1,0 +1,12 @@
+ID,Name,Type,Value_Impact,Detect_Diff,Story_Text,Dialogue_Player,Dialogue_Customer
+trait_engraving,背面刻字,STORY,0.05,0.3,表壳背面刻着"赠吾友守义"几个小字。,这表背后刻着字……,那是我父亲留给我的……
+trait_inscription,内圈铭文,STORY,0.05,0.4,戒指内圈刻着一行拉丁文。,戒指内侧有字……,是我们的结婚誓言。
+trait_signature,隐藏签名,STORY,0.1,0.6,画面角落藏着画家的签名。,这里好像有签名……,我也是第一次注意到。
+trait_hidden_layer,底层画作,STORY,0.15,0.7,X光显示画布下还有一幅未完成的作品。,这幅画下面……好像还有一层？,什么？我完全不知道！
+trait_kiln_mark,窑口暗记,STORY,0.2,0.5,底部有官窑特有的暗记。,这个底款……,是祖上传下来的，我也不懂这些。
+trait_margin_notes,眉批笔记,STORY,0.1,0.35,书页边缘有前人的读书笔记。,这些批注是……,听说是某位大儒的手迹。
+trait_fake_enamel,珐琅仿造,FAKE,-0.9,0.5,珐琅工艺粗糙，是现代仿品。,这珐琅的工艺……,什……什么意思？
+trait_replaced_parts,非原装配件,FLAW,-0.15,0.4,部分零件是后期更换的。,这个零件好像不是原装的。,修过几次，可能换过一些。
+trait_water_damage,水渍痕迹,FLAW,-0.2,0.3,有明显的水渍侵蚀痕迹。,这里有水渍的痕迹……,啊，可能是保存不当吧。
+trait_repainted,重新上色,FLAW,-0.25,0.55,表面有重新上色的痕迹。,这颜色好像是后补的……,我……我不知道这些。
+trait_serial_scratched,序列号异常,FLAW,-0.5,0.7,物品序列号被刻意磨损或挂失。,这个编号好像被磨掉了……,……你管那么多干什么？

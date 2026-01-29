@@ -8,7 +8,7 @@
  * - 生成叙事文本
  */
 
-import { Item, ItemStatus } from '../items/types';
+import { Item, ItemStatus, WorkState } from '../items/types';
 import { ItemTag, StateTag, EssenceTag } from '../items/tags';
 import { EssenceBalance, EssenceCost } from '../economy/essence';
 import { NightState } from '../game/types';
@@ -190,8 +190,8 @@ export function performRestore(
     updatedItem = addTag(updatedItem, recipe.resultTag);
   }
 
-  // 标记已修复
-  updatedItem = { ...updatedItem, wasRestored: true };
+  // 标记已修复，设置加工状态
+  updatedItem = { ...updatedItem, wasRestored: true, workState: 'RESTORED' };
 
   // 计算新价值
   const newValue = calculateTaggedValue(updatedItem);
@@ -235,8 +235,8 @@ export function performReforge(
   // 添加结果标签
   let updatedItem = addTag(item, recipe.resultTag);
 
-  // 标记已重铸
-  updatedItem = { ...updatedItem, wasReforged: true };
+  // 标记已重铸，设置加工状态
+  updatedItem = { ...updatedItem, wasReforged: true, workState: 'REFORGED' };
 
   // 计算新价值
   const newValue = calculateTaggedValue(updatedItem);

@@ -1,5 +1,8 @@
 import { ItemTag, ItemVariant, KnowledgePool } from './tags';
 
+// 物品加工状态（互斥）
+export type WorkState = 'DEFAULT' | 'RESTORED' | 'REFORGED';
+
 export enum ItemStatus {
   ACTIVE = 'ACTIVE',       // Formerly PAWNED. In vault, interest accruing.
   REDEEMED = 'REDEEMED',   // Customer paid back. Gone from inventory.
@@ -109,4 +112,16 @@ export interface Item {
   // --- WORKSHOP FLAGS (工作台系统) ---
   wasRestored?: boolean;         // 是否被修复过
   wasReforged?: boolean;         // 是否被重铸过（用于检测所有权冲突）
+  workState?: WorkState;         // 加工状态（DEFAULT | RESTORED | REFORGED）
+
+  // --- NAME & DESC VARIANTS (名称变体系统) ---
+  nameDefault?: string;          // 默认名称（典当时）
+  nameRestored?: string;         // 修复后名称
+  nameReforged?: string;         // 重铸后名称
+  descDefault?: string;          // 默认描述
+  descRestored?: string;         // 修复后描述
+  descReforged?: string;         // 重铸后描述
+
+  // --- CSV TEMPLATE REFERENCE ---
+  templateId?: string;           // 关联的 CSV 模板 ID
 }

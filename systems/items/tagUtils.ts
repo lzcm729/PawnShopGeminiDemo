@@ -206,20 +206,58 @@ export function getActiveVariant(item: Item): ItemVariant | null {
 
 /**
  * 获取物品的显示名称
- * 如果有激活的变体，使用变体名称；否则使用原始名称
+ * 优先级：WorkState 名称变体 > 旧变体系统 > 原始名称
  */
 export function getDisplayName(item: Item): string {
+  // 1. 优先使用 WorkState 名称变体
+  const workState = item.workState || 'DEFAULT';
+
+  if (workState === 'REFORGED' && item.nameReforged) {
+    return item.nameReforged;
+  }
+  if (workState === 'RESTORED' && item.nameRestored) {
+    return item.nameRestored;
+  }
+  if (item.nameDefault) {
+    return item.nameDefault;
+  }
+
+  // 2. 备选：旧的变体系统
   const variant = getActiveVariant(item);
-  return variant?.name ?? item.name;
+  if (variant?.name) {
+    return variant.name;
+  }
+
+  // 3. 最终回退：原始名称
+  return item.name;
 }
 
 /**
  * 获取物品的显示描述
- * 如果有激活的变体，使用变体描述；否则使用原始描述
+ * 优先级：WorkState 描述变体 > 旧变体系统 > 原始描述
  */
 export function getDisplayDescription(item: Item): string {
+  // 1. 优先使用 WorkState 描述变体
+  const workState = item.workState || 'DEFAULT';
+
+  if (workState === 'REFORGED' && item.descReforged) {
+    return item.descReforged;
+  }
+  if (workState === 'RESTORED' && item.descRestored) {
+    return item.descRestored;
+  }
+  if (item.descDefault) {
+    return item.descDefault;
+  }
+
+  // 2. 备选：旧的变体系统
   const variant = getActiveVariant(item);
-  return variant?.description ?? item.visualDescription;
+  if (variant?.description) {
+    return variant.description;
+  }
+
+  // 3. 最终回退：原始描述
+  return item.visualDescription;
 }
 
 // ============================================================================
