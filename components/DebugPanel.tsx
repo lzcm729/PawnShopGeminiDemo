@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { Database, PlayCircle, Bug, X, Terminal, FileDown, Power, DollarSign } from 'lucide-react';
+import { Database, PlayCircle, Bug, X, Terminal, FileDown, Power, DollarSign, Sparkles } from 'lucide-react';
 import { validateEvents, ValidationIssue } from '../systems/narrative/validator';
 import { EMMA_EVENTS } from '../systems/narrative/storyRegistry';
 import { generateDesignBible } from '../systems/game/utils/designExporter';
@@ -47,6 +47,11 @@ export const DebugPanel: React.FC = () => {
     dispatch({ type: 'DEBUG_ADD_CASH', payload: 1000 });
   };
 
+  const handleAddEssence = () => {
+    playSfx('CLICK');
+    dispatch({ type: 'ADD_ESSENCE_BATCH', payload: { craft: 10, time: 10, vibe: 10 } });
+  };
+
   const toggleChain = (chainId: string) => {
     playSfx('CLICK');
     const updatedChains = state.activeChains.map(c =>
@@ -90,7 +95,7 @@ export const DebugPanel: React.FC = () => {
                 </button>
             </div>
             
-            <div className="p-3 border-b border-green-900/30 grid grid-cols-3 gap-2 bg-green-950/5">
+            <div className="p-3 border-b border-green-900/30 grid grid-cols-4 gap-2 bg-green-950/5">
                 <button
                         onClick={handleValidate}
                         className="bg-green-900/20 border border-green-700/50 hover:bg-green-900/40 text-green-400 px-2 py-2 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
@@ -110,7 +115,14 @@ export const DebugPanel: React.FC = () => {
                     className="bg-amber-900/20 border border-amber-700/50 hover:bg-amber-900/40 text-amber-400 px-2 py-2 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
                 >
                     <DollarSign className="w-3 h-3" />
-                    +1000
+                    +$1000
+                </button>
+                <button
+                    onClick={handleAddEssence}
+                    className="bg-purple-900/20 border border-purple-700/50 hover:bg-purple-900/40 text-purple-400 px-2 py-2 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
+                >
+                    <Sparkles className="w-3 h-3" />
+                    +精魄
                 </button>
             </div>
 
