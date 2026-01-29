@@ -1,4 +1,4 @@
-ID,Name,Type,Value_Impact,Detect_Diff,Story_Text,Dialogue_Player,Dialogue_Customer
+﻿ID,Name,Type,Value_Impact,Detect_Diff,Story_Text,Dialogue_Player,Dialogue_Customer
 trait_engraving,背面刻字,STORY,0.05,0.3,表壳背面刻着"赠吾友守义"几个小字。,这表背后刻着字……,那是我父亲留给我的……
 trait_inscription,内圈铭文,STORY,0.05,0.4,戒指内圈刻着一行拉丁文。,戒指内侧有字……,是我们的结婚誓言。
 trait_signature,隐藏签名,STORY,0.1,0.6,画面角落藏着画家的签名。,这里好像有签名……,我也是第一次注意到。

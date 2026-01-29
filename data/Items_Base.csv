@@ -1,4 +1,4 @@
-ID,Name_Default,Name_Restored,Name_Reforged,Category,Real_Value,Visual_Value,Uncertainty,Init_State_Tags,Attr_Tags,Hidden_Traits,Know_Cap,Desc_Default,Desc_Restored,Desc_Reforged
+﻿ID,Name_Default,Name_Restored,Name_Reforged,Category,Real_Value,Visual_Value,Uncertainty,Init_State_Tags,Attr_Tags,Hidden_Traits,Know_Cap,Desc_Default,Desc_Restored,Desc_Reforged
 item_watch_01,停摆的旧表,精工润滑的怀表,维多利亚时期金表,钟表,500,500,0.3,BROKEN,MECHANICAL;VINTAGE_REAL,trait_engraving,100,一块老式怀表，指针停在三点整，表壳上有岁月的痕迹。,机芯经过精心养护，指针走时精准，黄铜表壳散发出温润的光泽。,表壳内侧隐约可见皇室徽记，这是一块有故事的古董。
 item_ring_01,蒙尘的戒指,抛光银戒,名门传家宝,首饰,300,350,0.25,DIRTY,GOLD;SENTIMENTAL,trait_inscription,80,一枚银质戒指，表面蒙着灰尘，但能感受到它的分量。,戒指经过抛光，银面如镜，内圈刻着的字迹清晰可见。,据考证这是某个名门望族的传家之物，有着百年历史。
 item_painting_01,褪色的油画,修复的风景画,失落大师真迹,艺术品,800,600,0.4,DIRTY;RUSTED,ARTISTIC;VINTAGE_REAL,trait_signature;trait_hidden_layer,150,画框斑驳，画面颜色已经褪去大半，但构图依然优美。,清洗修复后，画面重现昔日风采，笔触细腻，意境深远。,经专家鉴定，这是一幅失传已久的大师早期作品。
