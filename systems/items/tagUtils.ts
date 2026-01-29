@@ -1,0 +1,347 @@
+/**
+ * 标签工具函数 (Tag Utilities)
+ *
+ * 提供标签操作的核心函数：
+ * - 添加/移除标签
+ * - 计算标签加成后的价值
+ * - 获取当前应显示的变体
+ */
+
+import { Item } from './types';
+import { ItemTag, ItemVariant, KnowledgePool, isStateTag, isAttributeTag, isEssenceTag } from './tags';
+import { TAG_DEFINITIONS, getTagDefinition } from './tagData';
+import { EssenceCost } from '../economy/essence';
+
+// ============================================================================
+// 标签操作
+// ============================================================================
+
+/**
+ * 添加标签到物品
+ * @returns 新的物品对象（不修改原对象）
+ */
+export function addTag(item: Item, tag: ItemTag): Item {
+  const currentTags = item.tags || [];
+
+  // 如果已有该标签，直接返回
+  if (currentTags.includes(tag)) {
+    return item;
+  }
+
+  return {
+    ...item,
+    tags: [...currentTags, tag],
+  };
+}
+
+/**
+ * 从物品移除标签
+ * @returns 新的物品对象（不修改原对象）
+ */
+export function removeTag(item: Item, tag: ItemTag): Item {
+  const currentTags = item.tags || [];
+
+  // 如果没有该标签，直接返回
+  if (!currentTags.includes(tag)) {
+    return item;
+  }
+
+  return {
+    ...item,
+    tags: currentTags.filter(t => t !== tag),
+  };
+}
+
+/**
+ * 检查物品是否拥有指定的所有标签
+ */
+export function hasTags(item: Item, tags: ItemTag[]): boolean {
+  const currentTags = item.tags || [];
+  return tags.every(tag => currentTags.includes(tag));
+}
+
+/**
+ * 检查物品是否拥有指定的任一标签
+ */
+export function hasAnyTag(item: Item, tags: ItemTag[]): boolean {
+  const currentTags = item.tags || [];
+  return tags.some(tag => currentTags.includes(tag));
+}
+
+/**
+ * 获取物品的所有状态标签
+ */
+export function getStateTags(item: Item): ItemTag[] {
+  return (item.tags || []).filter(isStateTag);
+}
+
+/**
+ * 获取物品的所有属性标签
+ */
+export function getAttributeTags(item: Item): ItemTag[] {
+  return (item.tags || []).filter(isAttributeTag);
+}
+
+/**
+ * 获取物品的所有本质标签
+ */
+export function getEssenceTags(item: Item): ItemTag[] {
+  return (item.tags || []).filter(isEssenceTag);
+}
+
+/**
+ * 获取物品的负面标签
+ */
+export function getNegativeTagsOnItem(item: Item): ItemTag[] {
+  return (item.tags || []).filter(tag => {
+    const def = getTagDefinition(tag);
+    return def.isNegative;
+  });
+}
+
+/**
+ * 获取物品的可移除标签（可被修复的标签）
+ */
+export function getRemovableTagsOnItem(item: Item): ItemTag[] {
+  return (item.tags || []).filter(tag => {
+    const def = getTagDefinition(tag);
+    return def.canBeRemoved;
+  });
+}
+
+// ============================================================================
+// 价值计算
+// ============================================================================
+
+/**
+ * 计算标签加成后的物品价值
+ *
+ * 公式：最终价值 = 基础价值 × ∏(所有激活标签的价值系数)
+ *
+ * @param item 物品
+ * @returns 计算后的价值
+ */
+export function calculateTaggedValue(item: Item): number {
+  // 使用 baseValue 或 realValue 作为基础
+  const baseValue = item.baseValue ?? item.realValue;
+  const tags = item.tags || [];
+
+  if (tags.length === 0) {
+    return baseValue;
+  }
+
+  // 计算所有标签的价值系数乘积
+  const multiplier = tags.reduce((acc, tag) => {
+    const def = getTagDefinition(tag);
+    return acc * def.valueMultiplier;
+  }, 1);
+
+  return Math.round(baseValue * multiplier);
+}
+
+/**
+ * 获取物品的价值系数（所有标签的乘积）
+ */
+export function getValueMultiplier(item: Item): number {
+  const tags = item.tags || [];
+
+  if (tags.length === 0) {
+    return 1;
+  }
+
+  return tags.reduce((acc, tag) => {
+    const def = getTagDefinition(tag);
+    return acc * def.valueMultiplier;
+  }, 1);
+}
+
+// ============================================================================
+// 变体系统
+// ============================================================================
+
+/**
+ * 获取当前应显示的变体
+ *
+ * 优先级顺序：
+ * 1. 重铸态 (Essence): priority 100+
+ * 2. 破损态 (State - Negative): priority 50-99
+ * 3. 修复态 (State - Restored): priority 20-49
+ * 4. 默认态 (Default): priority 0-19
+ *
+ * @param item 物品
+ * @returns 匹配的变体，如果没有匹配返回 null
+ */
+export function getActiveVariant(item: Item): ItemVariant | null {
+  const variants = item.variants || [];
+  const tags = item.tags || [];
+
+  if (variants.length === 0) {
+    return null;
+  }
+
+  // 筛选满足条件的变体
+  const matchingVariants = variants.filter(variant => {
+    // 检查触发条件
+    const hasTriggerTags = variant.triggerTags.every(t => tags.includes(t));
+    if (!hasTriggerTags) return false;
+
+    // 检查排除条件
+    if (variant.excludeTags) {
+      const hasExcludeTags = variant.excludeTags.some(t => tags.includes(t));
+      if (hasExcludeTags) return false;
+    }
+
+    return true;
+  });
+
+  if (matchingVariants.length === 0) {
+    return null;
+  }
+
+  // 返回优先级最高的变体
+  return matchingVariants.reduce((best, current) =>
+    current.priority > best.priority ? current : best
+  );
+}
+
+/**
+ * 获取物品的显示名称
+ * 如果有激活的变体，使用变体名称；否则使用原始名称
+ */
+export function getDisplayName(item: Item): string {
+  const variant = getActiveVariant(item);
+  return variant?.name ?? item.name;
+}
+
+/**
+ * 获取物品的显示描述
+ * 如果有激活的变体，使用变体描述；否则使用原始描述
+ */
+export function getDisplayDescription(item: Item): string {
+  const variant = getActiveVariant(item);
+  return variant?.description ?? item.visualDescription;
+}
+
+// ============================================================================
+// 知识池相关
+// ============================================================================
+
+/**
+ * 根据物品的属性标签计算知识池的产出配比
+ */
+export function calculateEssenceYieldFromTags(item: Item): EssenceCost {
+  const attributeTags = getAttributeTags(item);
+
+  if (attributeTags.length === 0) {
+    // 没有属性标签，默认平均分配
+    return { craft: 0.34, time: 0.33, vibe: 0.33 };
+  }
+
+  // 收集所有属性标签的产出配比
+  let totalCraft = 0;
+  let totalTime = 0;
+  let totalVibe = 0;
+  let count = 0;
+
+  for (const tag of attributeTags) {
+    const def = getTagDefinition(tag);
+    if (def.essenceYield) {
+      totalCraft += def.essenceYield.craft || 0;
+      totalTime += def.essenceYield.time || 0;
+      totalVibe += def.essenceYield.vibe || 0;
+      count++;
+    }
+  }
+
+  if (count === 0) {
+    return { craft: 0.34, time: 0.33, vibe: 0.33 };
+  }
+
+  // 平均并归一化
+  const total = totalCraft + totalTime + totalVibe;
+  if (total === 0) {
+    return { craft: 0.34, time: 0.33, vibe: 0.33 };
+  }
+
+  return {
+    craft: totalCraft / total,
+    time: totalTime / total,
+    vibe: totalVibe / total,
+  };
+}
+
+/**
+ * 初始化物品的知识池
+ * @param item 物品
+ * @param capacity 知识池容量（默认100）
+ */
+export function initializeKnowledgePool(item: Item, capacity: number = 100): Item {
+  const essenceYield = calculateEssenceYieldFromTags(item);
+
+  return {
+    ...item,
+    knowledgePool: {
+      capacity,
+      extracted: 0,
+      essenceYield,
+    },
+  };
+}
+
+/**
+ * 检查物品是否已被完全"榨干"（知识池耗尽）
+ */
+export function isKnowledgePoolDepleted(item: Item): boolean {
+  if (!item.knowledgePool) return false;
+  return item.knowledgePool.extracted >= item.knowledgePool.capacity;
+}
+
+/**
+ * 获取知识池剩余量
+ */
+export function getRemainingKnowledge(item: Item): number {
+  if (!item.knowledgePool) return 0;
+  return item.knowledgePool.capacity - item.knowledgePool.extracted;
+}
+
+// ============================================================================
+// 标签显示
+// ============================================================================
+
+/**
+ * 获取标签的显示信息
+ */
+export function getTagDisplayInfo(tag: ItemTag): {
+  name: string;
+  icon: string;
+  description: string;
+  isNegative: boolean;
+} {
+  const def = getTagDefinition(tag);
+  return {
+    name: def.displayName,
+    icon: def.icon || '🏷️',
+    description: def.description,
+    isNegative: def.isNegative || false,
+  };
+}
+
+/**
+ * 获取物品所有标签的显示信息
+ */
+export function getItemTagsDisplay(item: Item): Array<{
+  tag: ItemTag;
+  name: string;
+  icon: string;
+  isNegative: boolean;
+}> {
+  return (item.tags || []).map(tag => {
+    const def = getTagDefinition(tag);
+    return {
+      tag,
+      name: def.displayName,
+      icon: def.icon || '🏷️',
+      isNegative: def.isNegative || false,
+    };
+  });
+}

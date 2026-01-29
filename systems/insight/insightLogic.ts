@@ -1,0 +1,334 @@
+/**
+ * 格物系统核心逻辑 (Insight System Logic)
+ *
+ * 提供格物操作的核心函数：
+ * - 检查是否可以格物
+ * - 执行格物操作
+ * - 计算顿悟条件
+ * - 生成格物叙事文本
+ */
+
+import { Item, ItemStatus } from '../items/types';
+import { KnowledgePool } from '../items/tags';
+import { EssenceCost } from '../economy/essence';
+import { NightState } from '../game/types';
+import { GAME_CONFIG } from '../game/config';
+import {
+  InsightResult,
+  InsightStatus,
+  InsightBlockReason,
+  InsightNarrative,
+} from './types';
+import {
+  calculateEssenceYieldFromTags,
+  initializeKnowledgePool,
+  getRemainingKnowledge,
+  isKnowledgePoolDepleted,
+} from '../items/tagUtils';
+import { calculateEssenceGain } from '../economy/essenceUtils';
+
+// ============================================================================
+// 配置读取
+// ============================================================================
+
+const getInsightConfig = () => ({
+  energyCost: GAME_CONFIG.NIGHT.INSIGHT_ENERGY_COST,
+  extractionRate: GAME_CONFIG.NIGHT.INSIGHT_EXTRACTION_RATE,
+  epiphanyBonusRatio: GAME_CONFIG.NIGHT.EPIPHANY_BONUS_RATIO,
+  defaultCapacity: GAME_CONFIG.NIGHT.DEFAULT_KNOWLEDGE_CAPACITY,
+});
+
+// ============================================================================
+// 检查函数
+// ============================================================================
+
+/**
+ * 检查物品是否可以被格物
+ *
+ * @param item 物品
+ * @param nightState 夜间状态
+ * @returns 格物状态
+ */
+export function getInsightStatus(item: Item, nightState: NightState): InsightStatus {
+  const config = getInsightConfig();
+
+  // 确保物品有知识池
+  const pool = item.knowledgePool || {
+    capacity: config.defaultCapacity,
+    extracted: 0,
+    essenceYield: calculateEssenceYieldFromTags(item),
+  };
+
+  const remaining = pool.capacity - pool.extracted;
+  const progress = pool.extracted / pool.capacity;
+  const nearEpiphany = remaining <= config.extractionRate;
+
+  // 检查各种阻止条件
+  let canInsight = true;
+  let reason: InsightBlockReason | undefined;
+
+  // 物品状态检查
+  if (item.status === ItemStatus.REDEEMED) {
+    canInsight = false;
+    reason = 'ITEM_REDEEMED';
+  } else if (item.status === ItemStatus.SOLD) {
+    canInsight = false;
+    reason = 'ITEM_SOLD';
+  }
+  // 知识池检查
+  else if (isKnowledgePoolDepleted(item)) {
+    canInsight = false;
+    reason = 'DEPLETED';
+  }
+  // 今晚已格物检查
+  else if (item.insightedTonight) {
+    canInsight = false;
+    reason = 'ALREADY_INSIGHTED';
+  }
+  // 精力检查
+  else if (nightState.energy < config.energyCost) {
+    canInsight = false;
+    reason = 'NO_ENERGY';
+  }
+
+  return {
+    canInsight,
+    reason,
+    progress,
+    remainingKnowledge: remaining,
+    estimatedYield: pool.essenceYield,
+    nearEpiphany,
+  };
+}
+
+/**
+ * 简化的可格物检查
+ */
+export function canInsight(item: Item, nightState: NightState): boolean {
+  return getInsightStatus(item, nightState).canInsight;
+}
+
+// ============================================================================
+// 执行格物
+// ============================================================================
+
+/**
+ * 执行格物操作
+ *
+ * @param item 物品（将被修改）
+ * @param nightState 夜间状态（用于检查）
+ * @returns 格物结果，如果无法格物返回 null
+ */
+export function performInsight(
+  item: Item,
+  nightState: NightState
+): { result: InsightResult; updatedItem: Item } | null {
+  const status = getInsightStatus(item, nightState);
+
+  if (!status.canInsight) {
+    return null;
+  }
+
+  const config = getInsightConfig();
+
+  // 确保物品有知识池
+  let workingItem = item.knowledgePool
+    ? item
+    : initializeKnowledgePool(item, config.defaultCapacity);
+
+  const pool = workingItem.knowledgePool!;
+  const remaining = getRemainingKnowledge(workingItem);
+
+  // 计算实际提取量（不超过剩余量）
+  const extractedAmount = Math.min(config.extractionRate, remaining);
+
+  // 计算产出精魄
+  const essenceGained = calculateEssenceGain(extractedAmount, pool.essenceYield);
+
+  // 检查是否触发顿悟
+  const newExtracted = pool.extracted + extractedAmount;
+  const isEpiphany = newExtracted >= pool.capacity;
+
+  // 计算顿悟奖励
+  let bonusEssence: EssenceCost | undefined;
+  if (isEpiphany) {
+    bonusEssence = calculateEssenceGain(
+      extractedAmount * config.epiphanyBonusRatio,
+      pool.essenceYield
+    );
+  }
+
+  // 更新物品状态
+  const updatedItem: Item = {
+    ...workingItem,
+    knowledgePool: {
+      ...pool,
+      extracted: newExtracted,
+    },
+    insightedTonight: true,
+  };
+
+  const result: InsightResult = {
+    essenceGained,
+    isEpiphany,
+    energyRefunded: isEpiphany, // 顿悟时返还精力
+    bonusEssence,
+    extractedAmount,
+    remainingKnowledge: pool.capacity - newExtracted,
+  };
+
+  return { result, updatedItem };
+}
+
+// ============================================================================
+// 顿悟系统
+// ============================================================================
+
+/**
+ * 检查物品是否即将触发顿悟
+ *
+ * @param item 物品
+ * @returns 是否接近顿悟
+ */
+export function isNearEpiphany(item: Item): boolean {
+  if (!item.knowledgePool) return false;
+
+  const config = getInsightConfig();
+  const remaining = getRemainingKnowledge(item);
+
+  return remaining > 0 && remaining <= config.extractionRate;
+}
+
+/**
+ * 计算达到顿悟还需要多少次格物
+ *
+ * @param item 物品
+ * @returns 还需要的格物次数
+ */
+export function getInsightsToEpiphany(item: Item): number {
+  if (!item.knowledgePool) {
+    const config = getInsightConfig();
+    return Math.ceil(config.defaultCapacity / config.extractionRate);
+  }
+
+  const remaining = getRemainingKnowledge(item);
+  if (remaining <= 0) return 0;
+
+  const config = getInsightConfig();
+  return Math.ceil(remaining / config.extractionRate);
+}
+
+// ============================================================================
+// 叙事生成
+// ============================================================================
+
+/**
+ * 根据物品和结果生成格物叙事
+ *
+ * 设计原则（来自D1）：叙事提醒玩家这是"有主之物"，
+ * 但不做道德评判，让玩家自己体会。
+ */
+export function getInsightNarrative(
+  item: Item,
+  result: InsightResult
+): InsightNarrative {
+  // 根据物品属性标签选择合适的描述
+  const tags = item.tags || [];
+
+  // 基础行为描述
+  let actionText = `你在灯下仔细端详着${item.name}...`;
+
+  // 根据标签生成发现描述
+  let discoveryText: string;
+
+  if (tags.includes('MECHANICAL')) {
+    discoveryText = '精密的机械结构让你对工艺有了更深的理解。';
+  } else if (tags.includes('GOLD')) {
+    discoveryText = '贵金属的质感与重量，让你对材质工艺有了新的认识。';
+  } else if (tags.includes('VINTAGE_REAL')) {
+    discoveryText = '岁月在这件物品上留下的痕迹，诉说着一段无声的历史。';
+  } else if (tags.includes('SENTIMENTAL')) {
+    discoveryText = '你仿佛能感受到物品主人曾经的情感寄托。';
+  } else if (tags.includes('ARTISTIC')) {
+    discoveryText = '艺术的美感让你的感知变得更加敏锐。';
+  } else if (tags.includes('TRENDY')) {
+    discoveryText = '你理解了这件物品为何能引起时下的追捧。';
+  } else {
+    discoveryText = '你从中获得了一些领悟。';
+  }
+
+  // 顿悟描述
+  let epiphanyText: string | undefined;
+  if (result.isEpiphany) {
+    epiphanyText = `你已经完全理解了这件${item.name}的一切秘密。它对你而言，不再有任何未知。`;
+
+    // D1: 微妙的道德提醒（不做评判）
+    if (item.status === ItemStatus.ACTIVE && item.pawnInfo) {
+      epiphanyText += '\n...只是，这件物品的主人还在等着它。';
+    }
+  }
+
+  return {
+    actionText,
+    discoveryText,
+    epiphanyText,
+  };
+}
+
+// ============================================================================
+// 工具函数
+// ============================================================================
+
+/**
+ * 获取格物受阻原因的显示文本
+ */
+export function getBlockReasonText(reason: InsightBlockReason): string {
+  switch (reason) {
+    case 'NO_ENERGY':
+      return '精力不足';
+    case 'ALREADY_INSIGHTED':
+      return '今晚已研究过';
+    case 'DEPLETED':
+      return '已被研究透彻';
+    case 'NOT_IN_INVENTORY':
+      return '物品不在库存中';
+    case 'ITEM_REDEEMED':
+      return '物品已被赎回';
+    case 'ITEM_SOLD':
+      return '物品已售出';
+    default:
+      return '无法研究';
+  }
+}
+
+/**
+ * 获取物品可以产出的主要精魄类型
+ */
+export function getPrimaryEssenceType(
+  item: Item
+): 'CRAFT' | 'TIME' | 'VIBE' | 'BALANCED' {
+  const pool = item.knowledgePool;
+  const yieldRatios = pool?.essenceYield || calculateEssenceYieldFromTags(item);
+
+  const craft = yieldRatios.craft || 0;
+  const time = yieldRatios.time || 0;
+  const vibe = yieldRatios.vibe || 0;
+
+  // 如果某种类型占比超过50%，认为是主要类型
+  if (craft >= 0.5) return 'CRAFT';
+  if (time >= 0.5) return 'TIME';
+  if (vibe >= 0.5) return 'VIBE';
+
+  return 'BALANCED';
+}
+
+/**
+ * 批量重置物品的"今晚已格物"标记
+ * 在新的夜晚开始时调用
+ */
+export function resetInsightedFlags(items: Item[]): Item[] {
+  return items.map(item => ({
+    ...item,
+    insightedTonight: false,
+  }));
+}

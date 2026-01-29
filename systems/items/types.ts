@@ -1,3 +1,4 @@
+import { ItemTag, ItemVariant, KnowledgePool } from './tags';
 
 export enum ItemStatus {
   ACTIVE = 'ACTIVE',       // Formerly PAWNED. In vault, interest accruing.
@@ -60,39 +61,52 @@ export interface Item {
   historySnippet: string;
   appraisalNote: string;
   archiveSummary: string;
-  
+
   isStolen: boolean;
   isFake: boolean;
-  isSuspicious?: boolean; 
+  isSuspicious?: boolean;
   sentimentalValue: boolean;
-  appraised: boolean; 
-  pawnDate: number; 
+  appraised: boolean;
+  pawnDate: number;
   status: ItemStatus;
 
   // --- VALUATION SYSTEM ---
   pawnAmount: number;     // The amount actually paid (Loan Principal)
   pawnInfo?: PawnInfo;    // Detailed contract info
-  
+
   realValue: number;      // The absolute truth
   perceivedValue?: number;// The illusion/anchor. Undefined means "Truth is known".
   uncertainty: number;    // 0.0 - 1.0
-  
+
   currentRange: [number, number]; // [Min, Max]
   initialRange: [number, number]; // [Min, Max]
-  
+
   hiddenTraits: ItemTrait[];    // Traits yet to be discovered
   revealedTraits: ItemTrait[];  // Traits found by player
   usedTraitIds: string[];       // Traits used in negotiation leverage (New)
-  
-  logs: ItemLogEntry[]; 
-  
+
+  logs: ItemLogEntry[];
+
   // Appraisal State
   appraisalCount?: number;
   hasNegativeAppraisalEvent?: boolean;
 
   // Chain Linkage
   relatedChainId?: string; // Links item to a specific story chain
-  
+
   // Logic Flags
   isVirtual?: boolean; // If true, item is never added to inventory
+
+  // --- TAG & VARIANT SYSTEM (夜间玩法) ---
+  tags?: ItemTag[];              // 当前标签列表
+  variants?: ItemVariant[];      // 变体配置（预设的名字+描述组合）
+  baseValue?: number;            // 基础价值（用于标签系数计算）
+
+  // --- KNOWLEDGE POOL (格物系统) ---
+  knowledgePool?: KnowledgePool; // 知识池（格物时提取点数）
+  insightedTonight?: boolean;    // 今晚是否已格物（每夜重置）
+
+  // --- WORKSHOP FLAGS (工作台系统) ---
+  wasRestored?: boolean;         // 是否被修复过
+  wasReforged?: boolean;         // 是否被重铸过（用于检测所有权冲突）
 }

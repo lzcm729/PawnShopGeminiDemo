@@ -4,7 +4,7 @@ import { EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT, UND
 export const GAME_CONFIG = {
   // --- ECONOMY STARTING STATE ---
   INITIAL_FUNDS: 10000,
-  
+
   // --- SURVIVAL MECHANICS ---
   GOAL_AMOUNT: 100000,       // 终极目标 (Surgery Cost)
   WEEKLY_MEDICAL_COST: 1000, // 每周医药费
@@ -12,6 +12,15 @@ export const GAME_CONFIG = {
   WEEKLY_RENT: 0,            // 店铺周租 (DISABLED: Game focus is on Medical Bill)
   RENT_CYCLE: 7,             // 租金缴纳周期 (Days)
   DAILY_EXPENSES: 50,        // 每日运营/生活成本 (Burn Rate)
+
+  // --- NIGHT PHASE (夜间玩法) ---
+  NIGHT: {
+    BASE_ENERGY: 3,                    // 每晚基础精力
+    INSIGHT_ENERGY_COST: 1,            // 格物消耗精力
+    DEFAULT_KNOWLEDGE_CAPACITY: 100,   // 默认知识池容量 (D3: 确保需多夜才能顿悟)
+    INSIGHT_EXTRACTION_RATE: 20,       // 每次格物提取量
+    EPIPHANY_BONUS_RATIO: 0.2,         // 顿悟额外奖励比例
+  },
   
   INITIAL_MOTHER_STATUS: {
       health: 80,

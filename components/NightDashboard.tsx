@@ -3,11 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Moon, Mail, Package, Calendar, Power, Coffee, Activity, AlertCircle, Heart } from 'lucide-react';
+import { Moon, Mail, Package, Calendar, Power, Coffee, Activity, AlertCircle, Heart, Eye, Wrench } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
 import { getBedtimeMonologue } from '../systems/narrative/innerVoiceRegistry';
+import { InsightPanel } from './night/InsightPanel';
+import { WorkshopPanel } from './night/WorkshopPanel';
 
 export const NightDashboard: React.FC = () => {
     const { state, dispatch } = useGame();
@@ -16,6 +18,8 @@ export const NightDashboard: React.FC = () => {
 
     const [showMonologue, setShowMonologue] = useState(false);
     const [monologueText, setMonologueText] = useState("");
+    const [showInsightPanel, setShowInsightPanel] = useState(false);
+    const [showWorkshopPanel, setShowWorkshopPanel] = useState(false);
 
     const unreadMail = inbox.filter(m => !m.isRead).length;
     // Count only items actually in inventory (ACTIVE or FORFEIT), not REDEEMED/SOLD
@@ -142,19 +146,51 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </button>
 
-                        {/* NEW: Visit Hospital Button */}
+                        {/* Insight / 格物 Button */}
+                        <button
+                            onClick={() => { playSfx('CLICK'); setShowInsightPanel(true); }}
+                            className="h-32 border border-purple-900 bg-stone-900/50 hover:bg-purple-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group"
+                        >
+                            <Eye className="w-8 h-8 text-purple-500 group-hover:text-purple-300 group-hover:scale-110 transition-transform" />
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs uppercase tracking-widest group-hover:text-white">
+                                    格物 (Insight)
+                                </span>
+                                <span className="text-[9px] text-purple-500/70 mt-1">
+                                    研究物品获取精魄
+                                </span>
+                            </div>
+                        </button>
+
+                        {/* Workshop / 工作台 Button */}
+                        <button
+                            onClick={() => { playSfx('CLICK'); setShowWorkshopPanel(true); }}
+                            className="h-32 border border-amber-900 bg-stone-900/50 hover:bg-amber-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group"
+                        >
+                            <Wrench className="w-8 h-8 text-amber-500 group-hover:text-amber-300 group-hover:scale-110 transition-transform" />
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs uppercase tracking-widest group-hover:text-white">
+                                    工作台 (Workshop)
+                                </span>
+                                <span className="text-[9px] text-amber-500/70 mt-1">
+                                    修复与重铸物品
+                                </span>
+                            </div>
+                        </button>
+
+                        {/* Visit Hospital Button */}
                         <button
                             onClick={() => dispatch({ type: 'TOGGLE_VISIT' })}
                             disabled={stats.visitedToday}
                             className={cn(
-                                "h-32 border bg-stone-900/50 hover:bg-stone-800 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden col-span-2",
+                                "h-32 border bg-stone-900/50 hover:bg-stone-800 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden col-span-3",
                                 stats.visitedToday ? "border-stone-800 opacity-50 grayscale" : "border-blue-900 hover:border-blue-700"
                             )}
                         >
                             <Heart className={cn("w-8 h-8 transition-transform group-hover:scale-110", stats.visitedToday ? "text-stone-600" : "text-blue-500")} />
                             <div className="flex flex-col items-center">
                                 <span className={cn("text-xs uppercase tracking-widest font-bold", stats.visitedToday ? "text-stone-500" : "text-blue-200")}>
-                                    {stats.visitedToday ? "Visit Complete" : "Visit Hospital (Action)"}
+                                    {stats.visitedToday ? "Visit Complete" : "Visit Hospital"}
                                 </span>
                                 {!stats.visitedToday && (
                                     <span className="text-[9px] text-blue-500/70 mt-1">
@@ -190,6 +226,18 @@ export const NightDashboard: React.FC = () => {
                 </div>
 
             </div>
+
+            {/* Insight Panel Modal */}
+            <InsightPanel
+                isOpen={showInsightPanel}
+                onClose={() => setShowInsightPanel(false)}
+            />
+
+            {/* Workshop Panel Modal */}
+            <WorkshopPanel
+                isOpen={showWorkshopPanel}
+                onClose={() => setShowWorkshopPanel(false)}
+            />
         </div>
     );
 };

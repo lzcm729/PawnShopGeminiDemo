@@ -1,0 +1,416 @@
+/**
+ * 工作台面板 (Workshop Panel)
+ *
+ * 夜间工作台系统的UI组件，允许玩家修复和重铸物品。
+ */
+
+import React, { useState } from 'react';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
+import { useWorkshop } from '../../hooks/useWorkshop';
+import { cn } from '../../lib/utils';
+import { Item, ItemStatus } from '../../systems/items/types';
+import { CategoryIcon } from '../ui/CategoryIcon';
+import {
+  Wrench,
+  Zap,
+  Sparkles,
+  ChevronRight,
+  AlertCircle,
+  CheckCircle2,
+  Lock,
+  Hammer,
+  Wand2,
+} from 'lucide-react';
+import { ESSENCE_DISPLAY_NAMES, ESSENCE_ICONS, EssenceCost } from '../../systems/economy/essence';
+import { RecipeStatus, WorkshopResult, RestoreRecipe, ReforgeRecipe } from '../../systems/workshop/types';
+
+interface WorkshopPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose }) => {
+  const {
+    workshopableItems,
+    essenceBalance,
+    currentEnergy,
+    maxEnergy,
+    doRestore,
+    doReforge,
+    getReasonText,
+  } = useWorkshop();
+
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState<'restore' | 'reforge'>('restore');
+  const [lastResult, setLastResult] = useState<WorkshopResult | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const selectedItem = workshopableItems.find(w => w.item.id === selectedItemId);
+
+  const handleRestore = (recipeId: string) => {
+    if (!selectedItemId) return;
+    setIsProcessing(true);
+    const output = doRestore(selectedItemId, recipeId);
+    if (output?.success && output.result) {
+      setLastResult(output.result);
+    }
+    setIsProcessing(false);
+  };
+
+  const handleReforge = (recipeId: string) => {
+    if (!selectedItemId) return;
+    setIsProcessing(true);
+    const output = doReforge(selectedItemId, recipeId);
+    if (output?.success && output.result) {
+      setLastResult(output.result);
+    }
+    setIsProcessing(false);
+  };
+
+  const clearResult = () => {
+    setLastResult(null);
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Wrench className="w-5 h-5" />
+          工作台 (Workshop)
+        </span>
+      }
+      size="xl"
+    >
+      <div className="flex flex-col gap-6">
+        {/* Status Bar */}
+        <div className="flex items-center justify-between bg-noir-300/50 p-4 rounded border border-noir-400">
+          <div className="flex items-center gap-6">
+            {/* Energy */}
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-500" />
+              <div>
+                <div className="text-[10px] uppercase text-stone-500">精力</div>
+                <div className="text-lg font-mono text-amber-400">
+                  {currentEnergy} / {maxEnergy}
+                </div>
+              </div>
+            </div>
+
+            {/* Essence Balance */}
+            <div className="flex items-center gap-4">
+              <EssenceDisplay type="CRAFT" amount={essenceBalance.craft} />
+              <EssenceDisplay type="TIME" amount={essenceBalance.time} />
+              <EssenceDisplay type="VIBE" amount={essenceBalance.vibe} />
+            </div>
+          </div>
+        </div>
+
+        {/* Result Display */}
+        {lastResult && (
+          <div className={cn(
+            "p-6 rounded border animate-in fade-in slide-in-from-top-2 duration-300",
+            lastResult.type === 'RESTORE'
+              ? "bg-gradient-to-r from-emerald-950/50 to-noir-300/50 border-emerald-800"
+              : "bg-gradient-to-r from-purple-950/50 to-noir-300/50 border-purple-800"
+          )}>
+            <div className="flex justify-between items-start mb-4">
+              <h3 className={cn(
+                "text-lg font-serif flex items-center gap-2",
+                lastResult.type === 'RESTORE' ? "text-emerald-300" : "text-purple-300"
+              )}>
+                {lastResult.type === 'RESTORE' ? (
+                  <>
+                    <Hammer className="w-5 h-5" />
+                    修复完成
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-5 h-5" />
+                    重铸完成
+                  </>
+                )}
+              </h3>
+              <button
+                onClick={clearResult}
+                className="text-stone-500 hover:text-stone-300 text-xs"
+              >
+                关闭
+              </button>
+            </div>
+
+            {/* Narrative */}
+            <div className="space-y-2 mb-4 text-stone-300 text-sm italic">
+              <p>{lastResult.narrative.actionText}</p>
+              <p>{lastResult.narrative.resultText}</p>
+              {lastResult.narrative.moralNote && (
+                <p className="text-amber-300/80">{lastResult.narrative.moralNote}</p>
+              )}
+            </div>
+
+            {/* Value Change */}
+            {lastResult.newValue !== undefined && (
+              <div className="text-sm text-stone-400">
+                物品新价值: <span className="text-green-400 font-mono">${lastResult.newValue}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Main Content: Split View */}
+        <div className="grid grid-cols-3 gap-6 min-h-[400px]">
+          {/* Left: Item List */}
+          <div className="col-span-1 border-r border-noir-400 pr-4">
+            <h4 className="text-xs uppercase text-stone-500 tracking-wider mb-3">
+              库存物品 ({workshopableItems.length})
+            </h4>
+            <div className="space-y-2 max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
+              {workshopableItems.map(({ item, hasAnyOption }) => (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedItemId(item.id)}
+                  className={cn(
+                    "w-full p-3 rounded border text-left transition-all",
+                    selectedItemId === item.id
+                      ? "border-amber-600 bg-amber-950/30"
+                      : "border-noir-400 bg-noir-200 hover:bg-noir-300",
+                    !hasAnyOption && "opacity-50"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <CategoryIcon category={item.category} className="w-5 h-5 text-stone-500" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold truncate">{item.name}</div>
+                      <div className="text-[10px] text-stone-500">
+                        {item.status === ItemStatus.FORFEIT ? '流当 (自有)' : '典当中'}
+                      </div>
+                    </div>
+                    {hasAnyOption && <Sparkles className="w-4 h-4 text-amber-500" />}
+                  </div>
+                </button>
+              ))}
+
+              {workshopableItems.length === 0 && (
+                <div className="text-center py-8 text-stone-500">
+                  <Wrench className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">库存为空</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Recipe Panel */}
+          <div className="col-span-2">
+            {selectedItem ? (
+              <div>
+                {/* Item Header */}
+                <div className="flex items-center gap-3 mb-4 pb-4 border-b border-noir-400">
+                  <CategoryIcon category={selectedItem.item.category} className="w-8 h-8 text-stone-400" />
+                  <div>
+                    <h3 className="font-bold text-lg">{selectedItem.item.name}</h3>
+                    <div className="flex gap-2 mt-1">
+                      {selectedItem.item.tags?.map(tag => (
+                        <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-noir-400 rounded">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tab Switcher */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setSelectedTab('restore')}
+                    className={cn(
+                      "flex-1 py-2 text-sm rounded transition-all flex items-center justify-center gap-2",
+                      selectedTab === 'restore'
+                        ? "bg-emerald-900/50 text-emerald-300 border border-emerald-700"
+                        : "bg-noir-300 text-stone-400 border border-noir-400 hover:bg-noir-200"
+                    )}
+                  >
+                    <Hammer className="w-4 h-4" />
+                    修复 ({selectedItem.restoreOptions.filter(o => o.status.canApply).length})
+                  </button>
+                  <button
+                    onClick={() => setSelectedTab('reforge')}
+                    className={cn(
+                      "flex-1 py-2 text-sm rounded transition-all flex items-center justify-center gap-2",
+                      selectedTab === 'reforge'
+                        ? "bg-purple-900/50 text-purple-300 border border-purple-700"
+                        : "bg-noir-300 text-stone-400 border border-noir-400 hover:bg-noir-200"
+                    )}
+                  >
+                    <Wand2 className="w-4 h-4" />
+                    重铸 ({selectedItem.reforgeOptions.filter(o => o.status.canApply).length})
+                  </button>
+                </div>
+
+                {/* Recipe List */}
+                <div className="space-y-3 max-h-[280px] overflow-y-auto custom-scrollbar">
+                  {selectedTab === 'restore' ? (
+                    selectedItem.restoreOptions.map(({ recipe, status }) => (
+                      <RecipeCard
+                        key={recipe.id}
+                        recipe={recipe}
+                        status={status}
+                        type="restore"
+                        onApply={() => handleRestore(recipe.id)}
+                        isProcessing={isProcessing}
+                        getReasonText={getReasonText}
+                      />
+                    ))
+                  ) : (
+                    selectedItem.reforgeOptions.map(({ recipe, status }) => (
+                      <RecipeCard
+                        key={recipe.id}
+                        recipe={recipe}
+                        status={status}
+                        type="reforge"
+                        onApply={() => handleReforge(recipe.id)}
+                        isProcessing={isProcessing}
+                        getReasonText={getReasonText}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-stone-500">
+                <div className="text-center">
+                  <ChevronRight className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>选择一件物品开始</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+interface EssenceDisplayProps {
+  type: 'CRAFT' | 'TIME' | 'VIBE';
+  amount: number;
+}
+
+const EssenceDisplay: React.FC<EssenceDisplayProps> = ({ type, amount }) => {
+  return (
+    <div className="flex items-center gap-1">
+      <span>{ESSENCE_ICONS[type]}</span>
+      <span className="font-mono text-sm text-stone-300">{amount}</span>
+    </div>
+  );
+};
+
+interface RecipeCardProps {
+  recipe: RestoreRecipe | ReforgeRecipe;
+  status: RecipeStatus;
+  type: 'restore' | 'reforge';
+  onApply: () => void;
+  isProcessing: boolean;
+  getReasonText: (reason: string) => string;
+}
+
+const RecipeCard: React.FC<RecipeCardProps> = ({
+  recipe,
+  status,
+  type,
+  onApply,
+  isProcessing,
+  getReasonText,
+}) => {
+  const canApply = status.canApply;
+  const borderColor = type === 'restore' ? 'border-emerald-800' : 'border-purple-800';
+  const accentColor = type === 'restore' ? 'text-emerald-400' : 'text-purple-400';
+
+  return (
+    <div
+      className={cn(
+        "p-4 rounded border bg-noir-200 transition-all",
+        canApply ? borderColor : "border-noir-400 opacity-60"
+      )}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <div>
+          <h4 className={cn("font-bold", canApply ? accentColor : "text-stone-400")}>
+            {recipe.name}
+          </h4>
+          <p className="text-xs text-stone-500 mt-1">{recipe.description}</p>
+        </div>
+
+        {canApply ? (
+          <Button
+            onClick={onApply}
+            disabled={isProcessing}
+            className={cn(
+              "h-8 px-3 text-xs",
+              type === 'restore'
+                ? "bg-emerald-900 hover:bg-emerald-800 border-emerald-700"
+                : "bg-purple-900 hover:bg-purple-800 border-purple-700"
+            )}
+          >
+            {isProcessing ? '...' : '执行'}
+          </Button>
+        ) : (
+          <div className="flex items-center gap-1 text-xs text-red-400">
+            <Lock className="w-3 h-3" />
+            {status.reason && getReasonText(status.reason)}
+          </div>
+        )}
+      </div>
+
+      {/* Cost Display */}
+      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-noir-400">
+        <div className="text-[10px] text-stone-500 uppercase">成本:</div>
+        <CostDisplay cost={status.actualCost} deficit={status.deficit} />
+        <div className="text-[10px] text-stone-500 flex items-center gap-1">
+          <Zap className="w-3 h-3" />
+          {recipe.energyCost} 精力
+        </div>
+      </div>
+
+      {/* Risk Note (for reforge) */}
+      {'riskNote' in recipe && recipe.riskNote && (
+        <div className="mt-2 text-[10px] text-amber-500/70 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          {recipe.riskNote}
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface CostDisplayProps {
+  cost: EssenceCost;
+  deficit?: EssenceCost;
+}
+
+const CostDisplay: React.FC<CostDisplayProps> = ({ cost, deficit }) => {
+  const items: Array<{ type: 'CRAFT' | 'TIME' | 'VIBE'; amount: number; missing: number }> = [];
+
+  if (cost.craft) items.push({ type: 'CRAFT', amount: cost.craft, missing: deficit?.craft || 0 });
+  if (cost.time) items.push({ type: 'TIME', amount: cost.time, missing: deficit?.time || 0 });
+  if (cost.vibe) items.push({ type: 'VIBE', amount: cost.vibe, missing: deficit?.vibe || 0 });
+
+  return (
+    <div className="flex items-center gap-3">
+      {items.map(({ type, amount, missing }) => (
+        <div key={type} className="flex items-center gap-1">
+          <span className="text-sm">{ESSENCE_ICONS[type]}</span>
+          <span className={cn("text-xs font-mono", missing > 0 ? "text-red-400" : "text-stone-300")}>
+            {amount}
+            {missing > 0 && <span className="text-[10px]"> (-{missing})</span>}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};

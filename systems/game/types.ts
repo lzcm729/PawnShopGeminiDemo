@@ -5,6 +5,14 @@ import { Customer } from '../npc/types';
 import { TransactionRecord } from '../economy/types';
 import { EventChainState, MailInstance, SatisfactionLevel, ExpiryEvent } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier } from '../news/types';
+import { EssenceBalance } from '../economy/essence';
+
+// === NIGHT PHASE TYPES ===
+export interface NightState {
+  energy: number;              // 当前精力
+  maxEnergy: number;           // 精力上限
+  actionsThisNight: string[];  // 本夜已执行的操作
+}
 
 export interface DailyFinancialSnapshot {
   day: number;
@@ -59,4 +67,8 @@ export interface GameState {
   currentExpiryEvent: ExpiryEvent | null;  // 当前正在处理的到期事件
   expiryQueue: ExpiryEvent[];              // 待处理的到期事件队列
   coreLostItems: string[];                 // 已丢失的核心物品 ID 列表
+
+  // === NIGHT PHASE (夜间玩法) ===
+  essenceBalance: EssenceBalance;          // 精魄余额（匠心/旧影/灵韵）
+  nightState: NightState;                  // 夜间状态（精力/已执行操作）
 }

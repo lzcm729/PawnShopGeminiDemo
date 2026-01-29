@@ -8,6 +8,7 @@ import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../syste
 import { saveGame, clearSave } from '../systems/core/persistence';
 import { playSfx } from '../systems/game/audio';
 import { GAME_CONFIG } from '../systems/game/config';
+import { EssenceBalance, EssenceType, INITIAL_ESSENCE_BALANCE } from '../systems/economy/essence';
 
 // ... initialState ...
 const initialState: GameState = {
@@ -61,7 +62,14 @@ const initialState: GameState = {
   // === EXPIRY SYSTEM ===
   currentExpiryEvent: null,
   expiryQueue: [],
-  coreLostItems: []
+  coreLostItems: [],
+  // === NIGHT PHASE (夜间玩法) ===
+  essenceBalance: { ...INITIAL_ESSENCE_BALANCE },
+  nightState: {
+    energy: GAME_CONFIG.NIGHT.BASE_ENERGY,
+    maxEnergy: GAME_CONFIG.NIGHT.BASE_ENERGY,
+    actionsThisNight: [] as string[]
+  }
 };
 
 // ... Actions type definition ...
@@ -131,7 +139,18 @@ type Action =
   | { type: 'TRIGGER_EXPIRY_EVENT'; payload: ExpiryEvent }
   | { type: 'RESOLVE_EXPIRY'; payload: { choice: string; itemId: string; extensionDays?: number; extraFee?: number; salePrice?: number } }
   | { type: 'CLEAR_EXPIRY_EVENT' }
-  | { type: 'MARK_CORE_LOST'; payload: { itemId: string } };
+  | { type: 'MARK_CORE_LOST'; payload: { itemId: string } }
+  // === NIGHT PHASE ACTIONS (夜间玩法) ===
+  | { type: 'ADD_ESSENCE'; payload: { essenceType: EssenceType; amount: number } }
+  | { type: 'ADD_ESSENCE_BATCH'; payload: Partial<EssenceBalance> }
+  | { type: 'SPEND_ESSENCE'; payload: { essenceType: EssenceType; amount: number } }
+  | { type: 'SPEND_ESSENCE_BATCH'; payload: Partial<EssenceBalance> }
+  | { type: 'CONSUME_NIGHT_ENERGY'; payload: number }
+  | { type: 'RESET_NIGHT_STATE' }
+  | { type: 'MARK_ITEM_INSIGHTED'; payload: { itemId: string; knowledgePool: import('../systems/items/tags').KnowledgePool } }
+  | { type: 'RESET_NIGHTLY_INSIGHT_FLAGS' }
+  | { type: 'RECORD_NIGHT_ACTION'; payload: string }
+  | { type: 'UPDATE_ITEM_TAGS'; payload: { itemId: string; tags?: import('../systems/items/tags').ItemTag[]; wasRestored?: boolean; wasReforged?: boolean } };
 
 const gameReducer = (state: GameState, action: Action): GameState => {
   switch (action.type) {
@@ -643,6 +662,147 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         return {
             ...state,
             coreLostItems: [...state.coreLostItems, itemId]
+        };
+    }
+
+    // === NIGHT PHASE REDUCERS (夜间玩法) ===
+    case 'ADD_ESSENCE': {
+        const { essenceType, amount } = action.payload;
+        const key = essenceType.toLowerCase() as keyof EssenceBalance;
+        return {
+            ...state,
+            essenceBalance: {
+                ...state.essenceBalance,
+                [key]: state.essenceBalance[key] + amount
+            }
+        };
+    }
+
+    case 'ADD_ESSENCE_BATCH': {
+        const gains = action.payload;
+        return {
+            ...state,
+            essenceBalance: {
+                craft: state.essenceBalance.craft + (gains.craft || 0),
+                time: state.essenceBalance.time + (gains.time || 0),
+                vibe: state.essenceBalance.vibe + (gains.vibe || 0)
+            }
+        };
+    }
+
+    case 'SPEND_ESSENCE': {
+        const { essenceType, amount } = action.payload;
+        const key = essenceType.toLowerCase() as keyof EssenceBalance;
+        const newAmount = state.essenceBalance[key] - amount;
+        if (newAmount < 0) {
+            console.warn('SPEND_ESSENCE: Insufficient essence');
+            return state;
+        }
+        return {
+            ...state,
+            essenceBalance: {
+                ...state.essenceBalance,
+                [key]: newAmount
+            }
+        };
+    }
+
+    case 'SPEND_ESSENCE_BATCH': {
+        const costs = action.payload;
+        const newCraft = state.essenceBalance.craft - (costs.craft || 0);
+        const newTime = state.essenceBalance.time - (costs.time || 0);
+        const newVibe = state.essenceBalance.vibe - (costs.vibe || 0);
+        if (newCraft < 0 || newTime < 0 || newVibe < 0) {
+            console.warn('SPEND_ESSENCE_BATCH: Insufficient essence');
+            return state;
+        }
+        return {
+            ...state,
+            essenceBalance: {
+                craft: newCraft,
+                time: newTime,
+                vibe: newVibe
+            }
+        };
+    }
+
+    case 'CONSUME_NIGHT_ENERGY': {
+        const amount = action.payload;
+        const newEnergy = state.nightState.energy - amount;
+        if (newEnergy < 0) {
+            console.warn('CONSUME_NIGHT_ENERGY: Insufficient energy');
+            return state;
+        }
+        return {
+            ...state,
+            nightState: {
+                ...state.nightState,
+                energy: newEnergy
+            }
+        };
+    }
+
+    case 'RESET_NIGHT_STATE': {
+        return {
+            ...state,
+            nightState: {
+                energy: state.nightState.maxEnergy,
+                maxEnergy: state.nightState.maxEnergy,
+                actionsThisNight: []
+            }
+        };
+    }
+
+    case 'MARK_ITEM_INSIGHTED': {
+        const { itemId, knowledgePool } = action.payload;
+        return {
+            ...state,
+            inventory: state.inventory.map(item =>
+                item.id === itemId
+                    ? { ...item, insightedTonight: true, knowledgePool }
+                    : item
+            ),
+            nightState: {
+                ...state.nightState,
+                actionsThisNight: [...state.nightState.actionsThisNight, `insight:${itemId}`]
+            }
+        };
+    }
+
+    case 'RECORD_NIGHT_ACTION': {
+        return {
+            ...state,
+            nightState: {
+                ...state.nightState,
+                actionsThisNight: [...state.nightState.actionsThisNight, action.payload]
+            }
+        };
+    }
+
+    case 'RESET_NIGHTLY_INSIGHT_FLAGS': {
+        return {
+            ...state,
+            inventory: state.inventory.map(item => ({
+                ...item,
+                insightedTonight: false
+            }))
+        };
+    }
+
+    case 'UPDATE_ITEM_TAGS': {
+        const { itemId, tags, wasRestored, wasReforged } = action.payload;
+        return {
+            ...state,
+            inventory: state.inventory.map(item =>
+                item.id === itemId
+                    ? {
+                        ...item,
+                        tags: tags !== undefined ? tags : item.tags,
+                        wasRestored: wasRestored !== undefined ? wasRestored : item.wasRestored,
+                        wasReforged: wasReforged !== undefined ? wasReforged : item.wasReforged,
+                    }
+                    : item
+            )
         };
     }
 
