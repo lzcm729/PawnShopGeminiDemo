@@ -97,76 +97,8 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
           </div>
         </div>
 
-        {/* Result Display */}
-        {lastResult && (
-          <div className="bg-gradient-to-r from-purple-950/50 to-noir-300/50 p-6 rounded border border-purple-800 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-serif text-purple-300 flex items-center gap-2">
-                {lastResult.result.isEpiphany ? (
-                  <>
-                    <Sparkles className="w-5 h-5 text-yellow-400" />
-                    顿悟！
-                  </>
-                ) : (
-                  <>
-                    <BookOpen className="w-5 h-5" />
-                    格物完成
-                  </>
-                )}
-              </h3>
-              <button
-                onClick={clearResult}
-                className="text-stone-500 hover:text-stone-300 text-xs"
-              >
-                关闭
-              </button>
-            </div>
-
-            {/* Narrative */}
-            <div className="space-y-2 mb-4 text-stone-300 text-sm italic">
-              <p>{lastResult.narrative.actionText}</p>
-              <p>{lastResult.narrative.discoveryText}</p>
-              {lastResult.narrative.epiphanyText && (
-                <p className="text-yellow-300">{lastResult.narrative.epiphanyText}</p>
-              )}
-            </div>
-
-            {/* Essence Gained */}
-            <div className="flex flex-wrap gap-3">
-              {lastResult.result.essenceGained.craft !== undefined &&
-                lastResult.result.essenceGained.craft > 0 && (
-                  <EssenceBadge
-                    type="CRAFT"
-                    amount={lastResult.result.essenceGained.craft}
-                    bonus={lastResult.result.bonusEssence?.craft}
-                  />
-                )}
-              {lastResult.result.essenceGained.time !== undefined &&
-                lastResult.result.essenceGained.time > 0 && (
-                  <EssenceBadge
-                    type="TIME"
-                    amount={lastResult.result.essenceGained.time}
-                    bonus={lastResult.result.bonusEssence?.time}
-                  />
-                )}
-              {lastResult.result.essenceGained.vibe !== undefined &&
-                lastResult.result.essenceGained.vibe > 0 && (
-                  <EssenceBadge
-                    type="VIBE"
-                    amount={lastResult.result.essenceGained.vibe}
-                    bonus={lastResult.result.bonusEssence?.vibe}
-                  />
-                )}
-            </div>
-
-            {lastResult.result.isEpiphany && (
-              <div className="mt-4 text-xs text-yellow-500 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" />
-                精力已返还！
-              </div>
-            )}
-          </div>
-        )}
+        {/* Result Modal */}
+        <InsightResultModal result={lastResult} onClose={clearResult} />
 
         {/* Item List */}
         <div className="space-y-4">
@@ -384,5 +316,99 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
         )}
       </div>
     </div>
+  );
+};
+
+// ============================================================================
+// Insight Result Modal
+// ============================================================================
+
+interface InsightResultModalProps {
+  result: {
+    result: InsightResult;
+    narrative: InsightNarrative;
+  } | null;
+  onClose: () => void;
+}
+
+const InsightResultModal: React.FC<InsightResultModalProps> = ({ result, onClose }) => {
+  if (!result) return null;
+
+  const isEpiphany = result.result.isEpiphany;
+
+  return (
+    <Modal
+      isOpen={!!result}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2 text-purple-300">
+          {isEpiphany ? (
+            <>
+              <Sparkles className="w-5 h-5 text-yellow-400" />
+              顿悟！
+            </>
+          ) : (
+            <>
+              <BookOpen className="w-5 h-5" />
+              格物完成
+            </>
+          )}
+        </span>
+      }
+      size="md"
+    >
+      <div className="bg-gradient-to-r from-purple-950/50 to-noir-300/50 p-6 rounded border border-purple-800">
+        {/* Narrative */}
+        <div className="space-y-3 mb-6 text-stone-300 text-sm italic">
+          <p>{result.narrative.actionText}</p>
+          <p>{result.narrative.discoveryText}</p>
+          {result.narrative.epiphanyText && (
+            <p className="text-yellow-300">{result.narrative.epiphanyText}</p>
+          )}
+        </div>
+
+        {/* Essence Gained */}
+        <div className="flex flex-wrap gap-3">
+          {result.result.essenceGained.craft !== undefined &&
+            result.result.essenceGained.craft > 0 && (
+              <EssenceBadge
+                type="CRAFT"
+                amount={result.result.essenceGained.craft}
+                bonus={result.result.bonusEssence?.craft}
+              />
+            )}
+          {result.result.essenceGained.time !== undefined &&
+            result.result.essenceGained.time > 0 && (
+              <EssenceBadge
+                type="TIME"
+                amount={result.result.essenceGained.time}
+                bonus={result.result.bonusEssence?.time}
+              />
+            )}
+          {result.result.essenceGained.vibe !== undefined &&
+            result.result.essenceGained.vibe > 0 && (
+              <EssenceBadge
+                type="VIBE"
+                amount={result.result.essenceGained.vibe}
+                bonus={result.result.bonusEssence?.vibe}
+              />
+            )}
+        </div>
+
+        {isEpiphany && (
+          <div className="mt-4 text-xs text-yellow-500 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" />
+            精力已返还！
+          </div>
+        )}
+      </div>
+
+      {/* Close Button */}
+      <div className="flex justify-end mt-4">
+        <Button onClick={onClose} className="px-6">
+          确定
+        </Button>
+      </div>
+    </Modal>
   );
 };
