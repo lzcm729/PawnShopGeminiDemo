@@ -6,7 +6,40 @@
  */
 
 import { Item, ItemTrait, ItemStatus, TraitType, WorkState } from './types';
-import { ItemTag } from './tags';
+import { ItemTag, STATE_TAGS, ATTRIBUTE_TAGS, ESSENCE_TAGS } from './tags';
+
+// ============================================================================
+// 类型验证
+// ============================================================================
+
+/** 有效的 TraitType 值 */
+const VALID_TRAIT_TYPES: TraitType[] = ['FLAW', 'STORY', 'FAKE'];
+
+/** 所有有效的 ItemTag 值 */
+const ALL_VALID_TAGS: ItemTag[] = [...STATE_TAGS, ...ATTRIBUTE_TAGS, ...ESSENCE_TAGS];
+
+/** 验证是否为有效的 ItemTag */
+function isValidItemTag(tag: string): tag is ItemTag {
+  return ALL_VALID_TAGS.includes(tag as ItemTag);
+}
+
+/** 验证是否为有效的 TraitType */
+function isValidTraitType(type: string): type is TraitType {
+  return VALID_TRAIT_TYPES.includes(type as TraitType);
+}
+
+/** 解析并验证 ItemTag 列表 */
+function parseItemTags(value: string): ItemTag[] {
+  return parseSemicolonList(value).filter(isValidItemTag);
+}
+
+/** 解析并验证 TraitType */
+function parseTraitType(value: string): TraitType {
+  if (isValidTraitType(value)) {
+    return value;
+  }
+  return 'STORY'; // 默认值
+}
 
 // ============================================================================
 // 类型定义
@@ -150,8 +183,8 @@ export function loadItemTemplatesFromCSV(csvContent: string): void {
       realValue: parseInt(get('Real_Value')) || 0,
       visualValue: parseInt(get('Visual_Value')) || 0,
       uncertainty: parseFloat(get('Uncertainty')) || 0.3,
-      initStateTags: parseSemicolonList(get('Init_State_Tags')) as ItemTag[],
-      attrTags: parseSemicolonList(get('Attr_Tags')) as ItemTag[],
+      initStateTags: parseItemTags(get('Init_State_Tags')),
+      attrTags: parseItemTags(get('Attr_Tags')),
       hiddenTraitIds: parseSemicolonList(get('Hidden_Traits')),
       knowCap: parseInt(get('Know_Cap')) || 100,
       descDefault: get('Desc_Default'),
@@ -188,7 +221,7 @@ export function loadTraitDefinitionsFromCSV(csvContent: string): void {
     const definition: TraitDefinition = {
       id: get('ID'),
       name: get('Name'),
-      type: (get('Type') as TraitType) || 'STORY',
+      type: parseTraitType(get('Type')),
       valueImpact: parseFloat(get('Value_Impact')) || 0,
       detectDiff: parseFloat(get('Detect_Diff')) || 0.5,
       storyText: get('Story_Text'),
@@ -375,7 +408,10 @@ export function initializeCSVData(itemsCSV?: string, traitsCSV?: string): void {
   }
 
   initialized = true;
-  console.log(`[csvLoader] Loaded ${itemTemplateRegistry.size} item templates, ${traitDefinitionRegistry.size} trait definitions`);
+  // Log only in development
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+    console.log(`[csvLoader] Loaded ${itemTemplateRegistry.size} item templates, ${traitDefinitionRegistry.size} trait definitions`);
+  }
 }
 
 /**

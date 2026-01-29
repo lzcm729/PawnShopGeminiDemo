@@ -49,13 +49,21 @@ interface UseNegotiationReturn {
   revealedMinimum: boolean;
 }
 
+/**
+ * Insult threshold multipliers by negotiation style
+ * These define how tolerant each customer type is to lowball offers
+ */
+const INSULT_THRESHOLDS = {
+  Aggressive: 0.8,   // More tolerant - expects conflict, less easily insulted
+  Desperate: 0.6,    // Very tolerant - needs money badly, will accept low offers
+  Deceptive: 0.75,   // Moderate - tries to manipulate, normal threshold
+  Professional: 0.7, // Standard business threshold
+} as const;
+
 const getInsultThreshold = (style: string, minPrincipal: number) => {
-  switch (style) {
-    case 'Aggressive': return minPrincipal * 0.8;
-    case 'Desperate': return minPrincipal * 0.6;
-    case 'Deceptive': return minPrincipal * 0.75;
-    default: return minPrincipal * 0.7; // Professional
-  }
+  const multiplier = INSULT_THRESHOLDS[style as keyof typeof INSULT_THRESHOLDS]
+    ?? INSULT_THRESHOLDS.Professional;
+  return minPrincipal * multiplier;
 };
 
 export const useNegotiation = (customer: Customer | null): UseNegotiationReturn => {
@@ -116,14 +124,18 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     }
   }, [customer]);
 
-  // Helper to reduce price
-  const reducePrice = (power: number): number => {
+  // FIX: Use functional state update to avoid stale closure bugs
+  const reducePrice = useCallback((power: number): number => {
       if (power <= 0) return 0;
-      const reduction = Math.floor(currentAskPrice * power);
-      const newAsk = Math.max(customer?.minimumAmount || 0, currentAskPrice - reduction);
-      setCurrentAskPrice(newAsk);
-      return currentAskPrice - newAsk; 
-  };
+      let actualDrop = 0;
+      setCurrentAskPrice(prev => {
+          const reduction = Math.floor(prev * power);
+          const newAsk = Math.max(customer?.minimumAmount || 0, prev - reduction);
+          actualDrop = prev - newAsk;
+          return newAsk;
+      });
+      return actualDrop;
+  }, [customer?.minimumAmount]);
 
   const applyLeverage = useCallback((power: number, description: string) => {
     if (!customer || isWalkedAway) return;
@@ -137,7 +149,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         subtext: actualDrop > 0 ? `报价降低 $${actualDrop}` : '对方无动于衷',
         id: Date.now()
     });
-  }, [customer, isWalkedAway, currentAskPrice]);
+  }, [customer, isWalkedAway, reducePrice]);
 
   const triggerNarrative = useCallback((playerLine: string, customerLine: string, impact: number = 0) => {
       if (!customer || isWalkedAway) return;
@@ -151,7 +163,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
           subtext: actualDrop > 0 ? `报价降低 $${actualDrop}` : undefined,
           id: Date.now()
       });
-  }, [customer, isWalkedAway, currentAskPrice]);
+  }, [customer, isWalkedAway, reducePrice]);
 
   const submitOffer = useCallback((): NegotiationResult => {
     if (!customer || isWalkedAway) {

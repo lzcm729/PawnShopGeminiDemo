@@ -1,9 +1,60 @@
 
 import { generateValuationRange } from '../items/utils';
 import { getItemTemplate } from '../items/csvLoader';
+import { Item, ItemTrait, ItemStatus, WorkState } from '../items/types';
 
-export const makeItem = (base: any, chainId: string) => {
-    const range = generateValuationRange(base.realValue, base.perceivedValue, base.uncertainty || 0.2);
+/**
+ * Base item properties required for makeItem
+ */
+interface ItemBase {
+    id?: string;
+    name: string;
+    category?: string;
+    condition?: string;
+    visualDescription?: string;
+    historySnippet?: string;
+    appraisalNote?: string;
+    archiveSummary?: string;
+    isStolen?: boolean;
+    isFake?: boolean;
+    isSuspicious?: boolean;
+    sentimentalValue?: boolean;
+    appraised?: boolean;
+    pawnDate?: number;
+    status?: ItemStatus;
+    realValue: number;
+    perceivedValue?: number;
+    uncertainty?: number;
+    hiddenTraits?: ItemTrait[];
+    revealedTraits?: ItemTrait[];
+    usedTraitIds?: string[];
+    nameDefault?: string;
+    nameRestored?: string;
+    nameReforged?: string;
+    descDefault?: string;
+    descRestored?: string;
+    descReforged?: string;
+    workState?: WorkState;
+}
+
+/**
+ * Creates a pawn item from a base definition
+ *
+ * @param base - Base item properties (must include name and realValue)
+ * @param chainId - The story chain this item belongs to
+ * @returns A fully formed Item object
+ */
+export const makeItem = (base: ItemBase, chainId: string): Partial<Item> & { name: string; relatedChainId: string } => {
+    // Validate required fields
+    if (!base.realValue || base.realValue <= 0) {
+        console.warn('[makeItem] Missing or invalid realValue, defaulting to 100');
+    }
+
+    const realValue = base.realValue || 100;
+    const perceivedValue = base.perceivedValue ?? realValue;
+    const uncertainty = base.uncertainty ?? 0.2;
+
+    const range = generateValuationRange(realValue, perceivedValue, uncertainty);
 
     // 尝试从 CSV 模板获取名称变体
     const template = base.id ? getItemTemplate(base.id) : undefined;
@@ -14,7 +65,7 @@ export const makeItem = (base: any, chainId: string) => {
         pawnAmount: 0,
         currentRange: range,
         initialRange: range,
-        uncertainty: base.uncertainty || 0.2,
+        uncertainty,
         revealedTraits: base.revealedTraits || [],
         hiddenTraits: base.hiddenTraits || [],
         relatedChainId: chainId,

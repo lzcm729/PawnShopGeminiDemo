@@ -101,37 +101,69 @@ export const EndOfDaySummary: React.FC = () => {
         {/* RIGHT COLUMN: DIGITAL DASHBOARD */}
         <div className="lg:col-span-7 flex flex-col gap-6 pt-10">
            
-           {/* RENT STATUS */}
-           <div className="bg-noir-200 border border-noir-400 p-6 rounded-lg relative overflow-hidden group">
-               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                   <AlertOctagon className="w-24 h-24 text-red-500" />
-               </div>
-               
-               <div className="relative z-10 flex justify-between items-end mb-4">
-                   <div>
-                       <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-1">Upcoming Liability</h3>
-                       <div className="text-3xl font-black text-white flex items-center gap-2">
-                           RENT DUE <span className="text-red-500">${stats.rentDue}</span>
-                       </div>
+           {/* MEDICAL BILL & SURGERY GOAL */}
+           <div className="grid grid-cols-2 gap-4">
+               {/* Medical Bill Status */}
+               <div className="bg-noir-200 border border-noir-400 p-4 rounded-lg relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                       <AlertOctagon className="w-16 h-16 text-red-500" />
                    </div>
-                   <div className="text-right">
-                       <div className="text-4xl font-mono font-bold text-white">{stats.rentDueDate - stats.day}</div>
-                       <div className="text-xs text-stone-500 uppercase font-bold">Days Remaining</div>
+
+                   <div className="relative z-10">
+                       <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-1">
+                           💊 Medical Bill
+                       </h3>
+                       <div className="text-2xl font-black text-red-500 mb-1">
+                           ${stats.medicalBill.amount}
+                       </div>
+                       <div className="flex items-baseline gap-2">
+                           <span className="text-3xl font-mono font-bold text-white">
+                               {stats.medicalBill.dueDate - stats.day}
+                           </span>
+                           <span className="text-xs text-stone-500 uppercase font-bold">Days</span>
+                       </div>
+                       <div className={cn(
+                           "mt-2 text-[10px] font-mono uppercase",
+                           stats.medicalBill.status === 'PAID' ? "text-green-500" :
+                           stats.medicalBill.status === 'OVERDUE' ? "text-red-500 animate-pulse" :
+                           "text-stone-500"
+                       )}>
+                           {stats.medicalBill.status === 'PAID' ? "✓ Paid" :
+                            stats.medicalBill.status === 'OVERDUE' ? "⚠ Overdue!" :
+                            "Pending"}
+                       </div>
                    </div>
                </div>
 
-               {/* Progress Bar */}
-               <div className="w-full h-4 bg-noir-400 rounded-full overflow-hidden border border-noir-500">
-                   <div 
-                        className={cn("h-full transition-all duration-1000", 
-                            stats.cash >= stats.rentDue ? "bg-pawn-green" : "bg-red-600 animate-pulse"
-                        )} 
-                        style={{ width: `${Math.min(100, (stats.cash / stats.rentDue) * 100)}%` }}
-                   ></div>
-               </div>
-               <div className="flex justify-between mt-2 text-[10px] font-mono text-stone-500 uppercase">
-                   <span>Coverage: {Math.round((stats.cash / stats.rentDue) * 100)}%</span>
-                   <span>Target: ${stats.rentDue}</span>
+               {/* Surgery Fund Progress */}
+               <div className="bg-noir-200 border border-noir-400 p-4 rounded-lg relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                       <TrendingUp className="w-16 h-16 text-blue-500" />
+                   </div>
+
+                   <div className="relative z-10">
+                       <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-1">
+                           ❤️ Surgery Fund
+                       </h3>
+                       <div className="text-2xl font-black text-white mb-1">
+                           ${stats.cash.toLocaleString()}
+                       </div>
+                       <div className="text-xs text-stone-500 mb-2">
+                           / ${stats.targetSavings.toLocaleString()} Goal
+                       </div>
+                       {/* Progress Bar */}
+                       <div className="w-full h-2 bg-noir-400 rounded-full overflow-hidden border border-noir-500">
+                           <div
+                                className={cn("h-full transition-all duration-1000",
+                                    stats.cash >= stats.targetSavings ? "bg-green-500" : "bg-blue-500"
+                                )}
+                                style={{ width: `${Math.min(100, (stats.cash / stats.targetSavings) * 100)}%` }}
+                           ></div>
+                       </div>
+                       <div className="mt-1 text-[10px] font-mono text-stone-500 uppercase text-right">
+                           {Math.round((stats.cash / stats.targetSavings) * 100)}%
+                       </div>
+                   </div>
                </div>
            </div>
 

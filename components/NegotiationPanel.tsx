@@ -139,6 +139,16 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // FIX: Clean up interval on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, []);
+
   const isBinaryChoice = currentCustomer?.interactionType === 'NEGOTIATION';
 
   const instinct = currentCustomer && item && !isBinaryChoice

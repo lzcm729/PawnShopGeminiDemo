@@ -334,11 +334,14 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         if (state.stats.medicalBill.status === 'OVERDUE') return state;
         return { ...state, stats: { ...state.stats, medicalBill: { ...state.stats.medicalBill, status: 'OVERDUE' } } };
     }
+    // DEPRECATED: Rent system removed per design doc - medical bills are the core pressure now
+    // This action is kept for backward compatibility but WEEKLY_RENT is set to 0
     case 'PAY_RENT': {
         const rentAmount = state.stats.rentDue;
+        if (rentAmount <= 0) return state; // Skip if rent is disabled
         const newDueDate = state.stats.rentDueDate + GAME_CONFIG.RENT_CYCLE;
-        const rentRecord: TransactionRecord = { id: crypto.randomUUID(), description: "支付母亲医药费", amount: -rentAmount, type: 'RENT' };
-        return { ...state, stats: { ...state.stats, cash: state.stats.cash - rentAmount, rentDueDate: newDueDate }, todayTransactions: [...state.todayTransactions, rentRecord], dayEvents: [...state.dayEvents, `Medical Bill Paid: $${rentAmount}. Next due Day ${newDueDate}.`] };
+        const rentRecord: TransactionRecord = { id: crypto.randomUUID(), description: "店铺租金(已废弃)", amount: -rentAmount, type: 'RENT' };
+        return { ...state, stats: { ...state.stats, cash: state.stats.cash - rentAmount, rentDueDate: newDueDate }, todayTransactions: [...state.todayTransactions, rentRecord], dayEvents: [...state.dayEvents, `Rent Paid: $${rentAmount}. Next due Day ${newDueDate}.`] };
     }
     case 'PURCHASE_TREATMENT': { const { type, cost } = action.payload; playSfx('SUCCESS'); let newMother = { ...state.stats.motherStatus }; let desc = ""; if (type === 'STABILIZE') { newMother.health = Math.min(100, newMother.health + 5); desc = "额外治疗: 急救注射"; } else if (type === 'REDUCE_RISK') { newMother.risk = Math.max(0, newMother.risk - 3); desc = "额外治疗: 靶向疗法"; } const record: TransactionRecord = { id: crypto.randomUUID(), description: desc, amount: -cost, type: 'MEDICAL' }; return { ...state, stats: { ...state.stats, cash: state.stats.cash - cost, motherStatus: newMother }, todayTransactions: [...state.todayTransactions, record] }; }
     case 'VISIT_MOTHER': { const { motherStatus, visitedToday } = state.stats; if (visitedToday) return state; const newMother = { ...motherStatus, risk: Math.max(0, motherStatus.risk - 1) }; const newRep = { ...state.reputation }; newRep[ReputationType.HUMANITY] = Math.min(100, newRep[ReputationType.HUMANITY] + 2); return { ...state, stats: { ...state.stats, motherStatus: newMother, visitedToday: true }, reputation: newRep, dayEvents: [...state.dayEvents, "前往医院探望了母亲。(Humanity +2, Risk -1%)"] }; }
@@ -722,7 +725,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const key = essenceType.toLowerCase() as keyof EssenceBalance;
         const newAmount = state.essenceBalance[key] - amount;
         if (newAmount < 0) {
-            console.warn('SPEND_ESSENCE: Insufficient essence');
+            // Silently reject - UI should prevent this from happening
             return state;
         }
         return {
@@ -740,7 +743,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const newTime = state.essenceBalance.time - (costs.time || 0);
         const newVibe = state.essenceBalance.vibe - (costs.vibe || 0);
         if (newCraft < 0 || newTime < 0 || newVibe < 0) {
-            console.warn('SPEND_ESSENCE_BATCH: Insufficient essence');
+            // Silently reject - UI should prevent this from happening
             return state;
         }
         return {
@@ -757,7 +760,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         const amount = action.payload;
         const newEnergy = state.nightState.energy - amount;
         if (newEnergy < 0) {
-            console.warn('CONSUME_NIGHT_ENERGY: Insufficient energy');
+            // Silently reject - UI should prevent this from happening
             return state;
         }
         return {

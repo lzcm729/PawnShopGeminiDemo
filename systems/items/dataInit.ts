@@ -67,7 +67,7 @@ export function initializeItemData(
   traitsCSV?: string
 ): void {
   if (isCSVDataInitialized()) {
-    console.log('[dataInit] Item data already initialized, skipping.');
+    // Already initialized, skip
     return;
   }
 
