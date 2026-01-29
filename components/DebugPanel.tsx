@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { Database, PlayCircle, Bug, X, Terminal, FileDown, Power, DollarSign, Sparkles } from 'lucide-react';
+import { Database, PlayCircle, Bug, X, Terminal, FileDown, Power, DollarSign, Sparkles, Trash2 } from 'lucide-react';
 import { validateEvents, ValidationIssue } from '../systems/narrative/validator';
 import { EMMA_EVENTS } from '../systems/narrative/storyRegistry';
 import { generateDesignBible } from '../systems/game/utils/designExporter';
@@ -50,6 +50,14 @@ export const DebugPanel: React.FC = () => {
   const handleAddEssence = () => {
     playSfx('CLICK');
     dispatch({ type: 'ADD_ESSENCE_BATCH', payload: { craft: 10, time: 10, vibe: 10 } });
+  };
+
+  const handleClearSave = () => {
+    playSfx('WARNING');
+    if (confirm('确定要清除存档吗？此操作不可恢复！')) {
+      localStorage.removeItem('pawns_dilemma_save_v1');
+      window.location.reload();
+    }
   };
 
   const toggleChain = (chainId: string) => {
@@ -123,6 +131,13 @@ export const DebugPanel: React.FC = () => {
                 >
                     <Sparkles className="w-3 h-3" />
                     +精魄
+                </button>
+                <button
+                    onClick={handleClearSave}
+                    className="col-span-4 bg-red-900/20 border border-red-700/50 hover:bg-red-900/40 text-red-400 px-2 py-1.5 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
+                >
+                    <Trash2 className="w-3 h-3" />
+                    清除存档
                 </button>
             </div>
 
