@@ -9,7 +9,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useWorkshop } from '../../hooks/useWorkshop';
 import { cn } from '../../lib/utils';
-import { Item, ItemStatus } from '../../systems/items/types';
+import { ItemStatus } from '../../systems/items/types';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import {
   Wrench,
@@ -17,12 +17,10 @@ import {
   Sparkles,
   ChevronRight,
   AlertCircle,
-  CheckCircle2,
-  Lock,
   Hammer,
   Wand2,
 } from 'lucide-react';
-import { ESSENCE_DISPLAY_NAMES, ESSENCE_ICONS, EssenceCost } from '../../systems/economy/essence';
+import { ESSENCE_ICONS, EssenceCost } from '../../systems/economy/essence';
 import { RecipeStatus, WorkshopResult, RestoreRecipe, ReforgeRecipe } from '../../systems/workshop/types';
 
 interface WorkshopPanelProps {
@@ -42,26 +40,29 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   } = useWorkshop();
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useState<'restore' | 'reforge'>('restore');
   const [lastResult, setLastResult] = useState<WorkshopResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const selectedItem = workshopableItems.find(w => w.item.id === selectedItemId);
 
-  const handleRestore = (recipeId: string) => {
-    if (!selectedItemId) return;
+  // 该物品唯一的修复和重铸配方（由物品属性决定）
+  const restoreRecipe = selectedItem?.restoreRecipe;
+  const reforgeRecipe = selectedItem?.reforgeRecipe;
+
+  const handleRestore = () => {
+    if (!selectedItemId || !restoreRecipe) return;
     setIsProcessing(true);
-    const output = doRestore(selectedItemId, recipeId);
+    const output = doRestore(selectedItemId, restoreRecipe.recipe.id);
     if (output?.success && output.result) {
       setLastResult(output.result);
     }
     setIsProcessing(false);
   };
 
-  const handleReforge = (recipeId: string) => {
-    if (!selectedItemId) return;
+  const handleReforge = () => {
+    if (!selectedItemId || !reforgeRecipe) return;
     setIsProcessing(true);
-    const output = doReforge(selectedItemId, recipeId);
+    const output = doReforge(selectedItemId, reforgeRecipe.recipe.id);
     if (output?.success && output.result) {
       setLastResult(output.result);
     }
@@ -201,12 +202,12 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
             </div>
           </div>
 
-          {/* Right: Recipe Panel */}
+          {/* Right: Action Panel */}
           <div className="col-span-2">
             {selectedItem ? (
               <div>
                 {/* Item Header */}
-                <div className="flex items-center gap-3 mb-4 pb-4 border-b border-noir-400">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-noir-400">
                   <CategoryIcon category={selectedItem.item.category} className="w-8 h-8 text-stone-400" />
                   <div>
                     <h3 className="font-bold text-lg">{selectedItem.item.name}</h3>
@@ -220,61 +221,27 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                   </div>
                 </div>
 
-                {/* Tab Switcher */}
-                <div className="flex gap-2 mb-4">
-                  <button
-                    onClick={() => setSelectedTab('restore')}
-                    className={cn(
-                      "flex-1 py-2 text-sm rounded transition-all flex items-center justify-center gap-2",
-                      selectedTab === 'restore'
-                        ? "bg-emerald-900/50 text-emerald-300 border border-emerald-700"
-                        : "bg-noir-300 text-stone-400 border border-noir-400 hover:bg-noir-200"
-                    )}
-                  >
-                    <Hammer className="w-4 h-4" />
-                    修复 ({selectedItem.restoreOptions.filter(o => o.status.canApply).length})
-                  </button>
-                  <button
-                    onClick={() => setSelectedTab('reforge')}
-                    className={cn(
-                      "flex-1 py-2 text-sm rounded transition-all flex items-center justify-center gap-2",
-                      selectedTab === 'reforge'
-                        ? "bg-purple-900/50 text-purple-300 border border-purple-700"
-                        : "bg-noir-300 text-stone-400 border border-noir-400 hover:bg-noir-200"
-                    )}
-                  >
-                    <Wand2 className="w-4 h-4" />
-                    重铸 ({selectedItem.reforgeOptions.filter(o => o.status.canApply).length})
-                  </button>
-                </div>
+                {/* Action Buttons */}
+                <div className="space-y-4">
+                  {/* Restore Action - 始终显示 */}
+                  <ActionCard
+                    type="restore"
+                    recipe={restoreRecipe?.recipe}
+                    status={restoreRecipe?.status}
+                    onApply={handleRestore}
+                    isProcessing={isProcessing}
+                    getReasonText={getReasonText}
+                  />
 
-                {/* Recipe List */}
-                <div className="space-y-3 max-h-[280px] overflow-y-auto custom-scrollbar">
-                  {selectedTab === 'restore' ? (
-                    selectedItem.restoreOptions.map(({ recipe, status }) => (
-                      <RecipeCard
-                        key={recipe.id}
-                        recipe={recipe}
-                        status={status}
-                        type="restore"
-                        onApply={() => handleRestore(recipe.id)}
-                        isProcessing={isProcessing}
-                        getReasonText={getReasonText}
-                      />
-                    ))
-                  ) : (
-                    selectedItem.reforgeOptions.map(({ recipe, status }) => (
-                      <RecipeCard
-                        key={recipe.id}
-                        recipe={recipe}
-                        status={status}
-                        type="reforge"
-                        onApply={() => handleReforge(recipe.id)}
-                        isProcessing={isProcessing}
-                        getReasonText={getReasonText}
-                      />
-                    ))
-                  )}
+                  {/* Reforge Action - 始终显示 */}
+                  <ActionCard
+                    type="reforge"
+                    recipe={reforgeRecipe?.recipe}
+                    status={reforgeRecipe?.status}
+                    onApply={handleReforge}
+                    isProcessing={isProcessing}
+                    getReasonText={getReasonText}
+                  />
                 </div>
               </div>
             ) : (
@@ -310,61 +277,119 @@ const EssenceDisplay: React.FC<EssenceDisplayProps> = ({ type, amount }) => {
   );
 };
 
-interface RecipeCardProps {
-  recipe: RestoreRecipe | ReforgeRecipe;
-  status: RecipeStatus;
+interface ActionCardProps {
   type: 'restore' | 'reforge';
+  recipe?: RestoreRecipe | ReforgeRecipe;
+  status?: RecipeStatus;
   onApply: () => void;
   isProcessing: boolean;
   getReasonText: (reason: string) => string;
 }
 
-const RecipeCard: React.FC<RecipeCardProps> = ({
+const ActionCard: React.FC<ActionCardProps> = ({
+  type,
   recipe,
   status,
-  type,
   onApply,
   isProcessing,
   getReasonText,
 }) => {
-  const canApply = status.canApply;
-  const borderColor = type === 'restore' ? 'border-emerald-800' : 'border-purple-800';
-  const accentColor = type === 'restore' ? 'text-emerald-400' : 'text-purple-400';
+  const isRestore = type === 'restore';
+  const canApply = status?.canApply ?? false;
+
+  // 如果物品没有匹配的配方，显示禁用状态
+  if (!recipe || !status) {
+    return (
+      <div className="p-4 rounded border border-noir-400 bg-noir-200/50 opacity-50">
+        <div className="flex items-center gap-3">
+          {isRestore ? (
+            <Hammer className="w-6 h-6 text-stone-500" />
+          ) : (
+            <Wand2 className="w-6 h-6 text-stone-500" />
+          )}
+          <div className="flex-1">
+            <h4 className="font-bold text-stone-500">
+              {isRestore ? '修复' : '重铸'}
+            </h4>
+            <p className="text-xs text-stone-600 mt-1">
+              {isRestore ? '物品没有需要修复的状态' : '物品不适合重铸'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 有配方但条件不满足时，显示原因
+  if (!canApply) {
+    return (
+      <div className="p-4 rounded border border-noir-400 bg-noir-200/50">
+        <div className="flex items-center gap-3">
+          {isRestore ? (
+            <Hammer className="w-6 h-6 text-stone-500" />
+          ) : (
+            <Wand2 className="w-6 h-6 text-stone-500" />
+          )}
+          <div className="flex-1">
+            <h4 className="font-bold text-stone-500">{recipe.name}</h4>
+            <p className="text-xs text-stone-600 mt-1">{recipe.description}</p>
+          </div>
+          <div className="text-xs text-red-400">
+            {status.reason && getReasonText(status.reason)}
+          </div>
+        </div>
+
+        {/* Cost Display (show what's needed) */}
+        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-noir-400">
+          <div className="text-[10px] text-stone-500 uppercase">成本:</div>
+          <CostDisplay cost={status.actualCost} deficit={status.deficit} />
+          <div className="text-[10px] text-stone-500 flex items-center gap-1">
+            <Zap className="w-3 h-3" />
+            {recipe.energyCost} 精力
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       className={cn(
         "p-4 rounded border bg-noir-200 transition-all",
-        canApply ? borderColor : "border-noir-400 opacity-60"
+        isRestore
+          ? "border-emerald-800 hover:border-emerald-600"
+          : "border-purple-800 hover:border-purple-600"
       )}
     >
-      <div className="flex justify-between items-start mb-2">
-        <div>
-          <h4 className={cn("font-bold", canApply ? accentColor : "text-stone-400")}>
+      <div className="flex items-center gap-3">
+        {isRestore ? (
+          <Hammer className="w-6 h-6 text-emerald-400" />
+        ) : (
+          <Wand2 className="w-6 h-6 text-purple-400" />
+        )}
+
+        <div className="flex-1">
+          <h4 className={cn(
+            "font-bold",
+            isRestore ? "text-emerald-400" : "text-purple-400"
+          )}>
             {recipe.name}
           </h4>
           <p className="text-xs text-stone-500 mt-1">{recipe.description}</p>
         </div>
 
-        {canApply ? (
-          <Button
-            onClick={onApply}
-            disabled={isProcessing}
-            className={cn(
-              "h-8 px-3 text-xs",
-              type === 'restore'
-                ? "bg-emerald-900 hover:bg-emerald-800 border-emerald-700"
-                : "bg-purple-900 hover:bg-purple-800 border-purple-700"
-            )}
-          >
-            {isProcessing ? '...' : '执行'}
-          </Button>
-        ) : (
-          <div className="flex items-center gap-1 text-xs text-red-400">
-            <Lock className="w-3 h-3" />
-            {status.reason && getReasonText(status.reason)}
-          </div>
-        )}
+        <Button
+          onClick={onApply}
+          disabled={isProcessing || !canApply}
+          className={cn(
+            "h-10 px-4",
+            isRestore
+              ? "bg-emerald-900 hover:bg-emerald-800 border-emerald-700"
+              : "bg-purple-900 hover:bg-purple-800 border-purple-700"
+          )}
+        >
+          {isProcessing ? '...' : '执行'}
+        </Button>
       </div>
 
       {/* Cost Display */}

@@ -30,10 +30,17 @@ import {
 // Hook 返回类型
 // ============================================================================
 
+interface RecipeWithStatus<T> {
+  recipe: T;
+  status: RecipeStatus;
+}
+
 interface WorkshopableItem {
   item: Item;
-  restoreOptions: Array<{ recipe: RestoreRecipe; status: RecipeStatus }>;
-  reforgeOptions: Array<{ recipe: ReforgeRecipe; status: RecipeStatus }>;
+  /** 该物品唯一的修复配方（由物品的负面标签决定） */
+  restoreRecipe: RecipeWithStatus<RestoreRecipe> | null;
+  /** 该物品唯一的重铸配方（由物品属性决定） */
+  reforgeRecipe: RecipeWithStatus<ReforgeRecipe> | null;
   hasAnyOption: boolean;
 }
 
@@ -70,6 +77,75 @@ interface WorkshopOperationResult {
 }
 
 // ============================================================================
+// 配方匹配逻辑
+// ============================================================================
+
+/**
+ * 根据物品的负面标签确定唯一的修复配方
+ * 优先修复第一个发现的负面状态
+ */
+function getRestoreRecipeForItem(item: Item): RestoreRecipe | null {
+  const tags = item.tags || [];
+
+  // 按优先级检查负面标签
+  for (const recipe of RESTORE_RECIPES) {
+    if (tags.includes(recipe.targetTag)) {
+      return recipe;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * 根据物品属性确定唯一的重铸配方
+ * 按条件严格程度排序，选择最匹配的配方
+ */
+function getReforgeRecipeForItem(item: Item): ReforgeRecipe | null {
+  const tags = item.tags || [];
+
+  // 已经重铸过的物品不能再重铸
+  if (item.wasReforged) {
+    return null;
+  }
+
+  // 按优先级检查（条件越严格越优先）
+  // 1. imperial: 需要 VINTAGE_REAL + ARTISTIC
+  // 2. fake_history: 需要 VINTAGE_REAL
+  // 3. trending: 需要 TRENDY
+  // 4. limited: 需要特定类别
+  // 5. celebrity: 无特殊要求（兜底）
+
+  for (const recipe of REFORGE_RECIPES) {
+    // 检查前置标签
+    if (recipe.requiredTags && recipe.requiredTags.length > 0) {
+      if (!recipe.requiredTags.every(tag => tags.includes(tag))) {
+        continue;
+      }
+    }
+
+    // 检查类别
+    if (recipe.requiredCategories && recipe.requiredCategories.length > 0) {
+      if (!recipe.requiredCategories.includes(item.category)) {
+        continue;
+      }
+    }
+
+    // 检查排除标签
+    if (recipe.excludedTags && recipe.excludedTags.length > 0) {
+      if (recipe.excludedTags.some(tag => tags.includes(tag))) {
+        continue;
+      }
+    }
+
+    // 找到匹配的配方
+    return recipe;
+  }
+
+  return null;
+}
+
+// ============================================================================
 // Hook 实现
 // ============================================================================
 
@@ -85,27 +161,27 @@ export const useWorkshop = (): UseWorkshopReturn => {
     );
 
     return eligibleItems.map(item => {
-      // 获取修复选项
-      const restoreOptions = RESTORE_RECIPES.map(recipe => ({
-        recipe,
-        status: getRecipeStatus(recipe, item, essenceBalance, nightState),
-      }));
+      // 获取该物品唯一的修复配方
+      const restoreRecipeMatch = getRestoreRecipeForItem(item);
+      const restoreRecipe = restoreRecipeMatch
+        ? { recipe: restoreRecipeMatch, status: getRecipeStatus(restoreRecipeMatch, item, essenceBalance, nightState) }
+        : null;
 
-      // 获取重铸选项
-      const reforgeOptions = REFORGE_RECIPES.map(recipe => ({
-        recipe,
-        status: getRecipeStatus(recipe, item, essenceBalance, nightState),
-      }));
+      // 获取该物品唯一的重铸配方
+      const reforgeRecipeMatch = getReforgeRecipeForItem(item);
+      const reforgeRecipe = reforgeRecipeMatch
+        ? { recipe: reforgeRecipeMatch, status: getRecipeStatus(reforgeRecipeMatch, item, essenceBalance, nightState) }
+        : null;
 
       // 检查是否有任何可用选项
       const hasAnyOption =
-        restoreOptions.some(o => o.status.canApply) ||
-        reforgeOptions.some(o => o.status.canApply);
+        (restoreRecipe?.status.canApply ?? false) ||
+        (reforgeRecipe?.status.canApply ?? false);
 
       return {
         item,
-        restoreOptions,
-        reforgeOptions,
+        restoreRecipe,
+        reforgeRecipe,
         hasAnyOption,
       };
     });
