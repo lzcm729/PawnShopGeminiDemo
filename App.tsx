@@ -144,12 +144,7 @@ const GameContent: React.FC = () => {
 
       {state.phase === GamePhase.START_SCREEN && <StartScreen />}
 
-      {state.phase === GamePhase.MORNING_BRIEF && (
-          <>
-            <MorningBrief />
-            <DebugPanel />
-          </>
-      )}
+      {state.phase === GamePhase.MORNING_BRIEF && <MorningBrief />}
 
       {state.phase === GamePhase.NIGHT && (
           <>
@@ -159,25 +154,18 @@ const GameContent: React.FC = () => {
             <FinancialCalendar />
             <MedicalModal />
             <HospitalVisitModal />
-            <DebugPanel />
           </>
       )}
       
       {state.phase === GamePhase.GAME_OVER && (
-          <>
-            <GameOverScreen 
-                reason={state.dayEvents[state.dayEvents.length - 1] || "Unknown Error"} 
-                onRestart={() => window.location.reload()} 
-            />
-            <DebugPanel />
-          </>
+          <GameOverScreen
+              reason={state.dayEvents[state.dayEvents.length - 1] || "Unknown Error"}
+              onRestart={() => window.location.reload()}
+          />
       )}
 
       {state.phase === GamePhase.VICTORY && (
-          <>
-            <VictoryScreen onRestart={() => window.location.reload()} />
-            <DebugPanel />
-          </>
+          <VictoryScreen onRestart={() => window.location.reload()} />
       )}
 
       {(isBusiness || isNegotiating || isDeparture) && (
@@ -187,8 +175,7 @@ const GameContent: React.FC = () => {
             <MailModal />
             <FinancialCalendar />
             <MedicalModal />
-            <HospitalVisitModal /> 
-            <DebugPanel />
+            <HospitalVisitModal />
 
             <main className="flex-1 overflow-hidden relative">
                 {isDeparture && (
@@ -289,6 +276,9 @@ const GameContent: React.FC = () => {
             </main>
         </>
       )}
+
+      {/* Debug Panel - 始终渲染在最顶层 */}
+      <DebugPanel />
     </div>
   );
 };

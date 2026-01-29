@@ -72,7 +72,7 @@ export const DebugPanel: React.FC = () => {
       {!state.showDebug && (
         <button
             onClick={toggleDebug}
-            className="fixed left-4 bottom-4 z-[90] w-12 h-12 bg-black/90 border border-green-900/50 rounded-full flex items-center justify-center text-green-700 hover:text-green-400 hover:border-green-500 hover:scale-110 transition-all shadow-[0_0_15px_rgba(0,255,0,0.1)] group"
+            className="fixed left-4 bottom-4 z-[200] w-12 h-12 bg-black/90 border border-green-900/50 rounded-full flex items-center justify-center text-green-700 hover:text-green-400 hover:border-green-500 hover:scale-110 transition-all shadow-[0_0_15px_rgba(0,255,0,0.1)] group"
             title="Open Debug Console"
         >
             <Bug className="w-6 h-6 group-hover:rotate-12 transition-transform" />
@@ -80,7 +80,7 @@ export const DebugPanel: React.FC = () => {
       )}
 
       {state.showDebug && (
-        <div className="fixed left-4 bottom-4 w-96 h-[500px] z-[90] flex flex-col bg-[#050505] border-2 border-green-900 shadow-[0_0_50px_rgba(0,255,0,0.2)] rounded-lg overflow-hidden font-mono text-xs animate-in slide-in-from-left-10 fade-in duration-300">
+        <div className="fixed left-4 bottom-4 w-96 h-[500px] z-[200] flex flex-col bg-[#050505] border-2 border-green-900 shadow-[0_0_50px_rgba(0,255,0,0.2)] rounded-lg overflow-hidden font-mono text-xs animate-in slide-in-from-left-10 fade-in duration-300">
             
             <div className="flex justify-between items-center p-2 border-b border-green-900 bg-[#0a0a0a]">
                 <div className="flex items-center gap-2 text-green-500 font-bold tracking-widest">
