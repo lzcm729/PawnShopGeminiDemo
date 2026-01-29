@@ -3,11 +3,10 @@ import { useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { CalendarDayData, CalendarEvent } from '../systems/economy/types';
 import { ItemStatus } from '../systems/items/types';
-import { getMailTemplate } from '../systems/narrative/mailRegistry';
 
 export const useFinancialProjection = () => {
     const { state } = useGame();
-    const { stats, inventory, financialHistory, pendingMails } = state;
+    const { stats, inventory, financialHistory } = state;
 
     const projection = useMemo(() => {
         const days: CalendarDayData[] = [];
@@ -109,19 +108,7 @@ export const useFinancialProjection = () => {
                 }
             });
 
-            // 5. Incoming Mails (Narrative) - Only show for today, not future (no spoilers!)
-            if (isToday) {
-                const arrivingMails = pendingMails.filter(m => m.arrivalDay === currentProjectionDay);
-                arrivingMails.forEach(m => {
-                    const tpl = getMailTemplate(m.templateId);
-                    dailyEvents.push({
-                        type: 'MAIL',
-                        amount: 0,
-                        label: `信件: ${tpl?.sender || '未知发件人'}`,
-                        isCertain: true
-                    });
-                });
-            }
+            // 5. Mails are NOT shown on calendar - they are narrative surprises, not financial forecasts
 
             // 6. Determine Risk Level
             const riskLevel = runningBalance < 0 ? 'CRITICAL' : 'SAFE';
@@ -137,7 +124,7 @@ export const useFinancialProjection = () => {
         }
 
         return days;
-    }, [stats.day, stats.cash, stats.rentDue, stats.rentDueDate, stats.dailyExpenses, inventory, financialHistory, pendingMails]);
+    }, [stats.day, stats.cash, stats.rentDue, stats.rentDueDate, stats.dailyExpenses, inventory, financialHistory]);
 
     return projection;
 };
