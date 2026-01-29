@@ -100,14 +100,11 @@ function getRestoreRecipeForItem(item: Item): RestoreRecipe | null {
 /**
  * 根据物品属性确定唯一的重铸配方
  * 按条件严格程度排序，选择最匹配的配方
+ *
+ * 注意：即使物品已重铸，也返回配方，以便UI显示正确的阻止原因
  */
 function getReforgeRecipeForItem(item: Item): ReforgeRecipe | null {
   const tags = item.tags || [];
-
-  // 已经重铸过的物品不能再重铸
-  if (item.wasReforged) {
-    return null;
-  }
 
   // 按优先级检查（条件越严格越优先）
   // 1. imperial: 需要 VINTAGE_REAL + ARTISTIC
@@ -131,7 +128,7 @@ function getReforgeRecipeForItem(item: Item): ReforgeRecipe | null {
       }
     }
 
-    // 检查排除标签
+    // 检查排除标签（但不检查 wasReforged，那是在 status 中处理）
     if (recipe.excludedTags && recipe.excludedTags.length > 0) {
       if (recipe.excludedTags.some(tag => tags.includes(tag))) {
         continue;

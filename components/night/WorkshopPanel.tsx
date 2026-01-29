@@ -109,56 +109,8 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
           </div>
         </div>
 
-        {/* Result Display */}
-        {lastResult && (
-          <div className={cn(
-            "p-6 rounded border animate-in fade-in slide-in-from-top-2 duration-300",
-            lastResult.type === 'RESTORE'
-              ? "bg-gradient-to-r from-emerald-950/50 to-noir-300/50 border-emerald-800"
-              : "bg-gradient-to-r from-purple-950/50 to-noir-300/50 border-purple-800"
-          )}>
-            <div className="flex justify-between items-start mb-4">
-              <h3 className={cn(
-                "text-lg font-serif flex items-center gap-2",
-                lastResult.type === 'RESTORE' ? "text-emerald-300" : "text-purple-300"
-              )}>
-                {lastResult.type === 'RESTORE' ? (
-                  <>
-                    <Hammer className="w-5 h-5" />
-                    修复完成
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="w-5 h-5" />
-                    重铸完成
-                  </>
-                )}
-              </h3>
-              <button
-                onClick={clearResult}
-                className="text-stone-500 hover:text-stone-300 text-xs"
-              >
-                关闭
-              </button>
-            </div>
-
-            {/* Narrative */}
-            <div className="space-y-2 mb-4 text-stone-300 text-sm italic">
-              <p>{lastResult.narrative.actionText}</p>
-              <p>{lastResult.narrative.resultText}</p>
-              {lastResult.narrative.moralNote && (
-                <p className="text-amber-300/80">{lastResult.narrative.moralNote}</p>
-              )}
-            </div>
-
-            {/* Value Change */}
-            {lastResult.newValue !== undefined && (
-              <div className="text-sm text-stone-400">
-                物品新价值: <span className="text-green-400 font-mono">${lastResult.newValue}</span>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Result Modal */}
+        <WorkshopResultModal result={lastResult} onClose={clearResult} />
 
         {/* Main Content: Split View */}
         <div className="grid grid-cols-3 gap-6 min-h-[400px]">
@@ -183,7 +135,14 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                   <div className="flex items-center gap-2">
                     <CategoryIcon category={item.category} className="w-5 h-5 text-stone-500" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold truncate">{item.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold truncate">{item.name}</span>
+                        {item.wasReforged && (
+                          <span className="text-[9px] px-1 py-0.5 bg-purple-900/50 text-purple-300 rounded border border-purple-700">
+                            已重铸
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[10px] text-stone-500">
                         {item.status === ItemStatus.FORFEIT ? '流当 (自有)' : '典当中'}
                       </div>
@@ -210,7 +169,14 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-noir-400">
                   <CategoryIcon category={selectedItem.item.category} className="w-8 h-8 text-stone-400" />
                   <div>
-                    <h3 className="font-bold text-lg">{selectedItem.item.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-lg">{selectedItem.item.name}</h3>
+                      {selectedItem.item.wasReforged && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-purple-900/50 text-purple-300 rounded border border-purple-700">
+                          已重铸
+                        </span>
+                      )}
+                    </div>
                     <div className="flex gap-2 mt-1">
                       {selectedItem.item.tags?.map(tag => (
                         <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-noir-400 rounded">
@@ -437,5 +403,76 @@ const CostDisplay: React.FC<CostDisplayProps> = ({ cost, deficit }) => {
         </div>
       ))}
     </div>
+  );
+};
+
+// ============================================================================
+// Workshop Result Modal
+// ============================================================================
+
+interface WorkshopResultModalProps {
+  result: WorkshopResult | null;
+  onClose: () => void;
+}
+
+const WorkshopResultModal: React.FC<WorkshopResultModalProps> = ({ result, onClose }) => {
+  if (!result) return null;
+
+  const isRestore = result.type === 'RESTORE';
+
+  return (
+    <Modal
+      isOpen={!!result}
+      onClose={onClose}
+      title={
+        <span className={cn(
+          "flex items-center gap-2",
+          isRestore ? "text-emerald-300" : "text-purple-300"
+        )}>
+          {isRestore ? (
+            <>
+              <Hammer className="w-5 h-5" />
+              修复完成
+            </>
+          ) : (
+            <>
+              <Wand2 className="w-5 h-5" />
+              重铸完成
+            </>
+          )}
+        </span>
+      }
+      size="md"
+    >
+      <div className={cn(
+        "p-6 rounded border",
+        isRestore
+          ? "bg-gradient-to-r from-emerald-950/50 to-noir-300/50 border-emerald-800"
+          : "bg-gradient-to-r from-purple-950/50 to-noir-300/50 border-purple-800"
+      )}>
+        {/* Narrative */}
+        <div className="space-y-3 mb-6 text-stone-300 text-sm italic">
+          <p>{result.narrative.actionText}</p>
+          <p>{result.narrative.resultText}</p>
+          {result.narrative.moralNote && (
+            <p className="text-amber-300/80">{result.narrative.moralNote}</p>
+          )}
+        </div>
+
+        {/* Value Change */}
+        {result.newValue !== undefined && (
+          <div className="text-sm text-stone-400 border-t border-noir-400 pt-4">
+            物品新价值: <span className="text-green-400 font-mono text-lg">${result.newValue}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Close Button */}
+      <div className="flex justify-end mt-4">
+        <Button onClick={onClose} className="px-6">
+          确定
+        </Button>
+      </div>
+    </Modal>
   );
 };
