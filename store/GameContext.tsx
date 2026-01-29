@@ -178,7 +178,18 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         phase: GamePhase.BUSINESS,
         stats: { ...state.stats, actionPoints: effectiveMaxAP, visitedToday: false },
         violationFlags: [],
-        lastSatisfaction: null
+        lastSatisfaction: null,
+        // Reset night state for the upcoming night
+        nightState: {
+          ...state.nightState,
+          energy: state.nightState.maxEnergy,
+          actionsThisNight: []
+        },
+        // Reset insightedTonight flags so items can be researched in the upcoming night
+        inventory: state.inventory.map(item => ({
+          ...item,
+          insightedTonight: false
+        }))
       };
     }
 
