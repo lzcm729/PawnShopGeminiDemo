@@ -259,6 +259,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
         tags: updatedItem.tags,
         wasRestored: updatedItem.wasRestored,
         wasReforged: updatedItem.wasReforged,
+        workState: updatedItem.workState,
       },
     });
 

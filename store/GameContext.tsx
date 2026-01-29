@@ -150,7 +150,7 @@ type Action =
   | { type: 'MARK_ITEM_INSIGHTED'; payload: { itemId: string; knowledgePool: import('../systems/items/tags').KnowledgePool } }
   | { type: 'RESET_NIGHTLY_INSIGHT_FLAGS' }
   | { type: 'RECORD_NIGHT_ACTION'; payload: string }
-  | { type: 'UPDATE_ITEM_TAGS'; payload: { itemId: string; tags?: import('../systems/items/tags').ItemTag[]; wasRestored?: boolean; wasReforged?: boolean } };
+  | { type: 'UPDATE_ITEM_TAGS'; payload: { itemId: string; tags?: import('../systems/items/tags').ItemTag[]; wasRestored?: boolean; wasReforged?: boolean; workState?: import('../systems/items/types').WorkState } };
 
 const gameReducer = (state: GameState, action: Action): GameState => {
   switch (action.type) {
@@ -820,7 +820,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     }
 
     case 'UPDATE_ITEM_TAGS': {
-        const { itemId, tags, wasRestored, wasReforged } = action.payload;
+        const { itemId, tags, wasRestored, wasReforged, workState } = action.payload;
         return {
             ...state,
             inventory: state.inventory.map(item =>
@@ -830,6 +830,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
                         tags: tags !== undefined ? tags : item.tags,
                         wasRestored: wasRestored !== undefined ? wasRestored : item.wasRestored,
                         wasReforged: wasReforged !== undefined ? wasReforged : item.wasReforged,
+                        workState: workState !== undefined ? workState : item.workState,
                     }
                     : item
             )

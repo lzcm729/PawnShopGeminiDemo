@@ -11,6 +11,7 @@ import { Item } from './types';
 import { ItemTag, ItemVariant, KnowledgePool, isStateTag, isAttributeTag, isEssenceTag } from './tags';
 import { TAG_DEFINITIONS, getTagDefinition } from './tagData';
 import { EssenceCost } from '../economy/essence';
+import { getItemTemplate } from './csvLoader';
 
 // ============================================================================
 // 标签操作
@@ -206,20 +207,36 @@ export function getActiveVariant(item: Item): ItemVariant | null {
 
 /**
  * 获取物品的显示名称
- * 优先级：WorkState 名称变体 > 旧变体系统 > 原始名称
+ * 优先级：WorkState 名称变体 > CSV模板 > 旧变体系统 > 原始名称
  */
 export function getDisplayName(item: Item): string {
-  // 1. 优先使用 WorkState 名称变体
-  const workState = item.workState || 'DEFAULT';
+  // 确定实际的工作状态（兼容旧存档：wasReforged/wasRestored 为 true 但 workState 未设置）
+  let workState = item.workState || 'DEFAULT';
+  if (workState === 'DEFAULT' && item.wasReforged) {
+    workState = 'REFORGED';
+  } else if (workState === 'DEFAULT' && item.wasRestored) {
+    workState = 'RESTORED';
+  }
 
-  if (workState === 'REFORGED' && item.nameReforged) {
-    return item.nameReforged;
+  // 尝试从 CSV 模板获取（兼容旧存档）
+  const template = item.templateId ? getItemTemplate(item.templateId) :
+                   item.id ? getItemTemplate(item.id) : undefined;
+
+  if (workState === 'REFORGED') {
+    const reforgedName = item.nameReforged || template?.nameReforged;
+    if (reforgedName) return reforgedName;
   }
-  if (workState === 'RESTORED' && item.nameRestored) {
-    return item.nameRestored;
+  if (workState === 'RESTORED') {
+    const restoredName = item.nameRestored || template?.nameRestored;
+    if (restoredName) return restoredName;
   }
+
+  // 默认名称
   if (item.nameDefault) {
     return item.nameDefault;
+  }
+  if (template?.nameDefault) {
+    return template.nameDefault;
   }
 
   // 2. 备选：旧的变体系统
@@ -234,20 +251,36 @@ export function getDisplayName(item: Item): string {
 
 /**
  * 获取物品的显示描述
- * 优先级：WorkState 描述变体 > 旧变体系统 > 原始描述
+ * 优先级：WorkState 描述变体 > CSV模板 > 旧变体系统 > 原始描述
  */
 export function getDisplayDescription(item: Item): string {
-  // 1. 优先使用 WorkState 描述变体
-  const workState = item.workState || 'DEFAULT';
+  // 确定实际的工作状态（兼容旧存档：wasReforged/wasRestored 为 true 但 workState 未设置）
+  let workState = item.workState || 'DEFAULT';
+  if (workState === 'DEFAULT' && item.wasReforged) {
+    workState = 'REFORGED';
+  } else if (workState === 'DEFAULT' && item.wasRestored) {
+    workState = 'RESTORED';
+  }
 
-  if (workState === 'REFORGED' && item.descReforged) {
-    return item.descReforged;
+  // 尝试从 CSV 模板获取（兼容旧存档）
+  const template = item.templateId ? getItemTemplate(item.templateId) :
+                   item.id ? getItemTemplate(item.id) : undefined;
+
+  if (workState === 'REFORGED') {
+    const reforgedDesc = item.descReforged || template?.descReforged;
+    if (reforgedDesc) return reforgedDesc;
   }
-  if (workState === 'RESTORED' && item.descRestored) {
-    return item.descRestored;
+  if (workState === 'RESTORED') {
+    const restoredDesc = item.descRestored || template?.descRestored;
+    if (restoredDesc) return restoredDesc;
   }
+
+  // 默认描述
   if (item.descDefault) {
     return item.descDefault;
+  }
+  if (template?.descDefault) {
+    return template.descDefault;
   }
 
   // 2. 备选：旧的变体系统
