@@ -5,6 +5,7 @@ import { CategoryIcon } from './CategoryIcon';
 import { Item, ItemStatus } from '../../types';
 import { AlertTriangle, ShieldCheck, Heart, Skull, BookOpen, ChevronDown, ChevronUp, Barcode, CalendarClock, DollarSign, LogIn, Search, FileX, ArrowRightCircle, CheckCircle2, History } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { getDisplayName } from '../../systems/items/tagUtils';
 
 interface ItemCardProps {
   item: Item;
@@ -113,7 +114,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions, s
             <CategoryIcon category={item.category} className="text-noir-txt-secondary w-6 h-6" />
           </div>
           <div className="min-w-0">
-            <h3 className="font-bold text-noir-txt-primary truncate text-sm leading-tight mb-1 font-serif tracking-wide">{item.name}</h3>
+            <h3 className="font-bold text-noir-txt-primary truncate text-sm leading-tight mb-1 font-serif tracking-wide">{getDisplayName(item)}</h3>
             <div className="flex flex-wrap gap-1">
                 {item.isFake && <span className="text-[9px] border border-red-900 text-red-500 px-1 rounded flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> FAKE</span>}
                 {item.isStolen && <span className="text-[9px] border border-purple-900 text-purple-500 px-1 rounded flex items-center gap-1"><Skull className="w-3 h-3"/> ILLICIT</span>}

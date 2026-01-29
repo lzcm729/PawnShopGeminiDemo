@@ -8,6 +8,7 @@ import { ItemTrait } from '../types';
 import { getUncertaintyRisk } from '../systems/items/utils';
 import { DecryptionText } from './ui/TextEffects';
 import { playSfx } from '../systems/game/audio';
+import { getDisplayName } from '../systems/items/tagUtils';
 
 const getIcon = (category: string) => {
     switch(category) {
@@ -69,7 +70,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                       Legal
                   </div>
               </div>
-              <h2 className="text-2xl font-serif text-white tracking-wide">{item.name}</h2>
+              <h2 className="text-2xl font-serif text-white tracking-wide">{getDisplayName(item)}</h2>
               <div className="text-stone-500 font-mono text-[10px] uppercase tracking-[0.2em] mt-2 flex items-center justify-center gap-2">
                  <Scale className="w-3 h-3" />
                  <span>Binding Agreement // 具有法律效力的合约</span>
@@ -314,7 +315,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                 <div className={`transition-all duration-500 p-4 border border-stone-800 rounded-full bg-stone-900/50 mb-2 ${appraising ? 'blur-sm opacity-50 scale-110' : ''}`}>
                     {getIcon(item.category)}
                 </div>
-                <h3 className="text-xl font-bold text-stone-200 leading-tight text-center">{item.name}</h3>
+                <h3 className="text-xl font-bold text-stone-200 leading-tight text-center">{getDisplayName(item)}</h3>
                 <p className="text-xs text-stone-500 font-serif italic text-center max-w-[80%]">"{item.historySnippet}"</p>
             </div>
             

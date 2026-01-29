@@ -6,6 +6,7 @@ import { Button } from './ui/Button';
 import { Moon, TrendingUp, AlertOctagon, DollarSign, PackageX, Power, ArrowRight } from 'lucide-react';
 import { ReputationType, ItemStatus } from '../types';
 import { cn } from '../lib/utils';
+import { getDisplayName } from '../systems/items/tagUtils';
 
 export const EndOfDaySummary: React.FC = () => {
   const { state } = useGame();
@@ -171,7 +172,7 @@ export const EndOfDaySummary: React.FC = () => {
                        expiredItems.map(item => (
                            <div key={item.id} className="flex justify-between items-center bg-black/30 p-3 rounded border border-noir-400 group hover:border-stone-500 transition-colors">
                                <div>
-                                   <div className="text-stone-200 text-sm font-bold">{item.name}</div>
+                                   <div className="text-stone-200 text-sm font-bold">{getDisplayName(item)}</div>
                                    <div className="text-xs text-stone-500 font-mono">Est. ${item.realValue}</div>
                                </div>
                                <Button 

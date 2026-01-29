@@ -4,6 +4,7 @@ import { Customer, TransactionResult, ReputationType } from '../types';
 import { Button } from './ui/Button';
 import { PackageCheck, DollarSign, Heart, Briefcase, Skull, Stamp, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
+import { getDisplayName } from '../systems/items/tagUtils';
 
 interface DealSuccessModalProps {
   customer: Customer;
@@ -104,7 +105,7 @@ export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, re
              </div>
              <div>
                  <div className="text-xs text-stone-500 uppercase">物品入库</div>
-                 <div className="font-bold text-white">{item.name}</div>
+                 <div className="font-bold text-white">{getDisplayName(item)}</div>
              </div>
              <PackageCheck className="w-6 h-6 text-green-500 ml-auto" />
         </div>

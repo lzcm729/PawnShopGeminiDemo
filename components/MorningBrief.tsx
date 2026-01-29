@@ -7,6 +7,7 @@ import { NewsCategory, ItemStatus, GamePhase } from '../types';
 import { Sun, CloudRain, Wind, TrendingUp, Newspaper, AlertOctagon, Radio, DollarSign, Calendar, Coffee, ArrowRight, Droplets, Moon, Activity, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Badge } from './ui/Badge';
+import { getDisplayName } from '../systems/items/tagUtils';
 
 export const MorningBrief: React.FC = () => {
   const { state } = useGame();
@@ -134,7 +135,7 @@ export const MorningBrief: React.FC = () => {
                               const days = item.pawnInfo!.dueDate - state.stats.day;
                               return (
                                   <div key={item.id} className="flex justify-between items-center text-[10px] bg-black/20 p-2 rounded border border-red-900/30">
-                                      <span className="truncate w-2/3 text-noir-txt-secondary">{item.name}</span>
+                                      <span className="truncate w-2/3 text-noir-txt-secondary">{getDisplayName(item)}</span>
                                       <Badge variant={days <= 1 ? "danger" : "warning"} className="text-[9px]">
                                           {days}d left
                                       </Badge>

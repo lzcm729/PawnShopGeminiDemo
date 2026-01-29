@@ -5,6 +5,7 @@ import { usePawnShop } from '../hooks/usePawnShop';
 import { Item, ItemStatus } from '../types';
 import { Button } from './ui/Button';
 import { Calculator, CalendarClock, AlertTriangle, Skull, Banknote, ArrowRight, X, AlertOctagon } from 'lucide-react';
+import { getDisplayName } from '../systems/items/tagUtils';
 
 interface RedemptionModalProps {
     item: Item;
@@ -57,7 +58,7 @@ export const RedemptionModal: React.FC<RedemptionModalProps> = ({ item, onClose 
 
                     <div className="bg-black/40 border border-red-900/50 p-4 rounded w-full mb-6">
                         <p className="text-stone-300 font-serif italic mb-4">
-                            "顾客 <span className="text-white font-bold">{item.name}</span> 回来赎当了，但你已经把东西卖了。"
+                            "顾客 <span className="text-white font-bold">{getDisplayName(item)}</span> 回来赎当了，但你已经把东西卖了。"
                         </p>
                         <div className="flex justify-between items-center text-sm font-mono border-t border-red-900/30 pt-4">
                             <span className="text-red-400">违约赔偿金 (双倍估值)</span>
@@ -109,7 +110,7 @@ export const RedemptionModal: React.FC<RedemptionModalProps> = ({ item, onClose 
                     <div className="w-24 h-24 bg-stone-800 rounded-full flex items-center justify-center mb-4 border border-stone-700 shadow-inner">
                         <Banknote className="w-10 h-10 text-stone-500" />
                     </div>
-                    <h2 className="text-xl font-bold text-stone-200 mb-1">{item.name}</h2>
+                    <h2 className="text-xl font-bold text-stone-200 mb-1">{getDisplayName(item)}</h2>
                     <span className="text-xs font-mono text-pawn-accent bg-pawn-accent/10 px-2 py-1 rounded border border-pawn-accent/20 mb-6">
                         {item.status === ItemStatus.FORFEIT ? '已逾期 (OVERDUE)' : '典当期内 (ACTIVE)'}
                     </span>

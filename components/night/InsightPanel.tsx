@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { ESSENCE_DISPLAY_NAMES, ESSENCE_ICONS } from '../../systems/economy/essence';
 import { InsightResult, InsightNarrative } from '../../systems/insight/types';
+import { getDisplayName } from '../../systems/items/tagUtils';
 
 interface InsightPanelProps {
   isOpen: boolean;
@@ -250,7 +251,7 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-noir-txt-primary text-sm truncate">{item.name}</h4>
+          <h4 className="font-bold text-noir-txt-primary text-sm truncate">{getDisplayName(item)}</h4>
 
           {/* Progress Bar */}
           <div className="mt-2 h-2 bg-noir-400 rounded-full overflow-hidden">

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { ESSENCE_ICONS, EssenceCost } from '../../systems/economy/essence';
 import { RecipeStatus, WorkshopResult, RestoreRecipe, ReforgeRecipe } from '../../systems/workshop/types';
+import { getDisplayName } from '../../systems/items/tagUtils';
 
 interface WorkshopPanelProps {
   isOpen: boolean;
@@ -136,7 +137,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                     <CategoryIcon category={item.category} className="w-5 h-5 text-stone-500" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-bold truncate">{item.name}</span>
+                        <span className="text-sm font-bold truncate">{getDisplayName(item)}</span>
                         {item.wasReforged && (
                           <span className="text-[9px] px-1 py-0.5 bg-purple-900/50 text-purple-300 rounded border border-purple-700">
                             已重铸
@@ -170,7 +171,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                   <CategoryIcon category={selectedItem.item.category} className="w-8 h-8 text-stone-400" />
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-lg">{selectedItem.item.name}</h3>
+                      <h3 className="font-bold text-lg">{getDisplayName(selectedItem.item)}</h3>
                       {selectedItem.item.wasReforged && (
                         <span className="text-[10px] px-1.5 py-0.5 bg-purple-900/50 text-purple-300 rounded border border-purple-700">
                           已重铸
