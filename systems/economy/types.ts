@@ -31,6 +31,7 @@ export interface CalendarEvent {
   label: string;
   isCertain: boolean; // True for Bills, False for Redemptions
   relatedId?: string;
+  wasReforged?: boolean; // True if the related item has been reforged
 }
 
 export interface CalendarDayData {

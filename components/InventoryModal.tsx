@@ -27,8 +27,11 @@ export const InventoryModal: React.FC = () => {
   );
 
   // Count categories for stats
-  const activeItems = inventoryItems.filter(i => i.status === ItemStatus.ACTIVE);
+  // Reforged active items are treated as owned, not as active pawns
+  const activeItems = inventoryItems.filter(i => i.status === ItemStatus.ACTIVE && !i.wasReforged);
+  const reforgedItems = inventoryItems.filter(i => i.status === ItemStatus.ACTIVE && i.wasReforged);
   const forfeitItems = inventoryItems.filter(i => i.status === ItemStatus.FORFEIT);
+  const ownedItems = [...forfeitItems, ...reforgedItems]; // All owned items
   const expiringItems = activeItems.filter(i =>
       i.pawnInfo && (i.pawnInfo.dueDate - currentDay <= 2)
   );
@@ -66,8 +69,12 @@ export const InventoryModal: React.FC = () => {
       const isActive = item.status === ItemStatus.ACTIVE;
       const isSold = item.status === ItemStatus.SOLD;
       const isRedeemed = item.status === ItemStatus.REDEEMED;
+      const isReforged = item.wasReforged === true;
       const confirmingSell = forceSellConfirm === item.id;
       const confirmingLiquidate = liquidateConfirm === item.id;
+
+      // Reforged active items are treated as owned
+      const treatedAsOwned = isReforged && isActive;
 
       // Selling/liquidating is only allowed at night
       if (!isNightPhase) {
@@ -82,7 +89,8 @@ export const InventoryModal: React.FC = () => {
           return null;
       }
 
-      if (isForfeit) {
+      // Forfeit items or reforged active items - show liquidate option
+      if (isForfeit || treatedAsOwned) {
           if (confirmingLiquidate) {
               return (
                 <Button
@@ -99,9 +107,14 @@ export const InventoryModal: React.FC = () => {
             <Button
                 variant="ghost"
                 size="sm"
-                className="w-full text-[10px] h-7 text-amber-500 hover:text-amber-400 hover:bg-amber-950/20 border border-amber-900/30"
+                className={cn(
+                    "w-full text-[10px] h-7 border",
+                    treatedAsOwned
+                        ? "text-purple-400 hover:text-purple-300 hover:bg-purple-950/20 border-purple-900/30"
+                        : "text-amber-500 hover:text-amber-400 hover:bg-amber-950/20 border-amber-900/30"
+                )}
                 onClick={() => { setLiquidateConfirm(item.id); playSfx('CLICK'); }}
-                title="Sell this forfeited item for its real value"
+                title={treatedAsOwned ? "Sell this reforged item" : "Sell this forfeited item for its real value"}
             >
                 <DollarSign className="w-3 h-3 mr-1" />
                 LIQUIDATE NOW
@@ -166,8 +179,8 @@ export const InventoryModal: React.FC = () => {
                   <span className="text-lg font-mono font-bold text-noir-txt-primary">{activeItems.length}</span>
               </div>
               <div className="bg-noir-200 border border-noir-300 p-2 rounded flex flex-col items-center justify-center">
-                  <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1">Owned (Forfeit)</span>
-                  <span className={cn("text-lg font-mono font-bold", forfeitItems.length > 0 ? "text-amber-500" : "text-noir-txt-muted")}>{forfeitItems.length}</span>
+                  <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1">Owned</span>
+                  <span className={cn("text-lg font-mono font-bold", ownedItems.length > 0 ? "text-amber-500" : "text-noir-txt-muted")}>{ownedItems.length}</span>
               </div>
               <div className="bg-noir-200 border border-noir-300 p-2 rounded flex flex-col items-center justify-center">
                   <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1">Active Principal</span>

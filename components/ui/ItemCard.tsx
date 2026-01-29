@@ -43,14 +43,20 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions, s
   const isActive = item.status === ItemStatus.ACTIVE;
   const isSold = item.status === ItemStatus.SOLD;
   const isRedeemed = item.status === ItemStatus.REDEEMED;
-  
+  const isReforged = item.wasReforged === true;
+
   const daysLeft = item.pawnInfo ? Math.max(0, item.pawnInfo.dueDate - currentDay) : 0;
-  
+
   let statusColor = "bg-stone-600";
   let statusText = "UNKNOWN";
   let borderColor = "border-noir-400";
 
-  if (isForfeit) {
+  if (isReforged && isActive) {
+    // Reforged active items are treated as owned (breach already occurred)
+    statusColor = "bg-purple-600";
+    statusText = "REFORGED (OWNED)";
+    borderColor = "border-purple-900";
+  } else if (isForfeit) {
     statusColor = "bg-red-600";
     statusText = "FORFEIT (OWNED)";
     borderColor = "border-red-900";
@@ -77,6 +83,9 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions, s
         borderColor = "border-emerald-900";
     }
   }
+
+  // Reforged items are treated as owned for display purposes
+  const treatedAsOwned = isReforged && isActive;
 
   // Logic: Show all logs if expanded, otherwise show only the last one (current status)
   // We reverse logs for display so newest is top if we want, but timeline usually goes down.
@@ -124,20 +133,32 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions, s
                 <span className="text-noir-txt-muted block mb-0.5">CONDITION</span>
                 <span className="text-noir-txt-secondary">{item.condition}</span>
             </div>
-            <div className="bg-noir-200 p-1.5">
-                <span className="text-noir-txt-muted block mb-0.5">PRINCIPAL</span>
-                <span className="text-noir-txt-primary font-bold">${item.pawnAmount}</span>
-            </div>
-            <div className="bg-noir-200 p-1.5">
-                <span className="text-noir-txt-muted block mb-0.5">EST. VALUE</span>
-                <span className={cn("font-bold", item.appraised ? "text-green-500" : "text-noir-txt-muted")}>
-                    {item.appraised || isSold || isForfeit ? `$${item.realValue}` : "???"}
-                </span>
-            </div>
+            {treatedAsOwned ? (
+              /* Reforged items show market value instead of principal */
+              <>
+                <div className="bg-noir-200 p-1.5 col-span-2">
+                    <span className="text-noir-txt-muted block mb-0.5">MARKET VALUE</span>
+                    <span className="text-purple-400 font-bold">${item.realValue}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-noir-200 p-1.5">
+                    <span className="text-noir-txt-muted block mb-0.5">PRINCIPAL</span>
+                    <span className="text-noir-txt-primary font-bold">${item.pawnAmount}</span>
+                </div>
+                <div className="bg-noir-200 p-1.5">
+                    <span className="text-noir-txt-muted block mb-0.5">EST. VALUE</span>
+                    <span className={cn("font-bold", item.appraised ? "text-green-500" : "text-noir-txt-muted")}>
+                        {item.appraised || isSold || isForfeit ? `$${item.realValue}` : "???"}
+                    </span>
+                </div>
+              </>
+            )}
         </div>
 
-        {/* Due Date Indicator (Active Only) */}
-        {isActive && item.pawnInfo && (
+        {/* Due Date Indicator (Active Only, not for reforged) */}
+        {isActive && item.pawnInfo && !treatedAsOwned && (
             <div className="flex items-center justify-between text-[10px] text-noir-txt-muted bg-noir-300/50 p-1.5 rounded border border-dashed border-noir-400">
                 <div className="flex items-center gap-1.5">
                     <CalendarClock className="w-3 h-3" />

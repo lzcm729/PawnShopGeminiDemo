@@ -90,20 +90,28 @@ export const useFinancialProjection = () => {
             expiringItems.forEach(item => {
                 if (item.pawnInfo) {
                     const isSold = item.status === ItemStatus.SOLD;
+                    const isReforged = item.wasReforged === true;
                     const interest = Math.ceil(item.pawnInfo.principal * item.pawnInfo.interestRate);
                     const totalIncome = item.pawnInfo.principal + interest;
 
-                    // For sold items, we won't receive income but might have to pay breach penalty
-                    if (!isSold) {
+                    // For sold items or reforged items, we won't receive income
+                    // (reforged items are treated as owned, customer won't redeem)
+                    if (!isSold && !isReforged) {
                         runningBalance += totalIncome;
+                    }
+
+                    let label = `到期: ${item.name}`;
+                    if (isSold) {
+                        label = `到期(已售): ${item.name}`;
                     }
 
                     dailyEvents.push({
                         type: 'ITEM_DUE',
-                        amount: isSold ? 0 : totalIncome,
-                        label: isSold ? `到期(已售): ${item.name}` : `到期: ${item.name}`,
+                        amount: (isSold || isReforged) ? 0 : totalIncome,
+                        label,
                         isCertain: false,
-                        relatedId: item.id
+                        relatedId: item.id,
+                        wasReforged: isReforged
                     });
                 }
             });

@@ -146,17 +146,32 @@ const CalendarCell: React.FC<{ data: CalendarDayData; index: number }> = ({ data
                             let color = "text-stone-300";
                             let icon = "";
                             if (e.type === 'BILL') { color = "text-red-400"; icon = ""; }
-                            if (e.type === 'ITEM_DUE') { color = "text-cyan-400"; icon = "⏰ "; }
+                            if (e.type === 'ITEM_DUE') {
+                                if (e.wasReforged) {
+                                    color = "text-purple-400";
+                                    icon = "🔮 ";
+                                } else {
+                                    color = "text-cyan-400";
+                                    icon = "⏰ ";
+                                }
+                            }
                             if (e.type === 'MAIL') { color = "text-blue-400"; icon = "✉ "; }
 
                             return (
-                                <div key={idx} className="flex justify-between text-[10px] font-mono leading-tight gap-2">
-                                    <span className={`${color} truncate flex-1`} title={e.label}>
-                                        {icon}{e.label}
-                                    </span>
-                                    {e.amount !== 0 && (
-                                        <span className={`shrink-0 ${e.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                            {e.amount > 0 ? '+' : ''}{e.amount}
+                                <div key={idx} className="flex flex-col gap-0.5">
+                                    <div className="flex justify-between text-[10px] font-mono leading-tight gap-2">
+                                        <span className={`${color} truncate flex-1`} title={e.label}>
+                                            {icon}{e.label}
+                                        </span>
+                                        {e.amount !== 0 && (
+                                            <span className={`shrink-0 ${e.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                {e.amount > 0 ? '+' : ''}{e.amount}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {e.wasReforged && (
+                                        <span className="text-[8px] text-purple-500 italic">
+                                            物品已被重铸，客户无法赎回
                                         </span>
                                     )}
                                 </div>
