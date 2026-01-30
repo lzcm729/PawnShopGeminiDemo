@@ -193,6 +193,22 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </button>
 
+                        {/* Shop Upgrades Button */}
+                        <button
+                            onClick={() => dispatch({ type: 'TOGGLE_UPGRADE_SHOP' })}
+                            className="h-32 border border-cyan-900 bg-stone-900/50 hover:bg-cyan-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group"
+                        >
+                            <Store className="w-8 h-8 text-cyan-500 group-hover:text-cyan-300 group-hover:scale-110 transition-transform" />
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs uppercase tracking-widest group-hover:text-white">
+                                    店铺升级 (Upgrades)
+                                </span>
+                                <span className="text-[9px] text-cyan-500/70 mt-1">
+                                    扩展仓库与设施
+                                </span>
+                            </div>
+                        </button>
+
                         {/* Appointment Board Button (always visible, locked if not unlocked) */}
                         <button
                             onClick={() => {
@@ -245,22 +261,6 @@ export const NightDashboard: React.FC = () => {
                                         : appointedCount > 0
                                             ? `${appointedCount} customer(s) invited`
                                             : 'Preview & invite customers'}
-                                </span>
-                            </div>
-                        </button>
-
-                        {/* Shop Upgrades Button */}
-                        <button
-                            onClick={() => dispatch({ type: 'TOGGLE_UPGRADE_SHOP' })}
-                            className="h-32 border border-cyan-900 bg-stone-900/50 hover:bg-cyan-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group"
-                        >
-                            <Store className="w-8 h-8 text-cyan-500 group-hover:text-cyan-300 group-hover:scale-110 transition-transform" />
-                            <div className="flex flex-col items-center">
-                                <span className="text-xs uppercase tracking-widest group-hover:text-white">
-                                    店铺升级 (Upgrades)
-                                </span>
-                                <span className="text-[9px] text-cyan-500/70 mt-1">
-                                    扩展仓库与设施
                                 </span>
                             </div>
                         </button>
