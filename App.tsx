@@ -16,6 +16,7 @@ import { FinancialCalendar } from './components/FinancialCalendar';
 import { MedicalModal } from './components/MedicalModal';
 import { HospitalVisitModal } from './components/HospitalVisitModal'; 
 import { DebugPanel } from './components/DebugPanel';
+import { DevConsole } from './components/DevConsole';
 import { DepartureView } from './components/ShopClosedView'; 
 import { StartScreen } from './components/StartScreen';
 import { MorningBrief } from './components/MorningBrief';
@@ -279,6 +280,9 @@ const GameContent: React.FC = () => {
 
       {/* Debug Panel - 始终渲染在最顶层 */}
       <DebugPanel />
+
+      {/* Developer Console - Press ` or F1 to toggle */}
+      <DevConsole />
     </div>
   );
 };
