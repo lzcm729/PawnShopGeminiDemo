@@ -61,7 +61,7 @@ const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: Rea
             </svg>
             {/* Center Icon */}
             <div className={cn(
-                "absolute inset-2 rounded-lg flex items-center justify-center",
+                "absolute inset-2 rounded-full flex items-center justify-center",
                 isMaxLevel ? "bg-green-950/50 text-green-500" : "bg-amber-950/50 text-amber-500"
             )}>
                 {icon}
