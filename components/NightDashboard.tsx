@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight } from 'lucide-react';
+import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
@@ -193,31 +193,61 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </button>
 
-                        {/* Appointment Board Button (only show if unlocked) */}
-                        {hasBoardUnlocked && (
-                            <button
-                                onClick={() => { playSfx('CLICK'); setShowAppointmentBoard(true); }}
-                                className={cn(
-                                    "h-32 border bg-stone-900/50 hover:bg-teal-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
-                                    appointedCount > 0 ? "border-teal-500" : "border-teal-900"
-                                )}
-                            >
-                                {appointedCount > 0 && (
-                                    <div className="absolute top-2 right-2 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
-                                        <span className="text-[10px] font-bold text-white">{appointedCount}</span>
-                                    </div>
-                                )}
-                                <ClipboardList className="w-8 h-8 text-teal-500 group-hover:text-teal-300 group-hover:scale-110 transition-transform" />
-                                <div className="flex flex-col items-center">
-                                    <span className="text-xs uppercase tracking-widest group-hover:text-white">
-                                        Appointments (Lv{boardLevel})
-                                    </span>
-                                    <span className="text-[9px] text-teal-500/70 mt-1">
-                                        {appointedCount > 0 ? `${appointedCount} customer(s) invited` : 'Preview & invite customers'}
-                                    </span>
+                        {/* Appointment Board Button (always visible, locked if not unlocked) */}
+                        <button
+                            onClick={() => {
+                                if (hasBoardUnlocked) {
+                                    playSfx('CLICK');
+                                    setShowAppointmentBoard(true);
+                                }
+                            }}
+                            disabled={!hasBoardUnlocked}
+                            className={cn(
+                                "h-32 border bg-stone-900/50 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
+                                hasBoardUnlocked
+                                    ? cn(
+                                        "hover:bg-teal-950/50 cursor-pointer",
+                                        appointedCount > 0 ? "border-teal-500" : "border-teal-900"
+                                      )
+                                    : "border-stone-800 opacity-50 grayscale cursor-not-allowed"
+                            )}
+                        >
+                            {/* Lock overlay for locked state */}
+                            {!hasBoardUnlocked && (
+                                <div className="absolute top-2 right-2 w-5 h-5 bg-stone-700 rounded-full flex items-center justify-center">
+                                    <Lock className="w-3 h-3 text-stone-400" />
                                 </div>
-                            </button>
-                        )}
+                            )}
+                            {hasBoardUnlocked && appointedCount > 0 && (
+                                <div className="absolute top-2 right-2 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-white">{appointedCount}</span>
+                                </div>
+                            )}
+                            <ClipboardList className={cn(
+                                "w-8 h-8 transition-transform",
+                                hasBoardUnlocked
+                                    ? "text-teal-500 group-hover:text-teal-300 group-hover:scale-110"
+                                    : "text-stone-600"
+                            )} />
+                            <div className="flex flex-col items-center">
+                                <span className={cn(
+                                    "text-xs uppercase tracking-widest",
+                                    hasBoardUnlocked ? "group-hover:text-white" : "text-stone-600"
+                                )}>
+                                    Appointments {hasBoardUnlocked ? `(Lv${boardLevel})` : ''}
+                                </span>
+                                <span className={cn(
+                                    "text-[9px] mt-1",
+                                    hasBoardUnlocked ? "text-teal-500/70" : "text-stone-600"
+                                )}>
+                                    {!hasBoardUnlocked
+                                        ? 'Requires upgrade'
+                                        : appointedCount > 0
+                                            ? `${appointedCount} customer(s) invited`
+                                            : 'Preview & invite customers'}
+                                </span>
+                            </div>
+                        </button>
 
                         {/* Shop Upgrades Button */}
                         <button
@@ -235,31 +265,56 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </button>
 
-                        {/* Facility Control Button (only show if has counter facilities) */}
-                        {hasCounterFacilities && (
-                            <button
-                                onClick={() => dispatch({ type: 'TOGGLE_FACILITY_CONTROL' })}
-                                className={cn(
-                                    "h-32 border bg-stone-900/50 hover:bg-blue-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
-                                    maintenanceCost > 0 ? "border-blue-500" : "border-blue-900"
-                                )}
-                            >
-                                {maintenanceCost > 0 && (
-                                    <div className="absolute top-2 right-2 bg-red-500/80 rounded px-1.5 py-0.5">
-                                        <span className="text-[9px] font-bold text-white">-${maintenanceCost}/day</span>
-                                    </div>
-                                )}
-                                <ToggleRight className="w-8 h-8 text-blue-500 group-hover:text-blue-300 group-hover:scale-110 transition-transform" />
-                                <div className="flex flex-col items-center">
-                                    <span className="text-xs uppercase tracking-widest group-hover:text-white">
-                                        设施控制 (Facility)
-                                    </span>
-                                    <span className="text-[9px] text-blue-500/70 mt-1">
-                                        开关柜台设施
-                                    </span>
+                        {/* Facility Control Button (always visible, locked if no counter facilities) */}
+                        <button
+                            onClick={() => {
+                                if (hasCounterFacilities) {
+                                    dispatch({ type: 'TOGGLE_FACILITY_CONTROL' });
+                                }
+                            }}
+                            disabled={!hasCounterFacilities}
+                            className={cn(
+                                "h-32 border bg-stone-900/50 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
+                                hasCounterFacilities
+                                    ? cn(
+                                        "hover:bg-blue-950/50 cursor-pointer",
+                                        maintenanceCost > 0 ? "border-blue-500" : "border-blue-900"
+                                      )
+                                    : "border-stone-800 opacity-50 grayscale cursor-not-allowed"
+                            )}
+                        >
+                            {/* Lock overlay for locked state */}
+                            {!hasCounterFacilities && (
+                                <div className="absolute top-2 right-2 w-5 h-5 bg-stone-700 rounded-full flex items-center justify-center">
+                                    <Lock className="w-3 h-3 text-stone-400" />
                                 </div>
-                            </button>
-                        )}
+                            )}
+                            {hasCounterFacilities && maintenanceCost > 0 && (
+                                <div className="absolute top-2 right-2 bg-red-500/80 rounded px-1.5 py-0.5">
+                                    <span className="text-[9px] font-bold text-white">-${maintenanceCost}/day</span>
+                                </div>
+                            )}
+                            <ToggleRight className={cn(
+                                "w-8 h-8 transition-transform",
+                                hasCounterFacilities
+                                    ? "text-blue-500 group-hover:text-blue-300 group-hover:scale-110"
+                                    : "text-stone-600"
+                            )} />
+                            <div className="flex flex-col items-center">
+                                <span className={cn(
+                                    "text-xs uppercase tracking-widest",
+                                    hasCounterFacilities ? "group-hover:text-white" : "text-stone-600"
+                                )}>
+                                    设施控制 (Facility)
+                                </span>
+                                <span className={cn(
+                                    "text-[9px] mt-1",
+                                    hasCounterFacilities ? "text-blue-500/70" : "text-stone-600"
+                                )}>
+                                    {hasCounterFacilities ? '开关柜台设施' : 'Requires upgrade'}
+                                </span>
+                            </div>
+                        </button>
 
                         {/* Visit Hospital Button */}
                         <button
