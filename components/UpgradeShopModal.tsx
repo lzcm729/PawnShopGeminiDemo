@@ -27,6 +27,7 @@ const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: Rea
         const startAngle = i * (arcAngle + gapAngle) - 90; // Start from top
         const endAngle = startAngle + arcAngle;
         const isActive = i < currentLevel;
+        const isNextLevel = i === currentLevel && !isMaxLevel; // Next level to unlock
 
         // Convert to radians
         const startRad = (startAngle * Math.PI) / 180;
@@ -41,14 +42,23 @@ const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: Rea
 
         const largeArc = arcAngle > 180 ? 1 : 0;
 
+        // Determine stroke color
+        let strokeColor = '#3f3f46'; // Inactive
+        if (isActive) {
+            strokeColor = isMaxLevel ? '#22c55e' : '#a855f7';
+        } else if (isNextLevel) {
+            strokeColor = '#d97706'; // Amber for next level hint
+        }
+
         return (
             <path
                 key={i}
                 d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`}
                 fill="none"
-                stroke={isActive ? (isMaxLevel ? '#22c55e' : '#a855f7') : '#3f3f46'}
+                stroke={strokeColor}
                 strokeWidth="3"
                 strokeLinecap="round"
+                className={isNextLevel ? 'animate-arc-breathe' : undefined}
             />
         );
     });
@@ -57,6 +67,17 @@ const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: Rea
         <div className="relative w-16 h-16 shrink-0">
             {/* Arc Ring SVG */}
             <svg className="absolute inset-0 w-full h-full" viewBox="0 0 64 64">
+                <style>
+                    {`
+                        @keyframes arcBreathe {
+                            0%, 100% { opacity: 0.3; }
+                            50% { opacity: 1; }
+                        }
+                        .animate-arc-breathe {
+                            animation: arcBreathe 2s ease-in-out infinite;
+                        }
+                    `}
+                </style>
                 {arcs}
             </svg>
             {/* Center Icon */}
@@ -66,40 +87,6 @@ const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: Rea
             )}>
                 {icon}
             </div>
-        </div>
-    );
-};
-
-// Level Dots Component - shows colored dots for level progress
-const LevelDots: React.FC<{ currentLevel: number; maxLevel: number }> = ({ currentLevel, maxLevel }) => {
-    return (
-        <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-noir-txt-muted uppercase tracking-wider mr-1">LEVEL:</span>
-            <div className="flex gap-1">
-                {Array.from({ length: maxLevel }, (_, i) => {
-                    let color = 'bg-zinc-600'; // Not reached
-                    if (i < currentLevel) {
-                        // Gradient from green to yellow/orange based on position
-                        if (i === 0) color = 'bg-green-500';
-                        else if (i === 1) color = 'bg-lime-500';
-                        else if (i === 2) color = 'bg-yellow-500';
-                        else if (i === 3) color = 'bg-amber-500';
-                        else color = 'bg-orange-500';
-                    }
-                    return (
-                        <div
-                            key={i}
-                            className={cn(
-                                "w-3 h-3 rounded-sm",
-                                color
-                            )}
-                        />
-                    );
-                })}
-            </div>
-            <span className="text-xs font-mono text-noir-txt-secondary ml-1">
-                {currentLevel}/{maxLevel}
-            </span>
         </div>
     );
 };
@@ -335,12 +322,9 @@ export const UpgradeShopModal: React.FC = () => {
                                         </div>
 
                                         {/* Description */}
-                                        <p className="text-sm text-noir-txt-muted mb-3">
+                                        <p className="text-sm text-noir-txt-muted">
                                             {config.description}
                                         </p>
-
-                                        {/* Level Dots */}
-                                        <LevelDots currentLevel={currentLevel} maxLevel={config.maxLevel} />
                                     </div>
                                 </div>
 
