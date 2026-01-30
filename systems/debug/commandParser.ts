@@ -326,9 +326,119 @@ function handleAddCommand(
 }
 
 /**
+ * Command definition for documentation
+ */
+export interface CommandDef {
+  command: string;
+  description: string;
+  usage: string;
+  examples?: string[];
+}
+
+/**
+ * Get all available commands with their documentation
+ * This is used by qa-tester to know current available commands
+ */
+export function getAvailableCommands(): CommandDef[] {
+  return [
+    {
+      command: 'set phase',
+      description: 'Set game phase',
+      usage: 'set phase <phase>',
+      examples: [`set phase night`, `set phase business`, `set phase morning`]
+    },
+    {
+      command: 'set day',
+      description: 'Set current day',
+      usage: 'set day <n>',
+      examples: [`set day 5`, `set day 14`]
+    },
+    {
+      command: 'set cash',
+      description: 'Set cash amount',
+      usage: 'set cash <n>',
+      examples: [`set cash 50000`, `set cash 100000`]
+    },
+    {
+      command: 'set reputation',
+      description: 'Set reputation value',
+      usage: 'set reputation <type> <n>',
+      examples: [`set reputation humanity 80`, `set reputation credibility 50`]
+    },
+    {
+      command: 'set ap',
+      description: 'Set action points',
+      usage: 'set ap <n>',
+      examples: [`set ap 5`]
+    },
+    {
+      command: 'set energy',
+      description: 'Set night energy',
+      usage: 'set energy <n>',
+      examples: [`set energy 3`]
+    },
+    {
+      command: 'open',
+      description: 'Open a panel',
+      usage: 'open <panel>',
+      examples: [`open upgrade`, `open mail`, `open calendar`, `open inventory`]
+    },
+    {
+      command: 'close',
+      description: 'Close a panel',
+      usage: 'close <panel>',
+      examples: [`close upgrade`, `close mail`]
+    },
+    {
+      command: 'add cash',
+      description: 'Add cash (can be negative)',
+      usage: 'add cash <n>',
+      examples: [`add cash 1000`, `add cash -500`]
+    },
+    {
+      command: 'add essence',
+      description: 'Add essence to all types',
+      usage: 'add essence <n>',
+      examples: [`add essence 10`]
+    },
+    {
+      command: 'spawn customer',
+      description: 'Force spawn a customer (business phase only)',
+      usage: 'spawn customer',
+      examples: [`spawn customer`]
+    },
+    {
+      command: 'clear',
+      description: 'Clear console history',
+      usage: 'clear',
+      examples: []
+    },
+    {
+      command: 'help',
+      description: 'Show available commands',
+      usage: 'help',
+      examples: []
+    }
+  ];
+}
+
+/**
+ * Get valid values for specific command parameters
+ */
+export function getCommandOptions(): Record<string, string[]> {
+  return {
+    phases: Object.keys(PHASE_MAP),
+    reputationTypes: Object.keys(REPUTATION_MAP),
+    panels: Object.keys(PANEL_MAP)
+  };
+}
+
+/**
  * Interface for window.__console__ exposed to QA tester
  */
 export interface DevConsoleAPI {
   execute: (command: string) => CommandResult[];
   getState: () => any;
+  getCommands: () => CommandDef[];
+  getOptions: () => Record<string, string[]>;
 }

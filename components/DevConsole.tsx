@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGame } from '../store/GameContext';
-import { parseMultipleCommands, executeCommand, CommandResult, DevConsoleAPI } from '../systems/debug/commandParser';
+import { parseMultipleCommands, executeCommand, CommandResult, DevConsoleAPI, getAvailableCommands, getCommandOptions } from '../systems/debug/commandParser';
 import { ChevronRight, Terminal } from 'lucide-react';
 
 interface HistoryEntry {
@@ -59,7 +59,9 @@ export const DevConsole: React.FC = () => {
         ]);
         return results;
       },
-      getState: () => state
+      getState: () => state,
+      getCommands: getAvailableCommands,
+      getOptions: getCommandOptions
     };
 
     window.__console__ = api;
