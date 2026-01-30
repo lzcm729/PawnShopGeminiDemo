@@ -2,13 +2,14 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
-import { PackageOpen, DollarSign, ShieldAlert, Moon } from 'lucide-react';
+import { PackageOpen, DollarSign, ShieldAlert, Moon, Archive } from 'lucide-react';
 import { ItemStatus, Item, GamePhase } from '../types';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
 import { ItemCard } from './ui/ItemCard';
 import { playSfx } from '../systems/game/audio';
 import { cn } from '../lib/utils';
+import { getEffectiveInventoryCapacity } from '../systems/upgrades';
 
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -162,6 +163,12 @@ export const InventoryModal: React.FC = () => {
       return acc + interest;
   }, 0);
 
+  // Inventory capacity
+  const inventoryCapacity = getEffectiveInventoryCapacity(state.shopUpgrades);
+  const currentInventoryCount = displayItems.length;
+  const isAtCapacity = currentInventoryCount >= inventoryCapacity;
+  const isNearCapacity = currentInventoryCount >= inventoryCapacity - 1;
+
   return (
     <Modal
       isOpen={state.showInventory}
@@ -173,7 +180,21 @@ export const InventoryModal: React.FC = () => {
       <div className="flex flex-col h-[700px] bg-noir-100">
           
           {/* Dashboard Header */}
-          <div className="bg-black border-b border-noir-400 p-4 grid grid-cols-4 gap-4 shadow-md z-10">
+          <div className="bg-black border-b border-noir-400 p-4 grid grid-cols-5 gap-4 shadow-md z-10">
+              <div className={cn(
+                  "bg-noir-200 border p-2 rounded flex flex-col items-center justify-center",
+                  isAtCapacity ? "border-red-500" : isNearCapacity ? "border-amber-500" : "border-noir-300"
+              )}>
+                  <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1 flex items-center gap-1">
+                      <Archive className="w-3 h-3" /> Capacity
+                  </span>
+                  <span className={cn(
+                      "text-lg font-mono font-bold",
+                      isAtCapacity ? "text-red-500" : isNearCapacity ? "text-amber-500" : "text-cyan-500"
+                  )}>
+                      {currentInventoryCount}/{inventoryCapacity}
+                  </span>
+              </div>
               <div className="bg-noir-200 border border-noir-300 p-2 rounded flex flex-col items-center justify-center">
                   <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1">Active Pawns</span>
                   <span className="text-lg font-mono font-bold text-noir-txt-primary">{activeItems.length}</span>

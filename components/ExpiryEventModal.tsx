@@ -16,7 +16,7 @@ export const ExpiryEventModal: React.FC<ExpiryEventModalProps> = ({ event, onRes
     const compensationAmount = Math.ceil(valuation * 2);  // 200% 赔偿金
     const renewalInterest = Math.ceil(redemptionCost.principal * interestRate);  // 续当利息
 
-    const renderSceneDescription = (): JSX.Element => {
+    const renderSceneDescription = (): React.ReactNode => {
         if (behavior === 'REDEEM') {
             return (
                 <div className="space-y-2">
@@ -47,7 +47,7 @@ export const ExpiryEventModal: React.FC<ExpiryEventModalProps> = ({ event, onRes
         );
     };
 
-    const renderCostInfo = (): JSX.Element => {
+    const renderCostInfo = (): React.ReactNode => {
         return (
             <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
                 <h4 className="text-sm text-gray-400 mb-2">费用明细</h4>
@@ -69,7 +69,7 @@ export const ExpiryEventModal: React.FC<ExpiryEventModalProps> = ({ event, onRes
         );
     };
 
-    const renderPlayerOptions = (): JSX.Element => {
+    const renderPlayerOptions = (): React.ReactNode => {
         if (behavior === 'REDEEM') {
             return (
                 <div className="space-y-2">

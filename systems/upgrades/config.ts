@@ -1,0 +1,173 @@
+
+// Shop Upgrade Configuration
+// Defines all available upgrades, their costs, and effects
+
+import { UpgradeConfig, AppointmentBoardLevelConfig } from './types';
+
+/**
+ * Storage Expansion (Backroom)
+ * Increases inventory capacity
+ * No maintenance cost, permanently active
+ */
+export const STORAGE_EXPANSION: UpgradeConfig = {
+  id: 'storage_expansion',
+  name: 'Storage Expansion',
+  nameCn: '储物架扩展',
+  description: 'Expand storage shelves to hold more pawned items.',
+  location: 'BACKROOM',
+  effectType: 'INVENTORY_CAPACITY',
+  maxLevel: 5,
+  levels: [
+    { level: 1, cost: 500,  effectValue: 1, description: '增加1个库存位' },
+    { level: 2, cost: 1000, effectValue: 2, description: '增加2个库存位' },
+    { level: 3, cost: 2000, effectValue: 3, description: '增加3个库存位' },
+    { level: 4, cost: 4000, effectValue: 4, description: '增加4个库存位' },
+    { level: 5, cost: 8000, effectValue: 5, description: '增加5个库存位' },
+  ],
+  icon: 'Package',
+};
+
+/**
+ * Precision Bench (Backroom)
+ * Increases night energy cap
+ * No maintenance cost, permanently active
+ */
+export const PRECISION_BENCH: UpgradeConfig = {
+  id: 'precision_bench',
+  name: 'Precision Bench',
+  nameCn: '精密工作台',
+  description: 'A proper workstation allows more night activities.',
+  location: 'BACKROOM',
+  effectType: 'NIGHT_ENERGY',
+  maxLevel: 3,
+  levels: [
+    { level: 1, cost: 1500, effectValue: 1, description: '夜间精力上限 3 -> 4' },
+    { level: 2, cost: 3000, effectValue: 2, description: '夜间精力上限 4 -> 5' },
+    { level: 3, cost: 6000, effectValue: 3, description: '夜间精力上限 5 -> 6' },
+  ],
+  icon: 'Wrench',
+};
+
+/**
+ * Tea Set (Counter)
+ * Increases customer patience
+ * Has maintenance cost, can be toggled on/off each night
+ */
+export const TEA_SET: UpgradeConfig = {
+  id: 'tea_set',
+  name: 'Tea Set',
+  nameCn: '茶具套装',
+  description: 'Offer tea to customers, improving their patience.',
+  location: 'COUNTER',
+  effectType: 'PATIENCE_BONUS',
+  maxLevel: 3,
+  levels: [
+    { level: 1, cost: 800,  effectValue: 1, maintenanceCost: 20, description: '顾客初始耐心+1' },
+    { level: 2, cost: 1500, effectValue: 2, maintenanceCost: 35, description: '顾客初始耐心+2' },
+    { level: 3, cost: 3000, effectValue: 3, maintenanceCost: 50, description: '顾客初始耐心+3' },
+  ],
+  icon: 'Coffee',
+};
+
+/**
+ * Spectrometer (Counter)
+ * Detects anomalies between perceived and real value (fakes or bargains)
+ * Has maintenance cost, can be toggled on/off each night
+ */
+export const SPECTROMETER: UpgradeConfig = {
+  id: 'spectrometer',
+  name: 'Spectrometer',
+  nameCn: '光谱分析仪',
+  description: 'Detect anomalies between perceived and real value.',
+  location: 'COUNTER',
+  effectType: 'ANOMALY_DETECTION',
+  maxLevel: 3,
+  levels: [
+    { level: 1, cost: 2000, effectValue: 50, maintenanceCost: 30, description: '检测偏差>50%的物品' },
+    { level: 2, cost: 4000, effectValue: 30, maintenanceCost: 50, description: '检测偏差>30%的物品' },
+    { level: 3, cost: 8000, effectValue: 20, maintenanceCost: 80, description: '检测偏差>20%的物品' },
+  ],
+  icon: 'Scan',
+};
+
+/**
+ * Appointment Board (Backroom)
+ * Preview and invite additional customers
+ * No maintenance cost, permanently active
+ */
+export const APPOINTMENT_BOARD: UpgradeConfig = {
+  id: 'appointment_board',
+  name: 'Appointment Board',
+  nameCn: '预约板',
+  description: 'Preview potential customers and invite extra visitors.',
+  location: 'BACKROOM',
+  effectType: 'APPOINTMENT_BOARD',
+  maxLevel: 5,
+  levels: [
+    { level: 1, cost: 1000,  effectValue: 1, description: 'Lv1 简易预约本：2候选，可邀请1人' },
+    { level: 2, cost: 2000,  effectValue: 2, description: 'Lv2 客户档案柜：3候选，+情绪状态' },
+    { level: 3, cost: 4000,  effectValue: 3, description: 'Lv3 社区情报网：3候选，+背景线索' },
+    { level: 4, cost: 7000,  effectValue: 4, description: 'Lv4 预约热线：3候选，可邀请2人' },
+    { level: 5, cost: 12000, effectValue: 5, description: 'Lv5 VIP名册：4候选，+筛选偏好' },
+  ],
+  icon: 'ClipboardList',
+};
+
+/**
+ * Appointment board level configurations with detailed features
+ */
+export const APPOINTMENT_BOARD_LEVELS: AppointmentBoardLevelConfig[] = [
+  { level: 1, candidateCount: 2, maxInvites: 1, showEmotion: false, showBackground: false, showNewsLink: false, hasPreference: false },
+  { level: 2, candidateCount: 3, maxInvites: 1, showEmotion: true,  showBackground: false, showNewsLink: false, hasPreference: false },
+  { level: 3, candidateCount: 3, maxInvites: 1, showEmotion: true,  showBackground: true,  showNewsLink: true,  hasPreference: false },
+  { level: 4, candidateCount: 3, maxInvites: 2, showEmotion: true,  showBackground: true,  showNewsLink: true,  hasPreference: false },
+  { level: 5, candidateCount: 4, maxInvites: 2, showEmotion: true,  showBackground: true,  showNewsLink: true,  hasPreference: true  },
+];
+
+/**
+ * Get appointment board level config
+ */
+export function getAppointmentBoardLevelConfig(level: number): AppointmentBoardLevelConfig | undefined {
+  return APPOINTMENT_BOARD_LEVELS.find(l => l.level === level);
+}
+
+/**
+ * All available upgrades (Phase 1 + Phase 2 + Phase 3)
+ */
+export const AVAILABLE_UPGRADES: UpgradeConfig[] = [
+  // Backroom (no maintenance, always active)
+  STORAGE_EXPANSION,
+  PRECISION_BENCH,
+  APPOINTMENT_BOARD,
+  // Counter (has maintenance, can be toggled)
+  TEA_SET,
+  SPECTROMETER,
+];
+
+/**
+ * Get upgrade config by ID
+ */
+export function getUpgradeConfig(upgradeId: string): UpgradeConfig | undefined {
+  return AVAILABLE_UPGRADES.find(u => u.id === upgradeId);
+}
+
+/**
+ * Get level config for a specific upgrade level
+ */
+export function getUpgradeLevelConfig(upgradeId: string, level: number) {
+  const config = getUpgradeConfig(upgradeId);
+  if (!config) return undefined;
+  return config.levels.find(l => l.level === level);
+}
+
+/**
+ * Base inventory capacity (before upgrades)
+ */
+export const BASE_INVENTORY_CAPACITY = 5;
+
+/**
+ * Default shop upgrade state for new games
+ */
+export const INITIAL_SHOP_UPGRADES = {
+  upgrades: [],
+};

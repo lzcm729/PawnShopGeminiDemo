@@ -3,13 +3,16 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Moon, Mail, Package, Calendar, Power, Coffee, Activity, AlertCircle, Heart, Eye, Wrench } from 'lucide-react';
+import { Moon, Mail, Package, Calendar, Power, Coffee, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
 import { getBedtimeMonologue } from '../systems/narrative/innerVoiceRegistry';
 import { InsightPanel } from './night/InsightPanel';
 import { WorkshopPanel } from './night/WorkshopPanel';
+import { AppointmentBoardPanel } from './night/AppointmentBoardPanel';
+import { UpgradeShopModal } from './UpgradeShopModal';
+import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel } from '../systems/upgrades';
 
 export const NightDashboard: React.FC = () => {
     const { state, dispatch } = useGame();
@@ -20,6 +23,12 @@ export const NightDashboard: React.FC = () => {
     const [monologueText, setMonologueText] = useState("");
     const [showInsightPanel, setShowInsightPanel] = useState(false);
     const [showWorkshopPanel, setShowWorkshopPanel] = useState(false);
+    const [showAppointmentBoard, setShowAppointmentBoard] = useState(false);
+
+    // Check if appointment board is unlocked
+    const hasBoardUnlocked = hasAppointmentBoard(state.shopUpgrades);
+    const boardLevel = getAppointmentBoardLevel(state.shopUpgrades);
+    const appointedCount = state.appointmentBoard.selectedIds.length;
 
     const unreadMail = inbox.filter(m => !m.isRead).length;
     // Count only items actually in inventory (ACTIVE or FORFEIT), not REDEEMED/SOLD
@@ -178,6 +187,51 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </button>
 
+                        {/* Appointment Board Button (only show if unlocked) */}
+                        {hasBoardUnlocked && (
+                            <button
+                                onClick={() => { playSfx('CLICK'); setShowAppointmentBoard(true); }}
+                                className={cn(
+                                    "h-32 border bg-stone-900/50 hover:bg-teal-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
+                                    appointedCount > 0 ? "border-teal-500" : "border-teal-900"
+                                )}
+                            >
+                                {appointedCount > 0 && (
+                                    <div className="absolute top-2 right-2 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
+                                        <span className="text-[10px] font-bold text-white">{appointedCount}</span>
+                                    </div>
+                                )}
+                                <ClipboardList className="w-8 h-8 text-teal-500 group-hover:text-teal-300 group-hover:scale-110 transition-transform" />
+                                <div className="flex flex-col items-center">
+                                    <span className="text-xs uppercase tracking-widest group-hover:text-white">
+                                        Appointments (Lv{boardLevel})
+                                    </span>
+                                    <span className="text-[9px] text-teal-500/70 mt-1">
+                                        {appointedCount > 0 ? `${appointedCount} customer(s) invited` : 'Preview & invite customers'}
+                                    </span>
+                                </div>
+                            </button>
+                        )}
+
+                        {/* Shop Upgrades Button */}
+                        <button
+                            onClick={() => dispatch({ type: 'TOGGLE_UPGRADE_SHOP' })}
+                            className={cn(
+                                "h-32 border border-cyan-900 bg-stone-900/50 hover:bg-cyan-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group",
+                                hasBoardUnlocked ? "" : "col-span-2"
+                            )}
+                        >
+                            <Store className="w-8 h-8 text-cyan-500 group-hover:text-cyan-300 group-hover:scale-110 transition-transform" />
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs uppercase tracking-widest group-hover:text-white">
+                                    店铺升级 (Upgrades)
+                                </span>
+                                <span className="text-[9px] text-cyan-500/70 mt-1">
+                                    扩展仓库与设施
+                                </span>
+                            </div>
+                        </button>
+
                         {/* Visit Hospital Button */}
                         <button
                             onClick={() => dispatch({ type: 'TOGGLE_VISIT' })}
@@ -237,6 +291,15 @@ export const NightDashboard: React.FC = () => {
             <WorkshopPanel
                 isOpen={showWorkshopPanel}
                 onClose={() => setShowWorkshopPanel(false)}
+            />
+
+            {/* Upgrade Shop Modal */}
+            <UpgradeShopModal />
+
+            {/* Appointment Board Modal */}
+            <AppointmentBoardPanel
+                isOpen={showAppointmentBoard}
+                onClose={() => setShowAppointmentBoard(false)}
             />
         </div>
     );

@@ -10,6 +10,7 @@ import { GAME_CONFIG } from '../systems/game/config';
 import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
 import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
 import { Dialogue } from '../systems/narrative/types';
+import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -192,7 +193,11 @@ export const useGameEngine = () => {
 
     dispatch({ type: 'UPDATE_MOTHER_STATUS', payload: updatedMother });
 
-    // 7. End Day (Transition to Morning)
+    // 7. Prepare Appointments for Tomorrow
+    // This copies selected candidate IDs to pendingAppointedCustomerIds and clears selections
+    dispatch({ type: 'PREPARE_DAILY_APPOINTMENTS' });
+
+    // 8. End Day (Transition to Morning)
     dispatch({ type: 'END_DAY' });
   };
 
@@ -281,6 +286,9 @@ export const useGameEngine = () => {
   };
 
   const startNewDay = () => {
+    // 0. Deduct maintenance costs for enabled COUNTER upgrades
+    dispatch({ type: 'DEDUCT_MAINTENANCE_COST' });
+
     // 1. Process daily mail
     dispatch({ type: 'PROCESS_DAILY_MAIL' });
 
@@ -348,7 +356,7 @@ export const useGameEngine = () => {
   const generateDailyEvent = async () => {
     if (state.isLoading) return;
     dispatch({ type: 'SET_LOADING', payload: true });
-    
+
     try {
       // 1. Check for Renewal Requests FIRST (Priority: Expiring Items)
       const renewalCustomer = checkRenewalRequests(state);
@@ -360,7 +368,21 @@ export const useGameEngine = () => {
           return;
       }
 
-      // 2. Standard Story Events
+      // 2. Check for Appointed Customers (after story events are processed)
+      // Appointed customers appear after random customers have been handled
+      const pendingAppointedCandidates = state.pendingAppointedCandidates;
+      if (pendingAppointedCandidates.length > 0) {
+          const candidate = pendingAppointedCandidates[0];
+          const appointedCustomer = generateCustomerFromCandidate(candidate, state.stats.day);
+          dispatch({ type: 'POP_APPOINTED_CANDIDATE' });
+          setTimeout(() => {
+              dispatch({ type: 'SET_CUSTOMER', payload: appointedCustomer });
+              dispatch({ type: 'SET_LOADING', payload: false });
+          }, 800);
+          return;
+      }
+
+      // 3. Standard Story Events
       const narrativeEvent = findEligibleEvent(state.activeChains, ALL_STORY_EVENTS);
       
       if (narrativeEvent) {

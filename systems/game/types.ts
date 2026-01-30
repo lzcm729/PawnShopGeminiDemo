@@ -6,6 +6,7 @@ import { TransactionRecord } from '../economy/types';
 import { EventChainState, MailInstance, SatisfactionLevel, ExpiryEvent } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
+import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
 
 // === NIGHT PHASE TYPES ===
 export interface NightState {
@@ -71,4 +72,13 @@ export interface GameState {
   // === NIGHT PHASE (夜间玩法) ===
   essenceBalance: EssenceBalance;          // 精魄余额（匠心/旧影/灵韵）
   nightState: NightState;                  // 夜间状态（精力/已执行操作）
+
+  // === SHOP UPGRADES (典当行升级) ===
+  shopUpgrades: ShopUpgradeState;          // 店铺设施升级状态
+  showUpgradeShop: boolean;                // 升级商店界面显示状态
+
+  // === APPOINTMENT BOARD (预约板系统) ===
+  appointmentBoard: AppointmentBoardState; // 预约板状态
+  showAppointmentBoard: boolean;           // 预约板界面显示状态
+  pendingAppointedCandidates: AppointmentCandidate[];  // 今日待接待的预约客户候选
 }

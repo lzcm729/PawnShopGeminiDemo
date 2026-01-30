@@ -35,6 +35,7 @@ interface ItemBase {
     descRestored?: string;
     descReforged?: string;
     workState?: WorkState;
+    isVirtual?: boolean;  // If true, item is never added to inventory
 }
 
 /**

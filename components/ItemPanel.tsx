@@ -2,13 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
 import { useAppraisal } from '../hooks/useAppraisal';
-import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert, CheckCircle2 } from 'lucide-react';
+import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert, CheckCircle2, Radio } from 'lucide-react';
 import { Button } from './ui/Button';
 import { ItemTrait } from '../types';
 import { getUncertaintyRisk } from '../systems/items/utils';
 import { DecryptionText } from './ui/TextEffects';
 import { playSfx } from '../systems/game/audio';
 import { getDisplayName } from '../systems/items/tagUtils';
+import { checkItemAnomaly, getAnomalyDetectionThreshold } from '../systems/upgrades';
 
 const getIcon = (category: string) => {
     switch(category) {
@@ -285,14 +286,27 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
 
   const uncertaintyRisk = getUncertaintyRisk(currentMin, currentMax);
 
+  // Spectrometer anomaly detection
+  const anomalyThreshold = getAnomalyDetectionThreshold(state.shopUpgrades);
+  const hasAnomaly = checkItemAnomaly(item.perceivedValue, item.realValue, state.shopUpgrades);
+
   return (
       <div className="h-full bg-[#1c1917] border-x border-[#44403c] flex flex-col overflow-hidden relative">
-        
+
         <div className="bg-[#0c0a09] relative flex flex-col border-b border-[#292524] min-h-[40%]">
-            
+
             <div className="p-3 flex justify-between items-start z-20">
-                 <div className="bg-black/70 px-2 py-1 text-[10px] font-mono text-stone-400 border border-stone-700 backdrop-blur-sm rounded">
-                   {(item.condition || 'Unknown').toUpperCase()} | {item.category}
+                 <div className="flex items-center gap-2">
+                     <div className="bg-black/70 px-2 py-1 text-[10px] font-mono text-stone-400 border border-stone-700 backdrop-blur-sm rounded">
+                       {(item.condition || 'Unknown').toUpperCase()} | {item.category}
+                     </div>
+                     {/* Spectrometer Anomaly Alert */}
+                     {hasAnomaly && (
+                         <div className="bg-red-950/80 px-2 py-1 text-[10px] font-mono text-red-400 border border-red-700 backdrop-blur-sm rounded flex items-center gap-1 animate-pulse">
+                             <Radio className="w-3 h-3" />
+                             <span>ANOMALY</span>
+                         </div>
+                     )}
                  </div>
                  
                  <div className="flex flex-col items-end gap-1">
@@ -356,13 +370,20 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                         <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-20 pointer-events-none"></div>
                     </div>
                     
-                    {uncertaintyRisk === 'HIGH' && (
+                    {/* Spectrometer Anomaly Warning - Takes priority */}
+                    {hasAnomaly && (
+                      <div className="flex items-center justify-center gap-2 text-red-400 text-[10px] font-bold mt-1 bg-red-950/40 py-1 rounded border border-red-700/50 animate-pulse">
+                        <Radio className="w-3 h-3" />
+                        <span>光谱分析仪检测到异常！可能是假货或捡漏 (SPECTROMETER ALERT)</span>
+                      </div>
+                    )}
+                    {!hasAnomaly && uncertaintyRisk === 'HIGH' && (
                       <div className="flex items-center justify-center gap-2 text-red-500 text-[10px] font-bold mt-1 bg-red-950/20 py-0.5 rounded border border-red-900/30 animate-pulse">
                         <AlertTriangle className="w-3 h-3" />
                         <span>估值不确定性高，建议深入鉴定 (HIGH RISK)</span>
                       </div>
                     )}
-                    {uncertaintyRisk === 'MEDIUM' && (
+                    {!hasAnomaly && uncertaintyRisk === 'MEDIUM' && (
                       <div className="flex items-center justify-center gap-2 text-amber-500 text-[10px] font-bold mt-1 bg-amber-950/20 py-0.5 rounded border border-amber-900/30">
                         <AlertCircle className="w-3 h-3" />
                         <span>估值区间较大 (UNCERTAIN)</span>

@@ -9,6 +9,9 @@ import { saveGame, clearSave } from '../systems/core/persistence';
 import { playSfx } from '../systems/game/audio';
 import { GAME_CONFIG } from '../systems/game/config';
 import { EssenceBalance, EssenceType, INITIAL_ESSENCE_BALANCE } from '../systems/economy/essence';
+import { INITIAL_SHOP_UPGRADES, purchaseUpgrade, toggleUpgrade, getUpgradeLevelConfig, getEffectiveNightEnergy, getTotalMaintenanceCost, getPatienceBonus } from '../systems/upgrades';
+import { AppointmentCandidate, AppointmentPreference, INITIAL_APPOINTMENT_BOARD_STATE } from '../systems/appointment';
+import { getAppointedCustomers } from '../systems/appointment/customerGenerator';
 
 // ... initialState ...
 const initialState: GameState = {
@@ -69,7 +72,14 @@ const initialState: GameState = {
     energy: GAME_CONFIG.NIGHT.BASE_ENERGY,
     maxEnergy: GAME_CONFIG.NIGHT.BASE_ENERGY,
     actionsThisNight: [] as string[]
-  }
+  },
+  // === SHOP UPGRADES (典当行升级) ===
+  shopUpgrades: { ...INITIAL_SHOP_UPGRADES },
+  showUpgradeShop: false,
+  // === APPOINTMENT BOARD (预约板系统) ===
+  appointmentBoard: { ...INITIAL_APPOINTMENT_BOARD_STATE },
+  showAppointmentBoard: false,
+  pendingAppointedCandidates: []
 };
 
 // ... Actions type definition ...
@@ -150,12 +160,46 @@ type Action =
   | { type: 'MARK_ITEM_INSIGHTED'; payload: { itemId: string; knowledgePool: import('../systems/items/tags').KnowledgePool } }
   | { type: 'RESET_NIGHTLY_INSIGHT_FLAGS' }
   | { type: 'RECORD_NIGHT_ACTION'; payload: string }
-  | { type: 'UPDATE_ITEM_TAGS'; payload: { itemId: string; tags?: import('../systems/items/tags').ItemTag[]; wasRestored?: boolean; wasReforged?: boolean; workState?: import('../systems/items/types').WorkState } };
+  | { type: 'UPDATE_ITEM_TAGS'; payload: { itemId: string; tags?: import('../systems/items/tags').ItemTag[]; wasRestored?: boolean; wasReforged?: boolean; workState?: import('../systems/items/types').WorkState } }
+  // === SHOP UPGRADE ACTIONS (典当行升级) ===
+  | { type: 'TOGGLE_UPGRADE_SHOP' }
+  | { type: 'PURCHASE_UPGRADE'; payload: { upgradeId: string } }
+  | { type: 'TOGGLE_UPGRADE_ENABLED'; payload: { upgradeId: string } }
+  | { type: 'DEDUCT_MAINTENANCE_COST' }
+  // === APPOINTMENT BOARD ACTIONS (预约板系统) ===
+  | { type: 'TOGGLE_APPOINTMENT_BOARD' }
+  | { type: 'SET_APPOINTMENT_CANDIDATES'; payload: AppointmentCandidate[] }
+  | { type: 'SELECT_APPOINTMENT_CANDIDATE'; payload: { candidateId: string } }
+  | { type: 'DESELECT_APPOINTMENT_CANDIDATE'; payload: { candidateId: string } }
+  | { type: 'SET_APPOINTMENT_PREFERENCE'; payload: AppointmentPreference }
+  | { type: 'CLEAR_APPOINTMENT_SELECTIONS' }
+  | { type: 'PREPARE_DAILY_APPOINTMENTS' }
+  | { type: 'POP_APPOINTED_CANDIDATE' };
 
 const gameReducer = (state: GameState, action: Action): GameState => {
   switch (action.type) {
-    case 'LOAD_GAME':
-      return { ...action.payload };
+    case 'LOAD_GAME': {
+      // Ensure shop upgrades are migrated from old saves
+      const shopUpgrades = action.payload.shopUpgrades || { ...INITIAL_SHOP_UPGRADES };
+      // Ensure appointment board is migrated from old saves
+      const appointmentBoard = action.payload.appointmentBoard || { ...INITIAL_APPOINTMENT_BOARD_STATE };
+      // Ensure pending appointments are migrated
+      const pendingAppointedCandidates = action.payload.pendingAppointedCandidates || [];
+      // Recalculate maxEnergy based on upgrades
+      const effectiveMaxEnergy = getEffectiveNightEnergy(shopUpgrades);
+      return {
+        ...action.payload,
+        shopUpgrades,
+        showUpgradeShop: action.payload.showUpgradeShop ?? false,
+        appointmentBoard,
+        showAppointmentBoard: action.payload.showAppointmentBoard ?? false,
+        pendingAppointedCandidates,
+        nightState: {
+          ...action.payload.nightState,
+          maxEnergy: effectiveMaxEnergy
+        }
+      };
+    }
 
     case 'START_GAME':
       clearSave();
@@ -219,7 +263,16 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     // ... rest of the reducer cases (SET_PHASE, SET_LOADING, etc) unchanged ...
     case 'SET_PHASE': return { ...state, phase: action.payload };
     case 'SET_LOADING': return { ...state, isLoading: action.payload };
-    case 'SET_CUSTOMER': if (!action.payload) return { ...state, currentCustomer: null }; const customerInit = { ...action.payload, mood: 'Neutral' as Mood }; return { ...state, currentCustomer: customerInit, phase: GamePhase.NEGOTIATION, lastSatisfaction: null };
+    case 'SET_CUSTOMER': {
+      if (!action.payload) return { ...state, currentCustomer: null };
+      // Apply patience bonus from Tea Set upgrade (only for non-seller customers)
+      const patienceBonus = getPatienceBonus(state.shopUpgrades);
+      const basePatience = action.payload.patience;
+      // Only apply bonus if customer has patience > 0 (normal customers, not special cases)
+      const adjustedPatience = basePatience > 0 ? basePatience + patienceBonus : basePatience;
+      const customerInit = { ...action.payload, mood: 'Neutral' as Mood, patience: adjustedPatience };
+      return { ...state, currentCustomer: customerInit, phase: GamePhase.NEGOTIATION, lastSatisfaction: null };
+    }
     case 'CLEAR_CUSTOMER': return { ...state, currentCustomer: null, lastDealSummary: null };
     case 'UPDATE_CUSTOMER_STATUS': if (!state.currentCustomer) return state; return { ...state, currentCustomer: { ...state.currentCustomer, patience: action.payload.patience, mood: action.payload.mood, currentAskPrice: action.payload.currentAskPrice } };
     case 'UPDATE_ITEM_KNOWLEDGE': if (!state.currentCustomer || state.currentCustomer.item.id !== action.payload.itemId) return state; const prevCount = state.currentCustomer.item.appraisalCount || 0; const prevNegative = state.currentCustomer.item.hasNegativeAppraisalEvent || false; const prevLogs = state.currentCustomer.item.logs || []; const newLogs = action.payload.log ? [...prevLogs, action.payload.log] : prevLogs; return { ...state, currentCustomer: { ...state.currentCustomer, item: { ...state.currentCustomer.item, currentRange: action.payload.newRange, revealedTraits: action.payload.revealedTraits, uncertainty: action.payload.newUncertainty, perceivedValue: action.payload.newPerceived, appraised: true, appraisalCount: action.payload.incrementAppraisalCount ? prevCount + 1 : prevCount, hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : prevNegative, logs: newLogs } } };
@@ -834,6 +887,176 @@ const gameReducer = (state: GameState, action: Action): GameState => {
                     }
                     : item
             )
+        };
+    }
+
+    // === SHOP UPGRADE REDUCERS (典当行升级) ===
+    case 'TOGGLE_UPGRADE_SHOP': {
+        playSfx('HOVER');
+        return { ...state, showUpgradeShop: !state.showUpgradeShop };
+    }
+
+    case 'PURCHASE_UPGRADE': {
+        const { upgradeId } = action.payload;
+        const levelConfig = getUpgradeLevelConfig(upgradeId,
+            (state.shopUpgrades.upgrades.find(u => u.upgradeId === upgradeId)?.currentLevel ?? 0) + 1
+        );
+
+        if (!levelConfig || state.stats.cash < levelConfig.cost) {
+            playSfx('FAIL');
+            return state;
+        }
+
+        const { newState, success } = purchaseUpgrade(upgradeId, state.shopUpgrades);
+        if (!success) {
+            playSfx('FAIL');
+            return state;
+        }
+
+        playSfx('SUCCESS');
+
+        // Calculate new night energy cap based on upgrades
+        const newMaxEnergy = getEffectiveNightEnergy(newState);
+
+        const upgradeRecord: TransactionRecord = {
+            id: crypto.randomUUID(),
+            description: `设施升级: ${upgradeId}`,
+            amount: -levelConfig.cost,
+            type: 'UPGRADE' as any
+        };
+
+        return {
+            ...state,
+            stats: { ...state.stats, cash: state.stats.cash - levelConfig.cost },
+            shopUpgrades: newState,
+            nightState: {
+                ...state.nightState,
+                maxEnergy: newMaxEnergy,
+                // Also update current energy if it would be below the new max
+                energy: Math.min(state.nightState.energy, newMaxEnergy)
+            },
+            todayTransactions: [...state.todayTransactions, upgradeRecord],
+            dayEvents: [...state.dayEvents, `购买设施升级: ${upgradeId} Lv${newState.upgrades.find(u => u.upgradeId === upgradeId)?.currentLevel}`]
+        };
+    }
+
+    case 'TOGGLE_UPGRADE_ENABLED': {
+        const { upgradeId } = action.payload;
+        const newUpgradeState = toggleUpgrade(upgradeId, state.shopUpgrades);
+        playSfx('CLICK');
+        return {
+            ...state,
+            shopUpgrades: newUpgradeState
+        };
+    }
+
+    case 'DEDUCT_MAINTENANCE_COST': {
+        // Deduct maintenance cost for enabled COUNTER upgrades at the start of each day
+        const maintenanceCost = getTotalMaintenanceCost(state.shopUpgrades);
+        if (maintenanceCost <= 0) return state;
+
+        const maintenanceRecord: TransactionRecord = {
+            id: crypto.randomUUID(),
+            description: '柜台设施维护费',
+            amount: -maintenanceCost,
+            type: 'MAINTENANCE' as any
+        };
+
+        return {
+            ...state,
+            stats: { ...state.stats, cash: state.stats.cash - maintenanceCost },
+            todayTransactions: [...state.todayTransactions, maintenanceRecord],
+            dayEvents: [...state.dayEvents, `支付设施维护费: $${maintenanceCost}`]
+        };
+    }
+
+    // === APPOINTMENT BOARD REDUCERS (预约板系统) ===
+    case 'TOGGLE_APPOINTMENT_BOARD': {
+        playSfx('HOVER');
+        return { ...state, showAppointmentBoard: !state.showAppointmentBoard };
+    }
+
+    case 'SET_APPOINTMENT_CANDIDATES': {
+        return {
+            ...state,
+            appointmentBoard: {
+                ...state.appointmentBoard,
+                candidates: action.payload,
+                selectedIds: [] // Clear selections when new candidates are set
+            }
+        };
+    }
+
+    case 'SELECT_APPOINTMENT_CANDIDATE': {
+        const { candidateId } = action.payload;
+        if (state.appointmentBoard.selectedIds.includes(candidateId)) {
+            return state; // Already selected
+        }
+        playSfx('CLICK');
+        return {
+            ...state,
+            appointmentBoard: {
+                ...state.appointmentBoard,
+                selectedIds: [...state.appointmentBoard.selectedIds, candidateId]
+            }
+        };
+    }
+
+    case 'DESELECT_APPOINTMENT_CANDIDATE': {
+        const { candidateId } = action.payload;
+        playSfx('CLICK');
+        return {
+            ...state,
+            appointmentBoard: {
+                ...state.appointmentBoard,
+                selectedIds: state.appointmentBoard.selectedIds.filter(id => id !== candidateId)
+            }
+        };
+    }
+
+    case 'SET_APPOINTMENT_PREFERENCE': {
+        playSfx('CLICK');
+        return {
+            ...state,
+            appointmentBoard: {
+                ...state.appointmentBoard,
+                preference: action.payload
+            }
+        };
+    }
+
+    case 'CLEAR_APPOINTMENT_SELECTIONS': {
+        return {
+            ...state,
+            appointmentBoard: {
+                ...state.appointmentBoard,
+                selectedIds: []
+            }
+        };
+    }
+
+    case 'PREPARE_DAILY_APPOINTMENTS': {
+        // Copy selected candidates to pending queue and clear selections
+        const selectedCandidates = state.appointmentBoard.selectedIds
+            .map(id => state.appointmentBoard.candidates.find(c => c.id === id))
+            .filter((c): c is AppointmentCandidate => c !== undefined);
+        return {
+            ...state,
+            pendingAppointedCandidates: selectedCandidates,
+            appointmentBoard: {
+                ...state.appointmentBoard,
+                candidates: [],  // Clear old candidates
+                selectedIds: []  // Clear selections
+            }
+        };
+    }
+
+    case 'POP_APPOINTED_CANDIDATE': {
+        // Remove first candidate from pending queue
+        if (state.pendingAppointedCandidates.length === 0) return state;
+        return {
+            ...state,
+            pendingAppointedCandidates: state.pendingAppointedCandidates.slice(1)
         };
     }
 
