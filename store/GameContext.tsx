@@ -76,6 +76,7 @@ const initialState: GameState = {
   // === SHOP UPGRADES (典当行升级) ===
   shopUpgrades: { ...INITIAL_SHOP_UPGRADES },
   showUpgradeShop: false,
+  showFacilityControl: false,
   // === APPOINTMENT BOARD (预约板系统) ===
   appointmentBoard: { ...INITIAL_APPOINTMENT_BOARD_STATE },
   showAppointmentBoard: false,
@@ -163,6 +164,7 @@ type Action =
   | { type: 'UPDATE_ITEM_TAGS'; payload: { itemId: string; tags?: import('../systems/items/tags').ItemTag[]; wasRestored?: boolean; wasReforged?: boolean; workState?: import('../systems/items/types').WorkState } }
   // === SHOP UPGRADE ACTIONS (典当行升级) ===
   | { type: 'TOGGLE_UPGRADE_SHOP' }
+  | { type: 'TOGGLE_FACILITY_CONTROL' }
   | { type: 'PURCHASE_UPGRADE'; payload: { upgradeId: string } }
   | { type: 'TOGGLE_UPGRADE_ENABLED'; payload: { upgradeId: string } }
   | { type: 'DEDUCT_MAINTENANCE_COST' }
@@ -191,6 +193,7 @@ const gameReducer = (state: GameState, action: Action): GameState => {
         ...action.payload,
         shopUpgrades,
         showUpgradeShop: action.payload.showUpgradeShop ?? false,
+        showFacilityControl: action.payload.showFacilityControl ?? false,
         appointmentBoard,
         showAppointmentBoard: action.payload.showAppointmentBoard ?? false,
         pendingAppointedCandidates,
@@ -894,6 +897,11 @@ const gameReducer = (state: GameState, action: Action): GameState => {
     case 'TOGGLE_UPGRADE_SHOP': {
         playSfx('HOVER');
         return { ...state, showUpgradeShop: !state.showUpgradeShop };
+    }
+
+    case 'TOGGLE_FACILITY_CONTROL': {
+        playSfx('HOVER');
+        return { ...state, showFacilityControl: !state.showFacilityControl };
     }
 
     case 'PURCHASE_UPGRADE': {

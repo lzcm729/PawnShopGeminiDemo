@@ -3,11 +3,10 @@ import React from 'react';
 import { useGame } from '../store/GameContext';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { Package, Wrench, Check, Lock, DollarSign, Zap, Coffee, Scan, Power, ToggleLeft, ToggleRight, Coins } from 'lucide-react';
+import { Package, Wrench, Check, Lock, DollarSign, Zap, Coffee, Scan } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { getAvailableUpgradesWithStatus, getEffectiveInventoryCapacity, getEffectiveNightEnergy, BASE_INVENTORY_CAPACITY, getTotalMaintenanceCost, getCounterUpgradesForToggle, getPatienceBonus, getAnomalyDetectionThreshold } from '../systems/upgrades';
+import { getAvailableUpgradesWithStatus, getEffectiveInventoryCapacity, getEffectiveNightEnergy, BASE_INVENTORY_CAPACITY, getTotalMaintenanceCost, getPatienceBonus, getAnomalyDetectionThreshold } from '../systems/upgrades';
 import { GAME_CONFIG } from '../systems/game/config';
-import { GamePhase } from '../types';
 
 // Circular Arc Pattern Component - represents level with purple arcs
 const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: React.ReactNode; isMaxLevel?: boolean }> = ({
@@ -97,17 +96,10 @@ export const UpgradeShopModal: React.FC = () => {
     if (!state.showUpgradeShop) return null;
 
     const upgradesWithStatus = getAvailableUpgradesWithStatus(state.stats.cash, state.shopUpgrades);
-    const counterUpgrades = getCounterUpgradesForToggle(state.shopUpgrades);
     const totalMaintenanceCost = getTotalMaintenanceCost(state.shopUpgrades);
-    const isNightPhase = state.phase === GamePhase.NIGHT;
 
     const handlePurchase = (upgradeId: string) => {
         dispatch({ type: 'PURCHASE_UPGRADE', payload: { upgradeId } });
-    };
-
-    const handleToggle = (upgradeId: string) => {
-        if (!isNightPhase) return;
-        dispatch({ type: 'TOGGLE_UPGRADE_ENABLED', payload: { upgradeId } });
     };
 
     const getIcon = (iconName?: string) => {
@@ -117,16 +109,6 @@ export const UpgradeShopModal: React.FC = () => {
             case 'Coffee': return <Coffee className="w-6 h-6" />;
             case 'Scan': return <Scan className="w-6 h-6" />;
             default: return <Package className="w-6 h-6" />;
-        }
-    };
-
-    const getSmallIcon = (iconName?: string) => {
-        switch (iconName) {
-            case 'Package': return <Package className="w-4 h-4" />;
-            case 'Wrench': return <Wrench className="w-4 h-4" />;
-            case 'Coffee': return <Coffee className="w-4 h-4" />;
-            case 'Scan': return <Scan className="w-4 h-4" />;
-            default: return <Package className="w-4 h-4" />;
         }
     };
 
@@ -200,69 +182,6 @@ export const UpgradeShopModal: React.FC = () => {
                         </div>
                     )}
                 </div>
-
-                {/* Counter Upgrade Toggle Section (Night Only) */}
-                {counterUpgrades.length > 0 && (
-                    <div className="bg-blue-950/20 border border-blue-900/50 rounded p-4">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-xs uppercase tracking-widest text-blue-400 flex items-center gap-2">
-                                <Power className="w-4 h-4" /> Counter Facility Controls
-                            </h3>
-                            {!isNightPhase && (
-                                <span className="text-[9px] text-stone-500 bg-stone-800 px-2 py-1 rounded">
-                                    Toggle at night only
-                                </span>
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            {counterUpgrades.map(upgrade => (
-                                <div
-                                    key={upgrade.upgradeId}
-                                    className={cn(
-                                        "flex items-center justify-between p-3 rounded border transition-all",
-                                        upgrade.enabled
-                                            ? "bg-blue-950/30 border-blue-800"
-                                            : "bg-noir-300/50 border-noir-400 opacity-60"
-                                    )}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={cn(
-                                            "w-8 h-8 rounded flex items-center justify-center",
-                                            upgrade.enabled ? "bg-blue-900/50 text-blue-400" : "bg-noir-400 text-noir-txt-muted"
-                                        )}>
-                                            {getSmallIcon(upgrade.icon)}
-                                        </div>
-                                        <div>
-                                            <div className="text-sm font-mono text-noir-txt-primary">
-                                                {upgrade.nameCn} <span className="text-[10px] text-noir-txt-muted">Lv{upgrade.currentLevel}</span>
-                                            </div>
-                                            <div className="text-[10px] text-noir-txt-muted flex items-center gap-1">
-                                                <Coins className="w-3 h-3 text-red-500" />
-                                                <span className={upgrade.enabled ? "text-red-400" : "text-stone-500"}>
-                                                    {upgrade.enabled ? `-$${upgrade.maintenanceCost}/day` : "Disabled"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => handleToggle(upgrade.upgradeId)}
-                                        disabled={!isNightPhase}
-                                        className={cn(
-                                            "transition-all",
-                                            isNightPhase ? "cursor-pointer hover:scale-110" : "cursor-not-allowed opacity-50"
-                                        )}
-                                    >
-                                        {upgrade.enabled ? (
-                                            <ToggleRight className="w-8 h-8 text-green-500" />
-                                        ) : (
-                                            <ToggleLeft className="w-8 h-8 text-stone-500" />
-                                        )}
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
                 {/* Upgrade Cards - New Figma Style */}
                 <div className="grid grid-cols-1 gap-4">

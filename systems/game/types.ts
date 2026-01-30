@@ -76,6 +76,7 @@ export interface GameState {
   // === SHOP UPGRADES (典当行升级) ===
   shopUpgrades: ShopUpgradeState;          // 店铺设施升级状态
   showUpgradeShop: boolean;                // 升级商店界面显示状态
+  showFacilityControl: boolean;            // 设施开关控制界面显示状态
 
   // === APPOINTMENT BOARD (预约板系统) ===
   appointmentBoard: AppointmentBoardState; // 预约板状态

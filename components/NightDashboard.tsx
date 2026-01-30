@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Moon, Mail, Package, Calendar, Power, Coffee, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList } from 'lucide-react';
+import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
@@ -12,7 +12,8 @@ import { InsightPanel } from './night/InsightPanel';
 import { WorkshopPanel } from './night/WorkshopPanel';
 import { AppointmentBoardPanel } from './night/AppointmentBoardPanel';
 import { UpgradeShopModal } from './UpgradeShopModal';
-import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel } from '../systems/upgrades';
+import { FacilityControlModal } from './FacilityControlModal';
+import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost } from '../systems/upgrades';
 
 export const NightDashboard: React.FC = () => {
     const { state, dispatch } = useGame();
@@ -29,6 +30,11 @@ export const NightDashboard: React.FC = () => {
     const hasBoardUnlocked = hasAppointmentBoard(state.shopUpgrades);
     const boardLevel = getAppointmentBoardLevel(state.shopUpgrades);
     const appointedCount = state.appointmentBoard.selectedIds.length;
+
+    // Check for counter facilities
+    const counterUpgrades = getCounterUpgradesForToggle(state.shopUpgrades);
+    const hasCounterFacilities = counterUpgrades.length > 0;
+    const maintenanceCost = getTotalMaintenanceCost(state.shopUpgrades);
 
     const unreadMail = inbox.filter(m => !m.isRead).length;
     // Count only items actually in inventory (ACTIVE or FORFEIT), not REDEEMED/SOLD
@@ -216,10 +222,7 @@ export const NightDashboard: React.FC = () => {
                         {/* Shop Upgrades Button */}
                         <button
                             onClick={() => dispatch({ type: 'TOGGLE_UPGRADE_SHOP' })}
-                            className={cn(
-                                "h-32 border border-cyan-900 bg-stone-900/50 hover:bg-cyan-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group",
-                                hasBoardUnlocked ? "" : "col-span-2"
-                            )}
+                            className="h-32 border border-cyan-900 bg-stone-900/50 hover:bg-cyan-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group"
                         >
                             <Store className="w-8 h-8 text-cyan-500 group-hover:text-cyan-300 group-hover:scale-110 transition-transform" />
                             <div className="flex flex-col items-center">
@@ -231,6 +234,32 @@ export const NightDashboard: React.FC = () => {
                                 </span>
                             </div>
                         </button>
+
+                        {/* Facility Control Button (only show if has counter facilities) */}
+                        {hasCounterFacilities && (
+                            <button
+                                onClick={() => dispatch({ type: 'TOGGLE_FACILITY_CONTROL' })}
+                                className={cn(
+                                    "h-32 border bg-stone-900/50 hover:bg-blue-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
+                                    maintenanceCost > 0 ? "border-blue-500" : "border-blue-900"
+                                )}
+                            >
+                                {maintenanceCost > 0 && (
+                                    <div className="absolute top-2 right-2 bg-red-500/80 rounded px-1.5 py-0.5">
+                                        <span className="text-[9px] font-bold text-white">-${maintenanceCost}/day</span>
+                                    </div>
+                                )}
+                                <ToggleRight className="w-8 h-8 text-blue-500 group-hover:text-blue-300 group-hover:scale-110 transition-transform" />
+                                <div className="flex flex-col items-center">
+                                    <span className="text-xs uppercase tracking-widest group-hover:text-white">
+                                        设施控制 (Facility)
+                                    </span>
+                                    <span className="text-[9px] text-blue-500/70 mt-1">
+                                        开关柜台设施
+                                    </span>
+                                </div>
+                            </button>
+                        )}
 
                         {/* Visit Hospital Button */}
                         <button
@@ -295,6 +324,9 @@ export const NightDashboard: React.FC = () => {
 
             {/* Upgrade Shop Modal */}
             <UpgradeShopModal />
+
+            {/* Facility Control Modal */}
+            <FacilityControlModal />
 
             {/* Appointment Board Modal */}
             <AppointmentBoardPanel
