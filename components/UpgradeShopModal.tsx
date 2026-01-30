@@ -273,7 +273,7 @@ export const UpgradeShopModal: React.FC = () => {
                                                     "text-lg font-mono font-bold",
                                                     canPurchase ? "text-white" : "text-red-500"
                                                 )}>
-                                                    ${nextLevelCost}
+                                                    {nextLevelCost}
                                                 </span>
                                             </div>
                                             <Button
