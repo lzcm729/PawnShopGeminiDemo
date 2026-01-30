@@ -347,9 +347,9 @@ export const NightDashboard: React.FC = () => {
                         <div className="text-3xl font-mono text-stone-200">${stats.cash}</div>
                     </div>
 
-                    <Button 
+                    <Button
                         onClick={handleSleep}
-                        className="w-full h-20 text-lg tracking-widest bg-stone-900 hover:bg-stone-800 border-stone-700 shadow-[0_0_30px_rgba(0,0,0,0.5)] group relative overflow-hidden"
+                        className="w-full h-20 text-lg tracking-widest bg-stone-900 hover:bg-stone-800 border-stone-700 shadow-[0_0_30px_rgba(0,0,0,0.5)] group relative overflow-hidden text-stone-200 hover:text-white"
                     >
                         <div className="absolute inset-0 bg-black/50 group-hover:bg-transparent transition-colors"></div>
                         <span className="relative z-10 flex items-center justify-center gap-3">
