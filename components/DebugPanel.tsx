@@ -1,10 +1,9 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { Database, PlayCircle, Bug, X, Terminal, FileDown, Power, DollarSign, Sparkles, Trash2 } from 'lucide-react';
+import { Database, PlayCircle, Bug, X, Terminal, Power, DollarSign, Sparkles, Trash2 } from 'lucide-react';
 import { validateEvents, ValidationIssue } from '../systems/narrative/validator';
 import { EMMA_EVENTS } from '../systems/narrative/storyRegistry';
-import { generateDesignBible } from '../systems/game/utils/designExporter';
 import { ValidationModal } from './ValidationModal';
 import { playSfx } from '../systems/game/audio';
 
@@ -26,20 +25,6 @@ export const DebugPanel: React.FC = () => {
         setValidationLogs(result.logs);
         setValidationIssues(result.issues);
         setShowValidation(true);
-  };
-
-  const handleExportBible = () => {
-      playSfx('CLICK');
-      const content = generateDesignBible();
-      const blob = new Blob([content], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `pawn_shop_design_bible_${new Date().toISOString().slice(0,10)}.md`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
   };
 
   const handleAddCash = () => {
@@ -103,20 +88,13 @@ export const DebugPanel: React.FC = () => {
                 </button>
             </div>
             
-            <div className="p-3 border-b border-green-900/30 grid grid-cols-4 gap-2 bg-green-950/5">
+            <div className="p-3 border-b border-green-900/30 grid grid-cols-3 gap-2 bg-green-950/5">
                 <button
                         onClick={handleValidate}
                         className="bg-green-900/20 border border-green-700/50 hover:bg-green-900/40 text-green-400 px-2 py-2 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
                 >
                     <PlayCircle className="w-3 h-3" />
                     VALIDATE
-                </button>
-                <button
-                    onClick={handleExportBible}
-                    className="bg-blue-900/20 border border-blue-700/50 hover:bg-blue-900/40 text-blue-400 px-2 py-2 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
-                >
-                    <FileDown className="w-3 h-3" />
-                    EXPORT
                 </button>
                 <button
                     onClick={handleAddCash}
@@ -134,7 +112,7 @@ export const DebugPanel: React.FC = () => {
                 </button>
                 <button
                     onClick={handleClearSave}
-                    className="col-span-4 bg-red-900/20 border border-red-700/50 hover:bg-red-900/40 text-red-400 px-2 py-1.5 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
+                    className="col-span-3 bg-red-900/20 border border-red-700/50 hover:bg-red-900/40 text-red-400 px-2 py-1.5 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
                 >
                     <Trash2 className="w-3 h-3" />
                     清除存档
