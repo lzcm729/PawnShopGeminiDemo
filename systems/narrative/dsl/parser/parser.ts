@@ -912,8 +912,17 @@ export class Parser {
             this.advance();
             this.skipNewlines();
 
-            while (!this.isAtEnd() && !this.check('DEDENT') && !this.check('AT_BLOCK')) {
-                if (this.check('IDENTIFIER')) {
+            while (!this.isAtEnd() && !this.check('DEDENT')) {
+                this.skipNewlines();
+                if (this.check('DEDENT')) break;
+
+                // Check for @dialogue_trigger block
+                if (this.check('AT_BLOCK') && this.peek().value === '@dialogue_trigger') {
+                    dialogueTrigger = this.parseDialogueTriggerBlock();
+                } else if (this.check('AT_BLOCK')) {
+                    // Another @trait or other block - exit
+                    break;
+                } else if (this.check('IDENTIFIER')) {
                     const propName = this.advance().value;
                     this.consume('COLON', ':');
 
@@ -947,6 +956,44 @@ export class Parser {
         }
 
         return AST.createTraitBlock(id, name, traitType, description, valueImpact, discoveryDifficulty, location, dialogueTrigger);
+    }
+
+    private parseDialogueTriggerBlock(): { playerLine: string; customerLine: string } {
+        this.consume('AT_BLOCK', '@dialogue_trigger');
+        this.skipNewlines();
+
+        let playerLine = '';
+        let customerLine = '';
+
+        if (this.check('INDENT')) {
+            this.advance();
+            this.skipNewlines();
+
+            while (!this.isAtEnd() && !this.check('DEDENT') && !this.check('AT_BLOCK')) {
+                if (this.check('IDENTIFIER')) {
+                    const propName = this.advance().value;
+                    this.consume('COLON', ':');
+
+                    switch (propName) {
+                        case 'player':
+                            playerLine = this.parseStringValue();
+                            break;
+                        case 'customer':
+                            customerLine = this.parseStringValue();
+                            break;
+                    }
+                    this.skipNewlines();
+                } else {
+                    break;
+                }
+            }
+
+            if (this.check('DEDENT')) {
+                this.advance();
+            }
+        }
+
+        return { playerLine, customerLine };
     }
 
     // === CUSTOMER BLOCK ===

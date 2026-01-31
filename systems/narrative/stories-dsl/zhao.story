@@ -344,6 +344,9 @@
                 description: "早期批次，收藏市场极度稀缺。"
                 value_impact: 2.0
                 discovery: 0.9
+                @dialogue_trigger
+                    player: "这编号... 市场上有很多人在找。"
+                    customer: "别卖给那些倒爷！这是给我兄弟留的位置！"
 
     @customer
         name: "周守义"
