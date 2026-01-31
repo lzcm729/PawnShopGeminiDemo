@@ -1598,6 +1598,31 @@ export class Parser {
                     }
                     return AST.createScheduleMailAction(mailId, delay, location);
 
+                case 'mail_if':
+                    this.consume('COLON', ':');
+                    const condMailId = this.consumeIdentifier('mail id');
+                    let condDelay = 0;
+                    let condMailCondition: ConditionNode | undefined;
+                    // Parse optional delay and required when clause
+                    while (this.check('IDENTIFIER')) {
+                        const keyword = this.peek().value;
+                        if (keyword === 'delay') {
+                            this.advance();
+                            this.consume('COLON', ':');
+                            condDelay = this.parseNumberValue();
+                        } else if (keyword === 'when') {
+                            this.advance();
+                            this.consume('COLON', ':');
+                            condMailCondition = this.parseCondition();
+                        } else {
+                            break;
+                        }
+                    }
+                    if (!condMailCondition) {
+                        throw new DSLParseError('mail_if requires a when clause', location, this.source);
+                    }
+                    return AST.createConditionalMailAction(condMailId, condDelay, condMailCondition, location);
+
                 case 'modify_var':
                     this.consume('COLON', ':');
                     const varName = this.consumeIdentifier('variable');
