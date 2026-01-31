@@ -364,7 +364,7 @@ export const useGameEngine = () => {
           setTimeout(() => {
               dispatch({ type: 'SET_CUSTOMER', payload: renewalCustomer });
               dispatch({ type: 'SET_LOADING', payload: false });
-          }, 800);
+          }, 200);
           return;
       }
 
@@ -378,7 +378,7 @@ export const useGameEngine = () => {
           setTimeout(() => {
               dispatch({ type: 'SET_CUSTOMER', payload: appointedCustomer });
               dispatch({ type: 'SET_LOADING', payload: false });
-          }, 800);
+          }, 200);
           return;
       }
 
@@ -423,7 +423,7 @@ export const useGameEngine = () => {
                            setTimeout(() => {
                                 dispatch({ type: 'SET_LOADING', payload: false });
                                 dispatch({ type: 'START_NIGHT' });
-                           }, 500);
+                           }, 200);
                            return;
                       }
                   }
@@ -499,7 +499,7 @@ export const useGameEngine = () => {
           setTimeout(() => {
               dispatch({ type: 'SET_CUSTOMER', payload: storyCustomer });
               dispatch({ type: 'SET_LOADING', payload: false });
-          }, 800);
+          }, 200);
           return;
       }
 
