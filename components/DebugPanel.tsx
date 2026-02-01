@@ -1,18 +1,121 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGame } from '../store/GameContext';
-import { Database, PlayCircle, Bug, X, Terminal, Power, DollarSign, Sparkles, Trash2 } from 'lucide-react';
+import { Database, PlayCircle, Bug, X, Terminal, Power, DollarSign, Sparkles, Trash2, GripHorizontal } from 'lucide-react';
 import { validateEvents, ValidationIssue } from '../systems/narrative/validator';
 import { EMMA_EVENTS } from '../systems/narrative/storyRegistry';
 import { ValidationModal } from './ValidationModal';
 import { playSfx } from '../systems/game/audio';
 
+const DEBUG_PANEL_POSITION_KEY = 'debug_panel_position_v1';
+const PANEL_WIDTH = 384; // w-96 = 24rem = 384px
+const PANEL_HEIGHT = 500;
+
+interface Position {
+  x: number;
+  y: number;
+}
+
+function loadSavedPosition(): Position | null {
+  try {
+    const saved = localStorage.getItem(DEBUG_PANEL_POSITION_KEY);
+    if (saved) {
+      const pos = JSON.parse(saved) as Position;
+      // Validate position is within current viewport
+      if (typeof pos.x === 'number' && typeof pos.y === 'number') {
+        return pos;
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null;
+}
+
+function savePosition(pos: Position): void {
+  try {
+    localStorage.setItem(DEBUG_PANEL_POSITION_KEY, JSON.stringify(pos));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function constrainPosition(x: number, y: number): Position {
+  const maxX = window.innerWidth - PANEL_WIDTH;
+  const maxY = window.innerHeight - PANEL_HEIGHT;
+  return {
+    x: Math.max(0, Math.min(x, maxX)),
+    y: Math.max(0, Math.min(y, maxY)),
+  };
+}
+
 export const DebugPanel: React.FC = () => {
   const { state, dispatch } = useGame();
-  
+
   const [showValidation, setShowValidation] = useState(false);
   const [validationLogs, setValidationLogs] = useState<string[]>([]);
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
+
+  // Dragging state
+  const [position, setPosition] = useState<Position>(() => {
+    const saved = loadSavedPosition();
+    return saved || { x: 16, y: window.innerHeight - PANEL_HEIGHT - 16 }; // Default: left-4 bottom-4
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffset = useRef<Position>({ x: 0, y: 0 });
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Handle mouse move during drag
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+
+    const newX = e.clientX - dragOffset.current.x;
+    const newY = e.clientY - dragOffset.current.y;
+    const constrained = constrainPosition(newX, newY);
+    setPosition(constrained);
+  }, [isDragging]);
+
+  // Handle mouse up to end drag
+  const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false);
+      savePosition(position);
+    }
+  }, [isDragging, position]);
+
+  // Attach/detach document-level event listeners
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  // Re-constrain position when window resizes
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition(prev => constrainPosition(prev.x, prev.y));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Start dragging from title bar
+  const handleDragStart = (e: React.MouseEvent) => {
+    // Only left mouse button
+    if (e.button !== 0) return;
+
+    e.preventDefault();
+    dragOffset.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    };
+    setIsDragging(true);
+  };
 
   const toggleDebug = () => {
       playSfx('CLICK');
@@ -73,15 +176,27 @@ export const DebugPanel: React.FC = () => {
       )}
 
       {state.showDebug && (
-        <div className="fixed left-4 bottom-4 w-96 h-[500px] z-[200] flex flex-col bg-[#050505] border-2 border-green-900 shadow-[0_0_50px_rgba(0,255,0,0.2)] rounded-lg overflow-hidden font-mono text-xs animate-in slide-in-from-left-10 fade-in duration-300">
-            
-            <div className="flex justify-between items-center p-2 border-b border-green-900 bg-[#0a0a0a]">
+        <div
+          ref={panelRef}
+          className="fixed w-96 h-[500px] z-[200] flex flex-col bg-[#050505] border-2 border-green-900 shadow-[0_0_50px_rgba(0,255,0,0.2)] rounded-lg overflow-hidden font-mono text-xs animate-in slide-in-from-left-10 fade-in duration-300"
+          style={{
+            left: position.x,
+            top: position.y,
+          }}
+        >
+
+            <div
+              className="flex justify-between items-center p-2 border-b border-green-900 bg-[#0a0a0a] cursor-move select-none"
+              onMouseDown={handleDragStart}
+            >
                 <div className="flex items-center gap-2 text-green-500 font-bold tracking-widest">
+                    <GripHorizontal className="w-4 h-4 opacity-50" />
                     <Terminal className="w-4 h-4" />
                     <span>SYS_DEBUG_TERMINAL</span>
                 </div>
-                <button 
+                <button
                     onClick={toggleDebug}
+                    onMouseDown={(e) => e.stopPropagation()}
                     className="text-green-700 hover:text-green-400 hover:bg-green-900/30 rounded p-1 transition-colors"
                 >
                     <X className="w-4 h-4" />
