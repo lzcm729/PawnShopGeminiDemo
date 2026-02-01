@@ -148,8 +148,11 @@ export function useDraggable(options: DraggableOptions): DraggableReturn {
     // Capture starting positions
     const startMouseX = e.clientX;
     const startMouseY = e.clientY;
-    const startElementX = element.offsetLeft;
-    const startElementY = element.offsetTop;
+    // Use getBoundingClientRect() for accurate position with position:fixed elements
+    // offsetLeft/offsetTop are relative to offsetParent and unreliable for fixed positioning
+    const rect = element.getBoundingClientRect();
+    const startElementX = rect.left;
+    const startElementY = rect.top;
 
     // Mark as dragging
     setState(prev => ({ ...prev, isDragging: true }));
