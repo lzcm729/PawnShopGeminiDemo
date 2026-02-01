@@ -87,7 +87,7 @@ export const DebugPanel: React.FC = () => {
       {state.showDebug && (
         <div
           ref={elementRef}
-          className="w-96 h-[500px] z-[200] flex flex-col bg-[#050505] border-2 border-green-900 shadow-[0_0_50px_rgba(0,255,0,0.2)] rounded-lg overflow-hidden font-mono text-xs animate-in slide-in-from-left-10 fade-in duration-300"
+          className={`w-96 h-[500px] z-[200] flex flex-col bg-[#050505] border-2 border-green-900 shadow-[0_0_50px_rgba(0,255,0,0.2)] rounded-lg overflow-hidden font-mono text-xs animate-in slide-in-from-left-10 fade-in duration-300 ${isDragging ? 'transition-none' : ''}`}
           style={dragStyle}
         >
 
