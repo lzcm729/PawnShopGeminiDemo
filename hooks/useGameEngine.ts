@@ -11,7 +11,7 @@ import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
 import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
 import { Dialogue } from '../systems/narrative/types';
 import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
-import { createTransientChain, getContractTypeFromRate } from '../systems/npc/fillerGenerator';
+import { createTransientChain, getContractTypeFromRate, generateFillerCustomer } from '../systems/npc/fillerGenerator';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -502,6 +502,21 @@ export const useGameEngine = () => {
               dispatch({ type: 'SET_LOADING', payload: false });
           }, 200);
           return;
+      }
+
+      // 4. Filler Customers (填充客户)
+      // Generate filler customers when no story events are available
+      // These are procedural customers for typical pawn transactions
+      // Ratio guideline: 1 narrative : 3-5 filler (achieved via MAX_CUSTOMERS_PER_DAY config)
+      if (state.customersServedToday < state.maxCustomersPerDay) {
+          const fillerCustomer = generateFillerCustomer(state.stats.day);
+          if (fillerCustomer) {
+              setTimeout(() => {
+                  dispatch({ type: 'SET_CUSTOMER', payload: fillerCustomer });
+                  dispatch({ type: 'SET_LOADING', payload: false });
+              }, 200);
+              return;
+          }
       }
 
       // NO CUSTOMER FOUND - Show "打烊" button instead of auto-transitioning to night

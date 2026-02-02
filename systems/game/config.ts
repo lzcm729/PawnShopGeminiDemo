@@ -31,7 +31,7 @@ export const GAME_CONFIG = {
   
   // --- GAMEPLAY SETTINGS ---
   INITIAL_ACTION_POINTS: 10, // 每日行动点上限 (用于鉴定)
-  MAX_CUSTOMERS_PER_DAY: 1,  // 每日营业接待顾客数量上限
+  MAX_CUSTOMERS_PER_DAY: 4,  // 每日营业接待顾客数量上限 (设计配比: 1叙事 : 3填充)
 
   // --- INITIAL REPUTATION ---
   INITIAL_REPUTATION: {

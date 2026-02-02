@@ -1,5 +1,11 @@
 
 import { GamePhase, ReputationType } from '../../types';
+import { testSusanDSL } from '../narrative/dsl/__tests__/susan.test';
+import { testLinDSL } from '../narrative/dsl/__tests__/lin.test';
+import { testUnderworldDSL } from '../narrative/dsl/__tests__/underworld.test';
+import { testZhaoDSL } from '../narrative/dsl/__tests__/zhao.test';
+import { testEmmaDSL } from '../narrative/dsl/__tests__/emma.test';
+import type { TestResult } from '../narrative/dsl/__tests__/testUtils';
 
 export interface CommandResult {
   success: boolean;
@@ -95,6 +101,10 @@ export function executeCommand(
   add cash <n>          - Add cash (can be negative)
   add essence <n>       - Add essence to all types
   spawn customer        - Force spawn a customer (business phase only)
+  chains                - View active event chains
+  customers             - View today's customer count
+  state <path>          - View game state (e.g., state reputation, state stats.day)
+  test dsl <story>      - Test DSL parser output (susan|lin|underworld|zhao|emma|all)
   clear                 - Clear console history
   help                  - Show this help`
       };
@@ -125,6 +135,18 @@ export function executeCommand(
         return { success: true, message: 'Triggering customer spawn...' };
       }
       return { success: false, message: `Unknown spawn target: ${args[0]}` };
+
+    case 'test':
+      return handleTestCommand(args);
+
+    case 'chains':
+      return handleChainsCommand(getState);
+
+    case 'customers':
+      return handleCustomersCommand(getState);
+
+    case 'state':
+      return handleStateCommand(args, getState);
 
     default:
       if (command === '') {
@@ -296,6 +318,183 @@ function handleOpenCommand(
   };
 }
 
+// Map of story names to their test functions
+const STORY_TEST_MAP: Record<string, () => TestResult> = {
+  'susan': testSusanDSL,
+  'lin': testLinDSL,
+  'underworld': testUnderworldDSL,
+  'zhao': testZhaoDSL,
+  'emma': testEmmaDSL
+};
+
+function formatTestResult(storyName: string, result: TestResult): string {
+  const passedCount = result.tests.filter(t => t.passed).length;
+  const totalCount = result.tests.length;
+
+  let output = `=== ${storyName.charAt(0).toUpperCase() + storyName.slice(1)} DSL Test ===\n`;
+  for (const test of result.tests) {
+    const status = test.passed ? '✓' : '✗';
+    output += `${status} ${test.name}\n`;
+    if (!test.passed) {
+      if (test.error) {
+        output += `  Error: ${test.error}\n`;
+      } else {
+        output += `  Expected: ${JSON.stringify(test.expected)}\n`;
+        output += `  Actual: ${JSON.stringify(test.actual)}\n`;
+      }
+    }
+  }
+  output += `\n=== Results: ${passedCount}/${totalCount} passed ===`;
+  return output;
+}
+
+function handleTestCommand(args: string[]): CommandResult {
+  if (args.length < 1) {
+    return { success: false, message: `Usage: test dsl <story>\nAvailable: ${Object.keys(STORY_TEST_MAP).join(', ')}, all` };
+  }
+
+  const testType = args[0].toLowerCase();
+
+  if (testType === 'dsl') {
+    const storyName = args[1]?.toLowerCase() || 'susan';
+
+    // Run all tests
+    if (storyName === 'all') {
+      const results: { name: string; result: TestResult }[] = [];
+      let allPassed = true;
+
+      for (const [name, testFn] of Object.entries(STORY_TEST_MAP)) {
+        try {
+          const result = testFn();
+          results.push({ name, result });
+          if (!result.passed) allPassed = false;
+        } catch (error) {
+          results.push({
+            name,
+            result: {
+              passed: false,
+              tests: [{ name: 'Execution', passed: false, error: error instanceof Error ? error.message : String(error) }]
+            }
+          });
+          allPassed = false;
+        }
+      }
+
+      let output = `=== All DSL Tests ===\n\n`;
+      let totalPassed = 0;
+      let totalTests = 0;
+
+      for (const { name, result } of results) {
+        const passedCount = result.tests.filter(t => t.passed).length;
+        const testCount = result.tests.length;
+        totalPassed += passedCount;
+        totalTests += testCount;
+        const status = result.passed ? '✓' : '✗';
+        output += `${status} ${name}: ${passedCount}/${testCount}\n`;
+
+        // Show failed tests
+        for (const test of result.tests) {
+          if (!test.passed) {
+            output += `  ✗ ${test.name}`;
+            if (test.error) {
+              output += `: ${test.error}`;
+            }
+            output += `\n`;
+          }
+        }
+      }
+      output += `\n=== Total: ${totalPassed}/${totalTests} passed ===`;
+
+      return { success: allPassed, message: output };
+    }
+
+    // Run single story test
+    const testFn = STORY_TEST_MAP[storyName];
+    if (testFn) {
+      try {
+        const result = testFn();
+        return { success: result.passed, message: formatTestResult(storyName, result) };
+      } catch (error) {
+        return { success: false, message: `Test error: ${error instanceof Error ? error.message : String(error)}` };
+      }
+    }
+
+    return { success: false, message: `Unknown story: ${storyName}. Available: ${Object.keys(STORY_TEST_MAP).join(', ')}, all` };
+  }
+
+  return { success: false, message: `Unknown test type: ${testType}. Available: dsl` };
+}
+
+function handleChainsCommand(getState: () => any): CommandResult {
+  const state = getState();
+  const chains = state.activeChains || [];
+
+  if (chains.length === 0) {
+    return { success: true, message: 'No active event chains' };
+  }
+
+  const lines = chains.map((c: any) => {
+    const chainType = c.chainType || 'NARRATIVE';
+    const typeLabel = chainType === 'TRANSIENT' ? '[TRANSIENT]' : '[NARRATIVE]';
+    return `${typeLabel} ${c.id}: ${c.npcName} (stage=${c.stage}, active=${c.isActive})`;
+  });
+
+  return { success: true, message: `Active chains (${chains.length}):\n${lines.join('\n')}` };
+}
+
+function handleCustomersCommand(getState: () => any): CommandResult {
+  const state = getState();
+  const served = state.customersServedToday ?? 0;
+  const max = state.maxCustomersPerDay ?? 0;
+  return { success: true, message: `Customers today: ${served}/${max}` };
+}
+
+function handleStateCommand(args: string[], getState: () => any): CommandResult {
+  if (args.length < 1) {
+    return { success: false, message: 'Usage: state <path>\nExamples: state reputation, state stats.day, state customersServedToday' };
+  }
+
+  const path = args[0];
+  const state = getState();
+
+  // Navigate the path (supports dot notation like "stats.day")
+  const parts = path.split('.');
+  let value: any = state;
+
+  for (const part of parts) {
+    if (value === null || value === undefined) {
+      return { success: false, message: `Path not found: ${path} (stopped at ${part})` };
+    }
+    if (typeof value !== 'object') {
+      return { success: false, message: `Cannot access property '${part}' on non-object` };
+    }
+    if (!(part in value)) {
+      return { success: false, message: `Property '${part}' not found in path` };
+    }
+    value = value[part];
+  }
+
+  // Format the output based on type
+  if (value === null || value === undefined) {
+    return { success: true, message: `${path} = null` };
+  }
+
+  if (typeof value === 'object') {
+    try {
+      const formatted = JSON.stringify(value, null, 2);
+      // Truncate if too long
+      if (formatted.length > 500) {
+        return { success: true, message: `${path} = ${formatted.slice(0, 500)}...\n(truncated)` };
+      }
+      return { success: true, message: `${path} = ${formatted}` };
+    } catch {
+      return { success: true, message: `${path} = [Object]` };
+    }
+  }
+
+  return { success: true, message: `${path} = ${value}` };
+}
+
 function handleAddCommand(
   args: string[],
   dispatch: (action: any) => void
@@ -406,6 +605,30 @@ export function getAvailableCommands(): CommandDef[] {
       description: 'Force spawn a customer (business phase only)',
       usage: 'spawn customer',
       examples: [`spawn customer`]
+    },
+    {
+      command: 'test dsl',
+      description: 'Test DSL parser output against TypeScript source',
+      usage: 'test dsl <story>',
+      examples: [`test dsl susan`, `test dsl lin`, `test dsl zhao`, `test dsl emma`, `test dsl underworld`, `test dsl all`]
+    },
+    {
+      command: 'chains',
+      description: 'View active event chains (shows NARRATIVE and TRANSIENT chains)',
+      usage: 'chains',
+      examples: [`chains`]
+    },
+    {
+      command: 'customers',
+      description: 'View today\'s customer service count',
+      usage: 'customers',
+      examples: [`customers`]
+    },
+    {
+      command: 'state',
+      description: 'View game state by path (supports dot notation)',
+      usage: 'state <path>',
+      examples: [`state reputation`, `state stats.day`, `state customersServedToday`, `state activeChains`]
     },
     {
       command: 'clear',
