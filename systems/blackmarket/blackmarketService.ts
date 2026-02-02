@@ -144,10 +144,50 @@ export function calculateSalePrice(
 }
 
 /**
- * Get random sale multiplier within daily range
+ * Simple string hash function for deterministic randomness
+ * Uses djb2 algorithm
  */
-export function getRandomSaleMultiplier(daily: BlackmarketDailyState): number {
+function hashString(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * Get deterministic "random" number between 0 and 1 based on seed
+ */
+function seededRandom(seed: string): number {
+  const hash = hashString(seed);
+  // Use the hash to generate a pseudo-random number between 0 and 1
+  return (hash % 10000) / 10000;
+}
+
+/**
+ * Get sale multiplier within daily range
+ * Uses deterministic randomness based on itemId + day to ensure
+ * the same item has the same price throughout the day
+ * @param daily The daily blackmarket state
+ * @param itemId The item's unique ID (for deterministic pricing)
+ * @param day The current game day (prices change daily)
+ */
+export function getRandomSaleMultiplier(
+  daily: BlackmarketDailyState,
+  itemId?: string,
+  day?: number
+): number {
   const { saleMultiplierMin, saleMultiplierMax } = daily;
+
+  // If itemId and day are provided, use deterministic random
+  if (itemId !== undefined && day !== undefined) {
+    const seed = `blackmarket-sale-${itemId}-${day}`;
+    const random = seededRandom(seed);
+    return saleMultiplierMin + random * (saleMultiplierMax - saleMultiplierMin);
+  }
+
+  // Fallback to true random (for backwards compatibility)
   return saleMultiplierMin + Math.random() * (saleMultiplierMax - saleMultiplierMin);
 }
 

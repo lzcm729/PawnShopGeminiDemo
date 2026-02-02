@@ -140,11 +140,12 @@ export const useBlackmarket = () => {
 
   /**
    * Get price for player-initiated sale
+   * Uses deterministic pricing based on item ID + current day
    */
   const getSalePrice = useCallback((item: Item): number => {
-    const multiplier = getRandomSaleMultiplier(blackmarket.daily);
+    const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
     return calculateSalePrice(item, multiplier, underworldRep);
-  }, [blackmarket.daily, underworldRep]);
+  }, [blackmarket.daily, underworldRep, state.stats.day]);
 
   /**
    * Get estimated sale price range
@@ -188,12 +189,13 @@ export const useBlackmarket = () => {
 
   /**
    * Sell item via player sale track (low price track)
+   * Uses deterministic pricing based on item ID + current day
    */
   const sellDirect = useCallback((item: Item) => {
     if (!isMarketOpen) return;
     if (!isEligibleForSale(item)) return;
 
-    const multiplier = getRandomSaleMultiplier(blackmarket.daily);
+    const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
     const price = calculateSalePrice(item, multiplier, underworldRep);
     const heatGain = getHeatGain(false);
 
@@ -206,7 +208,7 @@ export const useBlackmarket = () => {
         heatGain
       }
     });
-  }, [isMarketOpen, blackmarket.daily, underworldRep, dispatch]);
+  }, [isMarketOpen, blackmarket.daily, underworldRep, state.stats.day, dispatch]);
 
   /**
    * Pay fine to avoid market lockdown
