@@ -10,6 +10,7 @@ import { ItemTag, WorkState } from '../../systems/items/types';
 import { AppointmentCandidate, AppointmentPreference } from '../../systems/appointment';
 import { ItemLogEntry } from '../../types';
 import { GameNode } from '../../types/node';
+import { BlackmarketState, RiskEvent } from '../../systems/blackmarket/types';
 
 // === Action Type Union ===
 
@@ -134,4 +135,14 @@ export type Action =
     | { type: 'SET_APPOINTMENT_PREFERENCE'; payload: AppointmentPreference }
     | { type: 'CLEAR_APPOINTMENT_SELECTIONS' }
     | { type: 'PREPARE_DAILY_APPOINTMENTS' }
-    | { type: 'POP_APPOINTED_CANDIDATE' };
+    | { type: 'POP_APPOINTED_CANDIDATE' }
+
+    // Black Market
+    | { type: 'TOGGLE_BLACKMARKET' }
+    | { type: 'BLACKMARKET_SELL_TO_PURCHASE'; payload: { itemId: string; itemName: string; amount: number; tag: ItemTag; heatGain: number } }
+    | { type: 'BLACKMARKET_SELL_DIRECT'; payload: { itemId: string; itemName: string; amount: number; heatGain: number } }
+    | { type: 'BLACKMARKET_PAY_FINE'; payload: { amount: number } }
+    | { type: 'BLACKMARKET_ACCEPT_LOCKDOWN'; payload: { lockDays: number } }
+    | { type: 'BLACKMARKET_PROCESS_DAY_END'; payload: { riskEvent: RiskEvent | null } }
+    | { type: 'BLACKMARKET_REFRESH_DAILY' }
+    | { type: 'SET_BLACKMARKET_STATE'; payload: BlackmarketState };

@@ -26,6 +26,7 @@ import { GAME_CONFIG } from '../systems/game/config';
 import { INITIAL_ESSENCE_BALANCE } from '../systems/economy/essence';
 import { INITIAL_SHOP_UPGRADES } from '../systems/upgrades';
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../systems/appointment';
+import { createInitialBlackmarketState } from '../systems/blackmarket';
 
 // Import combined reducer and action types
 import { gameReducer, Action } from './reducers';
@@ -99,7 +100,10 @@ const initialState: GameState = {
     // === APPOINTMENT BOARD ===
     appointmentBoard: { ...INITIAL_APPOINTMENT_BOARD_STATE },
     showAppointmentBoard: false,
-    pendingAppointedCandidates: []
+    pendingAppointedCandidates: [],
+    // === BLACK MARKET ===
+    blackmarket: createInitialBlackmarketState(),
+    showBlackmarket: false
 };
 
 // === Context ===

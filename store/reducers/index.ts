@@ -17,6 +17,7 @@ import { upgradeReducer } from './upgradeReducer';
 import { appointmentReducer } from './appointmentReducer';
 import { uiReducer } from './uiReducer';
 import { nodeReducer } from './nodeReducer';
+import { blackmarketReducer } from './blackmarketReducer';
 
 /**
  * List of domain reducers in priority order
@@ -34,6 +35,7 @@ const domainReducers = [
     nightReducer,
     upgradeReducer,
     appointmentReducer,
+    blackmarketReducer,
     uiReducer
 ];
 
@@ -68,6 +70,7 @@ export { expiryReducer } from './expiryReducer';
 export { nightReducer } from './nightReducer';
 export { upgradeReducer } from './upgradeReducer';
 export { appointmentReducer } from './appointmentReducer';
+export { blackmarketReducer } from './blackmarketReducer';
 export { uiReducer } from './uiReducer';
 
 // Re-export action types

@@ -16,7 +16,7 @@ export interface ParsedCommand {
 }
 
 // Panel names that can be opened via 'open' command
-export type OpenablePanel = 'upgrade' | 'mail' | 'calendar' | 'inventory' | 'medical' | 'visit' | 'debug' | 'appointment';
+export type OpenablePanel = 'upgrade' | 'mail' | 'calendar' | 'inventory' | 'medical' | 'visit' | 'debug' | 'appointment' | 'blackmarket';
 
 // Valid phase names for 'set phase' command
 const PHASE_MAP: Record<string, GamePhase> = {
@@ -47,7 +47,8 @@ const PANEL_MAP: Record<OpenablePanel, string> = {
   'medical': 'TOGGLE_MEDICAL',
   'visit': 'TOGGLE_VISIT',
   'debug': 'TOGGLE_DEBUG',
-  'appointment': 'TOGGLE_APPOINTMENT_BOARD'
+  'appointment': 'TOGGLE_APPOINTMENT_BOARD',
+  'blackmarket': 'TOGGLE_BLACKMARKET'
 };
 
 /**
@@ -94,13 +95,17 @@ export function executeCommand(
   set reputation <type> <n> - Set reputation (humanity|credibility|underworld)
   set ap <n>            - Set action points
   set energy <n>        - Set night energy
+  set heat <n>          - Set blackmarket heat (0-10)
   set chain <id> <var> <val> - Set chain variable (e.g., set chain chain_emma funds 400)
-  open <panel>          - Open panel (upgrade|mail|calendar|inventory|medical|visit|debug|appointment)
+  open <panel>          - Open panel (upgrade|mail|calendar|inventory|medical|visit|debug|appointment|blackmarket)
   close <panel>         - Close panel
   add cash <n>          - Add cash (can be negative)
   add essence <n>       - Add essence to all types
   add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2] - Add test pawn item
+  add forfeit <name> [--tags TAG1,TAG2] - Add forfeit item for blackmarket testing
   spawn customer        - Force spawn a customer (business phase only)
+  blackmarket lock <n>  - Lock blackmarket for N days
+  blackmarket unlock    - Unlock blackmarket
   chains                - View active event chains
   customers             - View today's customer count
   state <path>          - View game state (e.g., state reputation, state stats.day)
@@ -138,6 +143,9 @@ export function executeCommand(
 
     case 'test':
       return handleTestCommand(args);
+
+    case 'blackmarket':
+      return handleBlackmarketCommand(args, dispatch, getState);
 
     case 'chains':
       return handleChainsCommand(getState);
@@ -266,6 +274,20 @@ function handleSetCommand(
       return { success: true, message: `Night energy set to ${energy}` };
     }
 
+    case 'heat': {
+      const heat = parseInt(value, 10);
+      if (isNaN(heat) || heat < 0 || heat > 10) {
+        return { success: false, message: 'Heat must be between 0 and 10' };
+      }
+      const state = getState();
+      const newState = {
+        ...state,
+        blackmarket: { ...state.blackmarket, heat }
+      };
+      dispatch({ type: 'LOAD_GAME', payload: newState });
+      return { success: true, message: `Blackmarket heat set to ${heat}` };
+    }
+
     case 'chain': {
       // Format: set chain <chainId> <variable> <value>
       const parts = value.split(/\s+/);
@@ -355,7 +377,8 @@ function handleOpenCommand(
     'medical': 'showMedical',
     'visit': 'showVisit',
     'debug': 'showDebug',
-    'appointment': 'showAppointmentBoard'
+    'appointment': 'showAppointmentBoard',
+    'blackmarket': 'showBlackmarket'
   };
 
   const stateKey = stateKeyMap[panelName];
@@ -370,6 +393,52 @@ function handleOpenCommand(
     success: true,
     message: `${panelName} panel ${shouldOpen ? 'opened' : 'closed'}`
   };
+}
+
+function handleBlackmarketCommand(
+  args: string[],
+  dispatch: (action: any) => void,
+  getState: () => any
+): CommandResult {
+  if (args.length < 1) {
+    return { success: false, message: 'Usage: blackmarket <lock|unlock> [days]' };
+  }
+
+  const subCommand = args[0].toLowerCase();
+  const state = getState();
+
+  switch (subCommand) {
+    case 'lock': {
+      const days = parseInt(args[1], 10) || 3;
+      const lockUntilDay = state.stats.day + days;
+      const newState = {
+        ...state,
+        blackmarket: {
+          ...state.blackmarket,
+          isLocked: true,
+          lockUntilDay
+        }
+      };
+      dispatch({ type: 'LOAD_GAME', payload: newState });
+      return { success: true, message: `Blackmarket locked for ${days} days (until day ${lockUntilDay})` };
+    }
+
+    case 'unlock': {
+      const newState = {
+        ...state,
+        blackmarket: {
+          ...state.blackmarket,
+          isLocked: false,
+          lockUntilDay: 0
+        }
+      };
+      dispatch({ type: 'LOAD_GAME', payload: newState });
+      return { success: true, message: 'Blackmarket unlocked' };
+    }
+
+    default:
+      return { success: false, message: `Unknown blackmarket command: ${subCommand}. Use 'lock' or 'unlock'.` };
+  }
 }
 
 function handleTestCommand(args: string[]): CommandResult {
@@ -506,8 +575,11 @@ function handleAddCommand(
     case 'item':
       return handleAddItemCommand(args.slice(1), dispatch, getState);
 
+    case 'forfeit':
+      return handleAddForfeitCommand(args.slice(1), dispatch, getState);
+
     default:
-      return { success: false, message: `Unknown type: ${type}. Valid types: cash, essence, item` };
+      return { success: false, message: `Unknown type: ${type}. Valid types: cash, essence, item, forfeit` };
   }
 }
 
@@ -657,6 +729,108 @@ function handleAddItemCommand(
 }
 
 /**
+ * Parse args for forfeit item: <name> [--tags TAG1,TAG2]
+ */
+function parseForfeitArgs(args: string[]): { name: string; tags?: ItemTag[] } | null {
+  const result: { name: string; tags?: ItemTag[] } = { name: '' };
+  const nameParts: string[] = [];
+
+  let i = 0;
+  while (i < args.length) {
+    const arg = args[i];
+
+    if (arg === '--tags' || arg === '--tag') {
+      const nextArg = args[i + 1];
+      if (!nextArg) return null;
+      const tagStrings = nextArg.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0);
+      const validTags: ItemTag[] = [];
+      for (const tagStr of tagStrings) {
+        if (ALL_VALID_TAGS.includes(tagStr)) {
+          validTags.push(tagStr as ItemTag);
+        }
+      }
+      if (validTags.length > 0) {
+        result.tags = validTags;
+      }
+      i += 2;
+    } else if (!arg.startsWith('--')) {
+      nameParts.push(arg);
+      i++;
+    } else {
+      i++;
+    }
+  }
+
+  result.name = nameParts.join(' ');
+  return result.name ? result : null;
+}
+
+function handleAddForfeitCommand(
+  args: string[],
+  dispatch: (action: any) => void,
+  getState: () => any
+): CommandResult {
+  const parsed = parseForfeitArgs(args);
+
+  if (!parsed || !parsed.name) {
+    return { success: false, message: 'Usage: add forfeit <name> [--tags TAG1,TAG2]\nExample: add forfeit 测试钟表\nExample: add forfeit 贵重手表 --tags GOLD,MINT' };
+  }
+
+  const state = getState();
+  const currentDay = state.stats.day;
+
+  // Create a forfeit item for blackmarket testing
+  const itemId = `forfeit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const testValue = 1000 + Math.floor(Math.random() * 4000); // Random value 1000-5000
+
+  const newItem: Item = {
+    id: itemId,
+    name: parsed.name,
+    category: '测试物品',
+    condition: '良好',
+    visualDescription: '这是一个绝当物品，可在黑市出售。',
+    historySnippet: '测试用途。',
+    appraisalNote: '绝当物品，用于测试黑市系统。',
+    archiveSummary: '绝当测试物品。',
+    isStolen: false,
+    isFake: false,
+    sentimentalValue: false,
+    appraised: true,
+    pawnDate: currentDay - 7, // Pawned a week ago
+    status: ItemStatus.FORFEIT, // Already forfeit - owned by player
+    pawnAmount: testValue * 0.7,
+    realValue: testValue,
+    perceivedValue: testValue,
+    uncertainty: 0,
+    currentRange: [testValue, testValue],
+    initialRange: [testValue, testValue],
+    hiddenTraits: [],
+    revealedTraits: [],
+    usedTraitIds: [],
+    logs: [{
+      id: `log-${Date.now()}`,
+      day: currentDay,
+      content: `[测试] 通过 DevConsole 创建的绝当物品`,
+      type: 'FORFEIT'
+    }],
+    tags: parsed.tags
+  };
+
+  // Add item to inventory
+  const newState = {
+    ...state,
+    inventory: [...state.inventory, newItem]
+  };
+  dispatch({ type: 'LOAD_GAME', payload: newState });
+
+  const tagsInfo = parsed.tags && parsed.tags.length > 0 ? `\n  Tags: ${parsed.tags.join(', ')}` : '';
+  return {
+    success: true,
+    message: `Added forfeit item "${parsed.name}" to inventory\n  ID: ${itemId}\n  Value: $${testValue}\n  Status: FORFEIT (sellable at blackmarket)${tagsInfo}`
+  };
+}
+
+/**
  * Command definition for documentation
  */
 export interface CommandDef {
@@ -709,6 +883,12 @@ export function getAvailableCommands(): CommandDef[] {
       examples: [`set energy 3`]
     },
     {
+      command: 'set heat',
+      description: 'Set blackmarket heat (0-10)',
+      usage: 'set heat <n>',
+      examples: [`set heat 0`, `set heat 5`, `set heat 9`]
+    },
+    {
       command: 'set chain',
       description: 'Set a chain variable value (for testing event triggers)',
       usage: 'set chain <chainId> <variable> <value>',
@@ -743,6 +923,24 @@ export function getAvailableCommands(): CommandDef[] {
       description: 'Add a test pawn item to inventory with specified due date and optional tags',
       usage: 'add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2]',
       examples: [`add item 测试钟表 --dueDate 3`, `add item 测试戒指 --dueDate 5 --chainId emma_chain`, `add item 测试物品 --dueDate 3 --tags DIRTY,RUSTED`]
+    },
+    {
+      command: 'add forfeit',
+      description: 'Add a forfeit item for blackmarket testing (FORFEIT status, sellable)',
+      usage: 'add forfeit <name> [--tags TAG1,TAG2]',
+      examples: [`add forfeit 测试钟表`, `add forfeit 贵重手表 --tags GOLD,MINT`]
+    },
+    {
+      command: 'blackmarket lock',
+      description: 'Lock blackmarket for N days',
+      usage: 'blackmarket lock <n>',
+      examples: [`blackmarket lock 3`, `blackmarket lock 7`]
+    },
+    {
+      command: 'blackmarket unlock',
+      description: 'Unlock blackmarket immediately',
+      usage: 'blackmarket unlock',
+      examples: [`blackmarket unlock`]
     },
     {
       command: 'spawn customer',

@@ -8,6 +8,7 @@ import { ActiveNewsInstance, MarketModifier } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
 import { GameNode } from '../../types/node';
+import { BlackmarketState } from '../blackmarket/types';
 
 // === NIGHT PHASE TYPES ===
 export interface NightState {
@@ -85,4 +86,8 @@ export interface GameState {
   appointmentBoard: AppointmentBoardState; // 预约板状态
   showAppointmentBoard: boolean;           // 预约板界面显示状态
   pendingAppointedCandidates: AppointmentCandidate[];  // 今日待接待的预约客户候选
+
+  // === BLACK MARKET (黑市系统) ===
+  blackmarket: BlackmarketState;           // 黑市状态（热度、每日收购、锁定）
+  showBlackmarket: boolean;                // 黑市界面显示状态
 }

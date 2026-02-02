@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock } from 'lucide-react';
+import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock, Skull } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
@@ -11,8 +11,10 @@ import { getBedtimeMonologue } from '../systems/narrative/innerVoiceRegistry';
 import { InsightPanel } from './night/InsightPanel';
 import { WorkshopPanel } from './night/WorkshopPanel';
 import { AppointmentBoardPanel } from './night/AppointmentBoardPanel';
+import { BlackmarketPanel } from './night/BlackmarketPanel';
 import { UpgradeShopModal } from './UpgradeShopModal';
 import { FacilityControlModal } from './FacilityControlModal';
+import { getHeatLevel } from '../systems/blackmarket/types';
 import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost } from '../systems/upgrades';
 
 export const NightDashboard: React.FC = () => {
@@ -25,6 +27,7 @@ export const NightDashboard: React.FC = () => {
     const [showInsightPanel, setShowInsightPanel] = useState(false);
     const [showWorkshopPanel, setShowWorkshopPanel] = useState(false);
     const [showAppointmentBoard, setShowAppointmentBoard] = useState(false);
+    const [showBlackmarket, setShowBlackmarket] = useState(false);
 
     // Check if appointment board is unlocked
     const hasBoardUnlocked = hasAppointmentBoard(state.shopUpgrades);
@@ -35,6 +38,13 @@ export const NightDashboard: React.FC = () => {
     const counterUpgrades = getCounterUpgradesForToggle(state.shopUpgrades);
     const hasCounterFacilities = counterUpgrades.length > 0;
     const maintenanceCost = getTotalMaintenanceCost(state.shopUpgrades);
+
+    // Black market state
+    const blackmarketHeat = state.blackmarket?.heat ?? 0;
+    const blackmarketHeatLevel = getHeatLevel(blackmarketHeat);
+    const isBlackmarketLocked = state.blackmarket?.isLocked ?? false;
+    const hasRiskEvent = state.blackmarket?.lastRiskEvent !== null;
+    const forfeitItems = inventory.filter(i => i.status === 'FORFEIT').length;
 
     const unreadMail = inbox.filter(m => !m.isRead).length;
     // Count only items actually in inventory (ACTIVE or FORFEIT), not REDEEMED/SOLD
@@ -316,12 +326,71 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </button>
 
+                        {/* Black Market Button */}
+                        <button
+                            onClick={() => { playSfx('CLICK'); setShowBlackmarket(true); }}
+                            className={cn(
+                                "h-32 border bg-stone-900/50 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
+                                isBlackmarketLocked
+                                    ? "border-red-900 opacity-70"
+                                    : hasRiskEvent
+                                    ? "border-red-500 animate-pulse"
+                                    : blackmarketHeatLevel === 'DANGER'
+                                    ? "border-red-700 hover:bg-red-950/50"
+                                    : blackmarketHeatLevel === 'WARNING'
+                                    ? "border-orange-700 hover:bg-orange-950/50"
+                                    : "border-stone-700 hover:bg-stone-800"
+                            )}
+                        >
+                            {/* Lock indicator */}
+                            {isBlackmarketLocked && (
+                                <div className="absolute top-2 right-2 w-5 h-5 bg-red-700 rounded-full flex items-center justify-center">
+                                    <Lock className="w-3 h-3 text-white" />
+                                </div>
+                            )}
+                            {/* Risk event indicator */}
+                            {hasRiskEvent && !isBlackmarketLocked && (
+                                <div className="absolute top-2 right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                                    <AlertCircle className="w-3 h-3 text-white" />
+                                </div>
+                            )}
+                            {/* Forfeit count badge */}
+                            {forfeitItems > 0 && !isBlackmarketLocked && !hasRiskEvent && (
+                                <div className="absolute top-2 right-2 w-5 h-5 bg-stone-600 rounded-full flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-white">{forfeitItems}</span>
+                                </div>
+                            )}
+                            <Skull className={cn(
+                                "w-8 h-8 transition-transform group-hover:scale-110",
+                                isBlackmarketLocked ? "text-red-700" :
+                                blackmarketHeatLevel === 'DANGER' ? "text-red-500" :
+                                blackmarketHeatLevel === 'WARNING' ? "text-orange-500" :
+                                "text-stone-500 group-hover:text-stone-300"
+                            )} />
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs uppercase tracking-widest group-hover:text-white">
+                                    黑市 (Black Market)
+                                </span>
+                                <span className={cn(
+                                    "text-[9px] mt-1",
+                                    isBlackmarketLocked ? "text-red-500" :
+                                    blackmarketHeatLevel === 'DANGER' ? "text-red-400" :
+                                    blackmarketHeatLevel === 'WARNING' ? "text-orange-400" :
+                                    "text-stone-500/70"
+                                )}>
+                                    {isBlackmarketLocked ? '已关闭' :
+                                     hasRiskEvent ? '警方行动!' :
+                                     forfeitItems > 0 ? `${forfeitItems} 件可出售` : '变卖绝当物品'}
+                                </span>
+                            </div>
+                        </button>
+
                         {/* Visit Hospital Button */}
                         <button
                             onClick={() => dispatch({ type: 'TOGGLE_VISIT' })}
                             disabled={stats.visitedToday}
                             className={cn(
-                                "h-32 border bg-stone-900/50 hover:bg-stone-800 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden col-span-3",
+                                "h-32 border bg-stone-900/50 hover:bg-stone-800 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden col-span-2",
                                 stats.visitedToday ? "border-stone-800 opacity-50 grayscale" : "border-blue-900 hover:border-blue-700"
                             )}
                         >
@@ -387,6 +456,12 @@ export const NightDashboard: React.FC = () => {
             <AppointmentBoardPanel
                 isOpen={showAppointmentBoard}
                 onClose={() => setShowAppointmentBoard(false)}
+            />
+
+            {/* Black Market Modal */}
+            <BlackmarketPanel
+                isOpen={showBlackmarket}
+                onClose={() => setShowBlackmarket(false)}
             />
         </div>
     );

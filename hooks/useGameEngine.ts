@@ -12,6 +12,7 @@ import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
 import { Dialogue } from '../systems/narrative/types';
 import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
 import { createTransientChain, getContractTypeFromRate, generateFillerCustomer } from '../systems/npc/fillerGenerator';
+import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -198,7 +199,11 @@ export const useGameEngine = () => {
     // This copies selected candidate IDs to pendingAppointedCustomerIds and clears selections
     dispatch({ type: 'PREPARE_DAILY_APPOINTMENTS' });
 
-    // 8. End Day (Transition to Morning)
+    // 8. Black Market - Check for risk events and refresh daily state
+    const blackmarketRiskEvent = checkRiskEvent(state.blackmarket?.heat ?? 0);
+    dispatch({ type: 'BLACKMARKET_PROCESS_DAY_END', payload: { riskEvent: blackmarketRiskEvent } });
+
+    // 9. End Day (Transition to Morning)
     dispatch({ type: 'END_DAY' });
   };
 
@@ -289,6 +294,9 @@ export const useGameEngine = () => {
   const startNewDay = () => {
     // 0. Deduct maintenance costs for enabled COUNTER upgrades
     dispatch({ type: 'DEDUCT_MAINTENANCE_COST' });
+
+    // 0.5. Refresh Black Market daily state (check lock expiration)
+    dispatch({ type: 'BLACKMARKET_REFRESH_DAILY' });
 
     // 1. Process daily mail
     dispatch({ type: 'PROCESS_DAILY_MAIL' });

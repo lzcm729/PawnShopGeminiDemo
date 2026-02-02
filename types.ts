@@ -11,6 +11,7 @@ export * from './systems/news/types';
 export * from './systems/game/types';
 export * from './systems/reputation/types';
 export * from './systems/upgrades/types';
+export * from './systems/blackmarket/types';
 
 // Node Architecture Types
 export * from './types/node';
