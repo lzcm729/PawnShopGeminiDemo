@@ -14,6 +14,14 @@ import { Mood } from '../core/types';
 import { createItemFromTemplate } from '../items/csvLoader';
 import { initializeKnowledgePool } from '../items/tagUtils';
 import { ContractType, EventChainState } from '../narrative/types';
+import {
+  initializeFillerTemplates,
+  isFillerTemplatesLoaded,
+  getRandomName,
+  getRandomAppearanceDescription,
+  getRandomMoodDescription,
+  getRandomDialogue,
+} from './fillerTemplateLoader';
 
 // ============================================================================
 // TYPES
@@ -117,37 +125,8 @@ const FILLER_ITEM_TEMPLATES = [
     'item_diamond_mystery'
 ];
 
-/**
- * Name pools for procedural generation
- */
-const NAME_POOLS: Record<CustomerAge, Record<CustomerGender, string[]>> = {
-    young: {
-        male: ['小李', '阿杰', '小王', '阿明', '小陈', '阿伟'],
-        female: ['小美', '阿芳', '小红', '阿静', '小丽', '阿敏']
-    },
-    middle: {
-        male: ['张先生', '李师傅', '王老板', '刘经理', '陈先生', '周师傅'],
-        female: ['张女士', '李阿姨', '王太太', '刘小姐', '陈女士', '周阿姨']
-    },
-    elderly: {
-        male: ['张老', '李大爷', '王老伯', '刘老', '陈大爷', '周老伯'],
-        female: ['张奶奶', '李老太', '王婆婆', '刘奶奶', '陈老太', '周婆婆']
-    }
-};
-
-const APPEARANCE_DESCRIPTIONS: Record<CustomerAppearance, string[]> = {
-    shabby: ['穿着破旧', '衣服有些邋遢', '明显经济拮据', '穿着寒酸'],
-    plain: ['穿着朴素', '衣着普通', '相貌平平', '打扮普通'],
-    decent: ['穿着体面', '衣着整洁', '看起来不错', '打扮得体'],
-    fancy: ['穿着讲究', '打扮精致', '衣着光鲜', '看起来有钱']
-};
-
-const MOOD_DESCRIPTIONS: Record<CustomerMood, string[]> = {
-    anxious: ['神情焦虑', '满头是汗', '坐立不安', '眼神慌张'],
-    calm: ['神态自若', '面色平静', '不慌不忙', '气定神闲'],
-    reluctant: ['一脸不舍', '眼含泪光', '欲言又止', '神情惆怅'],
-    eager: ['急不可耐', '迫不及待', '跃跃欲试', '神情急切']
-};
+// Template pools are now loaded from CSV via fillerTemplateLoader.ts
+// Fallback data is embedded in the loader for resilience
 
 // ============================================================================
 // PROBABILITY CALCULATION
@@ -357,20 +336,27 @@ export function generateRandomProfile(): FillerCustomerProfile {
  * Generate name based on profile
  */
 function generateName(profile: FillerCustomerProfile): string {
-    const pool = NAME_POOLS[profile.age][profile.gender];
-    return pool[Math.floor(Math.random() * pool.length)];
+    // Ensure templates are loaded
+    if (!isFillerTemplatesLoaded()) {
+        initializeFillerTemplates();
+    }
+
+    const name = getRandomName(profile.age, profile.gender);
+    // Fallback to generic name if template not found
+    return name || '来客';
 }
 
 /**
  * Generate description based on profile
  */
 function generateDescription(profile: FillerCustomerProfile): string {
-    const appearanceDesc = APPEARANCE_DESCRIPTIONS[profile.appearance][
-        Math.floor(Math.random() * APPEARANCE_DESCRIPTIONS[profile.appearance].length)
-    ];
-    const moodDesc = MOOD_DESCRIPTIONS[profile.mood][
-        Math.floor(Math.random() * MOOD_DESCRIPTIONS[profile.mood].length)
-    ];
+    // Ensure templates are loaded
+    if (!isFillerTemplatesLoaded()) {
+        initializeFillerTemplates();
+    }
+
+    const appearanceDesc = getRandomAppearanceDescription(profile.appearance) || '普通';
+    const moodDesc = getRandomMoodDescription(profile.mood) || '神态一般';
 
     const ageDesc = profile.age === 'young' ? '年轻' : profile.age === 'middle' ? '中年' : '年迈';
     const genderDesc = profile.gender === 'male' ? '男性' : '女性';
@@ -382,15 +368,25 @@ function generateDescription(profile: FillerCustomerProfile): string {
  * Generate generic dialogue for filler customers
  */
 function generateFillerDialogue(profile: FillerCustomerProfile): Dialogue {
-    const greetings: Record<CustomerMood, string[]> = {
-        anxious: ['老板，这个能当多少钱？急用...', '请问收不收这个？我急着用钱。', '能帮帮忙吗？我急需周转...'],
-        calm: ['你好，想问一下这个能当多少？', '老板，帮我看看这个值多少。', '请问收不收这类东西？'],
-        reluctant: ['这个... 能当吗？我实在是没办法了...', '老板，我想当这个... 能出多少？', '这东西我不太想当，但是...'],
-        eager: ['老板！收这个吗？给个好价钱！', '快帮我看看这个值多少！', '这东西绝对值钱，老板看看！']
-    };
+    // Ensure templates are loaded
+    if (!isFillerTemplatesLoaded()) {
+        initializeFillerTemplates();
+    }
 
-    const greetingPool = greetings[profile.mood];
-    const greeting = greetingPool[Math.floor(Math.random() * greetingPool.length)];
+    const mood = profile.mood;
+
+    // Get dialogue from CSV templates with fallbacks
+    const greeting = getRandomDialogue(mood, 'greeting') || '老板，帮我看看这个。';
+    const acceptedFair = getRandomDialogue(mood, 'accepted_fair') || '行，就这样吧。';
+    const acceptedFleeced = getRandomDialogue(mood, 'accepted_fleeced') || '有点低，算了。';
+    const acceptedPremium = getRandomDialogue(mood, 'accepted_premium') || '谢谢老板！';
+    const rejected = getRandomDialogue(mood, 'rejected') || '我再想想。';
+    const rejectionStandard = getRandomDialogue(mood, 'rejection_standard') || '我再看看别家。';
+    const rejectionAngry = getRandomDialogue(mood, 'rejection_angry') || '太低了。';
+    const exitGrateful = getRandomDialogue(mood, 'exit_grateful') || '谢谢老板！';
+    const exitNeutral = getRandomDialogue(mood, 'exit_neutral') || '好的，再见。';
+    const exitResentful = getRandomDialogue(mood, 'exit_resentful') || '唉...';
+    const exitDesperate = getRandomDialogue(mood, 'exit_desperate') || '...';
 
     return {
         greeting,
@@ -398,20 +394,20 @@ function generateFillerDialogue(profile: FillerCustomerProfile): Dialogue {
         redemptionPlea: '到期我会来赎的。',
         negotiationDynamic: '能不能再加点？',
         accepted: {
-            fair: '行，就这样吧。',
-            fleeced: '这也太低了... 算了，急用。',
-            premium: '谢谢老板！'
+            fair: acceptedFair,
+            fleeced: acceptedFleeced,
+            premium: acceptedPremium
         },
-        rejected: '那我再想想...',
+        rejected,
         rejectionLines: {
-            standard: '那我去别家问问。',
-            angry: '太黑了吧？'
+            standard: rejectionStandard,
+            angry: rejectionAngry
         },
         exitDialogues: {
-            grateful: '谢谢老板！到期我会来赎的。',
-            neutral: '好的，那我先走了。',
-            resentful: '唉... 算了...',
-            desperate: '...'
+            grateful: exitGrateful,
+            neutral: exitNeutral,
+            resentful: exitResentful,
+            desperate: exitDesperate
         }
     };
 }

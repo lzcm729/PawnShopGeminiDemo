@@ -1,0 +1,53 @@
+mood,dialogue_type,text
+anxious,greeting,"老板，这个能当多少钱？急用..."
+anxious,greeting,请问收不收这个？我急着用钱。
+anxious,greeting,能帮帮忙吗？我急需周转...
+anxious,accepted_fair,行，就这样吧。
+anxious,accepted_fleeced,这也太低了... 算了，急用。
+anxious,accepted_premium,谢谢老板！
+anxious,rejected,那我再想想...
+anxious,rejection_standard,那我去别家问问。
+anxious,rejection_angry,太黑了吧？
+anxious,exit_grateful,谢谢老板！到期我会来赎的。
+anxious,exit_neutral,好的，那我先走了。
+anxious,exit_resentful,唉... 算了...
+anxious,exit_desperate,...
+calm,greeting,你好，想问一下这个能当多少？
+calm,greeting,老板，帮我看看这个值多少。
+calm,greeting,请问收不收这类东西？
+calm,accepted_fair,行，就这样吧。
+calm,accepted_fleeced,有点低了，不过算了。
+calm,accepted_premium,价格还行，成交。
+calm,rejected,那我再考虑考虑。
+calm,rejection_standard,好的，我再看看别家。
+calm,rejection_angry,这价格不太合适。
+calm,exit_grateful,谢谢，到期我来赎。
+calm,exit_neutral,好的，再见。
+calm,exit_resentful,哦。
+calm,exit_desperate,......
+reluctant,greeting,"这个... 能当吗？我实在是没办法了..."
+reluctant,greeting,"老板，我想当这个... 能出多少？"
+reluctant,greeting,"这东西我不太想当，但是..."
+reluctant,accepted_fair,好吧... 麻烦了。
+reluctant,accepted_fleeced,唉... 没办法了。
+reluctant,accepted_premium,谢谢老板的好意...
+reluctant,rejected,那... 让我再想想。
+reluctant,rejection_standard,我再考虑一下...
+reluctant,rejection_angry,这么低... 算了吧。
+reluctant,exit_grateful,谢谢... 我一定会来赎的。
+reluctant,exit_neutral,好的...
+reluctant,exit_resentful,唉...
+reluctant,exit_desperate,......
+eager,greeting,老板！收这个吗？给个好价钱！
+eager,greeting,快帮我看看这个值多少！
+eager,greeting,"这东西绝对值钱，老板看看！"
+eager,accepted_fair,成交！爽快！
+eager,accepted_fleeced,这么点？算了算了，成交。
+eager,accepted_premium,老板大气！
+eager,rejected,这价不行啊老板！
+eager,rejection_standard,再加点嘛老板！
+eager,rejection_angry,就这点钱？
+eager,exit_grateful,谢谢老板！改天再来！
+eager,exit_neutral,行吧，走了。
+eager,exit_resentful,切...
+eager,exit_desperate,......
