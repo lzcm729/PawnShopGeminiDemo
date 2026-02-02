@@ -655,7 +655,12 @@ export function generateFillerCustomer(day: number, profile?: FillerCustomerProf
         minimumAmount: Math.floor(floor),
         maxRepayment: Math.floor(item.realValue * 1.5),
         interactionType: 'PAWN',
-        pawnTermDays: 1 + Math.floor(Math.random() * 10)  // 1-10 days for filler
+        // Skewed distribution: take min of two rolls → biased toward shorter terms
+        // Distribution: 1-3 days ~51%, 4-6 days ~33%, 7-10 days ~16%
+        pawnTermDays: Math.min(
+            1 + Math.floor(Math.random() * 10),
+            1 + Math.floor(Math.random() * 10)
+        )
     };
 
     return customer;
