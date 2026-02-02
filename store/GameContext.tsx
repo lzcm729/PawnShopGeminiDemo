@@ -57,6 +57,7 @@ const initialState: GameState = {
     },
     inventory: [],
     currentCustomer: null,
+    currentNode: null,
     dayEvents: [],
     todayTransactions: [],
     customersServedToday: 0,

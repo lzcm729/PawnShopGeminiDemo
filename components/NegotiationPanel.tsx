@@ -6,7 +6,7 @@ import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
-import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
@@ -508,6 +508,10 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                       <div className="flex items-center gap-2 text-noir-txt-muted">
                           <DollarSign className="w-3 h-3" />
                           <span>ASK: <span className="text-noir-txt-primary font-bold">${currentAskPrice}</span></span>
+                      </div>
+                      <div className="flex items-center gap-2 text-amber-500/80">
+                          <Calendar className="w-3 h-3" />
+                          <span>TERM: <span className="font-bold">{currentCustomer.pawnTermDays ?? 7}d</span></span>
                       </div>
                       <div className="flex items-center gap-2 text-pawn-green">
                           <TrendingUp className="w-3 h-3" />

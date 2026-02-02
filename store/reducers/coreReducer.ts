@@ -30,6 +30,8 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 appointmentBoard,
                 showAppointmentBoard: action.payload.showAppointmentBoard ?? false,
                 pendingAppointedCandidates,
+                // Ensure currentNode is present (migration from old saves)
+                currentNode: action.payload.currentNode ?? null,
                 nightState: {
                     ...action.payload.nightState,
                     maxEnergy: effectiveMaxEnergy
@@ -52,7 +54,8 @@ export function coreReducer(state: GameState, action: Action): GameState {
             return {
                 ...state,
                 customersServedToday: 0,
-                currentCustomer: null,  // FIX: Clear customer when starting new day
+                currentCustomer: null,  // @deprecated - keep for compatibility
+                currentNode: null,      // Clear node when starting new day
                 dayEvents: [],
                 todayTransactions: [],
                 phase: GamePhase.BUSINESS,
@@ -94,7 +97,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
 
         case 'START_NIGHT':
             // Sound effect removed to prevent duplicate play with UI interaction
-            return { ...state, phase: GamePhase.NIGHT, currentCustomer: null, lastSatisfaction: null };
+            return { ...state, phase: GamePhase.NIGHT, currentCustomer: null, currentNode: null, lastSatisfaction: null };
 
         case 'SET_PHASE':
             return { ...state, phase: action.payload };

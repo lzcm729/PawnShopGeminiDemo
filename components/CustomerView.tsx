@@ -204,7 +204,7 @@ export const CustomerView: React.FC = () => {
 
         {/* Tags */}
         <div className="flex flex-wrap gap-2 mt-4">
-           {currentCustomer.tags.map(tag => (
+           {currentCustomer.identityTags.map(tag => (
               <span key={tag} className="text-[10px] bg-black/40 border border-[#292524] px-2 py-1 rounded text-stone-500 font-mono">
                   #{tag}
               </span>

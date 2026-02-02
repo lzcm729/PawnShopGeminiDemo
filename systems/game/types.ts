@@ -7,6 +7,7 @@ import { EventChainState, MailInstance, SatisfactionLevel, ExpiryEvent } from '.
 import { ActiveNewsInstance, MarketModifier } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
+import { GameNode } from '../../types/node';
 
 // === NIGHT PHASE TYPES ===
 export interface NightState {
@@ -37,19 +38,20 @@ export interface GameState {
   stats: DailyStats;
   reputation: ReputationProfile;
   inventory: Item[];
-  currentCustomer: Customer | null;
-  dayEvents: string[]; 
-  todayTransactions: TransactionRecord[]; 
+  currentCustomer: Customer | null;  // @deprecated Use currentNode instead
+  currentNode: GameNode | null;      // NEW: Unified node interface for daytime interactions
+  dayEvents: string[];
+  todayTransactions: TransactionRecord[];
   customersServedToday: number;
   maxCustomersPerDay: number;
   isLoading: boolean;
   showInventory: boolean;
-  showMail: boolean; 
-  showDebug: boolean; 
-  showFinancials: boolean; 
-  showMedical: boolean; 
+  showMail: boolean;
+  showDebug: boolean;
+  showFinancials: boolean;
+  showMedical: boolean;
   showVisit: boolean; // New Flag for Hospital Visit
-  activeChains: EventChainState[]; 
+  activeChains: EventChainState[];
   inbox: MailInstance[];
   pendingMails: MailInstance[];
   completedScenarioIds: string[];

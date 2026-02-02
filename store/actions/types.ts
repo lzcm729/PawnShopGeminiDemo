@@ -9,6 +9,7 @@ import { KnowledgePool } from '../../systems/items/tags';
 import { ItemTag, WorkState } from '../../systems/items/types';
 import { AppointmentCandidate, AppointmentPreference } from '../../systems/appointment';
 import { ItemLogEntry } from '../../types';
+import { GameNode } from '../../types/node';
 
 // === Action Type Union ===
 
@@ -31,6 +32,11 @@ export type Action =
     | { type: 'MANUAL_CLOSE_SHOP' }
     | { type: 'MARK_NO_MORE_CUSTOMERS' }
     | { type: 'SET_SATISFACTION'; payload: SatisfactionLevel }
+
+    // Node management (new unified interface)
+    | { type: 'SET_NODE'; payload: GameNode | null }
+    | { type: 'CLEAR_NODE' }
+    | { type: 'UPDATE_NODE_ITEM'; payload: { newRange?: [number, number]; revealedTraits?: any[]; newUncertainty?: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry } }
 
     // Appraisal & Item knowledge
     | { type: 'APPRAISE_ITEM' }

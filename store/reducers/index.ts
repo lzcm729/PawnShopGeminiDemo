@@ -16,6 +16,7 @@ import { nightReducer } from './nightReducer';
 import { upgradeReducer } from './upgradeReducer';
 import { appointmentReducer } from './appointmentReducer';
 import { uiReducer } from './uiReducer';
+import { nodeReducer } from './nodeReducer';
 
 /**
  * List of domain reducers in priority order
@@ -25,6 +26,7 @@ import { uiReducer } from './uiReducer';
 const domainReducers = [
     coreReducer,
     customerReducer,
+    nodeReducer,
     inventoryReducer,
     financialReducer,
     narrativeReducer,
@@ -58,6 +60,7 @@ export function gameReducer(state: GameState, action: Action): GameState {
 // Re-export individual reducers for testing
 export { coreReducer } from './coreReducer';
 export { customerReducer } from './customerReducer';
+export { nodeReducer } from './nodeReducer';
 export { inventoryReducer } from './inventoryReducer';
 export { financialReducer } from './financialReducer';
 export { narrativeReducer } from './narrativeReducer';
