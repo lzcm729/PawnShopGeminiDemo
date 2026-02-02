@@ -2,10 +2,10 @@
  * Mail Registry
  *
  * Aggregates all mail templates from stories and system mails.
- * Uses lazy loading to avoid circular dependency issues.
  */
 
 import { MailTemplate } from '../../types';
+import { ALL_STORY_MAILS } from './storyRegistry';
 
 const SYSTEM_MAILS: Record<string, MailTemplate> = {
   "mail_welcome": {
@@ -31,22 +31,17 @@ const SYSTEM_MAILS: Record<string, MailTemplate> = {
   }
 };
 
-// Lazy-loaded cache for all mail templates
-let _mailTemplatesCache: Record<string, MailTemplate> | null = null;
+// Combined mail templates (system + story mails)
+const ALL_MAIL_TEMPLATES: Record<string, MailTemplate> = {
+  ...SYSTEM_MAILS,
+  ...ALL_STORY_MAILS
+};
 
 /**
- * Get all mail templates (lazy loaded to avoid circular dependency)
+ * Get all mail templates
  */
 function getAllMailTemplates(): Record<string, MailTemplate> {
-  if (_mailTemplatesCache === null) {
-    // Dynamic import to avoid circular dependency at module load time
-    const { ALL_STORY_MAILS } = require('./storyRegistry');
-    _mailTemplatesCache = {
-      ...SYSTEM_MAILS,
-      ...ALL_STORY_MAILS
-    };
-  }
-  return _mailTemplatesCache;
+  return ALL_MAIL_TEMPLATES;
 }
 
 // For backward compatibility - but using getter
