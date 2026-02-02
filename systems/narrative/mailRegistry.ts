@@ -31,17 +31,20 @@ const SYSTEM_MAILS: Record<string, MailTemplate> = {
   }
 };
 
-// Combined mail templates (system + story mails)
-const ALL_MAIL_TEMPLATES: Record<string, MailTemplate> = {
-  ...SYSTEM_MAILS,
-  ...ALL_STORY_MAILS
-};
+// Lazy-loaded combined mail templates (avoid circular dependency issues)
+let _cachedMailTemplates: Record<string, MailTemplate> | null = null;
 
 /**
- * Get all mail templates
+ * Get all mail templates (lazy initialization)
  */
 function getAllMailTemplates(): Record<string, MailTemplate> {
-  return ALL_MAIL_TEMPLATES;
+  if (!_cachedMailTemplates) {
+    _cachedMailTemplates = {
+      ...SYSTEM_MAILS,
+      ...ALL_STORY_MAILS
+    };
+  }
+  return _cachedMailTemplates;
 }
 
 // For backward compatibility - but using getter
