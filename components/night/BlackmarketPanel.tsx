@@ -51,6 +51,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
     getSellableItems,
     checkBreach,
     getPurchasePrice,
+    getSalePrice,
     getSalePriceRange,
     sellToPurchase,
     sellDirect,
@@ -84,9 +85,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
   };
 
   const handleSellDirect = (item: Item) => {
-    const range = getSalePriceRange(item);
-    // Use a random price within range for display (actual will be recalculated)
-    const price = Math.floor((range.min + range.max) / 2);
+    const price = getSalePrice(item);
     setConfirmAction({ type: 'sell_direct', item, price });
   };
 
@@ -223,7 +222,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
             ) : (
               <SaleTab
                 items={sellableItems}
-                getSalePriceRange={getSalePriceRange}
+                getSalePrice={getSalePrice}
                 checkBreach={checkBreach}
                 onSell={handleSellDirect}
                 selectedItemId={selectedItemId}
@@ -470,7 +469,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
 
 interface SaleTabProps {
   items: Item[];
-  getSalePriceRange: (item: Item) => { min: number; max: number };
+  getSalePrice: (item: Item) => number;
   checkBreach: (item: Item) => boolean;
   onSell: (item: Item) => void;
   selectedItemId: string | null;
@@ -479,7 +478,7 @@ interface SaleTabProps {
 
 const SaleTab: React.FC<SaleTabProps> = ({
   items,
-  getSalePriceRange,
+  getSalePrice,
   checkBreach,
   onSell,
   selectedItemId,
@@ -502,9 +501,10 @@ const SaleTab: React.FC<SaleTabProps> = ({
       </div>
 
       {items.map(item => {
-        const range = getSalePriceRange(item);
+        const salePrice = getSalePrice(item);
         const isSelected = selectedItemId === item.id;
         const isBreach = checkBreach(item);
+        const [estMin, estMax] = item.currentRange;
 
         return (
           <div
@@ -523,7 +523,7 @@ const SaleTab: React.FC<SaleTabProps> = ({
               <div className="flex-1">
                 <div className="font-bold text-sm">{getDisplayName(item)}</div>
                 <div className="text-xs text-stone-500">
-                  真实价值: ${item.realValue}
+                  估价: ${estMin} - ${estMax}
                 </div>
                 {isBreach && (
                   <div className="flex items-center gap-1 mt-1 text-xs text-red-400">
@@ -533,9 +533,9 @@ const SaleTab: React.FC<SaleTabProps> = ({
                 )}
               </div>
               <div className="text-right">
-                <div className="text-xs text-stone-500">预估价格</div>
+                <div className="text-xs text-stone-500">售价</div>
                 <div className="text-lg font-mono font-bold text-amber-400">
-                  ${range.min} - ${range.max}
+                  ${salePrice}
                 </div>
               </div>
               {isSelected && (
