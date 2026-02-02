@@ -49,6 +49,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
     remainingPurchaseSlots,
     getEligibleItems,
     getSellableItems,
+    checkBreach,
     getPurchasePrice,
     getSalePriceRange,
     sellToPurchase,
@@ -214,6 +215,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
                 remainingSlots={remainingPurchaseSlots}
                 getEligibleItems={getEligibleItems}
                 getPurchasePrice={getPurchasePrice}
+                checkBreach={checkBreach}
                 onSell={handleSellToPurchase}
                 selectedItemId={selectedItemId}
                 onSelectItem={setSelectedItemId}
@@ -222,6 +224,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
               <SaleTab
                 items={sellableItems}
                 getSalePriceRange={getSalePriceRange}
+                checkBreach={checkBreach}
                 onSell={handleSellDirect}
                 selectedItemId={selectedItemId}
                 onSelectItem={setSelectedItemId}
@@ -240,6 +243,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
       {confirmAction && (
         <ConfirmDialog
           action={confirmAction}
+          checkBreach={checkBreach}
           onConfirm={executeConfirmAction}
           onCancel={() => setConfirmAction(null)}
         />
@@ -334,6 +338,7 @@ interface PurchaseTabProps {
   remainingSlots: number;
   getEligibleItems: (request: MarketPurchaseRequest) => Item[];
   getPurchasePrice: (item: Item, request: MarketPurchaseRequest) => number;
+  checkBreach: (item: Item) => boolean;
   onSell: (item: Item, request: MarketPurchaseRequest) => void;
   selectedItemId: string | null;
   onSelectItem: (id: string | null) => void;
@@ -345,6 +350,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
   remainingSlots,
   getEligibleItems,
   getPurchasePrice,
+  checkBreach,
   onSell,
   selectedItemId,
   onSelectItem,
@@ -403,6 +409,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                 eligibleItems.map(item => {
                   const price = getPurchasePrice(item, request);
                   const isSelected = selectedItemId === item.id;
+                  const isBreach = checkBreach(item);
 
                   return (
                     <div
@@ -411,7 +418,8 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                       className={cn(
                         'p-3 rounded border transition-all',
                         canPurchase ? 'cursor-pointer hover:bg-noir-200' : 'opacity-50 cursor-not-allowed',
-                        isSelected ? 'border-green-500 bg-green-950/30' : 'border-noir-400'
+                        isBreach ? 'border-red-700 bg-red-950/20' : '',
+                        isSelected ? 'border-green-500 bg-green-950/30' : !isBreach ? 'border-noir-400' : ''
                       )}
                     >
                       <div className="flex items-center gap-3">
@@ -423,6 +431,12 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                           <div className="text-xs text-stone-500">
                             真实价值: ${item.realValue}
                           </div>
+                          {isBreach && (
+                            <div className="flex items-center gap-1 mt-1 text-xs text-red-400">
+                              <AlertTriangle className="w-3 h-3" />
+                              <span>违约：人情-3, 商誉-1</span>
+                            </div>
+                          )}
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-mono font-bold text-green-400">
@@ -457,6 +471,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
 interface SaleTabProps {
   items: Item[];
   getSalePriceRange: (item: Item) => { min: number; max: number };
+  checkBreach: (item: Item) => boolean;
   onSell: (item: Item) => void;
   selectedItemId: string | null;
   onSelectItem: (id: string | null) => void;
@@ -465,6 +480,7 @@ interface SaleTabProps {
 const SaleTab: React.FC<SaleTabProps> = ({
   items,
   getSalePriceRange,
+  checkBreach,
   onSell,
   selectedItemId,
   onSelectItem,
@@ -488,6 +504,7 @@ const SaleTab: React.FC<SaleTabProps> = ({
       {items.map(item => {
         const range = getSalePriceRange(item);
         const isSelected = selectedItemId === item.id;
+        const isBreach = checkBreach(item);
 
         return (
           <div
@@ -495,7 +512,8 @@ const SaleTab: React.FC<SaleTabProps> = ({
             onClick={() => onSelectItem(isSelected ? null : item.id)}
             className={cn(
               'p-3 rounded border transition-all cursor-pointer hover:bg-noir-200',
-              isSelected ? 'border-amber-500 bg-amber-950/30' : 'border-noir-400'
+              isBreach ? 'border-red-700 bg-red-950/20' : '',
+              isSelected ? 'border-amber-500 bg-amber-950/30' : !isBreach ? 'border-noir-400' : ''
             )}
           >
             <div className="flex items-center gap-3">
@@ -507,6 +525,12 @@ const SaleTab: React.FC<SaleTabProps> = ({
                 <div className="text-xs text-stone-500">
                   真实价值: ${item.realValue}
                 </div>
+                {isBreach && (
+                  <div className="flex items-center gap-1 mt-1 text-xs text-red-400">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>违约：人情-3, 商誉-1</span>
+                  </div>
+                )}
               </div>
               <div className="text-right">
                 <div className="text-xs text-stone-500">预估价格</div>
@@ -649,26 +673,36 @@ interface ConfirmDialogProps {
     item?: Item;
     price?: number;
   };
+  checkBreach: (item: Item) => boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ action, onConfirm, onCancel }) => {
+const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ action, checkBreach, onConfirm, onCancel }) => {
   let title = '';
   let message = '';
   let confirmText = '';
   let isDanger = false;
+  let isBreach = false;
+
+  // Check if this sale would be a breach
+  if (action.item && (action.type === 'sell_purchase' || action.type === 'sell_direct')) {
+    isBreach = checkBreach(action.item);
+    if (isBreach) {
+      isDanger = true;
+    }
+  }
 
   switch (action.type) {
     case 'sell_purchase':
-      title = '确认出售';
+      title = isBreach ? '违约警告' : '确认出售';
       message = `以 $${action.price} 出售 "${action.item?.name}"？\n(热度 +1)`;
-      confirmText = '确认出售';
+      confirmText = isBreach ? '确认违约出售' : '确认出售';
       break;
     case 'sell_direct':
-      title = '确认出售';
+      title = isBreach ? '违约警告' : '确认出售';
       message = `以约 $${action.price} 出售 "${action.item?.name}"？\n(热度 +2)`;
-      confirmText = '确认出售';
+      confirmText = isBreach ? '确认违约出售' : '确认出售';
       break;
     case 'pay_fine':
       title = '支付罚款';
@@ -691,6 +725,20 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ action, onConfirm, onCanc
       size="sm"
     >
       <div className="space-y-4">
+        {isBreach && (
+          <div className="bg-red-950/50 border border-red-700 p-3 rounded flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-red-400 text-sm">违约出售</div>
+              <div className="text-xs text-red-300/80 mt-1">
+                此物品仍在典当期内，出售将违反合约。
+              </div>
+              <div className="text-xs text-red-400 mt-1 font-mono">
+                人情 -3, 商誉 -1
+              </div>
+            </div>
+          </div>
+        )}
         <p className="text-stone-300 whitespace-pre-line">{message}</p>
         <div className="flex justify-end gap-3">
           <Button onClick={onCancel} variant="secondary">
