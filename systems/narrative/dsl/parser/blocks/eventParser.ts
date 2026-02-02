@@ -480,9 +480,9 @@ export class EventBlockParser extends BaseParser {
                         case 'ask_price':
                             currentAskPrice = this.parseNumberValue();
                             break;
-                        // Legacy fields - parse and ignore
+                        // Alias: 'tags' is shorthand for 'identity_tags'
                         case 'tags':
-                            this.parseTagsList(); // consume but ignore
+                            identityTags = this.parseTagsList();
                             break;
                         case 'negotiation_style':
                         case 'pawn_term_days':

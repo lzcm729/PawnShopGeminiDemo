@@ -1,3 +1,11 @@
+/**
+ * Lin Story DSL Test
+ */
+
+import { runStoryComparison, formatTestResults, TestResult } from './testUtils';
+import { LIN_CHAIN_INIT, LIN_EVENTS } from '../../stories/lin';
+
+export const LIN_DSL = `
 @story lin
     name: "小林"
 
@@ -124,3 +132,18 @@
         @no_show
             @keep
                 deactivate_chain
+`;
+
+export function testLinDSL(): TestResult {
+    return runStoryComparison({
+        name: 'Lin',
+        dslContent: LIN_DSL,
+        tsChainInit: LIN_CHAIN_INIT,
+        tsEvents: LIN_EVENTS
+    });
+}
+
+export function runLinTests(): void {
+    const result = testLinDSL();
+    console.log(formatTestResults('Lin', result));
+}

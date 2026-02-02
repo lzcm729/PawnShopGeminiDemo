@@ -2,9 +2,9 @@
 import { GamePhase, ReputationType } from '../../types';
 import { testSusanDSL } from '../narrative/dsl/__tests__/susan.test';
 import { testLinDSL } from '../narrative/dsl/__tests__/lin.test';
-import { testUnderworldDSL } from '../narrative/dsl/__tests__/underworld.test';
 import { testZhaoDSL } from '../narrative/dsl/__tests__/zhao.test';
 import { testEmmaDSL } from '../narrative/dsl/__tests__/emma.test';
+import { testAllFullStoryFiles, testFullStoryByName, formatFullTestResults } from '../narrative/dsl/__tests__/fullFileTest';
 import type { TestResult } from '../narrative/dsl/__tests__/testUtils';
 
 export interface CommandResult {
@@ -104,7 +104,7 @@ export function executeCommand(
   chains                - View active event chains
   customers             - View today's customer count
   state <path>          - View game state (e.g., state reputation, state stats.day)
-  test dsl <story>      - Test DSL parser output (susan|lin|underworld|zhao|emma|all)
+  test dsl <story>      - Test DSL parser (susan|lin|zhao|emma|all|full)
   clear                 - Clear console history
   help                  - Show this help`
       };
@@ -322,7 +322,6 @@ function handleOpenCommand(
 const STORY_TEST_MAP: Record<string, () => TestResult> = {
   'susan': testSusanDSL,
   'lin': testLinDSL,
-  'underworld': testUnderworldDSL,
   'zhao': testZhaoDSL,
   'emma': testEmmaDSL
 };
@@ -350,13 +349,32 @@ function formatTestResult(storyName: string, result: TestResult): string {
 
 function handleTestCommand(args: string[]): CommandResult {
   if (args.length < 1) {
-    return { success: false, message: `Usage: test dsl <story>\nAvailable: ${Object.keys(STORY_TEST_MAP).join(', ')}, all` };
+    return { success: false, message: `Usage: test dsl <story> | test dsl full [story]\nAvailable: ${Object.keys(STORY_TEST_MAP).join(', ')}, all, full` };
   }
 
   const testType = args[0].toLowerCase();
 
   if (testType === 'dsl') {
     const storyName = args[1]?.toLowerCase() || 'susan';
+
+    // Full file validation
+    if (storyName === 'full') {
+      const specificStory = args[2]?.toLowerCase();
+
+      if (specificStory) {
+        // Test single story's full file
+        const result = testFullStoryByName(specificStory);
+        if (!result) {
+          return { success: false, message: `Unknown story: ${specificStory}. Available: emma, susan, zhao, lin` };
+        }
+        return { success: result.passed, message: formatFullTestResults([result]) };
+      } else {
+        // Test all full files
+        const results = testAllFullStoryFiles();
+        const allPassed = results.every(r => r.passed);
+        return { success: allPassed, message: formatFullTestResults(results) };
+      }
+    }
 
     // Run all tests
     if (storyName === 'all') {
@@ -610,7 +628,7 @@ export function getAvailableCommands(): CommandDef[] {
       command: 'test dsl',
       description: 'Test DSL parser output against TypeScript source',
       usage: 'test dsl <story>',
-      examples: [`test dsl susan`, `test dsl lin`, `test dsl zhao`, `test dsl emma`, `test dsl underworld`, `test dsl all`]
+      examples: [`test dsl susan`, `test dsl lin`, `test dsl zhao`, `test dsl emma`, `test dsl all`]
     },
     {
       command: 'chains',

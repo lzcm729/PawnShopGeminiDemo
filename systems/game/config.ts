@@ -1,5 +1,5 @@
 
-import { EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT, UNDERWORLD_CHAIN_INIT } from '../narrative/storyRegistry';
+import { EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT } from '../narrative/storyRegistry';
 
 export const GAME_CONFIG = {
   // --- ECONOMY STARTING STATE ---
@@ -46,7 +46,6 @@ export const GAME_CONFIG = {
     EMMA_CHAIN_INIT,      // 艾玛 (失业/求职线)
     SUSAN_CHAIN_INIT,     // 苏珊 (富太/赌博线)
     ZHAO_CHAIN_INIT,      // 周老 (退伍老兵线)
-    LIN_CHAIN_INIT,       // 小林 (大学生线)
-    UNDERWORLD_CHAIN_INIT // 黑帮 (地下势力线)
+    LIN_CHAIN_INIT        // 小林 (大学生线)
   ]
 };

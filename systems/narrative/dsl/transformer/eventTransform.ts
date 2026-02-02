@@ -110,7 +110,7 @@ function transformCustomer(ast: CustomerBlock): CustomerTemplate {
     const template: CustomerTemplate = {
         name: ast.name,
         description: ast.description,
-        avatarSeed: ast.avatarSeed || ast.name,
+        avatarSeed: ast.avatarSeed !== undefined ? ast.avatarSeed : ast.name,
         dialogue: transformDialogue(ast.dialogue)
     };
 

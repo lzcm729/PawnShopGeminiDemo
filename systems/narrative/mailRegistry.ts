@@ -2,7 +2,6 @@
 import { MailTemplate } from '../../types';
 import { EMMA_MAILS } from './stories/emma';
 import { ZHAO_MAILS } from './stories/zhao';
-import { UNDERWORLD_MAILS } from './stories/underworld';
 
 const SYSTEM_MAILS: Record<string, MailTemplate> = {
   "mail_welcome": {
@@ -31,8 +30,7 @@ const SYSTEM_MAILS: Record<string, MailTemplate> = {
 export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
   ...SYSTEM_MAILS,
   ...EMMA_MAILS,
-  ...ZHAO_MAILS,
-  ...UNDERWORLD_MAILS
+  ...ZHAO_MAILS
 };
 
 export const getMailTemplate = (id: string): MailTemplate | null => {

@@ -358,8 +358,8 @@
         patience: 4
         mood: "Neutral"
         tags: [Emotional, HighMoralStake]
+        behavior_tags: [SAVVY, SENTIMENTAL]
         redemption_resolve: Strong
-        negotiation_style: Professional
 
         @dialogue
             greeting: "老板，看看这个。我不卖，就当几天。"
