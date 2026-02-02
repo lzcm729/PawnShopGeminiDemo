@@ -157,10 +157,11 @@ export function getRandomSaleMultiplier(daily: BlackmarketDailyState): number {
 
 /**
  * Check if item is eligible for black market purchase (matches requested tag)
+ * Both FORFEIT and ACTIVE items can be sold; selling ACTIVE items triggers breach penalty.
  */
 export function isEligibleForPurchase(item: Item, purchaseRequest: MarketPurchaseRequest): boolean {
-  // Item must be FORFEIT (player owned) to sell
-  if (item.status !== ItemStatus.FORFEIT) return false;
+  // Item must be in inventory (FORFEIT or ACTIVE)
+  if (item.status !== ItemStatus.FORFEIT && item.status !== ItemStatus.ACTIVE) return false;
 
   // Check if item has the requested tag
   const itemTags = item.tags ?? [];
@@ -169,10 +170,19 @@ export function isEligibleForPurchase(item: Item, purchaseRequest: MarketPurchas
 
 /**
  * Check if item can be sold via player sale track
+ * Both FORFEIT and ACTIVE items can be sold; selling ACTIVE items triggers breach penalty.
  */
 export function isEligibleForSale(item: Item): boolean {
-  // Only FORFEIT items can be sold (player owned)
-  return item.status === ItemStatus.FORFEIT;
+  // Both FORFEIT and ACTIVE items can be sold
+  return item.status === ItemStatus.FORFEIT || item.status === ItemStatus.ACTIVE;
+}
+
+/**
+ * Check if selling this item would trigger a breach (violating pawn contract)
+ * Returns true if the item is still in redemption period (ACTIVE status)
+ */
+export function isSaleBreach(item: Item): boolean {
+  return item.status === ItemStatus.ACTIVE;
 }
 
 /**

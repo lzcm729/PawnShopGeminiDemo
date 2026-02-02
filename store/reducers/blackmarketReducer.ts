@@ -27,12 +27,16 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       if (itemIndex === -1) return state;
 
       const item = state.inventory[itemIndex];
-      if (item.status !== ItemStatus.FORFEIT) return state;
+      // Allow both FORFEIT and ACTIVE items to be sold
+      if (item.status !== ItemStatus.FORFEIT && item.status !== ItemStatus.ACTIVE) return state;
 
       // Check purchase limit
       if (state.blackmarket.daily.purchasedCount >= state.blackmarket.daily.purchaseLimit) {
         return state;
       }
+
+      // Check if this is a breach (selling ACTIVE item in redemption period)
+      const isBreach = item.status === ItemStatus.ACTIVE;
 
       const newInventory = [...state.inventory];
       newInventory[itemIndex] = {
@@ -49,9 +53,19 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         { itemId, itemName, amount, type: 'PURCHASE' as const }
       ];
 
+      // Apply breach penalty: Humanity -3, Credibility -1
+      const newReputation = isBreach ? {
+        ...state.reputation,
+        [ReputationType.HUMANITY]: Math.max(0, state.reputation[ReputationType.HUMANITY] - 3),
+        [ReputationType.CREDIBILITY]: Math.max(0, state.reputation[ReputationType.CREDIBILITY] - 1)
+      } : state.reputation;
+
+      const breachEvent = isBreach ? `[黑市] 违约出售当品，人情 -3，商誉 -1` : '';
+
       return {
         ...state,
         inventory: newInventory,
+        reputation: newReputation,
         stats: {
           ...state.stats,
           cash: state.stats.cash + amount
@@ -67,7 +81,8 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         },
         dayEvents: [
           ...state.dayEvents,
-          `[黑市] 以收购价 $${amount} 出售了 ${itemName} (${tag})`
+          `[黑市] 以收购价 $${amount} 出售了 ${itemName} (${tag})`,
+          ...(breachEvent ? [breachEvent] : [])
         ]
       };
     }
@@ -80,7 +95,11 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       if (itemIndex === -1) return state;
 
       const item = state.inventory[itemIndex];
-      if (item.status !== ItemStatus.FORFEIT) return state;
+      // Allow both FORFEIT and ACTIVE items to be sold
+      if (item.status !== ItemStatus.FORFEIT && item.status !== ItemStatus.ACTIVE) return state;
+
+      // Check if this is a breach (selling ACTIVE item in redemption period)
+      const isBreach = item.status === ItemStatus.ACTIVE;
 
       const newInventory = [...state.inventory];
       newInventory[itemIndex] = {
@@ -97,9 +116,19 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         { itemId, itemName, amount, type: 'SALE' as const }
       ];
 
+      // Apply breach penalty: Humanity -3, Credibility -1
+      const newReputation = isBreach ? {
+        ...state.reputation,
+        [ReputationType.HUMANITY]: Math.max(0, state.reputation[ReputationType.HUMANITY] - 3),
+        [ReputationType.CREDIBILITY]: Math.max(0, state.reputation[ReputationType.CREDIBILITY] - 1)
+      } : state.reputation;
+
+      const breachEvent = isBreach ? `[黑市] 违约出售当品，人情 -3，商誉 -1` : '';
+
       return {
         ...state,
         inventory: newInventory,
+        reputation: newReputation,
         stats: {
           ...state.stats,
           cash: state.stats.cash + amount
@@ -111,7 +140,8 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         },
         dayEvents: [
           ...state.dayEvents,
-          `[黑市] 以出售价 $${amount} 出售了 ${itemName}`
+          `[黑市] 以出售价 $${amount} 出售了 ${itemName}`,
+          ...(breachEvent ? [breachEvent] : [])
         ]
       };
     }

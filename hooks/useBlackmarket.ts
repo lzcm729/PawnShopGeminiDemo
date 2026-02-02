@@ -21,6 +21,7 @@ import {
   getRandomSaleMultiplier,
   isEligibleForPurchase,
   isEligibleForSale,
+  isSaleBreach,
   getEligibleItemsForPurchase,
   getEligibleItemsForSale,
   getHeatGain
@@ -116,6 +117,14 @@ export const useBlackmarket = () => {
    */
   const checkSellable = useCallback((item: Item): boolean => {
     return isEligibleForSale(item);
+  }, []);
+
+  /**
+   * Check if selling this item would be a breach (violating pawn contract)
+   * UI should warn player before selling ACTIVE items
+   */
+  const checkBreach = useCallback((item: Item): boolean => {
+    return isSaleBreach(item);
   }, []);
 
   // ========================================================================
@@ -242,6 +251,7 @@ export const useBlackmarket = () => {
     getSellableItems,
     checkEligibility,
     checkSellable,
+    checkBreach,
 
     // Price calculation
     getPurchasePrice,
