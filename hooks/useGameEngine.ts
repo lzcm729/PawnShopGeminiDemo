@@ -383,10 +383,13 @@ export const useGameEngine = () => {
           return;
       }
 
-      // 3. Standard Story Events
+      // 3. Standard Story Events (NARRATIVE PRIORITY - NO LIMIT)
+      // Narrative customers always come if eligible, regardless of customersServedToday
       const narrativeEvent = findEligibleEvent(state.activeChains, ALL_STORY_EVENTS);
-      
+
       if (narrativeEvent) {
+          // Track this as a narrative customer (for closing logic)
+          dispatch({ type: 'INCREMENT_NARRATIVE_CUSTOMER' });
           let targetId = narrativeEvent.targetItemId;
           if (!targetId) {
                const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
@@ -506,9 +509,14 @@ export const useGameEngine = () => {
 
       // 4. Filler Customers (填充客户)
       // Generate filler customers when no story events are available
-      // These are procedural customers for typical pawn transactions
-      // Ratio guideline: 1 narrative : 3-5 filler (achieved via MAX_CUSTOMERS_PER_DAY config)
-      if (state.customersServedToday < state.maxCustomersPerDay) {
+      // Logic: filler + narrative total cap is MAX_CUSTOMERS_PER_DAY (4)
+      // If narrative >= 4, no filler (all slots taken by narrative)
+      const narrativeServed = state.narrativeCustomersServedToday;
+      const fillerServed = state.customersServedToday - narrativeServed;
+      const fillerAllowedCount = Math.max(0, state.maxCustomersPerDay - narrativeServed);
+      const canGenerateFiller = fillerServed < fillerAllowedCount;
+
+      if (canGenerateFiller) {
           const fillerCustomer = generateFillerCustomer(state.stats.day);
           if (fillerCustomer) {
               setTimeout(() => {

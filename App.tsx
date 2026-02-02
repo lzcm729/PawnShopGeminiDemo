@@ -8,7 +8,7 @@ import { CustomerView } from './components/CustomerView';
 import { ItemPanel } from './components/ItemPanel';
 import { NegotiationPanel } from './components/NegotiationPanel';
 import { SettlementInterface } from './components/RedemptionInterface';
-import { RenewalRequestPanel } from './components/RenewalRequestPanel';
+import { RenewalRequestPanel, RenewalTicketPanel } from './components/RenewalRequestPanel';
 import { PostForfeitPanel } from './components/PostForfeitPanel';
 import { InventoryModal } from './components/InventoryModal'; 
 import { MailModal } from './components/MailModal';
@@ -65,17 +65,22 @@ const GameContent: React.FC = () => {
       prevPhase.current = current;
   }, [state.phase]);
 
-  // Phase: BUSINESS -> Automatically trigger event if no customer AND limit not reached
+  // Phase: BUSINESS -> Automatically trigger event if no customer
+  // Note: canServe is always true now - the generateDailyEvent handles the logic internally
+  // It will call MARK_NO_MORE_CUSTOMERS when done
   useEffect(() => {
     const isBusiness = state.phase === GamePhase.BUSINESS;
     const isIdle = !state.isLoading && !state.currentCustomer;
-    const canServe = state.customersServedToday < state.maxCustomersPerDay;
+    // Effective max = max(4, narrativeServed) to allow all narrative customers
+    const narrativeServed = state.narrativeCustomersServedToday;
+    const effectiveMax = Math.max(state.maxCustomersPerDay, narrativeServed);
+    const canServe = state.customersServedToday < effectiveMax;
 
     if (isBusiness && isIdle && canServe) {
       setLoadingText("Someone is approaching the counter...");
       generateDailyEvent();
     }
-  }, [state.phase, state.isLoading, state.currentCustomer, state.customersServedToday, state.maxCustomersPerDay, generateDailyEvent]);
+  }, [state.phase, state.isLoading, state.currentCustomer, state.customersServedToday, state.narrativeCustomersServedToday, state.maxCustomersPerDay, generateDailyEvent]);
 
   // Sync Customer Status
   useEffect(() => {
@@ -125,8 +130,12 @@ const GameContent: React.FC = () => {
   const isRenewal = isNegotiating && interactionType === 'RENEWAL';
   const isPostForfeit = isNegotiating && interactionType === 'POST_FORFEIT';
   
-  // Shop is "closed" (show 打烊 button) when served max customers or no more events available
-  const isShopClosed = isBusiness && state.customersServedToday >= state.maxCustomersPerDay;
+  // Shop is "closed" (show 打烊 button) when:
+  // - All narrative customers served AND filler quota reached (total >= max(4, narrativeServed))
+  // - OR MARK_NO_MORE_CUSTOMERS was called (customersServedToday >= maxCustomersPerDay)
+  const narrativeServed = state.narrativeCustomersServedToday;
+  const effectiveMax = Math.max(state.maxCustomersPerDay, narrativeServed);
+  const isShopClosed = isBusiness && state.customersServedToday >= effectiveMax;
   const hasExpiryQueue = state.expiryQueue && state.expiryQueue.length > 0;
 
   return (
@@ -191,10 +200,14 @@ const GameContent: React.FC = () => {
                         <SettlementInterface />
                     ) : (isRenewal || isPostForfeit) ? (
                         <>
-                            <div className="lg:col-span-6 h-full border-r border-white/10 overflow-hidden relative bg-[#1c1917]">
-                                <div className="h-full flex flex-col items-center justify-center text-stone-600">
-                                    <span className="text-4xl font-serif opacity-30 tracking-widest rotate-90">ARCHIVE</span>
-                                </div>
+                            <div className="lg:col-span-6 h-full border-r border-white/10 overflow-hidden relative">
+                                {isRenewal && state.currentCustomer?.renewalProposal ? (
+                                    <RenewalTicketPanel proposal={state.currentCustomer.renewalProposal} />
+                                ) : (
+                                    <div className="h-full bg-[#1c1917] flex flex-col items-center justify-center text-stone-600">
+                                        <span className="text-4xl font-serif opacity-30 tracking-widest rotate-90">ARCHIVE</span>
+                                    </div>
+                                )}
                             </div>
                             <div className="lg:col-span-6 h-full overflow-hidden relative">
                                 <div className="flex flex-col h-full bg-[#1c1917] border-l border-[#44403c]">
@@ -203,7 +216,7 @@ const GameContent: React.FC = () => {
                                     </div>
                                     <div className="flex-1 relative z-10">
                                         {state.currentCustomer && (
-                                            isRenewal 
+                                            isRenewal
                                                 ? <RenewalRequestPanel customer={state.currentCustomer} />
                                                 : <PostForfeitPanel customer={state.currentCustomer} />
                                         )}

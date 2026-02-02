@@ -61,6 +61,7 @@ const initialState: GameState = {
     dayEvents: [],
     todayTransactions: [],
     customersServedToday: 0,
+    narrativeCustomersServedToday: 0,
     maxCustomersPerDay: GAME_CONFIG.MAX_CUSTOMERS_PER_DAY,
     isLoading: false,
     showInventory: false,

@@ -43,6 +43,7 @@ export interface GameState {
   dayEvents: string[];
   todayTransactions: TransactionRecord[];
   customersServedToday: number;
+  narrativeCustomersServedToday: number;  // Tracks narrative customers served (no limit)
   maxCustomersPerDay: number;
   isLoading: boolean;
   showInventory: boolean;

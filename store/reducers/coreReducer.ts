@@ -32,6 +32,8 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 pendingAppointedCandidates,
                 // Ensure currentNode is present (migration from old saves)
                 currentNode: action.payload.currentNode ?? null,
+                // Ensure narrativeCustomersServedToday is present (migration from old saves)
+                narrativeCustomersServedToday: action.payload.narrativeCustomersServedToday ?? 0,
                 nightState: {
                     ...action.payload.nightState,
                     maxEnergy: effectiveMaxEnergy
@@ -54,6 +56,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
             return {
                 ...state,
                 customersServedToday: 0,
+                narrativeCustomersServedToday: 0,
                 currentCustomer: null,  // @deprecated - keep for compatibility
                 currentNode: null,      // Clear node when starting new day
                 dayEvents: [],
@@ -110,7 +113,14 @@ export function coreReducer(state: GameState, action: Action): GameState {
             return { ...state, phase: GamePhase.NIGHT };
 
         case 'MARK_NO_MORE_CUSTOMERS':
-            return { ...state, customersServedToday: state.maxCustomersPerDay };
+            // Set to effective max to trigger shop closed state
+            // Effective max = max(maxCustomersPerDay, narrativeServed) to handle cases
+            // where narrative customers exceed the base limit
+            const effectiveMaxForClose = Math.max(state.maxCustomersPerDay, state.narrativeCustomersServedToday);
+            return { ...state, customersServedToday: effectiveMaxForClose };
+
+        case 'INCREMENT_NARRATIVE_CUSTOMER':
+            return { ...state, narrativeCustomersServedToday: state.narrativeCustomersServedToday + 1 };
 
         case 'GAME_OVER':
             clearSave();

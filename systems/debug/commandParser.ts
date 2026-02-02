@@ -361,8 +361,11 @@ function handleChainsCommand(getState: () => any): CommandResult {
 function handleCustomersCommand(getState: () => any): CommandResult {
   const state = getState();
   const served = state.customersServedToday ?? 0;
+  const narrativeServed = state.narrativeCustomersServedToday ?? 0;
   const max = state.maxCustomersPerDay ?? 0;
-  return { success: true, message: `Customers today: ${served}/${max}` };
+  const fillerServed = served - narrativeServed;
+  const fillerMax = Math.max(0, max - narrativeServed);
+  return { success: true, message: `Customers today: ${served} total (${narrativeServed} narrative + ${fillerServed}/${fillerMax} filler)` };
 }
 
 function handleStateCommand(args: string[], getState: () => any): CommandResult {

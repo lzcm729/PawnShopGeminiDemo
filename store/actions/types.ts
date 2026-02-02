@@ -31,6 +31,7 @@ export type Action =
     | { type: 'UPDATE_CUSTOMER_STATUS'; payload: { patience: number; mood: Mood; currentAskPrice: number } }
     | { type: 'MANUAL_CLOSE_SHOP' }
     | { type: 'MARK_NO_MORE_CUSTOMERS' }
+    | { type: 'INCREMENT_NARRATIVE_CUSTOMER' }  // Track narrative customer served (no limit)
     | { type: 'SET_SATISFACTION'; payload: SatisfactionLevel }
 
     // Node management (new unified interface)
