@@ -121,7 +121,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
               库存物品 ({workshopableItems.length})
             </h4>
             <div className="space-y-2 max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
-              {workshopableItems.map(({ item, hasAnyOption }) => (
+              {workshopableItems.map(({ item, hasAnyOption, restoreCount }) => (
                 <button
                   key={item.id}
                   onClick={() => setSelectedItemId(item.id)}
@@ -138,6 +138,11 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-bold truncate">{getDisplayName(item)}</span>
+                        {restoreCount > 1 && (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-emerald-900/50 text-emerald-300 rounded border border-emerald-700">
+                            可修复 {restoreCount} 处
+                          </span>
+                        )}
                         {item.wasReforged && (
                           <span className="text-[9px] px-1 py-0.5 bg-purple-900/50 text-purple-300 rounded border border-purple-700">
                             已重铸
@@ -172,6 +177,11 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-lg">{getDisplayName(selectedItem.item)}</h3>
+                      {selectedItem.restoreCount > 1 && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-emerald-900/50 text-emerald-300 rounded border border-emerald-700">
+                          可修复 {selectedItem.restoreCount} 处
+                        </span>
+                      )}
                       {selectedItem.item.wasReforged && (
                         <span className="text-[10px] px-1.5 py-0.5 bg-purple-900/50 text-purple-300 rounded border border-purple-700">
                           已重铸

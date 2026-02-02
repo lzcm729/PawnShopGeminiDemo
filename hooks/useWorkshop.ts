@@ -39,9 +39,13 @@ interface WorkshopableItem {
   item: Item;
   /** 该物品唯一的修复配方（由物品的负面标签决定） */
   restoreRecipe: RecipeWithStatus<RestoreRecipe> | null;
+  /** 该物品所有可用的修复配方（用于显示可修复数量） */
+  allRestoreRecipes: RecipeWithStatus<RestoreRecipe>[];
   /** 该物品唯一的重铸配方（由物品属性决定） */
   reforgeRecipe: RecipeWithStatus<ReforgeRecipe> | null;
   hasAnyOption: boolean;
+  /** 可用的修复操作数量 */
+  restoreCount: number;
 }
 
 interface UseWorkshopReturn {
@@ -95,6 +99,23 @@ function getRestoreRecipeForItem(item: Item): RestoreRecipe | null {
   }
 
   return null;
+}
+
+/**
+ * 获取物品所有可用的修复配方
+ * 用于统计可修复的数量
+ */
+function getAllRestoreRecipesForItem(item: Item): RestoreRecipe[] {
+  const tags = item.tags || [];
+  const matchingRecipes: RestoreRecipe[] = [];
+
+  for (const recipe of RESTORE_RECIPES) {
+    if (tags.includes(recipe.targetTag)) {
+      matchingRecipes.push(recipe);
+    }
+  }
+
+  return matchingRecipes;
 }
 
 /**
@@ -158,7 +179,14 @@ export const useWorkshop = (): UseWorkshopReturn => {
     );
 
     return eligibleItems.map(item => {
-      // 获取该物品唯一的修复配方
+      // 获取该物品所有可用的修复配方
+      const allRestoreMatches = getAllRestoreRecipesForItem(item);
+      const allRestoreRecipes = allRestoreMatches.map(recipe => ({
+        recipe,
+        status: getRecipeStatus(recipe, item, essenceBalance, nightState),
+      }));
+
+      // 获取该物品唯一的修复配方（第一个匹配的）
       const restoreRecipeMatch = getRestoreRecipeForItem(item);
       const restoreRecipe = restoreRecipeMatch
         ? { recipe: restoreRecipeMatch, status: getRecipeStatus(restoreRecipeMatch, item, essenceBalance, nightState) }
@@ -175,11 +203,16 @@ export const useWorkshop = (): UseWorkshopReturn => {
         (restoreRecipe?.status.canApply ?? false) ||
         (reforgeRecipe?.status.canApply ?? false);
 
+      // 统计可用的修复操作数量
+      const restoreCount = allRestoreRecipes.length;
+
       return {
         item,
         restoreRecipe,
+        allRestoreRecipes,
         reforgeRecipe,
         hasAnyOption,
+        restoreCount,
       };
     });
   }, [inventory, nightState, essenceBalance]);

@@ -2,6 +2,8 @@
 import { GamePhase, ReputationType, ItemStatus } from '../../types';
 import { testAllFullStoryFiles, testFullStoryByName, formatFullTestResults } from '../narrative/dsl/__tests__/fullFileTest';
 import type { Item, PawnInfo } from '../items/types';
+import type { ItemTag } from '../items/tags';
+import { STATE_TAGS, ATTRIBUTE_TAGS, ESSENCE_TAGS } from '../items/tags';
 
 export interface CommandResult {
   success: boolean;
@@ -97,7 +99,7 @@ export function executeCommand(
   close <panel>         - Close panel
   add cash <n>          - Add cash (can be negative)
   add essence <n>       - Add essence to all types
-  add item <name> --dueDate <day> [--chainId <id>] - Add test pawn item
+  add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2] - Add test pawn item
   spawn customer        - Force spawn a customer (business phase only)
   chains                - View active event chains
   customers             - View today's customer count
@@ -477,7 +479,7 @@ function handleAddCommand(
   getState: () => any
 ): CommandResult {
   if (args.length < 2) {
-    return { success: false, message: 'Usage: add <type> <value>\n  add cash <n>\n  add essence <n>\n  add item <name> --dueDate <day> [--chainId <id>]' };
+    return { success: false, message: 'Usage: add <type> <value>\n  add cash <n>\n  add essence <n>\n  add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2]' };
   }
 
   const type = args[0].toLowerCase();
@@ -509,12 +511,15 @@ function handleAddCommand(
   }
 }
 
+// All valid tags for validation
+const ALL_VALID_TAGS: string[] = [...STATE_TAGS, ...ATTRIBUTE_TAGS, ...ESSENCE_TAGS];
+
 /**
- * Parse args like: 测试钟表 --dueDate 3 --chainId emma_chain
- * Returns: { name: "测试钟表", dueDate: 3, chainId: "emma_chain" }
+ * Parse args like: 测试钟表 --dueDate 3 --chainId emma_chain --tags DIRTY,RUSTED
+ * Returns: { name: "测试钟表", dueDate: 3, chainId: "emma_chain", tags: ["DIRTY", "RUSTED"] }
  */
-function parseItemArgs(args: string[]): { name: string; dueDate?: number; chainId?: string } | null {
-  const result: { name: string; dueDate?: number; chainId?: string } = { name: '' };
+function parseItemArgs(args: string[]): { name: string; dueDate?: number; chainId?: string; tags?: ItemTag[] } | null {
+  const result: { name: string; dueDate?: number; chainId?: string; tags?: ItemTag[] } = { name: '' };
   const nameParts: string[] = [];
 
   let i = 0;
@@ -532,6 +537,23 @@ function parseItemArgs(args: string[]): { name: string; dueDate?: number; chainI
       const nextArg = args[i + 1];
       if (!nextArg) return null;
       result.chainId = nextArg;
+      i += 2;
+    } else if (arg === '--tags' || arg === '--tag') {
+      const nextArg = args[i + 1];
+      if (!nextArg) return null;
+      // Parse comma-separated tags
+      const tagStrings = nextArg.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0);
+      // Validate tags
+      const validTags: ItemTag[] = [];
+      for (const tagStr of tagStrings) {
+        if (ALL_VALID_TAGS.includes(tagStr)) {
+          validTags.push(tagStr as ItemTag);
+        }
+        // Silently ignore invalid tags (or we could return null to fail)
+      }
+      if (validTags.length > 0) {
+        result.tags = validTags;
+      }
       i += 2;
     } else if (!arg.startsWith('--')) {
       nameParts.push(arg);
@@ -554,7 +576,7 @@ function handleAddItemCommand(
   const parsed = parseItemArgs(args);
 
   if (!parsed || !parsed.name) {
-    return { success: false, message: 'Usage: add item <name> --dueDate <day> [--chainId <id>]\nExample: add item 测试钟表 --dueDate 3 --chainId emma_chain' };
+    return { success: false, message: 'Usage: add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2]\nExample: add item 测试钟表 --dueDate 3 --chainId emma_chain\nExample: add item 测试物品 --dueDate 5 --tags DIRTY,RUSTED' };
   }
 
   if (parsed.dueDate === undefined) {
@@ -614,7 +636,9 @@ function handleAddItemCommand(
       type: 'ENTRY'
     }],
     // Link to chain if provided
-    relatedChainId: parsed.chainId
+    relatedChainId: parsed.chainId,
+    // Add tags if provided
+    tags: parsed.tags
   };
 
   // Add item to inventory using LOAD_GAME (same pattern as other debug commands)
@@ -625,9 +649,10 @@ function handleAddItemCommand(
   dispatch({ type: 'LOAD_GAME', payload: newState });
 
   const chainInfo = parsed.chainId ? ` (链: ${parsed.chainId})` : '';
+  const tagsInfo = parsed.tags && parsed.tags.length > 0 ? `\n  Tags: ${parsed.tags.join(', ')}` : '';
   return {
     success: true,
-    message: `Added item "${parsed.name}" to inventory\n  ID: ${itemId}\n  Due: Day ${dueDate}${chainInfo}\n  Term: ${termDays} days\n  Value: $${testValue}`
+    message: `Added item "${parsed.name}" to inventory\n  ID: ${itemId}\n  Due: Day ${dueDate}${chainInfo}\n  Term: ${termDays} days\n  Value: $${testValue}${tagsInfo}`
   };
 }
 
@@ -715,9 +740,9 @@ export function getAvailableCommands(): CommandDef[] {
     },
     {
       command: 'add item',
-      description: 'Add a test pawn item to inventory with specified due date',
-      usage: 'add item <name> --dueDate <day> [--chainId <id>]',
-      examples: [`add item 测试钟表 --dueDate 3`, `add item 测试戒指 --dueDate 5 --chainId emma_chain`]
+      description: 'Add a test pawn item to inventory with specified due date and optional tags',
+      usage: 'add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2]',
+      examples: [`add item 测试钟表 --dueDate 3`, `add item 测试戒指 --dueDate 5 --chainId emma_chain`, `add item 测试物品 --dueDate 3 --tags DIRTY,RUSTED`]
     },
     {
       command: 'spawn customer',
@@ -771,7 +796,8 @@ export function getCommandOptions(): Record<string, string[]> {
   return {
     phases: Object.keys(PHASE_MAP),
     reputationTypes: Object.keys(REPUTATION_MAP),
-    panels: Object.keys(PANEL_MAP)
+    panels: Object.keys(PANEL_MAP),
+    itemTags: ALL_VALID_TAGS
   };
 }
 
