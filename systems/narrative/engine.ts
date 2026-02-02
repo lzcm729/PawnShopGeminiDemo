@@ -223,11 +223,10 @@ export const checkRenewalRequests = (state: GameState): Customer | null => {
     const { inventory, activeChains, stats } = state;
     const day = stats.day;
 
-    const expiringItems = inventory.filter(item => 
+    const expiringItems = inventory.filter(item =>
         item.status === ItemStatus.ACTIVE &&
         item.pawnInfo &&
-        item.pawnInfo.dueDate - day <= 2 && 
-        item.pawnInfo.dueDate - day >= 0 &&
+        item.pawnInfo.dueDate === day &&  // Only trigger on the exact due date
         item.relatedChainId
     );
 

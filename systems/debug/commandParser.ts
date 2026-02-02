@@ -1,6 +1,7 @@
 
-import { GamePhase, ReputationType } from '../../types';
+import { GamePhase, ReputationType, ItemStatus } from '../../types';
 import { testAllFullStoryFiles, testFullStoryByName, formatFullTestResults } from '../narrative/dsl/__tests__/fullFileTest';
+import type { Item, PawnInfo } from '../items/types';
 
 export interface CommandResult {
   success: boolean;
@@ -91,10 +92,12 @@ export function executeCommand(
   set reputation <type> <n> - Set reputation (humanity|credibility|underworld)
   set ap <n>            - Set action points
   set energy <n>        - Set night energy
+  set chain <id> <var> <val> - Set chain variable (e.g., set chain chain_emma funds 400)
   open <panel>          - Open panel (upgrade|mail|calendar|inventory|medical|visit|debug|appointment)
   close <panel>         - Close panel
   add cash <n>          - Add cash (can be negative)
   add essence <n>       - Add essence to all types
+  add item <name> --dueDate <day> [--chainId <id>] - Add test pawn item
   spawn customer        - Force spawn a customer (business phase only)
   chains                - View active event chains
   customers             - View today's customer count
@@ -117,7 +120,7 @@ export function executeCommand(
       return handleOpenCommand(args, dispatch, getState, false);
 
     case 'add':
-      return handleAddCommand(args, dispatch);
+      return handleAddCommand(args, dispatch, getState);
 
     case 'spawn':
       if (args[0]?.toLowerCase() === 'customer') {
@@ -259,6 +262,60 @@ function handleSetCommand(
       };
       dispatch({ type: 'LOAD_GAME', payload: newState });
       return { success: true, message: `Night energy set to ${energy}` };
+    }
+
+    case 'chain': {
+      // Format: set chain <chainId> <variable> <value>
+      const parts = value.split(/\s+/);
+      if (parts.length < 3) {
+        return { success: false, message: 'Usage: set chain <chainId> <variable> <value>' };
+      }
+      const [chainId, variable, ...valueParts] = parts;
+      const rawValue = valueParts.join(' ');
+
+      const state = getState();
+      const chains = state.activeChains || [];
+      const chainIndex = chains.findIndex((c: any) => c.id === chainId);
+
+      if (chainIndex === -1) {
+        const availableChains = chains.map((c: any) => c.id).join(', ') || '(none)';
+        return {
+          success: false,
+          message: `Chain not found: ${chainId}\nAvailable chains: ${availableChains}`
+        };
+      }
+
+      // Parse value: try number first, then keep as string
+      let parsedValue: unknown;
+      const numValue = parseFloat(rawValue);
+      if (!isNaN(numValue) && rawValue.trim() === numValue.toString()) {
+        parsedValue = numValue;
+      } else if (rawValue.toLowerCase() === 'true') {
+        parsedValue = true;
+      } else if (rawValue.toLowerCase() === 'false') {
+        parsedValue = false;
+      } else {
+        parsedValue = rawValue;
+      }
+
+      const targetChain = chains[chainIndex];
+      const updatedChain = {
+        ...targetChain,
+        variables: { ...targetChain.variables, [variable]: parsedValue }
+      };
+      const updatedChains = [...chains];
+      updatedChains[chainIndex] = updatedChain;
+
+      const newState = {
+        ...state,
+        activeChains: updatedChains
+      };
+      dispatch({ type: 'LOAD_GAME', payload: newState });
+
+      return {
+        success: true,
+        message: `Chain ${chainId}: ${variable} = ${parsedValue} (type: ${typeof parsedValue})`
+      };
     }
 
     default:
@@ -416,31 +473,162 @@ function handleStateCommand(args: string[], getState: () => any): CommandResult 
 
 function handleAddCommand(
   args: string[],
-  dispatch: (action: any) => void
+  dispatch: (action: any) => void,
+  getState: () => any
 ): CommandResult {
   if (args.length < 2) {
-    return { success: false, message: 'Usage: add <type> <amount>' };
+    return { success: false, message: 'Usage: add <type> <value>\n  add cash <n>\n  add essence <n>\n  add item <name> --dueDate <day> [--chainId <id>]' };
   }
 
   const type = args[0].toLowerCase();
-  const amount = parseInt(args[1], 10);
-
-  if (isNaN(amount)) {
-    return { success: false, message: 'Amount must be a number' };
-  }
 
   switch (type) {
-    case 'cash':
+    case 'cash': {
+      const amount = parseInt(args[1], 10);
+      if (isNaN(amount)) {
+        return { success: false, message: 'Amount must be a number' };
+      }
       dispatch({ type: 'DEBUG_ADD_CASH', payload: amount });
       return { success: true, message: `Added $${amount} to cash` };
+    }
 
-    case 'essence':
+    case 'essence': {
+      const amount = parseInt(args[1], 10);
+      if (isNaN(amount)) {
+        return { success: false, message: 'Amount must be a number' };
+      }
       dispatch({ type: 'ADD_ESSENCE_BATCH', payload: { craft: amount, time: amount, vibe: amount } });
       return { success: true, message: `Added ${amount} to all essence types` };
+    }
+
+    case 'item':
+      return handleAddItemCommand(args.slice(1), dispatch, getState);
 
     default:
-      return { success: false, message: `Unknown type: ${type}. Valid types: cash, essence` };
+      return { success: false, message: `Unknown type: ${type}. Valid types: cash, essence, item` };
   }
+}
+
+/**
+ * Parse args like: 测试钟表 --dueDate 3 --chainId emma_chain
+ * Returns: { name: "测试钟表", dueDate: 3, chainId: "emma_chain" }
+ */
+function parseItemArgs(args: string[]): { name: string; dueDate?: number; chainId?: string } | null {
+  const result: { name: string; dueDate?: number; chainId?: string } = { name: '' };
+  const nameParts: string[] = [];
+
+  let i = 0;
+  while (i < args.length) {
+    const arg = args[i];
+
+    if (arg === '--dueDate' || arg === '--duedate') {
+      const nextArg = args[i + 1];
+      if (!nextArg) return null;
+      const day = parseInt(nextArg, 10);
+      if (isNaN(day)) return null;
+      result.dueDate = day;
+      i += 2;
+    } else if (arg === '--chainId' || arg === '--chainid') {
+      const nextArg = args[i + 1];
+      if (!nextArg) return null;
+      result.chainId = nextArg;
+      i += 2;
+    } else if (!arg.startsWith('--')) {
+      nameParts.push(arg);
+      i++;
+    } else {
+      // Unknown flag
+      i++;
+    }
+  }
+
+  result.name = nameParts.join(' ');
+  return result.name ? result : null;
+}
+
+function handleAddItemCommand(
+  args: string[],
+  dispatch: (action: any) => void,
+  getState: () => any
+): CommandResult {
+  const parsed = parseItemArgs(args);
+
+  if (!parsed || !parsed.name) {
+    return { success: false, message: 'Usage: add item <name> --dueDate <day> [--chainId <id>]\nExample: add item 测试钟表 --dueDate 3 --chainId emma_chain' };
+  }
+
+  if (parsed.dueDate === undefined) {
+    return { success: false, message: 'Error: --dueDate is required. Usage: add item <name> --dueDate <day>' };
+  }
+
+  const state = getState();
+  const currentDay = state.stats.day;
+  const dueDate = parsed.dueDate;
+
+  // Calculate term (due date - current day, minimum 1)
+  const termDays = Math.max(1, dueDate - currentDay);
+
+  // Create a test item with minimal but valid structure
+  const itemId = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const testValue = 1000; // Default test value
+
+  const pawnInfo: PawnInfo = {
+    principal: testValue,
+    interestRate: 0.10, // 10% standard rate
+    startDate: currentDay,
+    termDays: termDays,
+    dueDate: dueDate,
+    valuation: testValue,
+    extensionCount: 0
+  };
+
+  const newItem: Item = {
+    id: itemId,
+    name: parsed.name,
+    category: '测试物品',
+    condition: '良好',
+    visualDescription: '这是一个用于测试的物品。',
+    historySnippet: '测试用途。',
+    appraisalNote: '测试物品，用于验证续当机制。',
+    archiveSummary: '测试物品。',
+    isStolen: false,
+    isFake: false,
+    sentimentalValue: false,
+    appraised: true,
+    pawnDate: currentDay,
+    status: ItemStatus.ACTIVE,
+    pawnAmount: testValue,
+    pawnInfo: pawnInfo,
+    realValue: testValue,
+    perceivedValue: testValue,
+    uncertainty: 0,
+    currentRange: [testValue, testValue],
+    initialRange: [testValue, testValue],
+    hiddenTraits: [],
+    revealedTraits: [],
+    usedTraitIds: [],
+    logs: [{
+      id: `log-${Date.now()}`,
+      day: currentDay,
+      content: `[测试] 通过 DevConsole 创建的测试物品`,
+      type: 'ENTRY'
+    }],
+    // Link to chain if provided
+    relatedChainId: parsed.chainId
+  };
+
+  // Add item to inventory using LOAD_GAME (same pattern as other debug commands)
+  const newState = {
+    ...state,
+    inventory: [...state.inventory, newItem]
+  };
+  dispatch({ type: 'LOAD_GAME', payload: newState });
+
+  const chainInfo = parsed.chainId ? ` (链: ${parsed.chainId})` : '';
+  return {
+    success: true,
+    message: `Added item "${parsed.name}" to inventory\n  ID: ${itemId}\n  Due: Day ${dueDate}${chainInfo}\n  Term: ${termDays} days\n  Value: $${testValue}`
+  };
 }
 
 /**
@@ -496,6 +684,12 @@ export function getAvailableCommands(): CommandDef[] {
       examples: [`set energy 3`]
     },
     {
+      command: 'set chain',
+      description: 'Set a chain variable value (for testing event triggers)',
+      usage: 'set chain <chainId> <variable> <value>',
+      examples: [`set chain chain_emma funds 400`, `set chain chain_emma hope 30`, `set chain chain_zhao morale 50`]
+    },
+    {
       command: 'open',
       description: 'Open a panel',
       usage: 'open <panel>',
@@ -518,6 +712,12 @@ export function getAvailableCommands(): CommandDef[] {
       description: 'Add essence to all types',
       usage: 'add essence <n>',
       examples: [`add essence 10`]
+    },
+    {
+      command: 'add item',
+      description: 'Add a test pawn item to inventory with specified due date',
+      usage: 'add item <name> --dueDate <day> [--chainId <id>]',
+      examples: [`add item 测试钟表 --dueDate 3`, `add item 测试戒指 --dueDate 5 --chainId emma_chain`]
     },
     {
       command: 'spawn customer',
