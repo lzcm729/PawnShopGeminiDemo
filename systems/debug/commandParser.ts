@@ -544,7 +544,7 @@ export function getAvailableCommands(): CommandDef[] {
       command: 'state',
       description: 'View game state by path (supports dot notation)',
       usage: 'state <path>',
-      examples: [`state reputation`, `state stats.day`, `state customersServedToday`, `state activeChains`]
+      examples: [`state reputation`, `state stats.day`, `state customersServedToday`, `state activeChains`, `state currentCustomer.dialogue.pawnReason`]
     },
     {
       command: 'clear',
