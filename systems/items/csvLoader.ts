@@ -62,6 +62,8 @@ export interface ItemTemplate {
   descDefault: string;
   descRestored: string;
   descReforged: string;
+  /** Fit tags for filler customer matching (age, appearance, item tags) */
+  fitTags: string[];
 }
 
 /** CSV 特征定义（从 Traits.csv 加载） */
@@ -190,6 +192,7 @@ export function loadItemTemplatesFromCSV(csvContent: string): void {
       descDefault: get('Desc_Default'),
       descRestored: get('Desc_Restored') || get('Desc_Default'),
       descReforged: get('Desc_Reforged') || get('Desc_Default'),
+      fitTags: parseSemicolonList(get('Fit_Tags')),
     };
 
     if (template.id) {

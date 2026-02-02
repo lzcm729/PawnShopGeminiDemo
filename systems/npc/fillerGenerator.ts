@@ -11,7 +11,7 @@
 import { Customer, BehaviorTag, Dialogue } from '../../types';
 import { Item, ItemStatus } from '../items/types';
 import { Mood } from '../core/types';
-import { createItemFromTemplate } from '../items/csvLoader';
+import { createItemFromTemplate, getItemTemplate, ItemTemplate } from '../items/csvLoader';
 import { initializeKnowledgePool } from '../items/tagUtils';
 import { ContractType, EventChainState } from '../narrative/types';
 import {
@@ -22,6 +22,11 @@ import {
   getRandomMoodDescription,
   getRandomDialogue,
 } from './fillerTemplateLoader';
+import {
+  initializeFillerReasons,
+  isReasonsLoaded,
+  getMatchingReason,
+} from './fillerReasonLoader';
 
 // ============================================================================
 // TYPES
@@ -422,16 +427,123 @@ function generateFillerDialogue(profile: FillerCustomerProfile): Dialogue {
     };
 }
 
+// ============================================================================
+// ITEM SELECTION WITH PROFILE MATCHING
+// ============================================================================
+
 /**
- * Create a fallback item for filler customers
+ * Calculate weight for an item template based on profile match
+ * Higher weight = more likely to be selected
  */
-function createFillerItem(day: number): Item {
-    // Try to use a random template
-    const templateId = FILLER_ITEM_TEMPLATES[Math.floor(Math.random() * FILLER_ITEM_TEMPLATES.length)];
-    let item = createItemFromTemplate(templateId, {
-        pawnDate: day,
-        status: ItemStatus.ACTIVE
-    });
+function calculateItemWeight(template: ItemTemplate, profile: FillerCustomerProfile): number {
+    const fitTags = template.fitTags;
+    if (fitTags.length === 0) {
+        // No fit tags defined, use base weight
+        return 1;
+    }
+
+    const profileTags = [profile.age, profile.appearance, profile.gender];
+    let matchScore = 0;
+
+    for (const tag of fitTags) {
+        if (profileTags.includes(tag)) {
+            matchScore++;
+        }
+    }
+
+    // Base weight 1, add 0.5 for each matching tag
+    return 1 + matchScore * 0.5;
+}
+
+/**
+ * Check if this is an "unexpected" item-profile combination
+ * Used to determine if we need a narrative reason
+ */
+function isUnexpectedCombo(template: ItemTemplate, profile: FillerCustomerProfile): boolean {
+    const fitTags = template.fitTags;
+    if (fitTags.length === 0) {
+        // No fit tags defined, not unexpected
+        return false;
+    }
+
+    const profileTags = [profile.age, profile.appearance, profile.gender];
+
+    // Check if ANY profile tag matches
+    for (const tag of fitTags) {
+        if (profileTags.includes(tag)) {
+            return false; // Found a match, not unexpected
+        }
+    }
+
+    // No matches at all - this is unexpected
+    return true;
+}
+
+/**
+ * Select an item template using weighted random based on profile
+ */
+function selectWeightedTemplate(profile: FillerCustomerProfile): { templateId: string; template: ItemTemplate } | null {
+    // Build weighted list
+    const weightedTemplates: { templateId: string; template: ItemTemplate; weight: number }[] = [];
+
+    for (const templateId of FILLER_ITEM_TEMPLATES) {
+        const template = getItemTemplate(templateId);
+        if (template) {
+            const weight = calculateItemWeight(template, profile);
+            weightedTemplates.push({ templateId, template, weight });
+        }
+    }
+
+    if (weightedTemplates.length === 0) {
+        return null;
+    }
+
+    // Weighted random selection
+    const totalWeight = weightedTemplates.reduce((sum, t) => sum + t.weight, 0);
+    let roll = Math.random() * totalWeight;
+
+    for (const entry of weightedTemplates) {
+        roll -= entry.weight;
+        if (roll <= 0) {
+            return { templateId: entry.templateId, template: entry.template };
+        }
+    }
+
+    // Fallback to last entry
+    const last = weightedTemplates[weightedTemplates.length - 1];
+    return { templateId: last.templateId, template: last.template };
+}
+
+export interface FillerItemResult {
+    item: Item;
+    isUnexpected: boolean;
+    attrTags: string[];
+}
+
+/**
+ * Create a fallback item for filler customers with profile-based selection
+ */
+function createFillerItem(day: number, profile: FillerCustomerProfile): FillerItemResult {
+    // Ensure reasons are loaded
+    if (!isReasonsLoaded()) {
+        initializeFillerReasons();
+    }
+
+    // Select template using weighted random
+    const selection = selectWeightedTemplate(profile);
+
+    let item: Item | null = null;
+    let isUnexpected = false;
+    let attrTags: string[] = [];
+
+    if (selection) {
+        item = createItemFromTemplate(selection.templateId, {
+            pawnDate: day,
+            status: ItemStatus.ACTIVE
+        });
+        isUnexpected = isUnexpectedCombo(selection.template, profile);
+        attrTags = selection.template.attrTags;
+    }
 
     if (!item) {
         // Fallback to basic item
@@ -472,7 +584,11 @@ function createFillerItem(day: number): Item {
         item.initialRange = [...item.currentRange];
     }
 
-    return initializeKnowledgePool(item);
+    return {
+        item: initializeKnowledgePool(item),
+        isUnexpected,
+        attrTags
+    };
 }
 
 /**
@@ -491,7 +607,16 @@ export function generateFillerCustomer(day: number, profile?: FillerCustomerProf
     const description = generateDescription(customerProfile);
     const dialogue = generateFillerDialogue(customerProfile);
 
-    const item = createFillerItem(day);
+    // Create item with profile-based selection
+    const { item, isUnexpected, attrTags } = createFillerItem(day, customerProfile);
+
+    // If this is an unexpected combination, get a narrative reason
+    if (isUnexpected) {
+        const reason = getMatchingReason(attrTags, customerProfile);
+        if (reason) {
+            dialogue.pawnReason = reason;
+        }
+    }
 
     // Calculate negotiation parameters based on item value and tags
     const baseDesired = Math.floor(item.realValue * 0.70);
