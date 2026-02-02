@@ -1,7 +1,11 @@
+/**
+ * Mail Registry
+ *
+ * Aggregates all mail templates from stories and system mails.
+ * Uses lazy loading to avoid circular dependency issues.
+ */
 
 import { MailTemplate } from '../../types';
-import { EMMA_MAILS } from './stories/emma';
-import { ZHAO_MAILS } from './stories/zhao';
 
 const SYSTEM_MAILS: Record<string, MailTemplate> = {
   "mail_welcome": {
@@ -27,12 +31,44 @@ const SYSTEM_MAILS: Record<string, MailTemplate> = {
   }
 };
 
-export const MAIL_TEMPLATES: Record<string, MailTemplate> = {
-  ...SYSTEM_MAILS,
-  ...EMMA_MAILS,
-  ...ZHAO_MAILS
-};
+// Lazy-loaded cache for all mail templates
+let _mailTemplatesCache: Record<string, MailTemplate> | null = null;
+
+/**
+ * Get all mail templates (lazy loaded to avoid circular dependency)
+ */
+function getAllMailTemplates(): Record<string, MailTemplate> {
+  if (_mailTemplatesCache === null) {
+    // Dynamic import to avoid circular dependency at module load time
+    const { ALL_STORY_MAILS } = require('./storyRegistry');
+    _mailTemplatesCache = {
+      ...SYSTEM_MAILS,
+      ...ALL_STORY_MAILS
+    };
+  }
+  return _mailTemplatesCache;
+}
+
+// For backward compatibility - but using getter
+export const MAIL_TEMPLATES: Record<string, MailTemplate> = new Proxy({} as Record<string, MailTemplate>, {
+  get(_, prop: string) {
+    return getAllMailTemplates()[prop];
+  },
+  has(_, prop: string) {
+    return prop in getAllMailTemplates();
+  },
+  ownKeys() {
+    return Object.keys(getAllMailTemplates());
+  },
+  getOwnPropertyDescriptor(_, prop: string) {
+    const templates = getAllMailTemplates();
+    if (prop in templates) {
+      return { configurable: true, enumerable: true, value: templates[prop] };
+    }
+    return undefined;
+  }
+});
 
 export const getMailTemplate = (id: string): MailTemplate | null => {
-  return MAIL_TEMPLATES[id] || null;
+  return getAllMailTemplates()[id] || null;
 };

@@ -1,11 +1,6 @@
 
 import { GamePhase, ReputationType } from '../../types';
-import { testSusanDSL } from '../narrative/dsl/__tests__/susan.test';
-import { testLinDSL } from '../narrative/dsl/__tests__/lin.test';
-import { testZhaoDSL } from '../narrative/dsl/__tests__/zhao.test';
-import { testEmmaDSL } from '../narrative/dsl/__tests__/emma.test';
 import { testAllFullStoryFiles, testFullStoryByName, formatFullTestResults } from '../narrative/dsl/__tests__/fullFileTest';
-import type { TestResult } from '../narrative/dsl/__tests__/testUtils';
 
 export interface CommandResult {
   success: boolean;
@@ -104,7 +99,7 @@ export function executeCommand(
   chains                - View active event chains
   customers             - View today's customer count
   state <path>          - View game state (e.g., state reputation, state stats.day)
-  test dsl <story>      - Test DSL parser (susan|lin|zhao|emma|all|full)
+  test dsl [story]      - Test DSL stories (emma|susan|zhao|lin or omit for all)
   clear                 - Clear console history
   help                  - Show this help`
       };
@@ -318,126 +313,29 @@ function handleOpenCommand(
   };
 }
 
-// Map of story names to their test functions
-const STORY_TEST_MAP: Record<string, () => TestResult> = {
-  'susan': testSusanDSL,
-  'lin': testLinDSL,
-  'zhao': testZhaoDSL,
-  'emma': testEmmaDSL
-};
-
-function formatTestResult(storyName: string, result: TestResult): string {
-  const passedCount = result.tests.filter(t => t.passed).length;
-  const totalCount = result.tests.length;
-
-  let output = `=== ${storyName.charAt(0).toUpperCase() + storyName.slice(1)} DSL Test ===\n`;
-  for (const test of result.tests) {
-    const status = test.passed ? '✓' : '✗';
-    output += `${status} ${test.name}\n`;
-    if (!test.passed) {
-      if (test.error) {
-        output += `  Error: ${test.error}\n`;
-      } else {
-        output += `  Expected: ${JSON.stringify(test.expected)}\n`;
-        output += `  Actual: ${JSON.stringify(test.actual)}\n`;
-      }
-    }
-  }
-  output += `\n=== Results: ${passedCount}/${totalCount} passed ===`;
-  return output;
-}
-
 function handleTestCommand(args: string[]): CommandResult {
   if (args.length < 1) {
-    return { success: false, message: `Usage: test dsl <story> | test dsl full [story]\nAvailable: ${Object.keys(STORY_TEST_MAP).join(', ')}, all, full` };
+    return { success: false, message: `Usage: test dsl [story]\nAvailable: emma, susan, zhao, lin, or omit for all` };
   }
 
   const testType = args[0].toLowerCase();
 
   if (testType === 'dsl') {
-    const storyName = args[1]?.toLowerCase() || 'susan';
+    const storyName = args[1]?.toLowerCase();
 
-    // Full file validation
-    if (storyName === 'full') {
-      const specificStory = args[2]?.toLowerCase();
-
-      if (specificStory) {
-        // Test single story's full file
-        const result = testFullStoryByName(specificStory);
-        if (!result) {
-          return { success: false, message: `Unknown story: ${specificStory}. Available: emma, susan, zhao, lin` };
-        }
-        return { success: result.passed, message: formatFullTestResults([result]) };
-      } else {
-        // Test all full files
-        const results = testAllFullStoryFiles();
-        const allPassed = results.every(r => r.passed);
-        return { success: allPassed, message: formatFullTestResults(results) };
+    if (storyName) {
+      // Test single story
+      const result = testFullStoryByName(storyName);
+      if (!result) {
+        return { success: false, message: `Unknown story: ${storyName}. Available: emma, susan, zhao, lin` };
       }
+      return { success: result.passed, message: formatFullTestResults([result]) };
+    } else {
+      // Test all stories
+      const results = testAllFullStoryFiles();
+      const allPassed = results.every(r => r.passed);
+      return { success: allPassed, message: formatFullTestResults(results) };
     }
-
-    // Run all tests
-    if (storyName === 'all') {
-      const results: { name: string; result: TestResult }[] = [];
-      let allPassed = true;
-
-      for (const [name, testFn] of Object.entries(STORY_TEST_MAP)) {
-        try {
-          const result = testFn();
-          results.push({ name, result });
-          if (!result.passed) allPassed = false;
-        } catch (error) {
-          results.push({
-            name,
-            result: {
-              passed: false,
-              tests: [{ name: 'Execution', passed: false, error: error instanceof Error ? error.message : String(error) }]
-            }
-          });
-          allPassed = false;
-        }
-      }
-
-      let output = `=== All DSL Tests ===\n\n`;
-      let totalPassed = 0;
-      let totalTests = 0;
-
-      for (const { name, result } of results) {
-        const passedCount = result.tests.filter(t => t.passed).length;
-        const testCount = result.tests.length;
-        totalPassed += passedCount;
-        totalTests += testCount;
-        const status = result.passed ? '✓' : '✗';
-        output += `${status} ${name}: ${passedCount}/${testCount}\n`;
-
-        // Show failed tests
-        for (const test of result.tests) {
-          if (!test.passed) {
-            output += `  ✗ ${test.name}`;
-            if (test.error) {
-              output += `: ${test.error}`;
-            }
-            output += `\n`;
-          }
-        }
-      }
-      output += `\n=== Total: ${totalPassed}/${totalTests} passed ===`;
-
-      return { success: allPassed, message: output };
-    }
-
-    // Run single story test
-    const testFn = STORY_TEST_MAP[storyName];
-    if (testFn) {
-      try {
-        const result = testFn();
-        return { success: result.passed, message: formatTestResult(storyName, result) };
-      } catch (error) {
-        return { success: false, message: `Test error: ${error instanceof Error ? error.message : String(error)}` };
-      }
-    }
-
-    return { success: false, message: `Unknown story: ${storyName}. Available: ${Object.keys(STORY_TEST_MAP).join(', ')}, all` };
   }
 
   return { success: false, message: `Unknown test type: ${testType}. Available: dsl` };
@@ -626,9 +524,9 @@ export function getAvailableCommands(): CommandDef[] {
     },
     {
       command: 'test dsl',
-      description: 'Test DSL parser output against TypeScript source',
-      usage: 'test dsl <story>',
-      examples: [`test dsl susan`, `test dsl lin`, `test dsl zhao`, `test dsl emma`, `test dsl all`]
+      description: 'Validate loaded DSL story files',
+      usage: 'test dsl [story]',
+      examples: [`test dsl`, `test dsl emma`, `test dsl susan`]
     },
     {
       command: 'chains',
