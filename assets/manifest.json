@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-02-02T17:49:00Z",
+  "items": {
+    "ring_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "ring_01_default.png",
+        "ring_01_reforged.png",
+        "ring_01_restored.png"
+      ]
+    },
+    "watch_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "watch_01_default.png",
+        "watch_01_reforged.png",
+        "watch_01_restored.png"
+      ]
+    }
+  },
+  "characters": {
+    "emma": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "emma/angry.png",
+        "emma/desperate.png",
+        "emma/grateful.png",
+        "emma/neutral.png",
+        "emma/resentful.png"
+      ]
+    }
+  }
+}

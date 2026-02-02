@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
-import { PackageOpen, DollarSign, ShieldAlert, Moon, Archive } from 'lucide-react';
+import { PackageOpen, DollarSign, Moon, Archive } from 'lucide-react';
 import { ItemStatus, Item, GamePhase } from '../types';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
@@ -13,9 +13,8 @@ import { getEffectiveInventoryCapacity } from '../systems/upgrades';
 
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
-  const { sellActivePawn, sellForfeitItem } = usePawnShop();
+  const { sellForfeitItem } = usePawnShop();
 
-  const [forceSellConfirm, setForceSellConfirm] = useState<string | null>(null);
   const [liquidateConfirm, setLiquidateConfirm] = useState<string | null>(null);
 
   if (!state.showInventory) return null;
@@ -53,11 +52,6 @@ export const InventoryModal: React.FC = () => {
       return (a.pawnDate || 0) - (b.pawnDate || 0);
   });
 
-  const handleForceSell = (item: Item) => {
-      sellActivePawn(item);
-      setForceSellConfirm(null);
-  };
-
   const handleLiquidate = (item: Item) => {
       sellForfeitItem(item);
       setLiquidateConfirm(null);
@@ -71,15 +65,14 @@ export const InventoryModal: React.FC = () => {
       const isSold = item.status === ItemStatus.SOLD;
       const isRedeemed = item.status === ItemStatus.REDEEMED;
       const isReforged = item.wasReforged === true;
-      const confirmingSell = forceSellConfirm === item.id;
       const confirmingLiquidate = liquidateConfirm === item.id;
 
       // Reforged active items are treated as owned
       const treatedAsOwned = isReforged && isActive;
 
-      // Selling/liquidating is only allowed at night
+      // Selling/liquidating is only allowed at night (only for owned items)
       if (!isNightPhase) {
-          if (isForfeit || isActive) {
+          if (isForfeit || treatedAsOwned) {
               return (
                 <div className="flex items-center justify-center text-noir-txt-muted text-[10px] gap-1.5 py-1">
                     <Moon className="w-3 h-3" />
@@ -127,32 +120,8 @@ export const InventoryModal: React.FC = () => {
           return null; // No actions for closed transactions
       }
 
-      if (isActive) {
-          if (confirmingSell) {
-              return (
-                <Button
-                    variant="danger"
-                    size="sm"
-                    className="w-full text-[10px] h-7"
-                    onClick={() => handleForceSell(item)}
-                >
-                    CONFIRM BREACH?
-                </Button>
-              );
-          }
-          return (
-            <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-[10px] h-7 text-noir-txt-muted hover:text-red-500 hover:bg-red-950/10 border border-transparent hover:border-red-900/30"
-                onClick={() => { setForceSellConfirm(item.id); playSfx('WARNING'); }}
-                title="Sell item before due date (Breach of Contract)"
-            >
-                <ShieldAlert className="w-3 h-3 mr-1" />
-                BREACH & SELL
-            </Button>
-          );
-      }
+      // Active pawns (not reforged) - no direct sell option
+      // Items can only be sold through the black market
       return null;
   };
 

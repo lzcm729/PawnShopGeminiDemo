@@ -9,7 +9,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "vite build && electron-builder --win"
+    "electron:build": "vite build && electron-builder --win",
+    "gen:assets": "python scripts/generate_assets.py",
+    "gen:items": "python scripts/generate_assets.py items",
+    "gen:characters": "python scripts/generate_assets.py characters"
   },
   "build": {
     "appId": "com.pawnsdilemma.app",
@@ -25,7 +28,9 @@
       "target": [
         {
           "target": "dir",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "signAndEditExecutable": false
@@ -49,6 +54,7 @@
     "electron-builder": "^25.1.8",
     "electron-squirrel-startup": "^1.0.1",
     "playwright": "^1.58.0",
+    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "wait-on": "^7.2.0"
