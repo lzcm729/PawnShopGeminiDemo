@@ -721,11 +721,38 @@ const gameReducer = (state: GameState, action: Action): GameState => {
             type: cashDelta > 0 ? 'REDEEM' : 'PENALTY'
         } : null;
 
+        // Handle TRANSIENT chain lifecycle based on expiry choice
+        // - REDEEM/FORFEIT: Deactivate chain (item lifecycle complete)
+        // - RENEW: Update renewalCount, keep chain active
+        let updatedChains = state.activeChains;
+        if (event && item.relatedChainId) {
+            const chain = state.activeChains.find(c => c.id === item.relatedChainId);
+            if (chain?.chainType === 'TRANSIENT') {
+                if (choice === 'redeem_accept' || choice === 'renew_refuse' ||
+                    choice === 'noshow_sell' || choice === 'noshow_keep') {
+                    // Chain ends: redeem, forfeit, or sell
+                    updatedChains = state.activeChains.map(c =>
+                        c.id === item.relatedChainId
+                            ? { ...c, isActive: false }
+                            : c
+                    );
+                } else if (choice === 'renew_accept') {
+                    // Chain continues with renewal
+                    updatedChains = state.activeChains.map(c =>
+                        c.id === item.relatedChainId
+                            ? { ...c, renewalCount: (c.renewalCount || 0) + 1 }
+                            : c
+                    );
+                }
+            }
+        }
+
         return {
             ...state,
             stats: { ...state.stats, cash: state.stats.cash + cashDelta },
             reputation: newRep,
             inventory: newInventory,
+            activeChains: updatedChains,
             currentExpiryEvent: null,
             todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
             dayEvents: [...state.dayEvents, log],

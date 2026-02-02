@@ -11,6 +11,7 @@ import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
 import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
 import { Dialogue } from '../systems/narrative/types';
 import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
+import { createTransientChain, getContractTypeFromRate } from '../systems/npc/fillerGenerator';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -767,6 +768,21 @@ export const useGameEngine = () => {
 
     if (result.success) {
         if (result.item) {
+             // Create TRANSIENT chain for filler customers (no existing chainId)
+             // This enables probability-based expiry behavior tracking
+             if (!currentCust?.chainId && result.terms && !result.item.isVirtual) {
+                 const contractType = getContractTypeFromRate(result.terms.rate);
+                 const transientChain = createTransientChain(
+                     currentCust!,
+                     result.item,
+                     contractType
+                 );
+                 // Link item to the transient chain
+                 result.item.relatedChainId = transientChain.id;
+                 // Add chain to active chains
+                 dispatch({ type: 'UPDATE_CHAINS', payload: [...state.activeChains, transientChain] });
+             }
+
              if (result.item.isVirtual) {
                  dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: null, log: `交易完成: ${result.item.name}。`, customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality } });
              } else {

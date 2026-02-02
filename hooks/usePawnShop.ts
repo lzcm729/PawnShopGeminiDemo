@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
 import { Item, ItemStatus, ExpiryEvent, ExpiryBehavior, EventChainState, StoryEvent } from '../types';
+import { isTransientChain, determineTransientExpiryBehavior } from '../systems/npc/fillerGenerator';
 
 export const usePawnShop = () => {
     const { state, dispatch } = useGame();
@@ -108,12 +109,20 @@ export const usePawnShop = () => {
         });
     }, [dispatch]);
 
-    // 4. Determine NPC Expiry Behavior based on chain variables
+    // 4. Determine NPC Expiry Behavior based on chain type
+    // NARRATIVE chains use condition-based logic (funds/hope)
+    // TRANSIENT chains use probability-based logic (redemptionResolve/contractType)
     const determineExpiryBehavior = useCallback((
         chain: EventChainState,
         item: Item,
         redemptionTotal: number
     ): ExpiryBehavior => {
+        // TRANSIENT chains use probability-based determination
+        if (isTransientChain(chain)) {
+            return determineTransientExpiryBehavior(chain);
+        }
+
+        // NARRATIVE chains use condition-based determination
         const funds = (chain.variables.funds as number) ?? 0;
         const hope = (chain.variables.hope as number) ?? 50;
 
@@ -140,6 +149,7 @@ export const usePawnShop = () => {
 
     // 6. Check Daily Expirations - Returns ExpiryEvents for REDEEM/RENEW only
     // NO_SHOW items are automatically forfeited (no player decision needed)
+    // Handles both NARRATIVE chains (condition-based) and TRANSIENT chains (probability-based)
     const checkDailyExpirations = useCallback((): {
         expiryEvents: ExpiryEvent[];
         noShowForfeits: { itemId: string; chainId: string; itemName: string }[]
@@ -149,6 +159,7 @@ export const usePawnShop = () => {
         const autoForfeitIds: string[] = [];
         const autoForfeitLogs: string[] = [];
         const noShowForfeits: { itemId: string; chainId: string; itemName: string }[] = [];
+        const chainsToDeactivate: string[] = [];
 
         state.inventory.forEach(item => {
             if (item.status !== ItemStatus.ACTIVE || !item.pawnInfo) return;
@@ -177,11 +188,18 @@ export const usePawnShop = () => {
                 autoForfeitIds.push(item.id);
                 autoForfeitLogs.push(`[系统] ${chain.npcName} 未现身，${item.name} 已绝当。`);
                 noShowForfeits.push({ itemId: item.id, chainId: chain.id, itemName: item.name });
+                // TRANSIENT chains: Mark for deactivation on NO_SHOW
+                if (isTransientChain(chain)) {
+                    chainsToDeactivate.push(chain.id);
+                }
                 return;
             }
 
             // REDEEM / RENEW: 触发结算节点让玩家决策
-            const isCoreItem = item.id.includes('clothes') || item.id.includes('core');
+            // For NARRATIVE chains, check if it's a core item
+            // For TRANSIENT chains, core items don't exist (they're simple transactions)
+            const isCoreItem = !isTransientChain(chain) &&
+                (item.id.includes('clothes') || item.id.includes('core'));
 
             expiryEvents.push({
                 type: 'EXPIRY_CHECK',
@@ -209,6 +227,17 @@ export const usePawnShop = () => {
                 type: 'EXPIRE_ITEMS',
                 payload: { expiredItemIds: autoForfeitIds, logs: autoForfeitLogs }
             });
+        }
+
+        // Deactivate TRANSIENT chains that resulted in NO_SHOW
+        if (chainsToDeactivate.length > 0) {
+            const updatedChains = state.activeChains.map(chain => {
+                if (chainsToDeactivate.includes(chain.id)) {
+                    return { ...chain, isActive: false };
+                }
+                return chain;
+            });
+            dispatch({ type: 'UPDATE_CHAINS', payload: updatedChains });
         }
 
         return { expiryEvents, noShowForfeits };
