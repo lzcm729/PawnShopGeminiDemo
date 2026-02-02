@@ -75,6 +75,12 @@ export class Parser {
                 continue;
             }
 
+            // Handle stray DEDENT tokens at top level
+            if (this.check('DEDENT')) {
+                this.advance();
+                continue;
+            }
+
             if (this.check('AT_BLOCK')) {
                 const blockType = this.peek().value;
 

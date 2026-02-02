@@ -25,6 +25,16 @@ export class StoryBlockParser extends BaseParser {
             this.skipNewlines();
             if (this.check('SEPARATOR') || this.check('AT_BLOCK') || this.isAtEnd()) break;
 
+            // Handle INDENT/DEDENT tokens
+            if (this.check('INDENT')) {
+                this.advance();
+                continue;
+            }
+            if (this.check('DEDENT')) {
+                this.advance();
+                continue;
+            }
+
             if (this.check('IDENTIFIER')) {
                 const propName = this.advance().value;
                 this.consume('COLON', ':');

@@ -406,8 +406,8 @@ export class EventBlockParser extends BaseParser {
         this.consume('AT_BLOCK', '@customer');
         this.skipNewlines();
 
-        let name = '';
-        let description = '';
+        let name: string | undefined;
+        let description: string | undefined;
         let avatarSeed: string | undefined;
         let desiredAmount: number | undefined;
         let minimumAmount: number | undefined;
@@ -480,6 +480,18 @@ export class EventBlockParser extends BaseParser {
                         case 'ask_price':
                             currentAskPrice = this.parseNumberValue();
                             break;
+                        // Legacy fields - parse and ignore
+                        case 'tags':
+                            this.parseTagsList(); // consume but ignore
+                            break;
+                        case 'negotiation_style':
+                        case 'pawn_term_days':
+                            this.skipToNextLine(); // skip unknown value
+                            break;
+                        default:
+                            // Unknown property - skip to next line
+                            this.skipToNextLine();
+                            break;
                     }
                     this.skipNewlines();
                 } else {
@@ -492,11 +504,16 @@ export class EventBlockParser extends BaseParser {
             }
         }
 
-        if (!name) throw new DSLMissingFieldError('name', '@customer', location, this.source);
-        if (!description) throw new DSLMissingFieldError('description', '@customer', location, this.source);
+        // Validate required fields
+        if (name === undefined || name === '') throw new DSLMissingFieldError('name', '@customer', location, this.source);
+        if (description === undefined) throw new DSLMissingFieldError('description', '@customer', location, this.source);
         if (!dialogue) throw new DSLMissingFieldError('@dialogue', '@customer', location, this.source);
 
-        return AST.createCustomerBlock(name, description, dialogue, location, {
+        // TypeScript narrowing for createCustomerBlock
+        const validName = name;
+        const validDescription = description;
+
+        return AST.createCustomerBlock(validName, validDescription, dialogue, location, {
             avatarSeed,
             desiredAmount,
             minimumAmount,
@@ -607,8 +624,20 @@ export class EventBlockParser extends BaseParser {
                 const variantLoc = this.currentLocation();
                 let condition: ConditionNode | undefined;
 
-                // Check for condition
-                if (this.check('IDENTIFIER') && this.peekNext()?.type === 'COLON') {
+                // Check for 'when' keyword conditional: when hope >= 50: "text"
+                if (this.check('KEYWORD') && this.peek().value === 'when') {
+                    this.advance(); // consume 'when'
+                    condition = this.parseCondition();
+                    this.consume('COLON', ':');
+                    const text = this.parseStringValue();
+                    variants.push(AST.createDialogueVariant(text, variantLoc, condition));
+                } else if (this.check('KEYWORD') && this.peek().value === 'default') {
+                    // Handle 'default' keyword variant
+                    this.advance(); // consume 'default'
+                    this.consume('COLON', ':');
+                    const text = this.parseStringValue();
+                    variants.push(AST.createDialogueVariant(text, variantLoc));
+                } else if (this.check('IDENTIFIER') && this.peekNext()?.type === 'COLON') {
                     const propName = this.advance().value;
                     if (propName === 'default') {
                         this.consume('COLON', ':');
@@ -625,6 +654,9 @@ export class EventBlockParser extends BaseParser {
                 } else if (this.check('STRING')) {
                     const text = this.parseStringValue();
                     variants.push(AST.createDialogueVariant(text, variantLoc));
+                } else {
+                    // Unknown token in dialogue variants - skip to prevent infinite loop
+                    break;
                 }
 
                 this.skipNewlines();
@@ -852,44 +884,64 @@ export class EventBlockParser extends BaseParser {
                 this.skipNewlines();
                 if (this.check('DEDENT')) break;
 
-                if (this.check('IDENTIFIER')) {
-                    const flowType = this.advance().value;
+                let flowType = '';
+
+                // Support both @redemption and redemption: formats
+                if (this.check('AT_BLOCK')) {
+                    const blockName = this.advance().value; // @redemption, @renewal, @no_show
+                    flowType = blockName.substring(1); // Remove @ prefix
+                    this.skipNewlines();
+                } else if (this.check('IDENTIFIER')) {
+                    flowType = this.advance().value;
                     this.consume('COLON', ':');
                     this.skipNewlines();
-
-                    if (this.check('INDENT')) {
-                        this.advance();
-                        this.skipNewlines();
-
-                        const flowActions: Record<string, ActionNode[]> = {};
-
-                        while (!this.isAtEnd() && !this.check('DEDENT')) {
-                            if (this.check('IDENTIFIER')) {
-                                const actionType = this.advance().value;
-                                this.consume('COLON', ':');
-                                flowActions[actionType] = this.parseActionList();
-                            }
-                            this.skipNewlines();
-                        }
-
-                        if (this.check('DEDENT')) {
-                            this.advance();
-                        }
-
-                        switch (flowType) {
-                            case 'redemption':
-                                redemption = { accept: flowActions['accept'], refuse: flowActions['refuse'] };
-                                break;
-                            case 'renewal':
-                                renewal = { accept: flowActions['accept'], refuse: flowActions['refuse'] };
-                                break;
-                            case 'no_show':
-                                noShow = { sell: flowActions['sell'], keep: flowActions['keep'] };
-                                break;
-                        }
-                    }
                 } else {
                     break;
+                }
+
+                if (this.check('INDENT')) {
+                    this.advance();
+                    this.skipNewlines();
+
+                    const flowActions: Record<string, ActionNode[]> = {};
+
+                    while (!this.isAtEnd() && !this.check('DEDENT')) {
+                        this.skipNewlines();
+                        if (this.check('DEDENT')) break;
+
+                        let actionType = '';
+
+                        // Support both @accept and accept: formats
+                        if (this.check('AT_BLOCK')) {
+                            const actionBlock = this.advance().value; // @accept, @refuse, @sell, @keep
+                            actionType = actionBlock.substring(1); // Remove @ prefix
+                            this.skipNewlines();
+                            flowActions[actionType] = this.parseActionList();
+                        } else if (this.check('IDENTIFIER')) {
+                            actionType = this.advance().value;
+                            this.consume('COLON', ':');
+                            flowActions[actionType] = this.parseActionList();
+                        } else {
+                            break;
+                        }
+                        this.skipNewlines();
+                    }
+
+                    if (this.check('DEDENT')) {
+                        this.advance();
+                    }
+
+                    switch (flowType) {
+                        case 'redemption':
+                            redemption = { accept: flowActions['accept'], refuse: flowActions['refuse'] };
+                            break;
+                        case 'renewal':
+                            renewal = { accept: flowActions['accept'], refuse: flowActions['refuse'] };
+                            break;
+                        case 'no_show':
+                            noShow = { sell: flowActions['sell'], keep: flowActions['keep'] };
+                            break;
+                    }
                 }
             }
 
@@ -926,12 +978,16 @@ export class EventBlockParser extends BaseParser {
                     const flowLoc = this.currentLocation();
                     let dialogue: DialogueTextNode = '';
                     let outcome: ActionNode[] = [];
+                    let itemCondition: { targetItemId?: string; targetStatus: 'SAFE' | 'SOLD'; otherItemsStatus?: 'ALL_SAFE' | 'ANY_LOST' | 'IRRELEVANT' } | undefined;
 
                     if (this.check('INDENT')) {
                         this.advance();
                         this.skipNewlines();
 
                         while (!this.isAtEnd() && !this.check('DEDENT')) {
+                            this.skipNewlines();
+                            if (this.check('DEDENT')) break;
+
                             if (this.check('IDENTIFIER')) {
                                 const propName = this.advance().value;
                                 this.consume('COLON', ':');
@@ -940,9 +996,15 @@ export class EventBlockParser extends BaseParser {
                                     dialogue = this.parseDialogueText();
                                 } else if (propName === 'outcome') {
                                     outcome = this.parseActionList();
+                                } else if (propName === 'item_condition') {
+                                    // Parse key=value pairs: target=xxx status=YYY others=ZZZ
+                                    itemCondition = this.parseItemCondition();
                                 }
+                                this.skipNewlines();
+                            } else {
+                                // Unknown token - exit loop to prevent infinite loop
+                                break;
                             }
-                            this.skipNewlines();
                         }
 
                         if (this.check('DEDENT')) {
@@ -950,7 +1012,7 @@ export class EventBlockParser extends BaseParser {
                         }
                     }
 
-                    flows.push(AST.createDynamicFlowEntry(key, dialogue, outcome, flowLoc));
+                    flows.push(AST.createDynamicFlowEntry(key, dialogue, outcome, flowLoc, itemCondition ? AST.createItemCondition(itemCondition.targetStatus, flowLoc, { targetItemId: itemCondition.targetItemId, otherItemsStatus: itemCondition.otherItemsStatus }) : undefined));
                 } else {
                     break;
                 }
@@ -962,5 +1024,36 @@ export class EventBlockParser extends BaseParser {
         }
 
         return AST.createDynamicFlows(flows, location);
+    }
+
+    /**
+     * Parse item_condition: target=xxx status=YYY others=ZZZ
+     */
+    private parseItemCondition(): { targetItemId?: string; targetStatus: 'SAFE' | 'SOLD'; otherItemsStatus?: 'ALL_SAFE' | 'ANY_LOST' | 'IRRELEVANT' } {
+        let targetItemId: string | undefined;
+        let targetStatus: 'SAFE' | 'SOLD' = 'SAFE';
+        let otherItemsStatus: 'ALL_SAFE' | 'ANY_LOST' | 'IRRELEVANT' | undefined;
+
+        // Parse key=value pairs on the same line
+        while (this.check('IDENTIFIER') && !this.check('NEWLINE')) {
+            const key = this.advance().value;
+            this.consume('EQUALS', '=');
+
+            if (key === 'target') {
+                targetItemId = this.consumeIdentifier('item id');
+            } else if (key === 'status') {
+                const status = this.consumeIdentifier('status').toUpperCase();
+                if (status === 'SAFE' || status === 'SOLD') {
+                    targetStatus = status;
+                }
+            } else if (key === 'others') {
+                const others = this.consumeIdentifier('others status').toUpperCase();
+                if (others === 'ALL_SAFE' || others === 'ANY_LOST' || others === 'IRRELEVANT') {
+                    otherItemsStatus = others;
+                }
+            }
+        }
+
+        return { targetItemId, targetStatus, otherItemsStatus };
     }
 }

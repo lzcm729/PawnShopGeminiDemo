@@ -122,8 +122,10 @@ export class Lexer {
             return;
         }
 
-        // Handle numbers
-        if (this.isDigit(char) || (char === '-' && this.isDigit(this.peekAhead(1)))) {
+        // Handle numbers (including +N and -N prefixes)
+        if (this.isDigit(char) ||
+            (char === '-' && this.isDigit(this.peekAhead(1))) ||
+            (char === '+' && this.isDigit(this.peekAhead(1)))) {
             this.scanNumber();
             return;
         }
@@ -314,7 +316,8 @@ export class Lexer {
         const start = this.currentLocation();
         let value = '';
 
-        if (this.peek() === '-') {
+        // Handle both - and + prefixes
+        if (this.peek() === '-' || this.peek() === '+') {
             value += this.advance();
         }
 
@@ -442,12 +445,21 @@ export class Lexer {
         const start = this.currentLocation();
         let value = '';
 
-        while (!this.isAtEnd() && (this.isAlphaNumeric(this.peek()) || this.peek() === '_')) {
-            value += this.advance();
+        while (!this.isAtEnd()) {
+            const char = this.peek();
+            if (this.isAlphaNumeric(char) || char === '_') {
+                value += this.advance();
+            } else if (char === '-' && this.isAlphaNumeric(this.peekAhead(1))) {
+                // Allow hyphens in middle of identifiers (e.g., trait-lin-rare)
+                // but only if followed by alphanumeric character
+                value += this.advance();
+            } else {
+                break;
+            }
         }
 
         // Check for keywords
-        const keywords = new Set(['true', 'false', 'when', 'and', 'or', 'not', 'if', 'delay']);
+        const keywords = new Set(['true', 'false', 'when', 'default', 'and', 'or', 'not', 'if', 'delay']);
         if (keywords.has(value.toLowerCase())) {
             this.tokens.push({
                 type: 'KEYWORD',

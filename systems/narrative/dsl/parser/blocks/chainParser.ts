@@ -194,7 +194,8 @@ export class ChainBlockParser extends BaseParser {
             this.skipNewlines();
 
             while (!this.isAtEnd() && !this.check('DEDENT') && !this.check('AT_BLOCK')) {
-                if (this.check('IDENTIFIER')) {
+                // Accept both IDENTIFIER and KEYWORD for property names (e.g., 'when' is a keyword)
+                if (this.check('IDENTIFIER') || this.check('KEYWORD')) {
                     const propName = this.advance().value;
                     this.consume('COLON', ':');
 
@@ -235,7 +236,8 @@ export class ChainBlockParser extends BaseParser {
             this.skipNewlines();
 
             while (!this.isAtEnd() && !this.check('DEDENT') && !this.check('AT_BLOCK')) {
-                if (this.check('IDENTIFIER')) {
+                // Accept both IDENTIFIER and KEYWORD for property names (e.g., 'when' is a keyword)
+                if (this.check('IDENTIFIER') || this.check('KEYWORD')) {
                     const propName = this.advance().value;
                     this.consume('COLON', ':');
 
@@ -281,7 +283,8 @@ export class ChainBlockParser extends BaseParser {
             this.skipNewlines();
 
             while (!this.isAtEnd() && !this.check('DEDENT') && !this.check('AT_BLOCK')) {
-                if (this.check('IDENTIFIER')) {
+                // Accept both IDENTIFIER and KEYWORD for property names (e.g., 'when' is a keyword)
+                if (this.check('IDENTIFIER') || this.check('KEYWORD')) {
                     const propName = this.advance().value;
                     this.consume('COLON', ':');
 
@@ -336,7 +339,8 @@ export class ChainBlockParser extends BaseParser {
             this.skipNewlines();
 
             while (!this.isAtEnd() && !this.check('DEDENT') && !this.check('AT_BLOCK')) {
-                if (this.check('IDENTIFIER')) {
+                // Accept both IDENTIFIER and KEYWORD for property names (e.g., 'when' is a keyword)
+                if (this.check('IDENTIFIER') || this.check('KEYWORD')) {
                     const propName = this.advance().value;
                     this.consume('COLON', ':');
 
@@ -435,7 +439,8 @@ export class ChainBlockParser extends BaseParser {
             this.skipNewlines();
 
             while (!this.isAtEnd() && !this.check('DEDENT') && !this.check('AT_BLOCK')) {
-                if (this.check('IDENTIFIER')) {
+                // Accept both IDENTIFIER and KEYWORD for property names (e.g., 'when' is a keyword)
+                if (this.check('IDENTIFIER') || this.check('KEYWORD')) {
                     const propName = this.advance().value;
                     this.consume('COLON', ':');
 

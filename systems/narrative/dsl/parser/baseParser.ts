@@ -207,11 +207,17 @@ export class BaseParser {
                 this.skipNewlines();
                 if (this.check('DEDENT') || this.check('AT_BLOCK')) break;
 
+                const startPos = this.current;
                 const action = this.parseAction();
                 if (action) {
                     actions.push(action);
                 }
                 this.skipNewlines();
+
+                // Safety: if no progress made, break to prevent infinite loop
+                if (this.current === startPos) {
+                    break;
+                }
             }
 
             if (this.check('DEDENT')) {
@@ -270,7 +276,8 @@ export class BaseParser {
                     this.consume('COLON', ':');
                     const mailId = this.consumeIdentifier('mail id');
                     let delay = 0;
-                    if (this.check('IDENTIFIER') && this.peek().value === 'delay') {
+                    // Accept both IDENTIFIER and KEYWORD for 'delay' (delay is a keyword)
+                    if ((this.check('IDENTIFIER') || this.check('KEYWORD')) && this.peek().value === 'delay') {
                         this.advance();
                         this.consume('COLON', ':');
                         delay = this.parseNumberValue();
@@ -284,7 +291,8 @@ export class BaseParser {
                     let condDelay = 0;
                     let condMailCondition: ConditionNode | undefined;
                     // Parse optional delay and required when clause
-                    while (this.check('IDENTIFIER')) {
+                    // Accept both IDENTIFIER and KEYWORD (delay/when are keywords)
+                    while (this.check('IDENTIFIER') || this.check('KEYWORD')) {
                         const keyword = this.peek().value;
                         if (keyword === 'delay') {
                             this.advance();
