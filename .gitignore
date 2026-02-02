@@ -28,3 +28,6 @@ docs/
 .CLAUDE/
 tests/
 test-results/
+
+# Electron build output
+release/
