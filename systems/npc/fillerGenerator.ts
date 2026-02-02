@@ -120,9 +120,19 @@ const TAG_EFFECTS: Record<BehaviorTag, { floorMod: number; patienceMod: number; 
  * Item templates for filler customers
  */
 const FILLER_ITEM_TEMPLATES = [
-    'item_watch_gambler',
-    'item_console_student',
-    'item_diamond_mystery'
+    // 钟表
+    'item_watch_01',        // 停摆的旧表 $500
+    'item_watch_gambler',   // 金标手表 $400
+    // 首饰/珠宝
+    'item_ring_01',         // 蒙尘的戒指 $300
+    'item_diamond_mystery', // 裸钻 $3000
+    // 艺术品/古董
+    'item_painting_01',     // 褪色的油画 $800
+    'item_vase_01',         // 裂纹花瓶 $1200
+    // 书籍
+    'item_book_01',         // 虫蛀旧书 $200
+    // 电子产品
+    'item_console_student', // 便携游戏机 $1000
 ];
 
 // Template pools are now loaded from CSV via fillerTemplateLoader.ts
