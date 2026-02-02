@@ -206,7 +206,7 @@ export function createItemSnapshot(item: Item): ItemSnapshot {
         isSuspicious: item.isSuspicious,
         sentimentalValue: item.sentimentalValue,
         status: item.status,
-        logs: [...item.logs],
+        logs: [...(item.logs || [])],
         relatedChainId: item.relatedChainId,
         isVirtual: item.isVirtual
     };
