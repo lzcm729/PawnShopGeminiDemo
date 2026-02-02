@@ -13,7 +13,6 @@ import { WorkshopPanel } from './night/WorkshopPanel';
 import { AppointmentBoardPanel } from './night/AppointmentBoardPanel';
 import { UpgradeShopModal } from './UpgradeShopModal';
 import { FacilityControlModal } from './FacilityControlModal';
-import { DaySummaryPanel } from './DaySummaryPanel';
 import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost } from '../systems/upgrades';
 
 export const NightDashboard: React.FC = () => {
@@ -26,7 +25,6 @@ export const NightDashboard: React.FC = () => {
     const [showInsightPanel, setShowInsightPanel] = useState(false);
     const [showWorkshopPanel, setShowWorkshopPanel] = useState(false);
     const [showAppointmentBoard, setShowAppointmentBoard] = useState(false);
-    const [summaryExpanded, setSummaryExpanded] = useState(true); // Start expanded
 
     // Check if appointment board is unlocked
     const hasBoardUnlocked = hasAppointmentBoard(state.shopUpgrades);
@@ -343,37 +341,26 @@ export const NightDashboard: React.FC = () => {
                 </div>
 
                 {/* Right: End Day Action */}
-                <div className="w-1/3 flex flex-col border-l border-stone-800 pl-8">
-                    {/* Day Summary Panel */}
-                    <div className="flex-1 flex flex-col min-h-0 mb-6">
-                        <DaySummaryPanel
-                            isExpanded={summaryExpanded}
-                            onToggle={() => setSummaryExpanded(!summaryExpanded)}
-                        />
+                <div className="w-1/3 flex flex-col items-center justify-center border-l border-stone-800 pl-8">
+                    <div className="text-center mb-8">
+                        <div className="text-[10px] uppercase text-stone-600 mb-2 tracking-[0.2em]">Net Cash Position</div>
+                        <div className="text-3xl font-mono text-stone-200">${stats.cash}</div>
                     </div>
 
-                    {/* Cash Position & Sleep Button */}
-                    <div className="shrink-0">
-                        <div className="text-center mb-4">
-                            <div className="text-[10px] uppercase text-stone-600 mb-2 tracking-[0.2em]">Net Cash Position</div>
-                            <div className="text-3xl font-mono text-stone-200">${stats.cash}</div>
-                        </div>
+                    <Button
+                        onClick={handleSleep}
+                        className="w-full h-20 text-lg tracking-widest bg-stone-900 hover:bg-stone-800 border-stone-700 shadow-[0_0_30px_rgba(0,0,0,0.5)] group relative overflow-hidden text-stone-200 hover:text-white"
+                    >
+                        <div className="absolute inset-0 bg-black/50 group-hover:bg-transparent transition-colors"></div>
+                        <span className="relative z-10 flex items-center justify-center gap-3">
+                            <Moon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                            END DAY (SLEEP)
+                        </span>
+                    </Button>
 
-                        <Button
-                            onClick={handleSleep}
-                            className="w-full h-16 text-lg tracking-widest bg-stone-900 hover:bg-stone-800 border-stone-700 shadow-[0_0_30px_rgba(0,0,0,0.5)] group relative overflow-hidden text-stone-200 hover:text-white"
-                        >
-                            <div className="absolute inset-0 bg-black/50 group-hover:bg-transparent transition-colors"></div>
-                            <span className="relative z-10 flex items-center justify-center gap-3">
-                                <Moon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                                END DAY (SLEEP)
-                            </span>
-                        </Button>
-
-                        <p className="mt-3 text-[9px] text-stone-700 text-center">
-                            "Sleep is the interest we pay on the debt of death."
-                        </p>
-                    </div>
+                    <p className="mt-4 text-[9px] text-stone-700 text-center max-w-[200px]">
+                        "Sleep is the interest we pay on the debt of death."
+                    </p>
                 </div>
 
             </div>
