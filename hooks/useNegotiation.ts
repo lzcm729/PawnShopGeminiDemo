@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Customer, InterestRate } from '../types';
+import { Customer, InterestRate, BehaviorTag } from '../types';
 
 export type NegotiationMood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
 
@@ -50,20 +50,31 @@ interface UseNegotiationReturn {
 }
 
 /**
- * Insult threshold multipliers by negotiation style
+ * Insult threshold modifiers by behavior tag
  * These define how tolerant each customer type is to lowball offers
  */
-const INSULT_THRESHOLDS = {
-  Aggressive: 0.8,   // More tolerant - expects conflict, less easily insulted
-  Desperate: 0.6,    // Very tolerant - needs money badly, will accept low offers
-  Deceptive: 0.75,   // Moderate - tries to manipulate, normal threshold
-  Professional: 0.7, // Standard business threshold
-} as const;
+const BEHAVIOR_INSULT_MODIFIERS: Record<BehaviorTag, number> = {
+  DESPERATE: -0.10,    // Very tolerant - needs money badly
+  STUBBORN: 0.0,       // Standard tolerance
+  SUSPICIOUS: 0.10,    // Less tolerant - easily insulted
+  NAIVE: -0.05,        // Slightly more tolerant
+  SAVVY: 0.05,         // Slightly less tolerant
+  SENTIMENTAL: 0.05,   // Slightly less tolerant
+};
 
-const getInsultThreshold = (style: string, minPrincipal: number) => {
-  const multiplier = INSULT_THRESHOLDS[style as keyof typeof INSULT_THRESHOLDS]
-    ?? INSULT_THRESHOLDS.Professional;
-  return minPrincipal * multiplier;
+const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number) => {
+  // Base threshold is 0.7 (70% of minimum)
+  let threshold = 0.7;
+
+  // Apply modifiers from all behavior tags
+  for (const tag of behaviorTags) {
+    threshold += BEHAVIOR_INSULT_MODIFIERS[tag] || 0;
+  }
+
+  // Clamp threshold between 0.5 and 0.9
+  threshold = Math.max(0.5, Math.min(0.9, threshold));
+
+  return minPrincipal * threshold;
 };
 
 export const useNegotiation = (customer: Customer | null): UseNegotiationReturn => {
@@ -173,7 +184,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     const minPrincipal = customer.minimumAmount;
     const maxRepayment = customer.maxRepayment || (minPrincipal * 1.2); 
     const totalRepayment = offerPrincipal * (1 + selectedRate);
-    const insultThreshold = getInsultThreshold(customer.negotiationStyle, minPrincipal);
+    const insultThreshold = getInsultThreshold(customer.behaviorTags, minPrincipal);
     
     let status: NegotiationStatus;
     let costPatience = 0;

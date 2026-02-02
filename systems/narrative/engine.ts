@@ -260,7 +260,7 @@ export const checkRenewalRequests = (state: GameState): Customer | null => {
 const generateRenewalCustomer = (item: Item, chain: EventChainState, currentDay: number): Customer => {
     // Generate avatar seed consistent with NPC
     const avatarSeed = `${chain.npcName}_renewal`;
-    
+
     return {
         id: crypto.randomUUID(),
         name: chain.npcName,
@@ -284,10 +284,10 @@ const generateRenewalCustomer = (item: Item, chain: EventChainState, currentDay:
         },
         item: item,
         redemptionResolve: "Strong",
-        negotiationStyle: "Desperate",
+        behaviorTags: ["DESPERATE"],
         patience: 3,
         mood: "Neutral",
-        tags: ["Renewal"],
+        identityTags: ["Renewal"],
         desiredAmount: 0,
         minimumAmount: 0,
         maxRepayment: 0,
@@ -377,25 +377,31 @@ export const instantiateStoryCustomer = (
         else intent = 'LEAVE';
     }
 
+    // Map behaviorTags with fallback from template or default
+    const behaviorTags = template.behaviorTags || ['SAVVY'];
+
+    // Map identityTags from template
+    const identityTags = template.identityTags || [];
+
     return {
         id: crypto.randomUUID(),
         name: template.name || "Unknown",
         description: template.description || "",
         avatarSeed: template.avatarSeed || "default",
-        portraits: template.portraits, 
+        portraits: template.portraits,
         dialogue: resolvedDialogue,
         redemptionResolve: template.redemptionResolve || "Medium",
-        negotiationStyle: template.negotiationStyle || "Professional",
+        behaviorTags,
         patience: template.patience || 3,
         mood: template.mood || "Neutral",
-        tags: template.tags || [],
+        identityTags,
         item: { ...deepItem, id: deepItem.id || crypto.randomUUID() },
         desiredAmount: template.desiredAmount || 0,
         minimumAmount: template.minimumAmount || 0,
         maxRepayment: template.maxRepayment || ((template.minimumAmount || 0) * 1.5),
         interactionType: interactionType,
         redemptionIntent: intent,
-        currentWallet: currentWallet, 
+        currentWallet: currentWallet,
         currentAskPrice: (template as any).currentAskPrice,
         chainId: event.chainId,
         eventId: event.id,

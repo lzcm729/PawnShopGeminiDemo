@@ -239,7 +239,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                     desperate: "[老人拄着拐杖，颤颤巍巍地转身，背影显得格外佝偻]"
                 }
             },
-            redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 4, mood: 'Neutral', tags: ["Emotional", "HighMoralStake"]
+            redemptionResolve: "Strong", behaviorTags: ["SAVVY", "SENTIMENTAL"], patience: 4, mood: 'Neutral', identityTags: ["Emotional", "HighMoralStake"]
         },
         outcomes: {
             "deal_charity": [
@@ -299,7 +299,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                 }
             },
             currentAskPrice: 5000, 
-            redemptionResolve: "None", negotiationStyle: "Aggressive", patience: 3, mood: 'Neutral', tags: ["HighRisk", "Opportunity"]
+            redemptionResolve: "None", behaviorTags: ["STUBBORN"], patience: 3, mood: 'Neutral', identityTags: ["HighRisk", "Opportunity"]
         },
         outcomes: {
             "deal_standard": [
@@ -359,7 +359,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                     desperate: "[老人擦了擦眼角，紧紧攥着钱，像是怕它飞了一样]"
                 }
             },
-            redemptionResolve: "Strong", negotiationStyle: "Desperate", patience: 3, mood: 'Neutral', tags: ["Emotional"]
+            redemptionResolve: "Strong", behaviorTags: ["DESPERATE"], patience: 3, mood: 'Neutral', identityTags: ["Emotional"]
         },
         outcomes: {
             "deal_charity": [
@@ -424,7 +424,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                     desperate: "..."
                 }
             },
-            redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 5, mood: "Happy",
+            redemptionResolve: "Strong", behaviorTags: ["SAVVY"], patience: 5, mood: "Happy",
             desiredAmount: 0, minimumAmount: 0, maxRepayment: 0,
             item: makeItem({ id: "zhao_redeem_dummy", name: "赎回单", realValue: 0, isVirtual: true }, "chain_zhao")
         },
@@ -482,7 +482,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                 }
             },
             currentAskPrice: 8000,
-            redemptionResolve: "None", negotiationStyle: "Aggressive", patience: 3, mood: 'Happy', tags: ["HighRisk"]
+            redemptionResolve: "None", behaviorTags: ["STUBBORN"], patience: 3, mood: 'Happy', identityTags: ["HighRisk"]
         },
         outcomes: {
             "deal_standard": [
@@ -522,8 +522,8 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                     desperate: "..."
                 }
             },
-            currentAskPrice: 38000, 
-            redemptionResolve: "None", negotiationStyle: "Aggressive", patience: 3, mood: 'Happy', tags: ["HighRisk", "MoralEvent"]
+            currentAskPrice: 38000,
+            redemptionResolve: "None", behaviorTags: ["STUBBORN"], patience: 3, mood: 'Happy', identityTags: ["HighRisk", "MoralEvent"]
         },
         outcomes: {
             "deal_standard": [
@@ -569,7 +569,7 @@ export const ZHAO_EVENTS: StoryEvent[] = [
                     desperate: "[老人什么也没说，只是默默地流着泪走了]"
                 }
             },
-            redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 5, mood: "Happy",
+            redemptionResolve: "Strong", behaviorTags: ["SAVVY"], patience: 5, mood: "Happy",
             desiredAmount: 0, minimumAmount: 0, maxRepayment: 0,
             item: makeItem({ id: "zhao_final_dummy", name: "赎回单", realValue: 0, isVirtual: true }, "chain_zhao")
         },

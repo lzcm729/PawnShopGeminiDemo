@@ -120,9 +120,9 @@ function transformCustomer(ast: CustomerBlock): CustomerTemplate {
     if (ast.maxRepayment !== undefined) template.maxRepayment = ast.maxRepayment;
     if (ast.patience !== undefined) template.patience = ast.patience;
     if (ast.mood) template.mood = ast.mood as any;
-    if (ast.tags) template.tags = ast.tags;
+    if (ast.identityTags) template.identityTags = ast.identityTags;
+    if (ast.behaviorTags) template.behaviorTags = ast.behaviorTags;
     if (ast.redemptionResolve) template.redemptionResolve = ast.redemptionResolve;
-    if (ast.negotiationStyle) template.negotiationStyle = ast.negotiationStyle;
     if (ast.interactionType) template.interactionType = ast.interactionType;
     if (ast.currentAskPrice !== undefined) template.currentAskPrice = ast.currentAskPrice;
 

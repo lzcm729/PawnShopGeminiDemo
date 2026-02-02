@@ -16,14 +16,16 @@ import { Dialogue } from '../narrative/types';
 // Template mappings for candidate types
 // ============================================================================
 
+import { BehaviorTag } from '../narrative/types';
+
 interface CandidateCustomerTemplate {
   names: string[];
   descriptions: string[];
   itemTemplateIds: string[];  // Item template IDs from Items_Base.csv
   dialogues: Partial<Dialogue>[];
   redemptionResolve: ('Strong' | 'Medium' | 'Weak' | 'None')[];
-  negotiationStyle: ('Aggressive' | 'Desperate' | 'Professional' | 'Deceptive')[];
-  tags: string[];
+  behaviorTags: BehaviorTag[][];  // Array of possible behavior tag combinations
+  identityTags: string[];
   priceMod: { min: number; max: number };  // Multiplier for desired/minimum amounts
 }
 
@@ -43,8 +45,8 @@ const CANDIDATE_CUSTOMER_TEMPLATES: Record<string, CandidateCustomerTemplate> = 
       exitDialogues: { grateful: "Thank you so much!", neutral: "Goodbye.", resentful: "...", desperate: "What am I going to do..." }
     }],
     redemptionResolve: ['Medium', 'Strong'],
-    negotiationStyle: ['Desperate', 'Professional'],
-    tags: ['Worker', 'HighNeed'],
+    behaviorTags: [['DESPERATE'], ['SAVVY']],
+    identityTags: ['Worker', 'HighNeed'],
     priceMod: { min: 0.6, max: 0.8 }
   },
   desperate_parent: {
@@ -62,8 +64,8 @@ const CANDIDATE_CUSTOMER_TEMPLATES: Record<string, CandidateCustomerTemplate> = 
       exitDialogues: { grateful: "You've saved us!", neutral: "Thank you.", resentful: "...", desperate: "*leaves in tears*" }
     }],
     redemptionResolve: ['Strong'],
-    negotiationStyle: ['Desperate'],
-    tags: ['Parent', 'HighNeed', 'Emotional'],
+    behaviorTags: [['DESPERATE']],
+    identityTags: ['Parent', 'HighNeed', 'Emotional'],
     priceMod: { min: 0.5, max: 0.7 }
   },
   desperate_gambler: {
@@ -81,8 +83,8 @@ const CANDIDATE_CUSTOMER_TEMPLATES: Record<string, CandidateCustomerTemplate> = 
       exitDialogues: { grateful: "Tonight's the night!", neutral: "Later.", resentful: "Bad luck...", desperate: "Just need one more try..." }
     }],
     redemptionResolve: ['Weak', 'None'],
-    negotiationStyle: ['Aggressive', 'Desperate'],
-    tags: ['Gambler', 'HighRisk'],
+    behaviorTags: [['STUBBORN'], ['DESPERATE']],
+    identityTags: ['Gambler', 'HighRisk'],
     priceMod: { min: 0.4, max: 0.6 }
   },
   student: {
@@ -100,8 +102,8 @@ const CANDIDATE_CUSTOMER_TEMPLATES: Record<string, CandidateCustomerTemplate> = 
       exitDialogues: { grateful: "You're the best!", neutral: "Bye.", resentful: "So stingy...", desperate: "Mom is going to kill me..." }
     }],
     redemptionResolve: ['Strong', 'Medium'],
-    negotiationStyle: ['Professional'],
-    tags: ['Student', 'Young'],
+    behaviorTags: [['SAVVY']],
+    identityTags: ['Student', 'Young'],
     priceMod: { min: 0.7, max: 0.9 }
   },
   office_worker: {
@@ -119,8 +121,8 @@ const CANDIDATE_CUSTOMER_TEMPLATES: Record<string, CandidateCustomerTemplate> = 
       exitDialogues: { grateful: "Excellent service.", neutral: "Good day.", resentful: "I expected better.", desperate: "This can't be happening..." }
     }],
     redemptionResolve: ['Medium', 'Strong'],
-    negotiationStyle: ['Professional'],
-    tags: ['WhiteCollar', 'Professional'],
+    behaviorTags: [['SAVVY']],
+    identityTags: ['WhiteCollar', 'Professional'],
     priceMod: { min: 0.8, max: 1.0 }
   },
   elderly: {
@@ -138,8 +140,8 @@ const CANDIDATE_CUSTOMER_TEMPLATES: Record<string, CandidateCustomerTemplate> = 
       exitDialogues: { grateful: "Bless you.", neutral: "Take care.", resentful: "The young these days...", desperate: "What will I tell them..." }
     }],
     redemptionResolve: ['Medium', 'Weak'],
-    negotiationStyle: ['Professional'],
-    tags: ['Elderly', 'Sentimental'],
+    behaviorTags: [['SAVVY', 'SENTIMENTAL']],
+    identityTags: ['Elderly'],
     priceMod: { min: 0.5, max: 0.7 }
   },
   collector: {
@@ -157,8 +159,8 @@ const CANDIDATE_CUSTOMER_TEMPLATES: Record<string, CandidateCustomerTemplate> = 
       exitDialogues: { grateful: "A pleasure doing business.", neutral: "Until next time.", resentful: "Pearls before swine...", desperate: "..." }
     }],
     redemptionResolve: ['Weak', 'None'],
-    negotiationStyle: ['Professional', 'Deceptive'],
-    tags: ['Collector', 'LowNeed'],
+    behaviorTags: [['SAVVY'], ['SUSPICIOUS']],
+    identityTags: ['Collector', 'LowNeed'],
     priceMod: { min: 1.0, max: 1.3 }
   },
   casual_seller: {
@@ -176,8 +178,8 @@ const CANDIDATE_CUSTOMER_TEMPLATES: Record<string, CandidateCustomerTemplate> = 
       exitDialogues: { grateful: "You're sweet!", neutral: "Bye bye!", resentful: "Whatever.", desperate: "..." }
     }],
     redemptionResolve: ['None', 'Weak'],
-    negotiationStyle: ['Professional'],
-    tags: ['Casual', 'LowNeed'],
+    behaviorTags: [['SAVVY']],
+    identityTags: ['Casual', 'LowNeed'],
     priceMod: { min: 0.9, max: 1.2 }
   },
   business_person: {
@@ -195,8 +197,8 @@ const CANDIDATE_CUSTOMER_TEMPLATES: Record<string, CandidateCustomerTemplate> = 
       exitDialogues: { grateful: "Efficient.", neutral: "Good.", resentful: "...", desperate: "..." }
     }],
     redemptionResolve: ['Strong', 'Medium'],
-    negotiationStyle: ['Professional', 'Aggressive'],
-    tags: ['Business', 'Wealthy', 'LowNeed'],
+    behaviorTags: [['SAVVY'], ['STUBBORN']],
+    identityTags: ['Business', 'Wealthy', 'LowNeed'],
     priceMod: { min: 1.1, max: 1.4 }
   }
 };
@@ -301,10 +303,10 @@ export function generateCustomerFromCandidate(
     avatarSeed: `appointed_${templateKey}_${day}`,
     dialogue,
     redemptionResolve: randomPick(template.redemptionResolve),
-    negotiationStyle: randomPick(template.negotiationStyle),
+    behaviorTags: randomPick(template.behaviorTags),
     patience: candidate.urgency === 'high' ? 2 : candidate.urgency === 'low' ? 4 : 3,
     mood: 'Neutral' as Mood,
-    tags: [...template.tags, 'Appointed'],
+    identityTags: [...template.identityTags, 'Appointed'],
     item,
     desiredAmount,
     minimumAmount,

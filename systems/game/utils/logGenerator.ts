@@ -4,10 +4,10 @@ import { Customer, Item, ItemLogEntry } from '../../../types';
 export const generatePawnLog = (customer: Customer, item: Item, day: number, visitCount: number): ItemLogEntry => {
     const appearance = customer.description;
     const mood = customer.mood;
-    const negotiationStyle = customer.negotiationStyle;
+    const behaviorTags = customer.behaviorTags;
     let content = "";
 
-    if (negotiationStyle === 'Desperate' || customer.tags.includes('HighRisk')) {
+    if (behaviorTags.includes('DESPERATE') || customer.identityTags.includes('HighRisk')) {
         const templates = [
             `"${item.name}"... 她把它放在柜台上时手在抖。这是一笔沉重的交易。`,
             `这似乎是她最后的体面。${appearance}，眼神游离。`,

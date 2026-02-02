@@ -79,7 +79,7 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
                           </div>
                           <div className="flex gap-2 mt-1">
                               <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 rounded border border-noir-300">
-                                  {customer.negotiationStyle}
+                                  {customer.behaviorTags.join(', ')}
                               </span>
                               <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 rounded border border-noir-300">
                                   Resolve: {customer.redemptionResolve}
@@ -265,7 +265,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
       const rejectedText = customer.dialogue?.rejected || "再见。";
       
       if (isAngry) return lines.angry || lines.standard;
-      if (customer.negotiationStyle === 'Desperate') return lines.desperate || lines.standard;
+      if (customer.behaviorTags.includes('DESPERATE')) return lines.desperate || lines.standard;
       return lines.standard || rejectedText;
   };
 

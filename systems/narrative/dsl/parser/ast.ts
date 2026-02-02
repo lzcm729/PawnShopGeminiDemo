@@ -384,9 +384,9 @@ export function createCustomerBlock(
         maxRepayment?: number;
         patience?: number;
         mood?: string;
-        tags?: string[];
         redemptionResolve?: 'Strong' | 'Medium' | 'Weak' | 'None';
-        negotiationStyle?: 'Aggressive' | 'Desperate' | 'Professional' | 'Deceptive';
+        behaviorTags?: ('DESPERATE' | 'STUBBORN' | 'SUSPICIOUS' | 'NAIVE' | 'SAVVY' | 'SENTIMENTAL')[];
+        identityTags?: string[];
         interactionType?: 'PAWN' | 'REDEEM' | 'NEGOTIATION';
         currentAskPrice?: number;
     }

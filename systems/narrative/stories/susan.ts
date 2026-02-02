@@ -56,7 +56,7 @@ export const SUSAN_EVENTS: StoryEvent[] = [
                     desperate: "[她焦急地看着手机屏幕，也不理你，匆匆跑向门口]"
                 }
             },
-            redemptionResolve: "Strong", negotiationStyle: "Deceptive", patience: 3, mood: 'Neutral', tags: ["Scam", "Fake"]
+            redemptionResolve: "Strong", behaviorTags: ["SUSPICIOUS"], patience: 3, mood: 'Neutral', identityTags: ["Scam", "Fake"]
         },
         outcomes: {
             "deal_charity": [{ type: "ADD_FUNDS_DEAL" }, { type: "DEACTIVATE_CHAIN" }, { type: "MODIFY_REP", value: -5 }], 

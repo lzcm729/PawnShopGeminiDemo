@@ -1,15 +1,36 @@
 
-import { Customer, Item, InterestRate } from '../../types';
+import { Customer, Item, InterestRate, BehaviorTag } from '../../types';
 import { INSTINCT_MATRIX, getMatrixKey, getRandomText, InstinctRateZone, InstinctPriceZone, InstinctNpcStyle } from './data';
 import { getUncertaintyRisk } from '../items/utils';
 
-const getInsultThreshold = (style: string, minPrincipal: number) => {
-    switch (style) {
-      case 'Aggressive': return minPrincipal * 0.8;
-      case 'Desperate': return minPrincipal * 0.6;
-      case 'Deceptive': return minPrincipal * 0.75;
-      default: return minPrincipal * 0.7; 
-    }
+/**
+ * Map behaviorTags to the legacy InstinctNpcStyle for flavor text selection
+ */
+const mapBehaviorTagsToStyle = (behaviorTags: BehaviorTag[]): InstinctNpcStyle => {
+    if (behaviorTags.includes('DESPERATE')) return 'Desperate';
+    if (behaviorTags.includes('STUBBORN')) return 'Aggressive';
+    if (behaviorTags.includes('SUSPICIOUS')) return 'Deceptive';
+    if (behaviorTags.includes('NAIVE')) return 'Professional';
+    if (behaviorTags.includes('SAVVY')) return 'Professional';
+    if (behaviorTags.includes('SENTIMENTAL')) return 'Professional';
+    return 'Professional';
+};
+
+const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number) => {
+    // Base threshold is 0.7 (70% of minimum)
+    let threshold = 0.7;
+
+    // Behavior-based modifiers
+    if (behaviorTags.includes('STUBBORN')) threshold += 0.1;
+    if (behaviorTags.includes('DESPERATE')) threshold -= 0.1;
+    if (behaviorTags.includes('SUSPICIOUS')) threshold += 0.05;
+    if (behaviorTags.includes('NAIVE')) threshold -= 0.05;
+    if (behaviorTags.includes('SAVVY')) threshold += 0.05;
+
+    // Clamp threshold between 0.5 and 0.9
+    threshold = Math.max(0.5, Math.min(0.9, threshold));
+
+    return minPrincipal * threshold;
 };
 
 const getRateZone = (rate: number): InstinctRateZone => {
@@ -19,9 +40,9 @@ const getRateZone = (rate: number): InstinctRateZone => {
     return 'standard';
 };
 
-const getPriceZone = (offer: number, minPrincipal: number, desiredAmount: number, style: string): InstinctPriceZone => {
-    const insultThreshold = getInsultThreshold(style, minPrincipal);
-    
+const getPriceZone = (offer: number, minPrincipal: number, desiredAmount: number, behaviorTags: BehaviorTag[]): InstinctPriceZone => {
+    const insultThreshold = getInsultThreshold(behaviorTags, minPrincipal);
+
     if (offer < insultThreshold) return 'insult';
     if (offer < minPrincipal) return 'haggling';
     if (offer > desiredAmount * 1.15) return 'premium';
@@ -53,8 +74,8 @@ export const getMerchantInstinct = (
   }
 
   const rateZone = getRateZone(rate);
-  const style = customer.negotiationStyle as InstinctNpcStyle;
-  const priceZone = getPriceZone(offer, customer.minimumAmount, customer.desiredAmount, style);
+  const style = mapBehaviorTagsToStyle(customer.behaviorTags);
+  const priceZone = getPriceZone(offer, customer.minimumAmount, customer.desiredAmount, customer.behaviorTags);
 
   const specificKey = getMatrixKey(rateZone, priceZone, style);
   let texts = INSTINCT_MATRIX[specificKey];

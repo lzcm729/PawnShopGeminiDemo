@@ -36,7 +36,7 @@ export const UNDERWORLD_EVENTS: StoryEvent[] = [
         template: {
             name: "System", description: "", avatarSeed: "", 
             dialogue: { greeting: "", pawnReason: "", redemptionPlea: "", negotiationDynamic: "", accepted: {fair:"",fleeced:"",premium:""}, rejected: "", rejectionLines: {standard:"",angry:""}, exitDialogues: { grateful: "...", neutral: "...", resentful: "...", desperate: "..." } },
-            redemptionResolve: "None", negotiationStyle: "Professional", patience: 0, mood: "Neutral", tags: [], desiredAmount:0, minimumAmount:0, maxRepayment:0, item: {} as any 
+            redemptionResolve: "None", behaviorTags: ["SAVVY"], patience: 0, mood: "Neutral", identityTags: [], desiredAmount:0, minimumAmount:0, maxRepayment:0, item: {} as any 
         },
         item: {} as any
     },
@@ -65,7 +65,7 @@ export const UNDERWORLD_EVENTS: StoryEvent[] = [
                     desperate: "[冷冷地看了你一眼，做了一个割喉的手势]"
                 }
             },
-            redemptionResolve: "Strong", negotiationStyle: "Aggressive", patience: 2, mood: "Angry",
+            redemptionResolve: "Strong", behaviorTags: ["STUBBORN"], patience: 2, mood: "Angry",
             desiredAmount: 0, minimumAmount: 0, maxRepayment: 0,
             item: makeItem({ id: "thug_dummy", name: "赎回单", realValue: 0, isVirtual: true }, "chain_underworld")
         },

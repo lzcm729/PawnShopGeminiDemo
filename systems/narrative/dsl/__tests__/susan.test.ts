@@ -70,9 +70,9 @@ export const SUSAN_DSL = `
         max_repayment: 30000
         patience: 3
         mood: "Neutral"
-        tags: [Scam, Fake]
+        identity_tags: [Scam, Fake]
+        behavior_tags: [SUSPICIOUS]
         redemption_resolve: Strong
-        negotiation_style: Deceptive
 
         @dialogue
             greeting: "亲爱的，帮个忙，我急需周转。"

@@ -207,7 +207,7 @@ export interface SimLogEntry {
 
 // --- CHAIN STATE ---
 export interface ChainVariables {
-  [key: string]: any; 
+  [key: string]: any;
 }
 
 export interface FateHintDefinition {
@@ -217,14 +217,20 @@ export interface FateHintDefinition {
 }
 
 export interface EventChainState {
-  id: string; 
+  id: string;
   npcName: string;
   isActive: boolean;
-  stage: number; 
+  stage: number;
   variables: ChainVariables;
-  simulationRules: SimRule[]; 
+  simulationRules: SimRule[];
   simulationLog?: SimLogEntry[];
   fateHints?: FateHintDefinition[]; // NEW: Character specific hints
+
+  // === 新增字段 ===
+  chainType?: ChainType;                        // 'NARRATIVE' | 'TRANSIENT'，默认 'NARRATIVE'
+  redemptionResolve?: 'Strong' | 'Medium' | 'Weak' | 'None'; // TRANSIENT 用于概率计算
+  contractType?: ContractType;                  // 签订的合同类型
+  renewalCount?: number;                        // 已续当次数（TRANSIENT）
 }
 
 // --- EFFECTS & EVENTS ---
@@ -288,17 +294,31 @@ export interface CustomerPortraits {
     angry?: string;
 }
 
+// Re-export BehaviorTag from npc/types for backward compatibility
+export type { BehaviorTag } from '../npc/types';
+
+// === 事件链类型 ===
+export type ChainType = 'NARRATIVE' | 'TRANSIENT';
+
+// === 合同类型 ===
+export type ContractType = 'CHARITY' | 'AID' | 'STANDARD' | 'SHARK';
+
 export interface CustomerTemplate {
     name: string;
     description: string;
     avatarSeed: string;
     portraits?: CustomerPortraits; // NEW: Specific emotional portraits
-    dialogue: DialogueTemplate; 
+    dialogue: DialogueTemplate;
     redemptionResolve?: 'Strong' | 'Medium' | 'Weak' | 'None';
-    negotiationStyle?: 'Aggressive' | 'Desperate' | 'Professional' | 'Deceptive';
+
+    // === 行为系统 ===
+    behaviorTags?: BehaviorTag[];           // 新增
     patience?: number;
     mood?: Mood;
-    tags?: string[];
+
+    // === 身份系统 ===
+    identityTags?: string[];                // 替代 tags
+
     desiredAmount?: number;
     minimumAmount?: number;
     maxRepayment?: number;

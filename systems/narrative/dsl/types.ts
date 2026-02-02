@@ -292,6 +292,9 @@ export interface TraitBlock extends ASTNode {
 
 // === CUSTOMER BLOCK ===
 
+// Re-export BehaviorTag from npc/types for DSL use
+export type { BehaviorTag } from '../../npc/types';
+
 export interface CustomerBlock extends ASTNode {
     type: 'CustomerBlock';
     name: string;
@@ -302,9 +305,14 @@ export interface CustomerBlock extends ASTNode {
     maxRepayment?: number;
     patience?: number;
     mood?: string;
-    tags?: string[];
     redemptionResolve?: 'Strong' | 'Medium' | 'Weak' | 'None';
-    negotiationStyle?: 'Aggressive' | 'Desperate' | 'Professional' | 'Deceptive';
+
+    // === 行为系统 ===
+    behaviorTags?: BehaviorTag[];           // 替代 negotiationStyle
+
+    // === 身份系统 ===
+    identityTags?: string[];                // 替代 tags
+
     interactionType?: 'PAWN' | 'REDEEM' | 'NEGOTIATION';
     currentAskPrice?: number;
     dialogue: DialogueBlock;

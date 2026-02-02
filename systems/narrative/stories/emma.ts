@@ -565,7 +565,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
             desperate: "[她默默地把钱塞进包里，低着头快步走了出去]"
         }
       },
-      redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 3, mood: 'Neutral', tags: ["Story", "LowRisk"]
+      redemptionResolve: "Strong", behaviorTags: ["SAVVY"], patience: 3, mood: 'Neutral', identityTags: ["Story", "LowRisk"]
     },
     outcomes: {
       "deal_charity":  [
@@ -690,7 +690,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
             desperate: "[她紧紧攥着那几张钞票，像是抓着最后一根稻草]"
         }
       },
-      redemptionResolve: "Medium", negotiationStyle: "Desperate", patience: 2, mood: 'Neutral', tags: ["Story"]
+      redemptionResolve: "Medium", behaviorTags: ["DESPERATE"], patience: 2, mood: 'Neutral', identityTags: ["Story"]
     },
     outcomes: {
         "deal_charity":  [
@@ -794,7 +794,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
             desperate: "[她一步三回头地看着那台电脑，眼神里充满了恐惧]"
         }
       },
-      redemptionResolve: "Strong", negotiationStyle: "Desperate", patience: 2, mood: 'Neutral', tags: ["HighStakes"]
+      redemptionResolve: "Strong", behaviorTags: ["DESPERATE"], patience: 2, mood: 'Neutral', identityTags: ["HighStakes"]
     },
     outcomes: {
         "deal_charity":  [
@@ -925,10 +925,10 @@ export const EMMA_EVENTS: StoryEvent[] = [
             }
         },
         redemptionResolve: "Strong",
-        negotiationStyle: "Desperate",
+        behaviorTags: ["DESPERATE"],
         patience: 3,
         mood: 'Neutral',
-        tags: ["Story", "Request"]
+        identityTags: ["Story", "Request"]
     },
     outcomes: {
         "deal_charity": [  // 允许借用
@@ -996,7 +996,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
             desperate: "[她的眼神空洞，像是已经放弃了什么]"
         }
       },
-      redemptionResolve: "Weak", negotiationStyle: "Desperate", patience: 1, mood: 'Annoyed', tags: ["Breakdown"]
+      redemptionResolve: "Weak", behaviorTags: ["DESPERATE"], patience: 1, mood: 'Annoyed', identityTags: ["Breakdown"]
     },
     outcomes: {
         "deal_charity":  [
@@ -1062,7 +1062,7 @@ export const EMMA_EVENTS: StoryEvent[] = [
             desperate: "..."
         }
       },
-      redemptionResolve: "Strong", negotiationStyle: "Professional", patience: 5, mood: 'Happy',
+      redemptionResolve: "Strong", behaviorTags: ["SAVVY"], patience: 5, mood: 'Happy',
       desiredAmount: 0, minimumAmount: 0, maxRepayment: 0,
       item: makeItem({ id: "emma_redeem_dummy", name: "赎回清单", realValue: 0, isVirtual: true }, "chain_emma")
     },

@@ -59,7 +59,7 @@ export const LIN_EVENTS: StoryEvent[] = [
                     desperate: "[他背起书包，肩膀垮了下来，像是个做错事的孩子]"
                 }
             },
-            redemptionResolve: "Weak", negotiationStyle: "Deceptive", patience: 5, mood: 'Neutral', tags: ["Opportunity"]
+            redemptionResolve: "Weak", behaviorTags: ["NAIVE"], patience: 5, mood: 'Neutral', identityTags: ["Opportunity"]
         },
         // 典当成功后，进入 stage 1，等待到期结算
         outcomes: {

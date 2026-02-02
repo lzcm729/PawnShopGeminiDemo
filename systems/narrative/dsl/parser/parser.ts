@@ -1011,9 +1011,9 @@ export class Parser {
         let maxRepayment: number | undefined;
         let patience: number | undefined;
         let mood: string | undefined;
-        let tags: string[] | undefined;
         let redemptionResolve: 'Strong' | 'Medium' | 'Weak' | 'None' | undefined;
-        let negotiationStyle: 'Aggressive' | 'Desperate' | 'Professional' | 'Deceptive' | undefined;
+        let behaviorTags: ('DESPERATE' | 'STUBBORN' | 'SUSPICIOUS' | 'NAIVE' | 'SAVVY' | 'SENTIMENTAL')[] | undefined;
+        let identityTags: string[] | undefined;
         let interactionType: 'PAWN' | 'REDEEM' | 'NEGOTIATION' | undefined;
         let currentAskPrice: number | undefined;
         let dialogue: DialogueBlock | undefined;
@@ -1062,14 +1062,14 @@ export class Parser {
                         case 'mood':
                             mood = this.parseStringValue();
                             break;
-                        case 'tags':
-                            tags = this.parseTagsList();
+                        case 'identity_tags':
+                            identityTags = this.parseTagsList();
+                            break;
+                        case 'behavior_tags':
+                            behaviorTags = this.parseTagsList() as typeof behaviorTags;
                             break;
                         case 'redemption_resolve':
                             redemptionResolve = this.consumeIdentifier('resolve') as typeof redemptionResolve;
-                            break;
-                        case 'negotiation_style':
-                            negotiationStyle = this.consumeIdentifier('style') as typeof negotiationStyle;
                             break;
                         case 'interaction_type':
                             interactionType = this.consumeIdentifier('type') as typeof interactionType;
@@ -1100,9 +1100,9 @@ export class Parser {
             maxRepayment,
             patience,
             mood,
-            tags,
             redemptionResolve,
-            negotiationStyle,
+            behaviorTags,
+            identityTags,
             interactionType,
             currentAskPrice
         });
