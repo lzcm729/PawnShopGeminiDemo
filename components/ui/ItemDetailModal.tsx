@@ -232,12 +232,10 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                         <div className="text-xs text-noir-txt-muted mb-1 flex items-center gap-1">
                             <DollarSign className="w-3 h-3" /> REAL VALUE
                         </div>
-                        <div className={cn("text-sm font-bold", item.appraised || isSold || isForfeit ? "text-green-500" : "text-amber-400")}>
-                            {item.appraised || isSold || isForfeit
-                                ? `$${item.realValue}`
-                                : item.currentRange
-                                    ? `$${item.currentRange[0]} - $${item.currentRange[1]}`
-                                    : "???"}
+                        <div className="text-sm font-bold text-amber-400">
+                            {item.currentRange
+                                ? `$${item.currentRange[0]} - $${item.currentRange[1]}`
+                                : "???"}
                         </div>
                     </div>
                 </div>
