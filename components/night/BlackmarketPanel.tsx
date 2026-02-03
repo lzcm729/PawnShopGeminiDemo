@@ -544,6 +544,9 @@ const SaleTab: React.FC<SaleTabProps> = ({
                 <div className="text-xs text-stone-500">
                   估价: ${estMin} - ${estMax}
                 </div>
+                <div className="text-xs text-stone-500">
+                  当金: <span className="text-stone-400 font-mono">${item.pawnAmount}</span>
+                </div>
                 {isBreach && (
                   <div className="flex items-center gap-1 mt-1 text-xs text-red-400">
                     <AlertTriangle className="w-3 h-3" />
@@ -555,6 +558,12 @@ const SaleTab: React.FC<SaleTabProps> = ({
                 <div className="text-xs text-stone-500">售价</div>
                 <div className="text-lg font-mono font-bold text-amber-400">
                   ${salePrice}
+                </div>
+                <div className="text-xs text-stone-500">
+                  利润: <span className={cn(
+                    'font-mono',
+                    salePrice - item.pawnAmount >= 0 ? 'text-green-400' : 'text-red-400'
+                  )}>{salePrice - item.pawnAmount >= 0 ? '+' : ''}${salePrice - item.pawnAmount}</span>
                 </div>
               </div>
               {isSelected && (
