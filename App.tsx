@@ -3,7 +3,8 @@ import React, { useEffect, useState, useRef, useLayoutEffect, useCallback } from
 import { GameProvider, useGame } from './store/GameContext';
 import { useGameEngine } from './hooks/useGameEngine';
 import { useNegotiation } from './hooks/useNegotiation';
-import { useGameMachine, PhaseIs, PhaseMatch } from './hooks/useGameMachine';
+import { useGameMachine } from './hooks/useGameMachine';
+import { PhaseIs, PhaseMatch } from './systems/core/phases';
 import { Dashboard } from './systems/game/ui/Dashboard';
 import { CustomerView } from './components/CustomerView';
 import { ItemPanel } from './components/ItemPanel';
@@ -24,7 +25,6 @@ import { MorningBrief } from './components/MorningBrief';
 import { NightDashboard } from './components/NightDashboard';
 import { GameOverScreen } from './components/GameOverScreen';
 import { VictoryScreen } from './components/VictoryScreen';
-import { GamePhase } from './types';
 import { playSfx } from './systems/game/audio';
 import { Button } from './components/ui/Button';
 import { Moon } from 'lucide-react';
@@ -39,7 +39,7 @@ const GameContent: React.FC = () => {
   const negotiation = useNegotiation(state.currentCustomer);
   
   // Transition State
-  const prevPhase = useRef<GamePhase>(state.phase);
+  const prevPhaseType = useRef<string>(state.phase.type);
   const [showDayToNight, setShowDayToNight] = useState(false);
   const [showNightToDay, setShowNightToDay] = useState(false);
 
@@ -58,22 +58,22 @@ const GameContent: React.FC = () => {
   };
 
   useLayoutEffect(() => {
-      const current = state.phase;
-      const previous = prevPhase.current;
+      const currentType = state.phase.type;
+      const previousType = prevPhaseType.current;
 
       // Auto-trigger Night -> Morning Transition (This one fades OUT from black, so it triggers AFTER phase change)
-      if (previous === GamePhase.NIGHT && current === GamePhase.MORNING_BRIEF) {
+      if (previousType === 'NIGHT' && currentType === 'MORNING_BRIEF') {
           setShowNightToDay(true);
       }
 
-      prevPhase.current = current;
+      prevPhaseType.current = currentType;
   }, [state.phase]);
 
   // Phase: BUSINESS -> Automatically trigger event if no customer
   // Note: canServe is always true now - the generateDailyEvent handles the logic internally
   // It will call MARK_NO_MORE_CUSTOMERS when done
   useEffect(() => {
-    const isBusiness = state.phase === GamePhase.BUSINESS;
+    const isBusiness = PhaseIs.business(state.phase);
     const isIdle = !state.isLoading && !state.currentCustomer;
     // Effective max = max(4, narrativeServed) to allow all narrative customers
     const narrativeServed = state.narrativeCustomersServedToday;
@@ -125,9 +125,9 @@ const GameContent: React.FC = () => {
   );
 
   // Helper booleans
-  const isNegotiating = state.phase === GamePhase.NEGOTIATION;
-  const isDeparture = state.phase === GamePhase.DEPARTURE;
-  const isBusiness = state.phase === GamePhase.BUSINESS;
+  const isNegotiating = PhaseIs.negotiation(state.phase);
+  const isDeparture = PhaseIs.departure(state.phase);
+  const isBusiness = PhaseIs.business(state.phase);
   
   const interactionType = state.currentCustomer?.interactionType;
   const isSettlement = isNegotiating && interactionType === 'REDEEM';
@@ -156,11 +156,11 @@ const GameContent: React.FC = () => {
 
       {/* Expiry events now use SettlementInterface instead of modal */}
 
-      {state.phase === GamePhase.START_SCREEN && <StartScreen />}
+      {PhaseIs.startScreen(state.phase) && <StartScreen />}
 
-      {state.phase === GamePhase.MORNING_BRIEF && <MorningBrief />}
+      {PhaseIs.morningBrief(state.phase) && <MorningBrief />}
 
-      {state.phase === GamePhase.NIGHT && (
+      {PhaseIs.night(state.phase) && (
           <>
             <NightDashboard />
             <InventoryModal />
@@ -170,15 +170,15 @@ const GameContent: React.FC = () => {
             <HospitalVisitModal />
           </>
       )}
-      
-      {state.phase === GamePhase.GAME_OVER && (
+
+      {PhaseIs.gameOver(state.phase) && (
           <GameOverScreen
-              reason={state.dayEvents[state.dayEvents.length - 1] || "Unknown Error"}
+              reason={state.phase.reason || state.dayEvents[state.dayEvents.length - 1] || "Unknown Error"}
               onRestart={() => window.location.reload()}
           />
       )}
 
-      {state.phase === GamePhase.VICTORY && (
+      {PhaseIs.victory(state.phase) && (
           <VictoryScreen onRestart={() => window.location.reload()} />
       )}
 

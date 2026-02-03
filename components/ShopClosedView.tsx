@@ -9,7 +9,7 @@ import { SatisfactionLevel } from '../systems/narrative/types';
 import { ReputationType } from '../types';
 import { TypewriterText } from './ui/TextEffects';
 import { playSfx } from '../systems/game/audio';
-import { GamePhase } from '../types';
+import { PhaseIs } from '../systems/core/phases';
 import { getDepartureMonologue } from '../systems/narrative/innerVoiceRegistry';
 import { cn } from '../lib/utils';
 import { getCharacterPortraitPath, EmotionType, PORTRAIT_PLACEHOLDER } from '../systems/assets';
@@ -105,7 +105,7 @@ export const DepartureView: React.FC = () => {
       if (hasMoreExpiryEvents) {
           processNextExpiryEvent();
       } else {
-          dispatch({ type: 'SET_PHASE', payload: GamePhase.BUSINESS });
+          dispatch({ type: 'SET_PHASE', payload: { type: 'BUSINESS', subphase: 'IDLE' } });
       }
   };
 

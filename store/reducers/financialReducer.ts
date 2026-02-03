@@ -3,11 +3,12 @@
  * Handles cash, bills, rent, mother's medical expenses
  */
 
-import { GameState, GamePhase, ReputationType, TransactionRecord, DailyFinancialSnapshot } from '../../types';
+import { GameState, ReputationType, TransactionRecord, DailyFinancialSnapshot } from '../../types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { GAME_CONFIG } from '../../systems/game/config';
 import { clearSave } from '../../systems/core/persistence';
+import { GamePhase } from '../../systems/core/phases';
 
 export function financialReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -140,7 +141,7 @@ export function financialReducer(state: GameState, action: Action): GameState {
             };
             return {
                 ...state,
-                phase: GamePhase.VICTORY,
+                phase: { type: 'VICTORY' } as GamePhase,
                 stats: { ...state.stats, cash: state.stats.cash - surgeryCost },
                 todayTransactions: [...state.todayTransactions, record]
             };
@@ -173,18 +174,18 @@ export function financialReducer(state: GameState, action: Action): GameState {
             if (endingCash < 0) {
                 clearSave();
                 playSfx('FAIL');
-                return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "Bankrupt: Daily expenses exceeded cash."] };
+                return { ...state, phase: { type: 'GAME_OVER', reason: 'Bankrupt' } as GamePhase, dayEvents: [...state.dayEvents, "Bankrupt: Daily expenses exceeded cash."] };
             }
             if (state.stats.motherStatus.health <= 0) {
                 clearSave();
                 playSfx('FAIL');
-                return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, "GAME OVER: 母亲病情恶化去世。"] };
+                return { ...state, phase: { type: 'GAME_OVER', reason: '母亲去世' } as GamePhase, dayEvents: [...state.dayEvents, "GAME OVER: 母亲病情恶化去世。"] };
             }
             return {
                 ...state,
                 stats: { ...state.stats, day: nextDay, cash: endingCash, actionPoints: state.stats.maxActionPoints },
                 financialHistory: [...state.financialHistory, newSnapshot],
-                phase: GamePhase.MORNING_BRIEF
+                phase: { type: 'MORNING_BRIEF' } as GamePhase
             };
         }
 

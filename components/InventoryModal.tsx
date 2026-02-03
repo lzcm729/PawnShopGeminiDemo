@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { PackageOpen, Moon, Archive, Wrench, Hammer, Eye, Skull, Lock, Search } from 'lucide-react';
-import { Item, ItemStatus, GamePhase } from '../types';
+import { Item, ItemStatus } from '../types';
+import { PhaseIs } from '../systems/core/phases';
 import { Modal } from './ui/Modal';
 import { ItemCard } from './ui/ItemCard';
 import { ItemDetailModal } from './ui/ItemDetailModal';
@@ -49,7 +50,7 @@ export const InventoryModal: React.FC = () => {
       return (a.pawnDate || 0) - (b.pawnDate || 0);
   });
 
-  const isNightPhase = state.phase === GamePhase.NIGHT;
+  const isNightPhase = PhaseIs.night(state.phase);
 
   // Handle opening Workshop panel with pre-selected item
   const handleOpenWorkshop = (itemId: string) => {

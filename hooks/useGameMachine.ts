@@ -1,12 +1,12 @@
 /**
  * Game State Machine Hook
  *
- * Provides access to the new explicit state machine (phase2).
- * Part of the state machine migration (Phase 3).
+ * Provides access to the explicit state machine.
  *
  * Usage:
  * ```tsx
- * const { phase, send, can, PhaseIs, PhaseMatch } = useGameMachine();
+ * const { phase, send, can } = useGameMachine();
+ * import { PhaseIs, PhaseMatch } from '@/systems/core/phases';
  *
  * // Check current phase
  * if (PhaseIs.business(phase)) {
@@ -22,13 +22,13 @@
 
 import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
-import { PhaseEvent, GamePhase2 } from '../systems/core/phases/types';
+import { PhaseEvent, GamePhase } from '../systems/core/phases/types';
 import { PhaseIs, PhaseMatch } from '../systems/core/phases/guards';
 import { canTransition, getAvailableEvents } from '../systems/core/phases/machine';
 
 export interface UseGameMachineReturn {
     /** Current phase (new state machine) */
-    phase: GamePhase2;
+    phase: GamePhase;
     /** Full game state context */
     context: ReturnType<typeof useGame>['state'];
     /** Send an event to the state machine */
@@ -44,11 +44,8 @@ export interface UseGameMachineReturn {
 }
 
 /**
- * Hook for interacting with the new explicit state machine.
- *
- * During the migration period (Phase 3), this hook works alongside
- * the existing state.phase. Components can gradually migrate to
- * use this hook instead of directly checking state.phase.
+ * Hook for interacting with the explicit state machine.
+ * Components use this hook to interact with the state machine.
  */
 export function useGameMachine(): UseGameMachineReturn {
     const { state, dispatch } = useGame();
@@ -60,16 +57,16 @@ export function useGameMachine(): UseGameMachineReturn {
 
     // Check if an event can be sent
     const can = useCallback((event: PhaseEvent): boolean => {
-        return canTransition(state.phase2, event, state);
+        return canTransition(state.phase, event, state);
     }, [state]);
 
     // Get available events for current phase
     const availableEvents = useCallback((): PhaseEvent['type'][] => {
-        return getAvailableEvents(state.phase2, state);
+        return getAvailableEvents(state.phase, state);
     }, [state]);
 
     return {
-        phase: state.phase2,
+        phase: state.phase,
         context: state,
         send,
         can,
@@ -83,4 +80,4 @@ export function useGameMachine(): UseGameMachineReturn {
 export { PhaseIs, PhaseMatch } from '../systems/core/phases/guards';
 
 // Re-export types for consumers
-export type { GamePhase2, PhaseEvent } from '../systems/core/phases/types';
+export type { GamePhase, PhaseEvent } from '../systems/core/phases/types';

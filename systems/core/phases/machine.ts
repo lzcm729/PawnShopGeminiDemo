@@ -5,7 +5,7 @@
  * Part of the state machine migration (Phase 2).
  */
 
-import { GamePhase2, PhaseEvent } from './types';
+import { GamePhase, PhaseEvent } from './types';
 import { GameState } from '../../game/types';
 import { TRANSITIONS, TransitionRule } from './transitions';
 
@@ -14,7 +14,7 @@ import { TRANSITIONS, TransitionRule } from './transitions';
 // ============================================
 
 export interface TransitionResult {
-    nextPhase: GamePhase2;
+    nextPhase: GamePhase;
     stateUpdates: Partial<GameState>;
 }
 
@@ -31,7 +31,7 @@ export interface TransitionResult {
  * @returns Matching transition rule or null
  */
 export function findTransition(
-    phase: GamePhase2,
+    phase: GamePhase,
     event: PhaseEvent,
     state: GameState
 ): TransitionRule | null {
@@ -51,7 +51,7 @@ export function findTransition(
  * @returns true if transition is valid
  */
 export function canTransition(
-    phase: GamePhase2,
+    phase: GamePhase,
     event: PhaseEvent,
     state: GameState
 ): boolean {
@@ -67,7 +67,7 @@ export function canTransition(
  * @returns Transition result with next phase and state updates, or null if invalid
  */
 export function transition(
-    phase: GamePhase2,
+    phase: GamePhase,
     event: PhaseEvent,
     state: GameState
 ): TransitionResult | null {
@@ -102,7 +102,7 @@ export function transition(
  * @returns Array of available event types
  */
 export function getAvailableEvents(
-    phase: GamePhase2,
+    phase: GamePhase,
     state: GameState
 ): PhaseEvent['type'][] {
     const eventTypes = new Set<PhaseEvent['type']>();

@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { DollarSign, Calendar, Heart, Briefcase, Skull, Package, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2, TrendingDown, TrendingUp, Info } from 'lucide-react';
-import { ReputationType, GamePhase } from '../../core/types';
+import { ReputationType } from '../../core/types';
+import { PhaseIs } from '../../core/phases';
 import { Button } from '../../../components/ui/Button';
 import { StatDisplay } from '../../../components/ui/StatDisplay';
 import { Tooltip } from '../../../components/ui/Tooltip';
@@ -19,7 +20,7 @@ export const Dashboard: React.FC = () => {
     const { stats, reputation, inventory, inbox, phase, activeMilestones } = state;
 
     // If we are in Night phase, we hide the top dashboard because NightDashboard takes over full screen
-    if (phase === GamePhase.NIGHT) return null;
+    if (PhaseIs.night(phase)) return null;
 
     // Count only items actually in inventory (ACTIVE or FORFEIT), not REDEEMED/SOLD
     const activeItems = inventory.filter(i => i.status === 'ACTIVE' || i.status === 'FORFEIT').length;
@@ -88,7 +89,7 @@ export const Dashboard: React.FC = () => {
         </div>
     );
 
-    const isBusiness = phase === GamePhase.BUSINESS || phase === GamePhase.NEGOTIATION;
+    const isBusiness = PhaseIs.business(phase) || PhaseIs.negotiation(phase);
 
     // Helper to get Icon Component dynamically
     const getIcon = (name: string) => {

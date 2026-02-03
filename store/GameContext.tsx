@@ -20,7 +20,8 @@
  */
 
 import React, { createContext, useContext, useReducer, PropsWithChildren, useEffect } from 'react';
-import { GameState, GamePhase, ReputationType, MotherCondition } from '../types';
+import { GameState, ReputationType, MotherCondition } from '../types';
+import { GamePhase, PhaseIs } from '../systems/core/phases';
 import { saveGame } from '../systems/core/persistence';
 import { GAME_CONFIG } from '../systems/game/config';
 import { INITIAL_ESSENCE_BALANCE } from '../systems/economy/essence';
@@ -33,8 +34,7 @@ import { gameReducer, Action } from './reducers';
 
 // === Initial State ===
 const initialState: GameState = {
-    phase: GamePhase.START_SCREEN,
-    phase2: { type: 'START_SCREEN' },
+    phase: { type: 'START_SCREEN' },
     stats: {
         day: 1,
         cash: GAME_CONFIG.INITIAL_FUNDS,
@@ -124,7 +124,7 @@ export const GameProvider = ({ children }: PropsWithChildren) => {
 
     // Auto-save on morning brief
     useEffect(() => {
-        if (state.phase === GamePhase.MORNING_BRIEF) {
+        if (PhaseIs.morningBrief(state.phase)) {
             saveGame(state);
         }
     }, [state.phase]);

@@ -1,14 +1,21 @@
-
-export enum GamePhase {
+/**
+ * @deprecated Use GamePhase from systems/core/phases instead.
+ * This enum is kept temporarily for backward compatibility during migration.
+ * It will be removed in a future version.
+ */
+export enum LegacyGamePhase {
   START_SCREEN = 'START_SCREEN',
-  MORNING_BRIEF = 'MORNING_BRIEF', // Morning News/Weather/Prep
-  BUSINESS = 'BUSINESS',           // Shop is open, waiting for customer
-  NEGOTIATION = 'NEGOTIATION',     // Active dealing with customer
-  DEPARTURE = 'DEPARTURE',         // Post-deal summary, "Send Guest"
-  NIGHT = 'NIGHT',                 // Admin phase: Mail, Ledger, Sleep
+  MORNING_BRIEF = 'MORNING_BRIEF',
+  BUSINESS = 'BUSINESS',
+  NEGOTIATION = 'NEGOTIATION',
+  DEPARTURE = 'DEPARTURE',
+  NIGHT = 'NIGHT',
   GAME_OVER = 'GAME_OVER',
   VICTORY = 'VICTORY'
 }
+
+// Re-export new GamePhase type for easier migration
+export type { GamePhase } from './phases';
 
 export enum ReputationType {
   HUMANITY = 'Humanity', // Heart - Empathy

@@ -1,5 +1,6 @@
 
-import { GamePhase, ReputationType, ItemStatus } from '../../types';
+import { ReputationType, ItemStatus } from '../../types';
+import { GamePhase, PhaseIs } from '../core/phases';
 import { testAllFullStoryFiles, testFullStoryByName, formatFullTestResults } from '../narrative/dsl/__tests__/fullFileTest';
 import type { Item, PawnInfo, WorkState } from '../items/types';
 import type { ItemTag } from '../items/tags';
@@ -19,17 +20,17 @@ export interface ParsedCommand {
 // Panel names that can be opened via 'open' command
 export type OpenablePanel = 'upgrade' | 'mail' | 'calendar' | 'inventory' | 'medical' | 'visit' | 'debug' | 'appointment' | 'blackmarket';
 
-// Valid phase names for 'set phase' command
+// Valid phase names for 'set phase' command - returns discriminated union objects
 const PHASE_MAP: Record<string, GamePhase> = {
-  'morning': GamePhase.MORNING_BRIEF,
-  'morning_brief': GamePhase.MORNING_BRIEF,
-  'business': GamePhase.BUSINESS,
-  'night': GamePhase.NIGHT,
-  'negotiation': GamePhase.NEGOTIATION,
-  'departure': GamePhase.DEPARTURE,
-  'start': GamePhase.START_SCREEN,
-  'gameover': GamePhase.GAME_OVER,
-  'victory': GamePhase.VICTORY
+  'morning': { type: 'MORNING_BRIEF' },
+  'morning_brief': { type: 'MORNING_BRIEF' },
+  'business': { type: 'BUSINESS', subphase: 'IDLE' },
+  'night': { type: 'NIGHT', subphase: 'ACTIVE' },
+  'negotiation': { type: 'NEGOTIATION', mode: 'PAWN' },
+  'departure': { type: 'DEPARTURE' },
+  'start': { type: 'START_SCREEN' },
+  'gameover': { type: 'GAME_OVER', reason: 'Debug' },
+  'victory': { type: 'VICTORY' }
 };
 
 // Valid reputation types for 'set reputation' command
@@ -134,7 +135,7 @@ export function executeCommand(
     case 'spawn':
       if (args[0]?.toLowerCase() === 'customer') {
         const state = getState();
-        if (state.phase !== GamePhase.BUSINESS) {
+        if (!PhaseIs.business(state.phase)) {
           return { success: false, message: 'Error: Can only spawn customers in BUSINESS phase' };
         }
         // Trigger loading state - the game engine will pick up and generate customer
@@ -189,7 +190,7 @@ function handleSetCommand(
         };
       }
       dispatch({ type: 'SET_PHASE', payload: phase });
-      return { success: true, message: `Phase set to ${phase}` };
+      return { success: true, message: `Phase set to ${phase.type}` };
     }
 
     case 'day': {

@@ -3,7 +3,8 @@
  * Centralized action types for the game state reducer
  */
 
-import { GameState, GamePhase, Customer, Mood, ReputationProfile, Item, EventChainState, SatisfactionLevel, MotherCondition, ExpiryEvent } from '../../types';
+import { GameState, Customer, Mood, ReputationProfile, Item, EventChainState, SatisfactionLevel, MotherCondition, ExpiryEvent } from '../../types';
+import { GamePhase } from '../../systems/core/phases';
 import { EssenceType, EssenceBalance } from '../../systems/economy/essence';
 import { KnowledgePool } from '../../systems/items/tags';
 import { ItemTag, WorkState } from '../../systems/items/types';

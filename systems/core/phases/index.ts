@@ -5,8 +5,8 @@
  */
 
 // Types
-export {
-    GamePhase2,
+export type {
+    GamePhase,
     PhaseEvent,
     DayStartSubphase,
     BusinessSubphase,

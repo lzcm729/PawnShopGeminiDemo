@@ -5,7 +5,7 @@ import { Modal } from './ui/Modal';
 import { Package, Wrench, Power, ToggleLeft, ToggleRight, Coins, Coffee, Scan } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getCounterUpgradesForToggle, getTotalMaintenanceCost, getPatienceBonus, getAnomalyDetectionThreshold } from '../systems/upgrades';
-import { GamePhase } from '../types';
+import { PhaseIs } from '../systems/core/phases';
 
 export const FacilityControlModal: React.FC = () => {
     const { state, dispatch } = useGame();
@@ -14,7 +14,7 @@ export const FacilityControlModal: React.FC = () => {
 
     const counterUpgrades = getCounterUpgradesForToggle(state.shopUpgrades);
     const totalMaintenanceCost = getTotalMaintenanceCost(state.shopUpgrades);
-    const isNightPhase = state.phase === GamePhase.NIGHT;
+    const isNightPhase = PhaseIs.night(state.phase);
     const patienceBonus = getPatienceBonus(state.shopUpgrades);
     const anomalyThreshold = getAnomalyDetectionThreshold(state.shopUpgrades);
 

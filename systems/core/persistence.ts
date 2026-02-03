@@ -1,6 +1,6 @@
 
 import { GameState } from '../game/types';
-import { GamePhase } from './types';
+import { PhaseIs } from './phases';
 
 const SAVE_KEY = 'pawns_dilemma_save_v1';
 
@@ -20,7 +20,7 @@ export const saveGame = (state: GameState) => {
     saveTimeout = setTimeout(() => {
         try {
             // Don't save if on start screen or game over to prevent loop
-            if (state.phase === GamePhase.START_SCREEN || state.phase === GamePhase.GAME_OVER) return;
+            if (PhaseIs.startScreen(state.phase) || PhaseIs.gameOver(state.phase)) return;
 
             const serialized = JSON.stringify(state);
             localStorage.setItem(SAVE_KEY, serialized);

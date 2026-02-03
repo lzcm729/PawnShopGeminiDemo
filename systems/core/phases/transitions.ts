@@ -5,7 +5,7 @@
  * Part of the state machine migration (Phase 2).
  */
 
-import { GamePhase2, PhaseEvent } from './types';
+import { GamePhase, PhaseEvent } from './types';
 import { GameState } from '../../game/types';
 import * as actions from './actions';
 
@@ -14,10 +14,10 @@ import * as actions from './actions';
 // ============================================
 
 export type TransitionRule = {
-    from: (phase: GamePhase2) => boolean;
+    from: (phase: GamePhase) => boolean;
     event: PhaseEvent['type'];
     guard?: (state: GameState, event: PhaseEvent) => boolean;
-    to: (state: GameState, event: PhaseEvent) => GamePhase2;
+    to: (state: GameState, event: PhaseEvent) => GamePhase;
     effects?: Array<(state: GameState, event: PhaseEvent) => Partial<GameState>>;
 };
 

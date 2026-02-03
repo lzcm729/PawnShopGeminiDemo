@@ -34,7 +34,12 @@ export type NightSubphase =
 // Main Phase Type (Discriminated Union)
 // ============================================
 
-export type GamePhase2 =
+/**
+ * Game phase represented as a discriminated union.
+ * This replaces the old GamePhase enum with a more expressive type
+ * that includes subphase information.
+ */
+export type GamePhase =
     | { type: 'START_SCREEN' }
     | { type: 'MORNING_BRIEF' }
     | { type: 'DAY_START'; subphase: DayStartSubphase }

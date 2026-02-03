@@ -3,39 +3,52 @@
  * Handles game flow, phase transitions, transactions
  */
 
-import { GameState, GamePhase, ReputationType, TransactionRecord, Mood, ReputationProfile } from '../../types';
+import { GameState, ReputationType, TransactionRecord } from '../../types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { clearSave } from '../../systems/core/persistence';
 import { GAME_CONFIG } from '../../systems/game/config';
 import { INITIAL_SHOP_UPGRADES, getEffectiveNightEnergy } from '../../systems/upgrades';
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../../systems/appointment';
-import { GamePhase2 } from '../../systems/core/phases';
+import { GamePhase, LegacyGamePhase } from '../../systems/core/types';
 
 /**
- * Infer phase2 from old phase enum (for save migration).
- * Maps the old GamePhase enum to the new discriminated union type.
+ * Infer phase from old saves that used the legacy GamePhase enum.
+ * Maps string-based phase values to the new discriminated union type.
  */
-function inferPhase2FromLegacyPhase(phase: GamePhase): GamePhase2 {
-    switch (phase) {
-        case GamePhase.START_SCREEN:
+function inferPhaseFromLegacySave(legacyPhase: any): GamePhase {
+    // Handle string values from old saves
+    const phaseType = typeof legacyPhase === 'string' ? legacyPhase : legacyPhase?.type;
+
+    // If it already has the new structure, return as-is
+    if (legacyPhase && typeof legacyPhase === 'object' && 'type' in legacyPhase) {
+        return legacyPhase as GamePhase;
+    }
+
+    switch (phaseType) {
+        case 'START_SCREEN':
+        case LegacyGamePhase.START_SCREEN:
             return { type: 'START_SCREEN' };
-        case GamePhase.MORNING_BRIEF:
+        case 'MORNING_BRIEF':
+        case LegacyGamePhase.MORNING_BRIEF:
             return { type: 'MORNING_BRIEF' };
-        case GamePhase.BUSINESS:
-            // Default to IDLE; actual subphase depends on context
+        case 'BUSINESS':
+        case LegacyGamePhase.BUSINESS:
             return { type: 'BUSINESS', subphase: 'IDLE' };
-        case GamePhase.NEGOTIATION:
-            // Default to PAWN; actual mode depends on context
+        case 'NEGOTIATION':
+        case LegacyGamePhase.NEGOTIATION:
             return { type: 'NEGOTIATION', mode: 'PAWN' };
-        case GamePhase.DEPARTURE:
+        case 'DEPARTURE':
+        case LegacyGamePhase.DEPARTURE:
             return { type: 'DEPARTURE' };
-        case GamePhase.NIGHT:
-            // Default to ACTIVE; actual subphase depends on context
+        case 'NIGHT':
+        case LegacyGamePhase.NIGHT:
             return { type: 'NIGHT', subphase: 'ACTIVE' };
-        case GamePhase.GAME_OVER:
+        case 'GAME_OVER':
+        case LegacyGamePhase.GAME_OVER:
             return { type: 'GAME_OVER', reason: 'Unknown' };
-        case GamePhase.VICTORY:
+        case 'VICTORY':
+        case LegacyGamePhase.VICTORY:
             return { type: 'VICTORY' };
         default:
             return { type: 'START_SCREEN' };
@@ -54,9 +67,11 @@ export function coreReducer(state: GameState, action: Action): GameState {
             // Recalculate maxEnergy based on upgrades
             const effectiveMaxEnergy = getEffectiveNightEnergy(shopUpgrades);
 
-            // Migrate phase2 from old saves that don't have it
-            // If phase2 is missing, infer it from the old phase enum
-            const phase2 = action.payload.phase2 ?? inferPhase2FromLegacyPhase(action.payload.phase);
+            // Migrate phase from old saves
+            // Old saves had phase as string enum, new format is discriminated union
+            // Also handle saves that had phase2 field (migration period)
+            const loadedPhase = (action.payload as any).phase2 ?? action.payload.phase;
+            const phase = inferPhaseFromLegacySave(loadedPhase);
 
             return {
                 ...action.payload,
@@ -74,14 +89,14 @@ export function coreReducer(state: GameState, action: Action): GameState {
                     ...action.payload.nightState,
                     maxEnergy: effectiveMaxEnergy
                 },
-                // State machine migration: ensure phase2 exists
-                phase2
+                // Set the migrated phase
+                phase
             };
         }
 
         case 'START_GAME':
             clearSave();
-            return { ...state, phase: GamePhase.MORNING_BRIEF };
+            return { ...state, phase: { type: 'MORNING_BRIEF' } };
 
         case 'START_DAY': {
             const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
@@ -99,7 +114,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 currentNode: null,      // Clear node when starting new day
                 dayEvents: [],
                 todayTransactions: [],
-                phase: GamePhase.BUSINESS,
+                phase: { type: 'BUSINESS', subphase: 'IDLE' },
                 stats: { ...state.stats, actionPoints: effectiveMaxAP, visitedToday: false },
                 violationFlags: [],
                 lastSatisfaction: null,
@@ -130,7 +145,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
 
             return {
                 ...state,
-                phase: GamePhase.BUSINESS,
+                phase: { type: 'BUSINESS', subphase: 'IDLE' },
                 inbox: newInbox,
                 pendingMails: remainingPending
             };
@@ -138,17 +153,18 @@ export function coreReducer(state: GameState, action: Action): GameState {
 
         case 'START_NIGHT':
             // Sound effect removed to prevent duplicate play with UI interaction
-            return { ...state, phase: GamePhase.NIGHT, currentCustomer: null, currentNode: null, lastSatisfaction: null };
+            return { ...state, phase: { type: 'NIGHT', subphase: 'ACTIVE' }, currentCustomer: null, currentNode: null, lastSatisfaction: null };
 
         case 'SET_PHASE':
-            return { ...state, phase: action.payload };
+            // Handle legacy SET_PHASE action - convert to new format if needed
+            return { ...state, phase: inferPhaseFromLegacySave(action.payload) };
 
         case 'SET_LOADING':
             return { ...state, isLoading: action.payload };
 
         case 'MANUAL_CLOSE_SHOP':
             playSfx('CLICK');
-            return { ...state, phase: GamePhase.NIGHT };
+            return { ...state, phase: { type: 'NIGHT', subphase: 'ACTIVE' } };
 
         case 'MARK_NO_MORE_CUSTOMERS':
             // Set to effective max to trigger shop closed state
@@ -163,7 +179,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
         case 'GAME_OVER':
             clearSave();
             playSfx('FAIL');
-            return { ...state, phase: GamePhase.GAME_OVER, dayEvents: [...state.dayEvents, action.payload] };
+            return { ...state, phase: { type: 'GAME_OVER', reason: action.payload }, dayEvents: [...state.dayEvents, action.payload] };
 
         case 'RESOLVE_TRANSACTION': {
             const { cashDelta, reputationDelta, item, log, customerName, dealQuality } = action.payload;
@@ -211,7 +227,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 dayEvents: [...state.dayEvents, log],
                 todayTransactions: updatedTransactions,
                 customersServedToday: servedCount,
-                phase: GamePhase.DEPARTURE,
+                phase: { type: 'DEPARTURE' },
                 completedScenarioIds: newCompletedIds,
                 violationFlags: newViolationFlags,
                 lastDealSummary: newDealSummary
@@ -227,7 +243,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 ...state,
                 dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`],
                 customersServedToday: servedCount,
-                phase: GamePhase.DEPARTURE,
+                phase: { type: 'DEPARTURE' },
                 completedScenarioIds: newCompletedIds
             };
         }

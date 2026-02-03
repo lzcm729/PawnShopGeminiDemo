@@ -3,10 +3,11 @@
  * Handles GameNode state management for the new unified node architecture
  */
 
-import { GameState, GamePhase } from '../../types';
+import { GameState } from '../../types';
 import { Action } from '../actions/types';
 import { getPatienceBonus } from '../../systems/upgrades';
 import { isPawnNode, PawnNode } from '../../types/node';
+import { GamePhase } from '../../systems/core/phases';
 
 export function nodeReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -35,7 +36,7 @@ export function nodeReducer(state: GameState, action: Action): GameState {
             return {
                 ...state,
                 currentNode: node,
-                phase: GamePhase.NEGOTIATION,
+                phase: { type: 'NEGOTIATION', mode: 'PAWN' } as GamePhase,
                 lastSatisfaction: null
             };
         }

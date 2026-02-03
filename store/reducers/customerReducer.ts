@@ -7,11 +7,12 @@
  * When SET_CUSTOMER is called, we also create a corresponding PawnNode.
  */
 
-import { GameState, GamePhase, Mood } from '../../types';
+import { GameState, Mood } from '../../types';
 import { Action } from '../actions/types';
 import { getPatienceBonus } from '../../systems/upgrades';
 import { generateValuationRange } from '../../systems/items/utils';
 import { createPawnNode, PawnNode } from '../../types/node';
+import { GamePhase } from '../../systems/core/phases';
 
 export function customerReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -41,7 +42,7 @@ export function customerReducer(state: GameState, action: Action): GameState {
                 ...state,
                 currentCustomer: customerInit,
                 currentNode: pawnNode,
-                phase: GamePhase.NEGOTIATION,
+                phase: { type: 'NEGOTIATION', mode: 'PAWN' } as GamePhase,
                 lastSatisfaction: null
             };
         }

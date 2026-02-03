@@ -3,10 +3,11 @@
  * Handles item expiration system (redemption, renewal, no-show scenarios)
  */
 
-import { GameState, GamePhase, ReputationType, ItemStatus, TransactionRecord, SatisfactionLevel, ReputationProfile } from '../../types';
+import { GameState, ReputationType, ItemStatus, TransactionRecord, SatisfactionLevel, ReputationProfile } from '../../types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../../systems/game/utils/logGenerator';
+import { GamePhase } from '../../systems/core/phases';
 
 export function expiryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -17,7 +18,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
             return {
                 ...state,
                 currentExpiryEvent: action.payload,
-                phase: GamePhase.NEGOTIATION
+                phase: { type: 'NEGOTIATION', mode: 'REDEEM' } as GamePhase
             };
 
         case 'RESOLVE_EXPIRY': {
@@ -197,7 +198,9 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
                 dayEvents: [...state.dayEvents, log],
                 lastSatisfaction: satisfaction,
-                phase: (isNoShow || isBreachDiscovery) ? GamePhase.BUSINESS : GamePhase.DEPARTURE
+                phase: (isNoShow || isBreachDiscovery)
+                    ? { type: 'BUSINESS', subphase: 'IDLE' } as GamePhase
+                    : { type: 'DEPARTURE' } as GamePhase
             };
         }
 

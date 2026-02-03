@@ -3,10 +3,11 @@
  * Handles inventory item state changes (pawn, redeem, forfeit, sell, etc.)
  */
 
-import { GameState, GamePhase, ReputationType, ItemStatus, TransactionRecord, SatisfactionLevel, ReputationProfile } from '../../types';
+import { GameState, ReputationType, ItemStatus, TransactionRecord, SatisfactionLevel, ReputationProfile } from '../../types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../../systems/game/utils/logGenerator';
+import { GamePhase } from '../../systems/core/phases';
 
 export function inventoryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -108,7 +109,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 inventory: updatedInventory,
                 reputation: newRep,
                 customersServedToday: servedCount,
-                phase: GamePhase.DEPARTURE,
+                phase: { type: 'DEPARTURE' } as GamePhase,
                 dayEvents: [...state.dayEvents, `拒绝续当: ${name}。物品已收归店铺 (Humanity -10)。`]
             };
         }
@@ -144,7 +145,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 ...state,
                 inventory: updatedInventory,
                 customersServedToday: servedCount,
-                phase: GamePhase.DEPARTURE,
+                phase: { type: 'DEPARTURE' } as GamePhase,
                 dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`]
             };
         }
@@ -270,7 +271,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 ...state,
                 inventory: updatedInventory,
                 customersServedToday: servedCount,
-                phase: GamePhase.DEPARTURE,
+                phase: { type: 'DEPARTURE' } as GamePhase,
                 lastSatisfaction: 'GRATEFUL',
                 dayEvents: [...state.dayEvents, `同意续当请求: ${name} (利息 +${(interestBonus * 100).toFixed(0)}%)`]
             };
@@ -282,7 +283,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
             return {
                 ...state,
                 customersServedToday: servedCount,
-                phase: GamePhase.DEPARTURE,
+                phase: { type: 'DEPARTURE' } as GamePhase,
                 lastSatisfaction: 'DESPERATE',
                 dayEvents: [...state.dayEvents, `拒绝续当请求: ${name}`]
             };
@@ -342,7 +343,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 customersServedToday: servedCount,
                 todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
                 dayEvents: [...state.dayEvents, log],
-                phase: GamePhase.DEPARTURE,
+                phase: { type: 'DEPARTURE' } as GamePhase,
                 lastSatisfaction: satisfaction
             };
         }
