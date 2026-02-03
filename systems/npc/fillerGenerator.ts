@@ -14,6 +14,7 @@ import { Mood } from '../core/types';
 import { createItemFromTemplate, getItemTemplate, ItemTemplate } from '../items/csvLoader';
 import { initializeKnowledgePool } from '../items/tagUtils';
 import { ContractType, EventChainState } from '../narrative/types';
+import { getCharacterPortraits } from '../assets';
 import {
   initializeFillerTemplates,
   isFillerTemplatesLoaded,
@@ -592,6 +593,17 @@ function createFillerItem(day: number, profile: FillerCustomerProfile): FillerIt
 }
 
 /**
+ * Get the generic portrait ID based on customer profile
+ * Maps profile (age, gender) to available generic portrait folders
+ */
+function getGenericPortraitId(profile: FillerCustomerProfile): string {
+    const genderPart = profile.gender === 'male' ? 'male' : 'female';
+    const agePart = profile.age === 'young' ? 'young' :
+                    profile.age === 'middle' ? 'middle' : 'old';
+    return `generic_${genderPart}_${agePart}`;
+}
+
+/**
  * Generate a filler customer with TRANSIENT event chain metadata
  *
  * @param day Current game day
@@ -639,11 +651,16 @@ export function generateFillerCustomer(day: number, profile?: FillerCustomerProf
         eager: 'Friendly'
     };
 
+    // Get generic portrait based on profile
+    const portraitId = getGenericPortraitId(customerProfile);
+    const portraits = getCharacterPortraits(portraitId);
+
     const customer: Customer = {
         id: `filler_${crypto.randomUUID()}`,
         name,
         description,
         avatarSeed: `filler_${customerProfile.age}_${customerProfile.gender}_${day}`,
+        portraits,
         dialogue,
         redemptionResolve,
         behaviorTags,
