@@ -7,10 +7,11 @@
  * - Player Sales: Any forfeit item at lower prices (60-85%)
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useBlackmarket } from '../../hooks/useBlackmarket';
+import { useGame } from '../../store/GameContext';
 import { cn } from '../../lib/utils';
 import { Item } from '../../systems/items/types';
 import { CategoryIcon } from '../ui/CategoryIcon';
@@ -39,6 +40,7 @@ interface BlackmarketPanelProps {
 }
 
 export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onClose }) => {
+  const { state, dispatch } = useGame();
   const {
     blackmarket,
     heatInfo,
@@ -70,6 +72,23 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
 
   // Get sellable items
   const sellableItems = useMemo(() => getSellableItems(), [getSellableItems]);
+
+  // Auto-select item from pending selection when panel opens
+  useEffect(() => {
+    if (isOpen && state.pendingSelectedItemId) {
+      // Check if the pending item exists in sellable items
+      const existsInSellable = sellableItems.some(
+        item => item.id === state.pendingSelectedItemId
+      );
+      if (existsInSellable) {
+        setSelectedItemId(state.pendingSelectedItemId);
+        // Switch to sale tab since the item is sellable
+        setSelectedTab('sale');
+      }
+      // Clear the pending selection
+      dispatch({ type: 'SET_PENDING_SELECTED_ITEM', payload: null });
+    }
+  }, [isOpen, state.pendingSelectedItemId, sellableItems, dispatch]);
 
   // Handle risk event response
   const hasRiskEvent = blackmarket.lastRiskEvent !== null;

@@ -4,10 +4,11 @@
  * 夜间工作台系统的UI组件，允许玩家修复和重铸物品。
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useWorkshop } from '../../hooks/useWorkshop';
+import { useGame } from '../../store/GameContext';
 import { cn } from '../../lib/utils';
 import { ItemStatus } from '../../systems/items/types';
 import { CategoryIcon } from '../ui/CategoryIcon';
@@ -30,6 +31,7 @@ interface WorkshopPanelProps {
 }
 
 export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose }) => {
+  const { state, dispatch } = useGame();
   const {
     workshopableItems,
     essenceBalance,
@@ -43,6 +45,21 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<WorkshopResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Auto-select item from pending selection when panel opens
+  useEffect(() => {
+    if (isOpen && state.pendingSelectedItemId) {
+      // Check if the pending item exists in workshopable items
+      const existsInWorkshop = workshopableItems.some(
+        w => w.item.id === state.pendingSelectedItemId
+      );
+      if (existsInWorkshop) {
+        setSelectedItemId(state.pendingSelectedItemId);
+      }
+      // Clear the pending selection
+      dispatch({ type: 'SET_PENDING_SELECTED_ITEM', payload: null });
+    }
+  }, [isOpen, state.pendingSelectedItemId, workshopableItems, dispatch]);
 
   const selectedItem = workshopableItems.find(w => w.item.id === selectedItemId);
 

@@ -16,7 +16,9 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
     case 'TOGGLE_BLACKMARKET':
       return {
         ...state,
-        showBlackmarket: !state.showBlackmarket
+        showBlackmarket: !state.showBlackmarket,
+        // Clear pending selection when closing the panel
+        pendingSelectedItemId: !state.showBlackmarket ? state.pendingSelectedItemId : null
       };
 
     case 'BLACKMARKET_SELL_TO_PURCHASE': {

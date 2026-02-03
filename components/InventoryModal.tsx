@@ -59,22 +59,25 @@ export const InventoryModal: React.FC = () => {
 
   const isNightPhase = state.phase === GamePhase.NIGHT;
 
-  // Handle opening Workshop panel with pre-selected item (future enhancement)
-  const handleOpenWorkshop = () => {
+  // Handle opening Workshop panel with pre-selected item
+  const handleOpenWorkshop = (itemId: string) => {
+      dispatch({ type: 'SET_PENDING_SELECTED_ITEM', payload: itemId });
       dispatch({ type: 'TOGGLE_INVENTORY' }); // Close inventory first
       dispatch({ type: 'TOGGLE_WORKSHOP' });  // Open workshop
       playSfx('CLICK');
   };
 
-  // Handle opening Insight panel
-  const handleOpenInsight = () => {
+  // Handle opening Insight panel with pre-selected item
+  const handleOpenInsight = (itemId: string) => {
+      dispatch({ type: 'SET_PENDING_SELECTED_ITEM', payload: itemId });
       dispatch({ type: 'TOGGLE_INVENTORY' }); // Close inventory first
       dispatch({ type: 'TOGGLE_INSIGHT' });   // Open insight
       playSfx('CLICK');
   };
 
-  // Handle opening Black Market panel
-  const handleOpenBlackmarket = () => {
+  // Handle opening Black Market panel with pre-selected item
+  const handleOpenBlackmarket = (itemId: string) => {
+      dispatch({ type: 'SET_PENDING_SELECTED_ITEM', payload: itemId });
       dispatch({ type: 'TOGGLE_INVENTORY' });   // Close inventory first
       dispatch({ type: 'TOGGLE_BLACKMARKET' }); // Open black market
       playSfx('CLICK');
@@ -116,7 +119,7 @@ export const InventoryModal: React.FC = () => {
               <div className="grid grid-cols-4 gap-1">
                   {/* Repair Button */}
                   <button
-                      onClick={isNightPhase ? handleOpenWorkshop : undefined}
+                      onClick={isNightPhase ? () => handleOpenWorkshop(item.id) : undefined}
                       disabled={!isNightPhase}
                       className={cn(
                           baseButtonClass,
@@ -134,7 +137,7 @@ export const InventoryModal: React.FC = () => {
 
                   {/* Reforge Button */}
                   <button
-                      onClick={isNightPhase ? handleOpenWorkshop : undefined}
+                      onClick={isNightPhase ? () => handleOpenWorkshop(item.id) : undefined}
                       disabled={!isNightPhase}
                       className={cn(
                           baseButtonClass,
@@ -152,7 +155,7 @@ export const InventoryModal: React.FC = () => {
 
                   {/* Insight/Appraise Button */}
                   <button
-                      onClick={isNightPhase ? handleOpenInsight : undefined}
+                      onClick={isNightPhase ? () => handleOpenInsight(item.id) : undefined}
                       disabled={!isNightPhase}
                       className={cn(
                           baseButtonClass,
@@ -170,7 +173,7 @@ export const InventoryModal: React.FC = () => {
 
                   {/* Sell Button */}
                   <button
-                      onClick={isNightPhase ? handleOpenBlackmarket : undefined}
+                      onClick={isNightPhase ? () => handleOpenBlackmarket(item.id) : undefined}
                       disabled={!isNightPhase}
                       className={cn(
                           baseButtonClass,

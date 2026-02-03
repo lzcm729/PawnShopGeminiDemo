@@ -19,6 +19,7 @@ type UIState = Pick<GameState,
     | 'showAppointmentBoard'
     | 'showWorkshop'
     | 'showInsight'
+    | 'pendingSelectedItemId'
 >;
 
 export function uiReducer(state: GameState, action: Action): GameState {
@@ -60,11 +61,24 @@ export function uiReducer(state: GameState, action: Action): GameState {
 
         case 'TOGGLE_WORKSHOP':
             playSfx('HOVER');
-            return { ...state, showWorkshop: !state.showWorkshop };
+            // Clear pending selection when closing the panel
+            return {
+                ...state,
+                showWorkshop: !state.showWorkshop,
+                pendingSelectedItemId: !state.showWorkshop ? state.pendingSelectedItemId : null
+            };
 
         case 'TOGGLE_INSIGHT':
             playSfx('HOVER');
-            return { ...state, showInsight: !state.showInsight };
+            // Clear pending selection when closing the panel
+            return {
+                ...state,
+                showInsight: !state.showInsight,
+                pendingSelectedItemId: !state.showInsight ? state.pendingSelectedItemId : null
+            };
+
+        case 'SET_PENDING_SELECTED_ITEM':
+            return { ...state, pendingSelectedItemId: action.payload };
 
         default:
             return state;

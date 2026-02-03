@@ -143,6 +143,7 @@ export type Action =
     // Night Panels
     | { type: 'TOGGLE_WORKSHOP' }
     | { type: 'TOGGLE_INSIGHT' }
+    | { type: 'SET_PENDING_SELECTED_ITEM'; payload: string | null }
     | { type: 'BLACKMARKET_SELL_TO_PURCHASE'; payload: { itemId: string; itemName: string; amount: number; tag: ItemTag; heatGain: number } }
     | { type: 'BLACKMARKET_SELL_DIRECT'; payload: { itemId: string; itemName: string; amount: number; heatGain: number } }
     | { type: 'BLACKMARKET_PAY_FINE'; payload: { amount: number } }

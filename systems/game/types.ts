@@ -94,4 +94,7 @@ export interface GameState {
   // === NIGHT PANELS (夜间面板) ===
   showWorkshop: boolean;                   // 工作台面板显示状态
   showInsight: boolean;                    // 格物面板显示状态
+
+  // === PENDING ITEM SELECTION (待选中物品) ===
+  pendingSelectedItemId: string | null;    // 从库存跳转时预选的物品ID
 }

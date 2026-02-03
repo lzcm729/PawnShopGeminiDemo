@@ -106,7 +106,9 @@ const initialState: GameState = {
     showBlackmarket: false,
     // === NIGHT PANELS ===
     showWorkshop: false,
-    showInsight: false
+    showInsight: false,
+    // === PENDING ITEM SELECTION ===
+    pendingSelectedItemId: null
 };
 
 // === Context ===

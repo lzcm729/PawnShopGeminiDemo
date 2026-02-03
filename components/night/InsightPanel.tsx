@@ -4,10 +4,11 @@
  * 夜间格物系统的UI组件，允许玩家研究库存物品获取精魄。
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useInsight } from '../../hooks/useInsight';
+import { useGame } from '../../store/GameContext';
 import { cn } from '../../lib/utils';
 import { Item, ItemStatus } from '../../systems/items/types';
 import { CategoryIcon } from '../ui/CategoryIcon';
@@ -31,6 +32,7 @@ interface InsightPanelProps {
 }
 
 export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) => {
+  const { state, dispatch } = useGame();
   const {
     insightableItems,
     currentEnergy,
@@ -45,6 +47,21 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
     narrative: InsightNarrative;
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Auto-select item from pending selection when panel opens
+  useEffect(() => {
+    if (isOpen && state.pendingSelectedItemId) {
+      // Check if the pending item exists in insightable items
+      const existsInInsight = insightableItems.some(
+        i => i.item.id === state.pendingSelectedItemId
+      );
+      if (existsInInsight) {
+        setSelectedItemId(state.pendingSelectedItemId);
+      }
+      // Clear the pending selection
+      dispatch({ type: 'SET_PENDING_SELECTED_ITEM', payload: null });
+    }
+  }, [isOpen, state.pendingSelectedItemId, insightableItems, dispatch]);
 
   const handleInsight = (itemId: string) => {
     setIsProcessing(true);
