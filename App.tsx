@@ -26,6 +26,7 @@ import { NightDashboard } from './components/NightDashboard';
 import { GameOverScreen } from './components/GameOverScreen';
 import { VictoryScreen } from './components/VictoryScreen';
 import { playSfx } from './systems/game/audio';
+import { GAME_CONFIG } from './systems/game/config';
 import { Button } from './components/ui/Button';
 import { Moon } from 'lucide-react';
 import { DayToNightTransition } from './components/transitions/DayToNightTransition';
@@ -51,7 +52,9 @@ const GameContent: React.FC = () => {
       // 2. Delay the actual logical phase change until the shutter has covered the screen
       // Shutter animation takes ~1.5s to fully close
       setTimeout(() => {
-          // Send state machine event for phase2 sync
+          // State machine requires: BUSINESS.IDLE -> CUSTOMER_GENERATED(false) -> BUSINESS.CLOSED -> CLOSE_SHOP -> NIGHT
+          // First transition IDLE -> CLOSED (if in IDLE), then CLOSED -> NIGHT
+          send({ type: 'CUSTOMER_GENERATED', hasCustomer: false });
           send({ type: 'CLOSE_SHOP' });
           dispatch({ type: 'START_NIGHT' });
       }, 1500);
@@ -77,6 +80,27 @@ const GameContent: React.FC = () => {
           startNewDay();
       }
   }, [state.phase, startNewDay]);
+
+  // Phase: NIGHT.EVALUATING -> Automatically evaluate game outcome
+  // This triggers after performNightCycle() completes and sends NIGHT_CYCLE_DONE
+  useEffect(() => {
+      if (PhaseMatch.nightEvaluating(state.phase)) {
+          // Determine outcome based on current game state
+          let outcome: 'continue' | 'bankrupt' | 'mother_died' | 'victory';
+
+          if (state.stats.cash >= GAME_CONFIG.GOAL_AMOUNT) {
+              outcome = 'victory';
+          } else if (state.stats.cash < 0) {
+              outcome = 'bankrupt';
+          } else if (state.stats.motherStatus.health <= 0) {
+              outcome = 'mother_died';
+          } else {
+              outcome = 'continue';
+          }
+
+          send({ type: 'EVALUATION_DONE', outcome });
+      }
+  }, [state.phase, state.stats.cash, state.stats.motherStatus.health, send]);
 
   // Phase: BUSINESS -> Automatically trigger event if no customer
   // Note: canServe is always true now - the generateDailyEvent handles the logic internally

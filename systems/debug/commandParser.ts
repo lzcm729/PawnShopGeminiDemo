@@ -561,7 +561,7 @@ function handleStateCommand(args: string[], getState: () => any): CommandResult 
 
 /**
  * Handle 'close shop' command - triggers CLOSE_SHOP event to enter night phase
- * NOTE: CLOSE_SHOP event only works in BUSINESS.CLOSED subphase (all customers served)
+ * State machine flow: BUSINESS.IDLE -> CUSTOMER_GENERATED(false) -> BUSINESS.CLOSED -> CLOSE_SHOP -> NIGHT
  */
 function handleCloseShopCommand(
   dispatch: (action: any) => void,
@@ -569,28 +569,25 @@ function handleCloseShopCommand(
 ): CommandResult {
   const state = getState();
 
-  // Check if we're in BUSINESS.CLOSED subphase (all customers served)
-  // The state machine only allows CLOSE_SHOP transition from BUSINESS.CLOSED
-  if (!PhaseMatch.businessClosed(state.phase)) {
-    // Provide helpful error message based on current state
-    if (PhaseIs.business(state.phase)) {
-      return {
-        success: false,
-        message: `Error: Shop can only be closed when all customers have been served (BUSINESS.CLOSED). Current subphase: ${state.phase.subphase}`
-      };
-    }
+  // Check if we're in BUSINESS phase
+  if (!PhaseIs.business(state.phase)) {
     return {
       success: false,
       message: `Error: Can only close shop in BUSINESS phase. Current phase: ${JSON.stringify(state.phase)}`
     };
   }
 
-  // Dispatch the CLOSE_SHOP event through the state machine
+  // If in IDLE subphase, first transition to CLOSED
+  if (state.phase.subphase === 'IDLE') {
+    dispatch({ type: 'PHASE_TRANSITION', payload: { type: 'CUSTOMER_GENERATED', hasCustomer: false } });
+  }
+
+  // Now dispatch the CLOSE_SHOP event through the state machine
   dispatch({ type: 'PHASE_TRANSITION', payload: { type: 'CLOSE_SHOP' } });
 
   return {
     success: true,
-    message: 'Shop closed. Entering departure/night phase...'
+    message: 'Shop closed. Entering night phase...'
   };
 }
 

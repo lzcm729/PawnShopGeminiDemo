@@ -210,8 +210,9 @@ export const useGameEngine = () => {
     const blackmarketRiskEvent = checkRiskEvent(state.blackmarket?.heat ?? 0);
     dispatch({ type: 'BLACKMARKET_PROCESS_DAY_END', payload: { riskEvent: blackmarketRiskEvent } });
 
-    // 9. End Day (Transition to Morning) - via state machine
-    send({ type: 'END_DAY' });
+    // 9. Night cycle complete - transition to EVALUATING via state machine
+    // Note: END_DAY was already sent by NightDashboard.completeNight() to enter PROCESSING
+    send({ type: 'NIGHT_CYCLE_DONE' });
   };
 
   // Helper: Create a Customer from an ExpiryEvent for the settlement interface
