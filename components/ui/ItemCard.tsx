@@ -2,7 +2,7 @@
 import React from 'react';
 import { CategoryIcon } from './CategoryIcon';
 import { Item, ItemStatus } from '../../types';
-import { AlertTriangle, ShieldCheck, Heart, Skull, CalendarClock, DollarSign } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Heart, Skull, DollarSign } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getDisplayName } from '../../systems/items/tagUtils';
 import { getItemIcon } from '../../systems/assets';
@@ -67,20 +67,10 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
     <div className={cn("relative flex flex-col bg-noir-200 border-l-4 shadow-sm transition-all duration-300 group overflow-hidden font-mono", borderColor)}>
       <div className="p-4 flex-1 flex flex-col gap-3">
         {/* Header: Status Badge */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center">
           <div className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded text-white tracking-wider", statusColor)}>
             {statusText}
           </div>
-          {/* Due Date for Active Items */}
-          {isActive && item.pawnInfo && !treatedAsOwned && (
-            <div className="flex items-center gap-1 text-[10px] text-noir-txt-muted">
-              <CalendarClock className="w-3 h-3" />
-              <span>DUE: DAY {item.pawnInfo.dueDate}</span>
-              {item.pawnInfo.extensionCount ? (
-                <span className="text-amber-500 ml-1">+{item.pawnInfo.extensionCount}</span>
-              ) : null}
-            </div>
-          )}
         </div>
 
         {/* Centered Large Icon */}
