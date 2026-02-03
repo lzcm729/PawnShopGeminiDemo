@@ -70,10 +70,7 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
                       return `https://picsum.photos/seed/${customer.avatarSeed}/200`;
                     })()}
                     alt="Subject"
-                    className={cn(
-                        "w-full h-full object-cover filter contrast-125 sepia-[0.3]",
-                        isAngry ? "grayscale-0" : "grayscale"
-                    )}
+                    className="w-full h-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${customer.avatarSeed}/200`;
                     }}
