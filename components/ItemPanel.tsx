@@ -363,7 +363,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                             style={{ left: `${initialLeftPercent}%`, width: `${initialWidthPercent}%` }}
                         ></div>
 
-                        <div 
+                        <div
                             className={`absolute top-0 bottom-0 border-x-2 transition-all duration-700 ease-out z-10 ${rangeBarClass}`}
                             style={barStyle}
                         >
@@ -373,6 +373,13 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                                 </div>
                                 <div className={`absolute -top-5 right-0 translate-x-1/2 text-[10px] font-bold transition-all duration-700 bg-black/50 px-1 rounded ${rangeTextClass}`}>
                                     ${currentMax}
+                                </div>
+                                {/* Mid-value indicator */}
+                                <div className="absolute left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center">
+                                    <div className="text-[11px] font-bold text-pawn-accent bg-black/70 px-1.5 py-0.5 rounded border border-pawn-accent/50">
+                                        ${Math.round((currentMin + currentMax) / 2)}
+                                    </div>
+                                    <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-l-transparent border-r-transparent border-t-pawn-accent/70"></div>
                                 </div>
                             </div>
                         </div>
