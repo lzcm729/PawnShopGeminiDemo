@@ -35,3 +35,6 @@ test-results/
 
 # Electron build output
 release/
+
+# Generated assets (character portraits, item icons)
+assets/
