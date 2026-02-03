@@ -65,14 +65,31 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
 
   return (
     <div className={cn("relative flex flex-col bg-noir-200 border-l-4 shadow-sm transition-all duration-300 group overflow-hidden font-mono", borderColor)}>
-      <div className="p-3 flex-1 flex flex-col gap-2">
-        {/* Main Info */}
-        <div className="flex gap-3">
-          <div className="w-14 h-14 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0 overflow-hidden rounded">
+      <div className="p-4 flex-1 flex flex-col gap-3">
+        {/* Header: Status Badge */}
+        <div className="flex items-center justify-between">
+          <div className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded text-white tracking-wider", statusColor)}>
+            {statusText}
+          </div>
+          {/* Due Date for Active Items */}
+          {isActive && item.pawnInfo && !treatedAsOwned && (
+            <div className="flex items-center gap-1 text-[10px] text-noir-txt-muted">
+              <CalendarClock className="w-3 h-3" />
+              <span>DUE: DAY {item.pawnInfo.dueDate}</span>
+              {item.pawnInfo.extensionCount ? (
+                <span className="text-amber-500 ml-1">+{item.pawnInfo.extensionCount}</span>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        {/* Centered Large Icon */}
+        <div className="flex justify-center py-2">
+          <div className="w-24 h-24 bg-noir-300 border border-noir-400 flex items-center justify-center overflow-hidden rounded-lg shadow-inner">
             <img
               src={getItemIcon(item)}
               alt={item.name}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain p-1"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
                 const fallback = (e.target as HTMLImageElement).nextElementSibling;
@@ -80,66 +97,75 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
               }}
             />
             <div className="hidden items-center justify-center w-full h-full">
-              <CategoryIcon category={item.category} className="text-noir-txt-secondary w-6 h-6" />
-            </div>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <h3 className="font-bold text-noir-txt-primary truncate text-sm leading-tight font-serif tracking-wide">{getDisplayName(item)}</h3>
-              <div className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded text-white tracking-wider shrink-0", statusColor)}>
-                {statusText}
-              </div>
-            </div>
-            <div className="text-[10px] text-noir-txt-muted mb-1">{item.category}</div>
-            <div className="flex flex-wrap gap-1">
-                {item.isFake && <span className="text-[9px] border border-red-900 text-red-500 px-1 rounded flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> FAKE</span>}
-                {item.isStolen && <span className="text-[9px] border border-purple-900 text-purple-500 px-1 rounded flex items-center gap-1"><Skull className="w-3 h-3"/> ILLICIT</span>}
-                {item.sentimentalValue && <span className="text-[9px] border border-rose-900 text-rose-500 px-1 rounded flex items-center gap-1"><Heart className="w-3 h-3"/> SENTIMENTAL</span>}
-                {!item.isFake && !item.isStolen && item.appraised && <span className="text-[9px] border border-green-900 text-green-500 px-1 rounded flex items-center gap-1"><ShieldCheck className="w-3 h-3"/> VERIFIED</span>}
+              <CategoryIcon category={item.category} className="text-noir-txt-secondary w-10 h-10" />
             </div>
           </div>
         </div>
+
+        {/* Item Name - Centered */}
+        <div className="text-center">
+          <h3 className="font-bold text-noir-txt-primary text-sm leading-tight font-serif tracking-wide">
+            {getDisplayName(item)}
+          </h3>
+        </div>
+
+        {/* Category and Trait Tags - Centered */}
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="text-[10px] text-noir-txt-muted">{item.category}</div>
+          <div className="flex flex-wrap justify-center gap-1">
+            {item.isFake && (
+              <span className="text-[9px] border border-red-900 text-red-500 px-1 rounded flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3"/> FAKE
+              </span>
+            )}
+            {item.isStolen && (
+              <span className="text-[9px] border border-purple-900 text-purple-500 px-1 rounded flex items-center gap-1">
+                <Skull className="w-3 h-3"/> ILLICIT
+              </span>
+            )}
+            {item.sentimentalValue && (
+              <span className="text-[9px] border border-rose-900 text-rose-500 px-1 rounded flex items-center gap-1">
+                <Heart className="w-3 h-3"/> SENTIMENTAL
+              </span>
+            )}
+            {!item.isFake && !item.isStolen && item.appraised && (
+              <span className="text-[9px] border border-green-900 text-green-500 px-1 rounded flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3"/> VERIFIED
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-noir-400/50 my-1"></div>
 
         {/* Value Info */}
         <div className="flex items-center justify-between text-[10px] bg-noir-300/50 px-2 py-1.5 rounded">
-            {treatedAsOwned ? (
-              <>
-                <span className="text-noir-txt-muted">MARKET VALUE</span>
-                <span className="text-purple-400 font-bold">${item.realValue}</span>
-              </>
-            ) : isForfeit ? (
-              <>
-                <span className="text-noir-txt-muted">MARKET VALUE</span>
-                <span className="text-amber-400 font-bold">${item.realValue}</span>
-              </>
-            ) : (
-              <>
-                <span className="text-noir-txt-muted flex items-center gap-1">
-                  <DollarSign className="w-3 h-3" /> PRINCIPAL
-                </span>
-                <span className="text-noir-txt-primary font-bold">${item.pawnAmount}</span>
-              </>
-            )}
+          {treatedAsOwned ? (
+            <>
+              <span className="text-noir-txt-muted">MARKET VALUE</span>
+              <span className="text-purple-400 font-bold">${item.realValue}</span>
+            </>
+          ) : isForfeit ? (
+            <>
+              <span className="text-noir-txt-muted">MARKET VALUE</span>
+              <span className="text-amber-400 font-bold">${item.realValue}</span>
+            </>
+          ) : (
+            <>
+              <span className="text-noir-txt-muted flex items-center gap-1">
+                <DollarSign className="w-3 h-3" /> PRINCIPAL
+              </span>
+              <span className="text-noir-txt-primary font-bold">${item.pawnAmount}</span>
+            </>
+          )}
         </div>
-
-        {/* Due Date Indicator (Active Only, not for reforged) */}
-        {isActive && item.pawnInfo && !treatedAsOwned && (
-            <div className="flex items-center justify-between text-[10px] text-noir-txt-muted bg-noir-300/50 p-1.5 rounded border border-dashed border-noir-400">
-                <div className="flex items-center gap-1.5">
-                    <CalendarClock className="w-3 h-3" />
-                    <span>DUE: DAY {item.pawnInfo.dueDate}</span>
-                </div>
-                {item.pawnInfo.extensionCount ? (
-                    <span className="text-amber-500">Ext: {item.pawnInfo.extensionCount}</span>
-                ) : null}
-            </div>
-        )}
       </div>
 
       {/* Actions */}
       {actions && (
-        <div className="bg-black/30 p-2 border-t border-noir-300 flex items-center justify-end gap-2">
-            {actions}
+        <div className="bg-black/30 p-2 border-t border-noir-300 flex items-center justify-center gap-2 flex-wrap">
+          {actions}
         </div>
       )}
     </div>

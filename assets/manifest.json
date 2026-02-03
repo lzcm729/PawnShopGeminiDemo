@@ -1,199 +1,6 @@
 {
-  "generatedAt": "2026-02-03T09:47:30Z",
-  "items": {
-    "book_01": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "book_01/default.png",
-        "book_01/reforged.png",
-        "book_01/restored.png"
-      ]
-    },
-    "console_student": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "console_student/default.png",
-        "console_student/reforged.png",
-        "console_student/restored.png"
-      ]
-    },
-    "diamond_mystery": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "diamond_mystery/default.png",
-        "diamond_mystery/reforged.png",
-        "diamond_mystery/restored.png"
-      ]
-    },
-    "emma_clothes": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "emma_clothes/default.png",
-        "emma_clothes/reforged.png",
-        "emma_clothes/restored.png"
-      ]
-    },
-    "emma_laptop": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "emma_laptop/default.png",
-        "emma_laptop/reforged.png",
-        "emma_laptop/restored.png"
-      ]
-    },
-    "emma_skincare": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "emma_skincare/default.png",
-        "emma_skincare/reforged.png",
-        "emma_skincare/restored.png"
-      ]
-    },
-    "emma_watch": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "emma_watch/default.png",
-        "emma_watch/reforged.png",
-        "emma_watch/restored.png"
-      ]
-    },
-    "lin_watch": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "lin_watch/default.png",
-        "lin_watch/reforged.png",
-        "lin_watch/restored.png"
-      ]
-    },
-    "painting_01": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "painting_01/default.png",
-        "painting_01/reforged.png",
-        "painting_01/restored.png"
-      ]
-    },
-    "ring_01": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "ring_01/default.png",
-        "ring_01/reforged.png",
-        "ring_01/restored.png"
-      ]
-    },
-    "susan_bag": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "susan_bag/default.png",
-        "susan_bag/reforged.png",
-        "susan_bag/restored.png"
-      ]
-    },
-    "vase_01": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "vase_01/default.png",
-        "vase_01/reforged.png",
-        "vase_01/restored.png"
-      ]
-    },
-    "watch_01": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "watch_01/default.png",
-        "watch_01/reforged.png",
-        "watch_01/restored.png"
-      ]
-    },
-    "watch_gambler": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "watch_gambler/default.png",
-        "watch_gambler/reforged.png",
-        "watch_gambler/restored.png"
-      ]
-    },
-    "zhao_cert": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "zhao_cert/default.png",
-        "zhao_cert/reforged.png",
-        "zhao_cert/restored.png"
-      ]
-    },
-    "zhao_medal": {
-      "states": [
-        "default",
-        "reforged",
-        "restored"
-      ],
-      "files": [
-        "zhao_medal/default.png",
-        "zhao_medal/reforged.png",
-        "zhao_medal/restored.png"
-      ]
-    }
-  },
+  "generatedAt": "2026-02-03T13:23:21.242Z",
+  "items": {},
   "characters": {
     "emma": {
       "emotions": [
@@ -209,6 +16,150 @@
         "emma/grateful.png",
         "emma/neutral.png",
         "emma/resentful.png"
+      ]
+    },
+    "generic_female_middle": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_female_middle/angry.png",
+        "generic_female_middle/desperate.png",
+        "generic_female_middle/grateful.png",
+        "generic_female_middle/neutral.png",
+        "generic_female_middle/resentful.png"
+      ]
+    },
+    "generic_female_old": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_female_old/angry.png",
+        "generic_female_old/desperate.png",
+        "generic_female_old/grateful.png",
+        "generic_female_old/neutral.png",
+        "generic_female_old/resentful.png"
+      ]
+    },
+    "generic_female_young": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_female_young/angry.png",
+        "generic_female_young/desperate.png",
+        "generic_female_young/grateful.png",
+        "generic_female_young/neutral.png",
+        "generic_female_young/resentful.png"
+      ]
+    },
+    "generic_male_middle": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_male_middle/angry.png",
+        "generic_male_middle/desperate.png",
+        "generic_male_middle/grateful.png",
+        "generic_male_middle/neutral.png",
+        "generic_male_middle/resentful.png"
+      ]
+    },
+    "generic_male_old": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_male_old/angry.png",
+        "generic_male_old/desperate.png",
+        "generic_male_old/grateful.png",
+        "generic_male_old/neutral.png",
+        "generic_male_old/resentful.png"
+      ]
+    },
+    "generic_male_young": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_male_young/angry.png",
+        "generic_male_young/desperate.png",
+        "generic_male_young/grateful.png",
+        "generic_male_young/neutral.png",
+        "generic_male_young/resentful.png"
+      ]
+    },
+    "lin": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "lin/angry.png",
+        "lin/desperate.png",
+        "lin/grateful.png",
+        "lin/neutral.png",
+        "lin/resentful.png"
+      ]
+    },
+    "susan": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "susan/angry.png",
+        "susan/desperate.png",
+        "susan/grateful.png",
+        "susan/neutral.png",
+        "susan/resentful.png"
+      ]
+    },
+    "zhao": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "zhao/angry.png",
+        "zhao/desperate.png",
+        "zhao/grateful.png",
+        "zhao/neutral.png",
+        "zhao/resentful.png"
       ]
     }
   }
