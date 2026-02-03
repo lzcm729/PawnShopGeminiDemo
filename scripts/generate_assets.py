@@ -186,9 +186,9 @@ ITEMS = {
     "zhao_medal": {
         "category": "古玩",
         "states": {
-            "default": ("一等功勋章", "a heavy military merit medal, first-class honor, cracked red enamel, aged brass"),
-            "restored": ("修复勋章", "a restored military medal, repaired enamel in red and gold, polished brass"),
-            "reforged": ("珍贵军功章", "a rare early batch military merit medal, precious artifact, museum quality"),
+            "default": ("一等功勋章", "a heavy Chinese military merit medal with red star emblem, cracked red enamel, aged brass, NO TEXT NO WORDS NO LETTERS"),
+            "restored": ("修复勋章", "a restored Chinese military medal with red star and wheat emblem, repaired enamel in red and gold, polished brass, NO TEXT NO WORDS NO LETTERS"),
+            "reforged": ("珍贵军功章", "a rare vintage Chinese military merit medal with red star emblem, precious artifact, museum quality, NO TEXT NO WORDS NO LETTERS"),
         }
     },
     "zhao_cert": {

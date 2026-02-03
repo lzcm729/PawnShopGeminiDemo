@@ -1,6 +1,42 @@
 {
-  "generatedAt": "2026-02-03T09:01:01Z",
+  "generatedAt": "2026-02-03T09:47:30Z",
   "items": {
+    "book_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "book_01/default.png",
+        "book_01/reforged.png",
+        "book_01/restored.png"
+      ]
+    },
+    "console_student": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "console_student/default.png",
+        "console_student/reforged.png",
+        "console_student/restored.png"
+      ]
+    },
+    "diamond_mystery": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "diamond_mystery/default.png",
+        "diamond_mystery/reforged.png",
+        "diamond_mystery/restored.png"
+      ]
+    },
     "emma_clothes": {
       "states": [
         "default",
@@ -11,6 +47,54 @@
         "emma_clothes/default.png",
         "emma_clothes/reforged.png",
         "emma_clothes/restored.png"
+      ]
+    },
+    "emma_laptop": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "emma_laptop/default.png",
+        "emma_laptop/reforged.png",
+        "emma_laptop/restored.png"
+      ]
+    },
+    "emma_skincare": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "emma_skincare/default.png",
+        "emma_skincare/reforged.png",
+        "emma_skincare/restored.png"
+      ]
+    },
+    "emma_watch": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "emma_watch/default.png",
+        "emma_watch/reforged.png",
+        "emma_watch/restored.png"
+      ]
+    },
+    "lin_watch": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "lin_watch/default.png",
+        "lin_watch/reforged.png",
+        "lin_watch/restored.png"
       ]
     },
     "painting_01": {
@@ -37,6 +121,30 @@
         "ring_01/restored.png"
       ]
     },
+    "susan_bag": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "susan_bag/default.png",
+        "susan_bag/reforged.png",
+        "susan_bag/restored.png"
+      ]
+    },
+    "vase_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "vase_01/default.png",
+        "vase_01/reforged.png",
+        "vase_01/restored.png"
+      ]
+    },
     "watch_01": {
       "states": [
         "default",
@@ -47,6 +155,42 @@
         "watch_01/default.png",
         "watch_01/reforged.png",
         "watch_01/restored.png"
+      ]
+    },
+    "watch_gambler": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "watch_gambler/default.png",
+        "watch_gambler/reforged.png",
+        "watch_gambler/restored.png"
+      ]
+    },
+    "zhao_cert": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "zhao_cert/default.png",
+        "zhao_cert/reforged.png",
+        "zhao_cert/restored.png"
+      ]
+    },
+    "zhao_medal": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "zhao_medal/default.png",
+        "zhao_medal/reforged.png",
+        "zhao_medal/restored.png"
       ]
     }
   },
