@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { Button } from './ui/Button';
-import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock, Skull } from 'lucide-react';
+import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock, Skull, Briefcase } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
@@ -15,12 +15,14 @@ import { BlackmarketPanel } from './night/BlackmarketPanel';
 import { UpgradeShopModal } from './UpgradeShopModal';
 import { FacilityControlModal } from './FacilityControlModal';
 import { getHeatLevel } from '../systems/blackmarket/types';
+import { Tooltip } from './ui/Tooltip';
+import { ReputationType } from '../systems/core/types';
 import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost } from '../systems/upgrades';
 
 export const NightDashboard: React.FC = () => {
     const { state, dispatch } = useGame();
     const { performNightCycle } = useGameEngine();
-    const { inbox, inventory, stats } = state;
+    const { inbox, inventory, stats, reputation } = state;
 
     const [showMonologue, setShowMonologue] = useState(false);
     const [monologueText, setMonologueText] = useState("");
@@ -416,6 +418,41 @@ export const NightDashboard: React.FC = () => {
                     <div className="text-center mb-8">
                         <div className="text-[10px] uppercase text-stone-600 mb-2 tracking-[0.2em]">Net Cash Position</div>
                         <div className="text-3xl font-mono text-stone-200">${stats.cash}</div>
+                    </div>
+
+                    {/* Reputation Bars */}
+                    <div className="flex flex-col gap-3 mb-8 w-full max-w-[200px]">
+                        <div className="text-[10px] uppercase text-stone-600 tracking-[0.2em] text-center">Reputation</div>
+
+                        <Tooltip content={<div className="text-xs"><span className="font-bold">Humanity:</span> {reputation[ReputationType.HUMANITY]}%</div>}>
+                            <div className="flex items-center gap-3">
+                                <Heart className="w-4 h-4 text-red-400 shrink-0" />
+                                <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
+                                    <div className="h-full bg-red-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.HUMANITY]}%` }}></div>
+                                </div>
+                                <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.HUMANITY]}%</span>
+                            </div>
+                        </Tooltip>
+
+                        <Tooltip content={<div className="text-xs"><span className="font-bold">Credibility:</span> {reputation[ReputationType.CREDIBILITY]}%</div>}>
+                            <div className="flex items-center gap-3">
+                                <Briefcase className="w-4 h-4 text-amber-400 shrink-0" />
+                                <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
+                                    <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.CREDIBILITY]}%` }}></div>
+                                </div>
+                                <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.CREDIBILITY]}%</span>
+                            </div>
+                        </Tooltip>
+
+                        <Tooltip content={<div className="text-xs"><span className="font-bold">Underworld:</span> {reputation[ReputationType.UNDERWORLD]}%</div>}>
+                            <div className="flex items-center gap-3">
+                                <Skull className="w-4 h-4 text-purple-400 shrink-0" />
+                                <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
+                                    <div className="h-full bg-purple-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.UNDERWORLD]}%` }}></div>
+                                </div>
+                                <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.UNDERWORLD]}%</span>
+                            </div>
+                        </Tooltip>
                     </div>
 
                     <Button
