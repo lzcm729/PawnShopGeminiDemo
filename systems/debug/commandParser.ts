@@ -1,6 +1,6 @@
 
 import { ReputationType, ItemStatus } from '../../types';
-import { GamePhase, PhaseIs } from '../core/phases';
+import { GamePhase, PhaseIs, PhaseMatch } from '../core/phases';
 import { testAllFullStoryFiles, testFullStoryByName, formatFullTestResults } from '../narrative/dsl/__tests__/fullFileTest';
 import type { Item, PawnInfo, WorkState } from '../items/types';
 import type { ItemTag } from '../items/tags';
@@ -101,6 +101,8 @@ export function executeCommand(
   set chain <id> <var> <val> - Set chain variable (e.g., set chain chain_emma funds 400)
   open <panel>          - Open panel (upgrade|mail|calendar|inventory|medical|visit|debug|appointment|blackmarket)
   close <panel>         - Close panel
+  close shop            - Close shop and enter night phase (business phase only)
+  skip day              - Skip to next day's morning brief
   add cash <n>          - Add cash (can be negative)
   add essence <n>       - Add essence to all types
   add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2] - Add test pawn item
@@ -126,8 +128,14 @@ export function executeCommand(
     case 'open':
       return handleOpenCommand(args, dispatch, getState, true);
 
-    case 'close':
+    case 'close': {
+      // Handle 'close shop' as a special two-word command
+      if (args[0]?.toLowerCase() === 'shop') {
+        return handleCloseShopCommand(dispatch, getState);
+      }
+      // Otherwise treat as panel close command
       return handleOpenCommand(args, dispatch, getState, false);
+    }
 
     case 'add':
       return handleAddCommand(args, dispatch, getState);
@@ -143,6 +151,12 @@ export function executeCommand(
         return { success: true, message: 'Triggering customer spawn...' };
       }
       return { success: false, message: `Unknown spawn target: ${args[0]}` };
+
+    case 'skip':
+      if (args[0]?.toLowerCase() === 'day') {
+        return handleSkipDayCommand(dispatch, getState);
+      }
+      return { success: false, message: `Unknown skip target: ${args[0]}. Available: day` };
 
     case 'test':
       return handleTestCommand(args);
@@ -543,6 +557,80 @@ function handleStateCommand(args: string[], getState: () => any): CommandResult 
   }
 
   return { success: true, message: `${path} = ${value}` };
+}
+
+/**
+ * Handle 'close shop' command - triggers CLOSE_SHOP event to enter night phase
+ * NOTE: CLOSE_SHOP event only works in BUSINESS.CLOSED subphase (all customers served)
+ */
+function handleCloseShopCommand(
+  dispatch: (action: any) => void,
+  getState: () => any
+): CommandResult {
+  const state = getState();
+
+  // Check if we're in BUSINESS.CLOSED subphase (all customers served)
+  // The state machine only allows CLOSE_SHOP transition from BUSINESS.CLOSED
+  if (!PhaseMatch.businessClosed(state.phase)) {
+    // Provide helpful error message based on current state
+    if (PhaseIs.business(state.phase)) {
+      return {
+        success: false,
+        message: `Error: Shop can only be closed when all customers have been served (BUSINESS.CLOSED). Current subphase: ${state.phase.subphase}`
+      };
+    }
+    return {
+      success: false,
+      message: `Error: Can only close shop in BUSINESS phase. Current phase: ${JSON.stringify(state.phase)}`
+    };
+  }
+
+  // Dispatch the CLOSE_SHOP event through the state machine
+  dispatch({ type: 'PHASE_TRANSITION', payload: { type: 'CLOSE_SHOP' } });
+
+  return {
+    success: true,
+    message: 'Shop closed. Entering departure/night phase...'
+  };
+}
+
+/**
+ * Handle 'skip day' command - jumps directly to next day's MORNING_BRIEF
+ */
+function handleSkipDayCommand(
+  dispatch: (action: any) => void,
+  getState: () => any
+): CommandResult {
+  const state = getState();
+  const currentDay = state.stats.day;
+  const newDay = currentDay + 1;
+
+  // Skip to next day by updating state directly
+  // This bypasses the normal night cycle but is useful for testing
+  const newState = {
+    ...state,
+    stats: {
+      ...state.stats,
+      day: newDay,
+      actionPoints: state.stats.maxActionPoints || 5
+    },
+    phase: { type: 'MORNING_BRIEF' } as GamePhase,
+    // Reset daily counters
+    customersServedToday: 0,
+    narrativeCustomersServedToday: 0,
+    // Reset night state
+    nightState: {
+      ...state.nightState,
+      energy: state.nightState?.maxEnergy || 3
+    }
+  };
+
+  dispatch({ type: 'LOAD_GAME', payload: newState });
+
+  return {
+    success: true,
+    message: `Skipped to Day ${newDay} (MORNING_BRIEF phase)`
+  };
 }
 
 function handleAddCommand(
@@ -1073,6 +1161,18 @@ export function getAvailableCommands(): CommandDef[] {
       description: 'Close a panel',
       usage: 'close <panel>',
       examples: [`close upgrade`, `close mail`]
+    },
+    {
+      command: 'close shop',
+      description: 'Close shop and enter night phase (business phase only)',
+      usage: 'close shop',
+      examples: [`close shop`]
+    },
+    {
+      command: 'skip day',
+      description: 'Skip to next day\'s morning brief (bypasses night cycle)',
+      usage: 'skip day',
+      examples: [`skip day`]
     },
     {
       command: 'add cash',

@@ -69,7 +69,7 @@ function createMockState(overrides: Partial<GameState> = {}): GameState {
         coreLostItems: [],
         essenceBalance: { HOPE: 0, REGRET: 0, GREED: 0, TRUST: 0, FEAR: 0 },
         nightState: { energy: 3, maxEnergy: 3, actionsThisNight: [] },
-        shopUpgrades: {} as any,
+        shopUpgrades: { upgrades: [] },
         showUpgradeShop: false,
         showFacilityControl: false,
         appointmentBoard: { candidates: [], selectedIds: [], preference: 'RANDOM' },
