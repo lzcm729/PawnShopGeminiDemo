@@ -88,7 +88,8 @@ export const TRANSITIONS: TransitionRule[] = [
         event: 'DISMISS',
         guard: (state) => state.expiryQueue.length <= 1,
         to: () => ({ type: 'BUSINESS', subphase: 'IDLE' }),
-        effects: [actions.clearExpiryQueue, actions.clearCustomer, actions.resetDailyCounters]
+        effects: [actions.clearExpiryQueue, actions.clearCustomer]
+        // Note: resetDailyCounters removed - should only be called at start of day, not after each customer
     },
 
     // ========== BUSINESS: IDLE ==========
