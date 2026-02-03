@@ -472,6 +472,11 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                               <span>仍在典当期（客户赎回时扣减声誉）</span>
                             </div>
                           )}
+                          {/* Underworld reputation gain indicator */}
+                          <div className="flex items-center gap-1 mt-1 text-xs text-purple-400">
+                            <Skull className="w-3 h-3" />
+                            <span>出售获得：黑道 +2</span>
+                          </div>
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-mono font-bold text-green-400">
@@ -538,6 +543,7 @@ const SaleTab: React.FC<SaleTabProps> = ({
     <div className="space-y-2">
       <div className="bg-amber-950/30 border border-amber-700 p-3 rounded text-amber-400 text-sm mb-4">
         自由出售价格较低 (60-85%)，但无数量限制。每件增加 +2 热度。
+        <span className="ml-2 text-purple-400">黑道声誉 +2</span>
       </div>
 
       {items.map(item => {
@@ -588,6 +594,11 @@ const SaleTab: React.FC<SaleTabProps> = ({
                     <span>仍在典当期（客户赎回时扣减声誉），赔偿 ${compensation}</span>
                   </div>
                 )}
+                {/* Underworld reputation gain indicator */}
+                <div className="flex items-center gap-1 mt-1 text-xs text-purple-400">
+                  <Skull className="w-3 h-3" />
+                  <span>出售获得：黑道 +2</span>
+                </div>
               </div>
               <div className="text-right">
                 <div className="text-xs text-stone-500">售价</div>
@@ -798,6 +809,17 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ action, checkBreach, onCo
               </div>
               <div className="text-xs text-amber-400 mt-1 font-mono">
                 出售即获得：黑道 +2 | 客户赎回时：人情 -3, 商誉 -1
+              </div>
+            </div>
+          </div>
+        )}
+        {!isBreach && (action.type === 'sell_purchase' || action.type === 'sell_direct') && (
+          <div className="bg-purple-950/50 border border-purple-700 p-3 rounded flex items-start gap-2">
+            <Skull className="w-5 h-5 text-purple-500 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-purple-400 text-sm">声誉变化</div>
+              <div className="text-xs text-purple-300/80 mt-1 font-mono">
+                出售获得：黑道 +2
               </div>
             </div>
           </div>
