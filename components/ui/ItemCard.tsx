@@ -6,6 +6,7 @@ import { Item, ItemStatus } from '../../types';
 import { AlertTriangle, ShieldCheck, Heart, Skull, BookOpen, ChevronDown, ChevronUp, Barcode, CalendarClock, DollarSign, LogIn, Search, FileX, ArrowRightCircle, CheckCircle2, History } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getDisplayName } from '../../systems/items/tagUtils';
+import { getItemIcon } from '../../systems/assets';
 
 interface ItemCardProps {
   item: Item;
@@ -110,8 +111,20 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions, s
       <div className="p-3 flex-1 flex flex-col gap-3">
         {/* Main Info */}
         <div className="flex gap-3">
-          <div className="w-12 h-12 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0">
-            <CategoryIcon category={item.category} className="text-noir-txt-secondary w-6 h-6" />
+          <div className="w-14 h-14 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0 overflow-hidden rounded">
+            <img
+              src={getItemIcon(item)}
+              alt={item.name}
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                const fallback = (e.target as HTMLImageElement).nextElementSibling;
+                if (fallback) (fallback as HTMLElement).style.display = 'flex';
+              }}
+            />
+            <div className="hidden items-center justify-center w-full h-full">
+              <CategoryIcon category={item.category} className="text-noir-txt-secondary w-6 h-6" />
+            </div>
           </div>
           <div className="min-w-0">
             <h3 className="font-bold text-noir-txt-primary truncate text-sm leading-tight mb-1 font-serif tracking-wide">{getDisplayName(item)}</h3>
