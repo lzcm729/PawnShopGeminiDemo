@@ -1,6 +1,30 @@
 {
-  "generatedAt": "2026-02-02T17:49:00Z",
+  "generatedAt": "2026-02-03T08:29:41Z",
   "items": {
+    "emma_clothes": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "emma_clothes/default.png",
+        "emma_clothes/reforged.png",
+        "emma_clothes/restored.png"
+      ]
+    },
+    "painting_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "painting_01/default.png",
+        "painting_01/reforged.png",
+        "painting_01/restored.png"
+      ]
+    },
     "ring_01": {
       "states": [
         "default",
@@ -8,9 +32,9 @@
         "restored"
       ],
       "files": [
-        "ring_01_default.png",
-        "ring_01_reforged.png",
-        "ring_01_restored.png"
+        "ring_01/default.png",
+        "ring_01/reforged.png",
+        "ring_01/restored.png"
       ]
     },
     "watch_01": {
@@ -20,9 +44,9 @@
         "restored"
       ],
       "files": [
-        "watch_01_default.png",
-        "watch_01_reforged.png",
-        "watch_01_restored.png"
+        "watch_01/default.png",
+        "watch_01/reforged.png",
+        "watch_01/restored.png"
       ]
     }
   },

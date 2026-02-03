@@ -73,8 +73,8 @@ signal.signal(signal.SIGINT, signal_handler)
 
 STYLE = {
     "item": {
-        "prefix": "Hand-painted watercolor illustration of",
-        "suffix": "Soft watercolor brush strokes, warm muted color palette, gentle diffused lighting, visible paper texture, artistic organic edges, delicate ink outlines, cozy pawn shop atmosphere. Square composition, centered subject, cream-colored background with subtle wash."
+        "prefix": "Watercolor illustration, single isolated object:",
+        "suffix": "Hand-painted watercolor style, soft brush strokes, warm muted colors, fine ink outlines. Object floating on pure cream white paper, gentle watercolor splash behind object only, absolutely no background scene, no table, no surface, no environment, no context. Product illustration style, clean minimal, centered composition."
     },
     "character": {
         "prefix": "Hand-painted watercolor portrait of",
@@ -90,9 +90,9 @@ ITEMS = {
     "watch_01": {
         "category": "钟表",
         "states": {
-            "default": ("停摆的旧表", "a vintage brass pocket watch stopped at 3 o'clock, tarnished case showing age, dust on crystal"),
-            "restored": ("精工润滑的怀表", "a restored vintage pocket watch, polished brass case with warm golden glow, visible working gears"),
-            "reforged": ("维多利亚时期金表", "an exquisite Victorian-era gold pocket watch with royal crest engraving, ornate decorations"),
+            "default": ("停摆的旧表", "a vintage brass pocket watch, tarnished and dusty case, old and worn"),
+            "restored": ("精工润滑的怀表", "a polished brass pocket watch, warm golden glow, visible working gears"),
+            "reforged": ("维多利亚时期金表", "an ornate gold pocket watch with decorative engravings, antique luxury"),
         }
     },
     "ring_01": {
@@ -427,11 +427,15 @@ def generate_items(filter_str: Optional[str] = None):
 
         print(f"\n[{item_id}] {item_data['category']}")
 
+        # 为每个物品创建子文件夹
+        item_dir = ITEMS_DIR / item_id
+        item_dir.mkdir(exist_ok=True)
+
         for state, (name, prompt) in item_data["states"].items():
             if interrupted:
                 break
 
-            filepath = ITEMS_DIR / f"{item_id}_{state}.png"
+            filepath = item_dir / f"{state}.png"
 
             if filepath.exists():
                 print(f"  ✓ {state}: {name} (已存在，跳过)")
@@ -523,16 +527,15 @@ def generate_manifest():
         "characters": {}
     }
 
-    # 扫描物品
+    # 扫描物品 (按文件夹)
     if ITEMS_DIR.exists():
-        for f in ITEMS_DIR.glob("*.png"):
-            parts = f.stem.rsplit("_", 1)
-            if len(parts) == 2:
-                item_id, state = parts
-                if item_id not in manifest["items"]:
-                    manifest["items"][item_id] = {"states": [], "files": []}
-                manifest["items"][item_id]["states"].append(state)
-                manifest["items"][item_id]["files"].append(f.name)
+        for item_dir in ITEMS_DIR.iterdir():
+            if item_dir.is_dir():
+                files = list(item_dir.glob("*.png"))
+                manifest["items"][item_dir.name] = {
+                    "states": [f.stem for f in files],
+                    "files": [f"{item_dir.name}/{f.name}" for f in files]
+                }
 
     # 扫描人物
     if CHARACTERS_DIR.exists():

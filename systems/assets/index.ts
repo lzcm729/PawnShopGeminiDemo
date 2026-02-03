@@ -18,11 +18,14 @@ export type ItemState = 'default' | 'restored' | 'reforged';
 
 /**
  * 获取物品图标路径
+ *
+ * 目录结构: assets/items/{itemId}/{state}.png
+ * 例如: assets/items/watch_01/default.png
  */
 export function getItemIconPath(itemId: string, state: ItemState = 'default'): string {
   // 从 item_watch_01 提取 watch_01
   const cleanId = itemId.replace(/^item_/, '');
-  return `${ASSETS_BASE}/items/${cleanId}_${state}.png`;
+  return `${ASSETS_BASE}/items/${cleanId}/${state}.png`;
 }
 
 /**
