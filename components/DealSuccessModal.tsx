@@ -5,7 +5,7 @@ import { Button } from './ui/Button';
 import { PackageCheck, DollarSign, Heart, Briefcase, Skull, Stamp, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
 import { getDisplayName } from '../systems/items/tagUtils';
-import { getCharacterPortraitPath, moodToEmotion, getItemIcon, PORTRAIT_PLACEHOLDER } from '../systems/assets';
+import { getCharacterPortraitPath, getItemIcon, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 import { CategoryIcon } from './ui/CategoryIcon';
 
 interface DealSuccessModalProps {
@@ -44,7 +44,9 @@ export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, re
             <div className="w-24 h-24 mx-auto bg-stone-800 rounded-full border-2 border-pawn-accent mb-4 overflow-hidden">
                  <img
                    src={(() => {
-                     const emotion = moodToEmotion(customer.mood);
+                     // During deal confirmation, always use neutral expression
+                     // Emotional changes are shown only in departure view
+                     const emotion = 'neutral' as const;
                      if (customer.portraits?.[emotion]) return customer.portraits[emotion];
                      if (customer.chainId) {
                        const charId = customer.chainId.replace(/^chain_/, '');

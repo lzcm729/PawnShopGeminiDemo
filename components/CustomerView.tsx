@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { User, MessageSquareQuote, AlertCircle, Flame, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { SimLogEntry } from '../types';
-import { getCharacterPortraitPath, moodToEmotion, getPlaceholderIcon, PORTRAIT_PLACEHOLDER } from '../systems/assets';
+import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 
 export const CustomerView: React.FC = () => {
   const { state } = useGame();
@@ -80,8 +80,9 @@ export const CustomerView: React.FC = () => {
         <div className={`w-32 h-32 mx-auto bg-stone-800 rounded-full mb-4 overflow-hidden border-4 transition-all duration-300 relative group ${borderColor} ${shadowColor} ${animationClass}`}>
           <img
             src={(() => {
-              // First try portraits object (if populated)
-              const emotion = moodToEmotion(mood);
+              // During negotiation, always use neutral expression
+              // Emotional changes are shown only in departure view
+              const emotion = 'neutral' as const;
               if (currentCustomer.portraits?.[emotion]) {
                 return currentCustomer.portraits[emotion];
               }

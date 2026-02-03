@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { User, MessageSquareQuote, History, ChevronDown, ChevronUp } from 'lucide-react';
-import { getCharacterPortraitPath, moodToEmotion, PORTRAIT_PLACEHOLDER } from '../systems/assets';
+import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 
 /**
  * SettlementCustomerView - 专门用于赎回/续当场景的顾客视图
@@ -47,7 +47,9 @@ export const SettlementCustomerView: React.FC = () => {
         <div className={`w-32 h-32 mx-auto bg-stone-800 rounded-full mb-4 overflow-hidden border-4 transition-all duration-300 relative group ${borderColor} ${shadowColor}`}>
           <img
             src={(() => {
-              const emotion = moodToEmotion(currentCustomer.mood);
+              // During settlement, always use neutral expression
+              // Emotional changes are shown only in departure view
+              const emotion = 'neutral' as const;
               if (currentCustomer.portraits?.[emotion]) return currentCustomer.portraits[emotion];
               if (currentCustomer.chainId) {
                 const charId = currentCustomer.chainId.replace(/^chain_/, '');

@@ -14,7 +14,7 @@ import { NegotiationHistory } from './NegotiationHistory';
 import { playSfx } from '../systems/game/audio';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { RollingNumber } from './ui/RollingNumber';
-import { getCharacterPortraitPath, moodToEmotion, PORTRAIT_PLACEHOLDER } from '../systems/assets';
+import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 
 // ... existing interfaces ...
 interface NegotiationStateProps {
@@ -61,7 +61,9 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
              <div className="relative w-16 h-16 shrink-0 border border-noir-400 p-0.5 bg-noir-300">
                  <img
                     src={(() => {
-                      const emotion = moodToEmotion(customer.mood);
+                      // During negotiation, always use neutral expression
+                      // Emotional changes are shown only in departure view
+                      const emotion = 'neutral' as const;
                       if (customer.portraits?.[emotion]) return customer.portraits[emotion];
                       if (customer.chainId) {
                         const charId = customer.chainId.replace(/^chain_/, '');
