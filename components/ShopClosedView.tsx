@@ -122,25 +122,20 @@ export const DepartureView: React.FC = () => {
       avatarUrl = getCharacterPortraitPath(charId, emotion);
   }
 
-  // CSS Filters for Mood (Fallback)
-  let avatarFilter = "";
+  // Border style based on satisfaction level
   let borderStyle = "border-stone-800";
-  
+
   switch(satisfaction) {
       case 'GRATEFUL':
-          avatarFilter = "sepia(0.3) saturate(1.2) brightness(1.1)";
           borderStyle = "border-amber-600 shadow-[0_0_30px_rgba(217,119,6,0.3)]";
           break;
       case 'RESENTFUL':
-          avatarFilter = "contrast(1.5) grayscale(0.5)"; // Harsh look
           borderStyle = "border-red-900";
           break;
       case 'DESPERATE':
-          avatarFilter = "grayscale(1) brightness(0.7) blur(0.5px)"; // Faded look
           borderStyle = "border-stone-600 opacity-80";
           break;
       default:
-          avatarFilter = "grayscale(0.8) contrast(1.1)"; // Neutral noir look
           borderStyle = "border-stone-700";
   }
 
@@ -157,10 +152,9 @@ export const DepartureView: React.FC = () => {
               "w-40 h-40 rounded-full border-4 overflow-hidden mb-8 relative transition-all duration-1000 group",
               borderStyle
           )}>
-              <img 
-                src={avatarUrl} 
+              <img
+                src={avatarUrl}
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                style={{ filter: avatarFilter }}
                 alt="Character"
               />
               <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-full"></div>
