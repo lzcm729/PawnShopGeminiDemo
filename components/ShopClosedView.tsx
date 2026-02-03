@@ -11,7 +11,7 @@ import { playSfx } from '../systems/game/audio';
 import { GamePhase } from '../types';
 import { getDepartureMonologue } from '../systems/narrative/innerVoiceRegistry';
 import { cn } from '../lib/utils';
-import { getCharacterPortraitPath, EmotionType } from '../systems/assets';
+import { getCharacterPortraitPath, EmotionType, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 
 const getCategoryIcon = (category: string) => {
     switch(category) {
@@ -112,9 +112,9 @@ export const DepartureView: React.FC = () => {
   if (!currentCustomer) return null;
 
   // Avatar Variation
-  // Logic: Prefer explicit portrait if available. If not, derive from chainId. Finally, use picsum.
+  // Logic: Prefer explicit portrait if available. If not, derive from chainId. Finally, use local placeholder.
   const emotion = satisfaction.toLowerCase() as EmotionType;
-  let avatarUrl = `https://picsum.photos/seed/${currentCustomer.avatarSeed}/400`;
+  let avatarUrl = PORTRAIT_PLACEHOLDER;
   if (currentCustomer.portraits?.[emotion]) {
       avatarUrl = currentCustomer.portraits[emotion]!;
   } else if (currentCustomer.chainId) {

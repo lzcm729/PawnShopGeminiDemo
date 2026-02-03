@@ -5,7 +5,7 @@ import { Button } from './ui/Button';
 import { PackageCheck, DollarSign, Heart, Briefcase, Skull, Stamp, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
 import { getDisplayName } from '../systems/items/tagUtils';
-import { getCharacterPortraitPath, moodToEmotion, getItemIcon } from '../systems/assets';
+import { getCharacterPortraitPath, moodToEmotion, getItemIcon, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 import { CategoryIcon } from './ui/CategoryIcon';
 
 interface DealSuccessModalProps {
@@ -50,11 +50,11 @@ export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, re
                        const charId = customer.chainId.replace(/^chain_/, '');
                        return getCharacterPortraitPath(charId, emotion);
                      }
-                     return `https://picsum.photos/seed/${customer.avatarSeed}/200`;
+                     return PORTRAIT_PLACEHOLDER;
                    })()}
                    className="w-full h-full object-cover"
                    onError={(e) => {
-                     (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${customer.avatarSeed}/200`;
+                     (e.target as HTMLImageElement).src = PORTRAIT_PLACEHOLDER;
                    }}
                  />
             </div>

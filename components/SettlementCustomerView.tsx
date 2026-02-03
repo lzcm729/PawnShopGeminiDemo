@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { User, MessageSquareQuote, History, ChevronDown, ChevronUp } from 'lucide-react';
-import { getCharacterPortraitPath, moodToEmotion } from '../systems/assets';
+import { getCharacterPortraitPath, moodToEmotion, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 
 /**
  * SettlementCustomerView - 专门用于赎回/续当场景的顾客视图
@@ -53,12 +53,12 @@ export const SettlementCustomerView: React.FC = () => {
                 const charId = currentCustomer.chainId.replace(/^chain_/, '');
                 return getCharacterPortraitPath(charId, emotion);
               }
-              return `https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`;
+              return PORTRAIT_PLACEHOLDER;
             })()}
             alt="Customer"
             className="w-full h-full object-cover opacity-90 transition-all duration-700"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`;
+              (e.target as HTMLImageElement).src = PORTRAIT_PLACEHOLDER;
               (e.target as HTMLImageElement).classList.add('grayscale');
             }}
           />

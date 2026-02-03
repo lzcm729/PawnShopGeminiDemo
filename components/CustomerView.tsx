@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { User, MessageSquareQuote, AlertCircle, Flame, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { SimLogEntry } from '../types';
-import { getCharacterPortraitPath, moodToEmotion, getPlaceholderIcon } from '../systems/assets';
+import { getCharacterPortraitPath, moodToEmotion, getPlaceholderIcon, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 
 export const CustomerView: React.FC = () => {
   const { state } = useGame();
@@ -90,14 +90,14 @@ export const CustomerView: React.FC = () => {
                 const charId = currentCustomer.chainId.replace(/^chain_/, '');
                 return getCharacterPortraitPath(charId, emotion);
               }
-              // Fallback to picsum
-              return `https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`;
+              // Fallback to local placeholder
+              return PORTRAIT_PLACEHOLDER;
             })()}
             alt="Customer"
             className="w-full h-full object-cover opacity-90 transition-all duration-700"
             onError={(e) => {
-              // Fallback to picsum placeholder if character asset not found
-              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`;
+              // Fallback to local placeholder if character asset not found
+              (e.target as HTMLImageElement).src = PORTRAIT_PLACEHOLDER;
               (e.target as HTMLImageElement).classList.add('grayscale');
             }}
           />

@@ -14,7 +14,7 @@ import { NegotiationHistory } from './NegotiationHistory';
 import { playSfx } from '../systems/game/audio';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { RollingNumber } from './ui/RollingNumber';
-import { getCharacterPortraitPath, moodToEmotion } from '../systems/assets';
+import { getCharacterPortraitPath, moodToEmotion, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 
 // ... existing interfaces ...
 interface NegotiationStateProps {
@@ -67,12 +67,12 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
                         const charId = customer.chainId.replace(/^chain_/, '');
                         return getCharacterPortraitPath(charId, emotion);
                       }
-                      return `https://picsum.photos/seed/${customer.avatarSeed}/200`;
+                      return PORTRAIT_PLACEHOLDER;
                     })()}
                     alt="Subject"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${customer.avatarSeed}/200`;
+                      (e.target as HTMLImageElement).src = PORTRAIT_PLACEHOLDER;
                     }}
                  />
                  {isAngry && <div className="absolute inset-0 border-2 border-red-500 animate-pulse"></div>}

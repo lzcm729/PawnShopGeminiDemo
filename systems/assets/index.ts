@@ -117,6 +117,12 @@ export function moodToEmotion(mood: string): EmotionType {
 // ============================================================================
 
 /**
+ * 人物头像占位图路径
+ * 使用 generic_male_middle 的 neutral 头像作为通用占位符
+ */
+export const PORTRAIT_PLACEHOLDER = '/characters/generic_male_middle/neutral.png';
+
+/**
  * 生成 placeholder 图标 (当资源不存在时使用)
  * 使用 data URI 生成一个带文字的占位图
  */
