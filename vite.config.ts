@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => {
     return {
       // Use relative paths for Electron (file:// protocol)
       base: isElectron ? './' : '/',
+      // Serve assets folder as public directory
+      publicDir: 'assets',
       server: {
         port: 3000,
         host: '0.0.0.0',

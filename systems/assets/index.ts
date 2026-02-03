@@ -7,8 +7,8 @@
 import type { Item } from '../items/types';
 import type { CustomerPortraits } from '../narrative/types';
 
-// 资源基础路径 (Vite 会处理)
-const ASSETS_BASE = '/assets';
+// 资源基础路径 (Vite publicDir: 'assets' 会将内容直接放在根路径)
+const ASSETS_BASE = '';
 
 // ============================================================================
 // 物品图标
@@ -91,9 +91,16 @@ export function getCharacterPortraits(characterId: string): CustomerPortraits {
 
 /**
  * 从 mood 映射到 emotion type
+ * Mood 类型: 'Happy' | 'Neutral' | 'Annoyed' | 'Angry'
  */
 export function moodToEmotion(mood: string): EmotionType {
   const moodMap: Record<string, EmotionType> = {
+    // PascalCase (actual Mood type values)
+    Happy: 'grateful',
+    Neutral: 'neutral',
+    Annoyed: 'resentful',
+    Angry: 'angry',
+    // UPPERCASE (legacy/fallback)
     HAPPY: 'grateful',
     GRATEFUL: 'grateful',
     NEUTRAL: 'neutral',
@@ -102,7 +109,7 @@ export function moodToEmotion(mood: string): EmotionType {
     RESENTFUL: 'resentful',
     DESPERATE: 'desperate',
   };
-  return moodMap[mood.toUpperCase()] || 'neutral';
+  return moodMap[mood] || 'neutral';
 }
 
 // ============================================================================
