@@ -308,6 +308,7 @@ const HeatIndicator: React.FC<HeatIndicatorProps> = ({ heatInfo }) => {
         </div>
       </div>
       <div className="mt-2 text-sm opacity-70">{heatInfo.description}</div>
+      <div className="mt-1 text-xs text-stone-500">每件出售 +2 热度</div>
       {heatInfo.riskPercent > 0 && (
         <div className="mt-1 text-xs flex items-center gap-1">
           <ShieldAlert className="w-3 h-3" />
@@ -646,11 +647,6 @@ const SaleTab: React.FC<SaleTabProps> = ({
 
   return (
     <div className="space-y-2">
-      <div className="bg-amber-950/30 border border-amber-700 p-3 rounded text-amber-400 text-sm mb-4">
-        自由出售价格较低 (60-85%)，但无数量限制。每件增加 +2 热度。
-        <span className="ml-2 text-purple-400">黑道声誉 +2</span>
-      </div>
-
       {items.map(item => {
         const salePrice = getSalePrice(item);
         const isSelected = selectedItemId === item.id;
