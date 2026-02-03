@@ -52,6 +52,8 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
     getEligibleItems,
     getSellableItems,
     checkBreach,
+    getCompensation,
+    getProfit,
     getPurchasePrice,
     getSalePrice,
     getSalePriceRange,
@@ -243,6 +245,8 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
                 items={sellableItems}
                 getSalePrice={getSalePrice}
                 checkBreach={checkBreach}
+                getCompensation={getCompensation}
+                getProfit={getProfit}
                 onSell={handleSellDirect}
                 selectedItemId={selectedItemId}
                 onSelectItem={setSelectedItemId}
@@ -490,6 +494,8 @@ interface SaleTabProps {
   items: Item[];
   getSalePrice: (item: Item) => number;
   checkBreach: (item: Item) => boolean;
+  getCompensation: (item: Item) => number;
+  getProfit: (item: Item, salePrice: number) => number;
   onSell: (item: Item) => void;
   selectedItemId: string | null;
   onSelectItem: (id: string | null) => void;
@@ -499,6 +505,8 @@ const SaleTab: React.FC<SaleTabProps> = ({
   items,
   getSalePrice,
   checkBreach,
+  getCompensation,
+  getProfit,
   onSell,
   selectedItemId,
   onSelectItem,
@@ -523,6 +531,8 @@ const SaleTab: React.FC<SaleTabProps> = ({
         const salePrice = getSalePrice(item);
         const isSelected = selectedItemId === item.id;
         const isBreach = checkBreach(item);
+        const compensation = getCompensation(item);
+        const profit = getProfit(item, salePrice);
         const [estMin, estMax] = item.currentRange;
 
         return (
@@ -550,7 +560,7 @@ const SaleTab: React.FC<SaleTabProps> = ({
                 {isBreach && (
                   <div className="flex items-center gap-1 mt-1 text-xs text-red-400">
                     <AlertTriangle className="w-3 h-3" />
-                    <span>违约：人情-3, 商誉-1</span>
+                    <span>违约：人情-3, 商誉-1, 赔偿 ${compensation}</span>
                   </div>
                 )}
               </div>
@@ -562,8 +572,8 @@ const SaleTab: React.FC<SaleTabProps> = ({
                 <div className="text-xs text-stone-500">
                   利润: <span className={cn(
                     'font-mono',
-                    salePrice - item.pawnAmount >= 0 ? 'text-green-400' : 'text-red-400'
-                  )}>{salePrice - item.pawnAmount >= 0 ? '+' : ''}${salePrice - item.pawnAmount}</span>
+                    profit >= 0 ? 'text-green-400' : 'text-red-400'
+                  )}>{profit >= 0 ? '+' : ''}${profit}</span>
                 </div>
               </div>
               {isSelected && (

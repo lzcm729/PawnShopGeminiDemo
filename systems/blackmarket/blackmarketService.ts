@@ -226,6 +226,37 @@ export function isSaleBreach(item: Item): boolean {
 }
 
 /**
+ * Calculate the compensation amount for breach sale
+ * When selling an ACTIVE item, player will need to pay 200% of valuation as compensation
+ * when the customer returns to redeem
+ * @param item The item being sold
+ * @returns Compensation amount (0 if not a breach)
+ */
+export function getBreachCompensation(item: Item): number {
+  if (item.status !== ItemStatus.ACTIVE) return 0;
+  if (!item.pawnInfo?.valuation) return 0;
+  return Math.ceil(item.pawnInfo.valuation * 2);
+}
+
+/**
+ * Calculate actual profit from a black market sale
+ * For FORFEIT items: salePrice - pawnAmount (cost basis)
+ * For ACTIVE items: salePrice - compensation (200% of valuation)
+ * @param item The item being sold
+ * @param salePrice The sale price
+ * @returns Actual profit after accounting for compensation
+ */
+export function calculateSaleProfit(item: Item, salePrice: number): number {
+  if (item.status === ItemStatus.ACTIVE && item.pawnInfo?.valuation) {
+    // Breach sale: profit = salePrice - compensation
+    const compensation = Math.ceil(item.pawnInfo.valuation * 2);
+    return salePrice - compensation;
+  }
+  // Normal sale: profit = salePrice - pawnAmount (cost basis)
+  return salePrice - item.pawnAmount;
+}
+
+/**
  * Get all items eligible for a specific purchase request
  */
 export function getEligibleItemsForPurchase(

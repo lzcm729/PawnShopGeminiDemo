@@ -24,7 +24,9 @@ import {
   isSaleBreach,
   getEligibleItemsForPurchase,
   getEligibleItemsForSale,
-  getHeatGain
+  getHeatGain,
+  getBreachCompensation,
+  calculateSaleProfit
 } from '../systems/blackmarket/blackmarketService';
 
 export const useBlackmarket = () => {
@@ -125,6 +127,23 @@ export const useBlackmarket = () => {
    */
   const checkBreach = useCallback((item: Item): boolean => {
     return isSaleBreach(item);
+  }, []);
+
+  /**
+   * Get the compensation amount for breach sale
+   * Returns 0 if not a breach
+   */
+  const getCompensation = useCallback((item: Item): number => {
+    return getBreachCompensation(item);
+  }, []);
+
+  /**
+   * Calculate actual profit from a sale
+   * For FORFEIT: salePrice - pawnAmount
+   * For ACTIVE (breach): salePrice - compensation (200% of valuation)
+   */
+  const getProfit = useCallback((item: Item, salePrice: number): number => {
+    return calculateSaleProfit(item, salePrice);
   }, []);
 
   // ========================================================================
@@ -254,6 +273,8 @@ export const useBlackmarket = () => {
     checkEligibility,
     checkSellable,
     checkBreach,
+    getCompensation,
+    getProfit,
 
     // Price calculation
     getPurchasePrice,
