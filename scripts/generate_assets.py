@@ -99,7 +99,7 @@ ITEMS = {
         "category": "首饰",
         "states": {
             "default": ("蒙尘的戒指", "a dusty tarnished silver ring, covered in fine dust, showing weight and craftsmanship beneath grime"),
-            "restored": ("抛光银戒", "a polished silver ring with mirror finish, delicate engraving visible on inner band"),
+            "restored": ("抛光银戒", "a polished platinum wedding band with mirror finish, simple elegant design, NO TEXT NO ENGRAVING NO WORDS"),
             "reforged": ("名门传家宝", "an antique noble family heirloom ring with precious gemstone, century-old intricate craftsmanship"),
         }
     },
@@ -108,7 +108,7 @@ ITEMS = {
         "states": {
             "default": ("褪色的油画", "a faded landscape oil painting in worn gilded frame, colors washed out, dusty surface"),
             "restored": ("修复的风景画", "a restored landscape oil painting, vivid colors revealed, delicate brushwork, clean frame"),
-            "reforged": ("失落大师真迹", "a masterpiece landscape painting in museum-quality frame, remarkable brushwork, precious artwork"),
+            "reforged": ("失落大师真迹", "a masterpiece landscape painting in ornate gilded baroque frame, vivid sunset colors, remarkable impressionist brushwork, NO TEXT NO LABELS NO PLAQUE"),
         }
     },
     "vase_01": {
@@ -155,8 +155,8 @@ ITEMS = {
         "category": "服饰",
         "states": {
             "default": ("名牌职业套装", "a designer professional suit jacket and skirt, high-end fashion, quality fabric"),
-            "restored": ("干洗职业套装", "a freshly dry-cleaned designer suit, crisp pressed fabric, elegant business wear"),
-            "reforged": ("设计师定制款", "a rare designer custom-made suit, haute couture piece, fashion collectible"),
+            "restored": ("干洗职业套装", "a freshly pressed women's professional blazer and pencil skirt set, elegant beige fabric, crisp clean lines, female business attire, NO TEXT NO LABELS NO TAGS"),
+            "reforged": ("设计师定制款", "an elegant women's designer blazer and skirt suit in deep burgundy, silk lining visible, gold button details, luxury female fashion, NO TEXT NO LABELS"),
         }
     },
     "emma_skincare": {
