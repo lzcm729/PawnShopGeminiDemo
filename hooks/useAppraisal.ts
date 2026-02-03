@@ -123,10 +123,7 @@ export const useAppraisal = () => {
              calcMax = currentMax + (anchor * 0.05);
         }
 
-        const roundToHuman = (val: number) => {
-            if (val < 100) return Math.round(val);
-            return Math.round(val / 10) * 10;
-        };
+        const roundToHuman = (val: number) => Math.round(val);
 
         let nextMin = roundToHuman(calcMin);
         let nextMax = roundToHuman(calcMax);
