@@ -25,3 +25,15 @@ trait_lin_rare,保罗纽曼盘面,STORY,500.0,0.9,独特的'Exotic'表盘设计�
 trait_lin_scratch,表蒙划痕,FLAW,-0.01,0.1,表蒙上有轻微划痕。,有点划痕……,旧东西嘛，难免的。
 trait_susan_stitch,走线歪斜,FAKE,-0.99,0.5,底部缝线不够直，非专柜品质。,这走线……,什么意思？你懂包吗？
 trait_susan_glue,胶水气味,FAKE,-0.5,0.3,刺鼻的工业胶水味。,这味道……,那是新皮的味道！
+trait_filler_watch_bargain,限量编号,STORY,8.0,0.7,表背刻着三位数编号，是早期限量版。,这个编号……,我也不知道什么意思，家里传下来的。
+trait_filler_watch_mistake,高仿机芯,FAKE,-0.85,0.55,机芯是国产仿制品，非原装瑞士机芯。,这机芯……,不可能！这是正品！
+trait_filler_jewelry_bargain,天然无烧,STORY,6.0,0.75,经检测为天然无烧红宝石，极为罕见。,这颜色……不太寻常。,就是普通的红宝石吧？
+trait_filler_jewelry_mistake,合成宝石,FAKE,-0.9,0.5,经检测为实验室合成宝石。,这光泽……有点问题。,什么？卖给我的人说是真的！
+trait_filler_art_bargain,大师真迹,STORY,15.0,0.85,经鉴定为某失传大师的早期作品。,这笔触……等等。,家里一直挂着，没当回事。
+trait_filler_art_mistake,现代仿作,FAKE,-0.88,0.6,颜料成分显示为现代化学制品。,这颜料……,不可能，这是祖传的！
+trait_filler_book_bargain,孤本善本,STORY,10.0,0.8,经考证为某典籍的唯一存世版本。,这版本……市面上从没见过。,就是本旧书，值钱吗？
+trait_filler_book_mistake,民国翻印,FAKE,-0.8,0.45,纸张和字体均为民国时期翻印版。,这纸张……不太对。,啊，我以为是古本……
+trait_filler_electronics_bargain,限定版主机,STORY,3.0,0.6,是某游戏联名限定版，全球限量发售。,这涂装……好像在哪见过。,朋友送的，没太在意。
+trait_filler_electronics_mistake,翻新机,FAKE,-0.7,0.4,内部有明显的拆修和换件痕迹。,这螺丝……被动过。,什么？我买的时候说是全新的！
+trait_filler_antique_bargain,御制珍品,STORY,12.0,0.9,底款和工艺显示为宫廷御制。,这底款……,祖上是宫里的，可能是带出来的。
+trait_filler_antique_mistake,高仿精品,FAKE,-0.92,0.55,胎质和釉色均为现代仿制。,这胎质……,不可能！传了好几代了！

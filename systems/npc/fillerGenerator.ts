@@ -11,7 +11,7 @@
 import { Customer, BehaviorTag, Dialogue } from '../../types';
 import { Item, ItemStatus } from '../items/types';
 import { Mood } from '../core/types';
-import { createItemFromTemplate, getItemTemplate, ItemTemplate } from '../items/csvLoader';
+import { createItemFromTemplate, getItemTemplate, ItemTemplate, getTraitDefinition, createTraitFromDefinition } from '../items/csvLoader';
 import { initializeKnowledgePool } from '../items/tagUtils';
 import { ContractType, EventChainState } from '../narrative/types';
 import { getCharacterPortraits } from '../assets';
@@ -143,6 +143,96 @@ const FILLER_ITEM_TEMPLATES = [
 
 // Template pools are now loaded from CSV via fillerTemplateLoader.ts
 // Fallback data is embedded in the loader for resilience
+
+// ============================================================================
+// VALUE JUMP TRAITS (捡漏/打眼)
+// ============================================================================
+
+/**
+ * Category-specific jump trait configuration
+ *
+ * Jump traits make realValue significantly different from visualValue.
+ * - Bargain (捡漏): STORY trait with large positive impact -> real >> visual
+ * - Mistake (打眼): FAKE trait with large negative impact -> real << visual
+ *
+ * Most items have NO jump traits (normal transaction).
+ * Only a small percentage get jump traits (surprise element).
+ */
+interface JumpTraitConfig {
+    /** Probability of having ANY jump trait (0-1) */
+    jumpProbability: number;
+    /** Within jump items, ratio of mistakes vs bargains (0-1, higher = more mistakes) */
+    mistakeRatio: number;
+    /** Bargain trait ID for this category */
+    bargainTraitId: string;
+    /** Mistake trait ID for this category */
+    mistakeTraitId: string;
+}
+
+/**
+ * Jump trait configuration by category
+ *
+ * Design decisions:
+ * - Antiques/Art: High probability, high magnitude (historical uncertainty)
+ * - Jewelry: Medium-high probability (gemstone complexity)
+ * - Watches: Medium probability (mechanical complexity)
+ * - Books: Low-medium probability (authenticity clearer)
+ * - Electronics: Low probability (specs are verifiable)
+ *
+ * Mistake ratio slightly higher (打眼略多) as per design doc.
+ */
+const JUMP_TRAIT_CONFIG: Record<string, JumpTraitConfig> = {
+    '古董': {
+        jumpProbability: 0.15,
+        mistakeRatio: 0.55,
+        bargainTraitId: 'trait_filler_antique_bargain',
+        mistakeTraitId: 'trait_filler_antique_mistake',
+    },
+    '艺术品': {
+        jumpProbability: 0.12,
+        mistakeRatio: 0.55,
+        bargainTraitId: 'trait_filler_art_bargain',
+        mistakeTraitId: 'trait_filler_art_mistake',
+    },
+    '珠宝': {
+        jumpProbability: 0.10,
+        mistakeRatio: 0.55,
+        bargainTraitId: 'trait_filler_jewelry_bargain',
+        mistakeTraitId: 'trait_filler_jewelry_mistake',
+    },
+    '首饰': {
+        jumpProbability: 0.10,
+        mistakeRatio: 0.55,
+        bargainTraitId: 'trait_filler_jewelry_bargain',
+        mistakeTraitId: 'trait_filler_jewelry_mistake',
+    },
+    '钟表': {
+        jumpProbability: 0.08,
+        mistakeRatio: 0.55,
+        bargainTraitId: 'trait_filler_watch_bargain',
+        mistakeTraitId: 'trait_filler_watch_mistake',
+    },
+    '书籍': {
+        jumpProbability: 0.06,
+        mistakeRatio: 0.55,
+        bargainTraitId: 'trait_filler_book_bargain',
+        mistakeTraitId: 'trait_filler_book_mistake',
+    },
+    '电子产品': {
+        jumpProbability: 0.04,
+        mistakeRatio: 0.60,
+        bargainTraitId: 'trait_filler_electronics_bargain',
+        mistakeTraitId: 'trait_filler_electronics_mistake',
+    },
+};
+
+/** Default config for categories not in the map */
+const DEFAULT_JUMP_CONFIG: JumpTraitConfig = {
+    jumpProbability: 0.03,
+    mistakeRatio: 0.55,
+    bargainTraitId: 'trait_filler_art_bargain',  // Fallback to art traits
+    mistakeTraitId: 'trait_filler_art_mistake',
+};
 
 // ============================================================================
 // PROBABILITY CALCULATION
@@ -522,6 +612,68 @@ export interface FillerItemResult {
 }
 
 /**
+ * Attach a jump trait to an item and adjust realValue accordingly.
+ *
+ * Jump traits create a significant gap between realValue and perceivedValue:
+ * - Bargain (捡漏): realValue becomes much HIGHER than perceivedValue
+ * - Mistake (打眼): realValue becomes much LOWER than perceivedValue
+ *
+ * @param item The item to potentially modify
+ * @returns The modified item (or original if no jump trait attached)
+ */
+function attachJumpTrait(item: Item): Item {
+    const config = JUMP_TRAIT_CONFIG[item.category] || DEFAULT_JUMP_CONFIG;
+
+    // Most items have no jump trait (normal transaction)
+    if (Math.random() > config.jumpProbability) {
+        return item;
+    }
+
+    // Decide between bargain (捡漏) and mistake (打眼)
+    const isMistake = Math.random() < config.mistakeRatio;
+    const traitId = isMistake ? config.mistakeTraitId : config.bargainTraitId;
+
+    // Load the trait definition
+    const traitDef = getTraitDefinition(traitId);
+    if (!traitDef) {
+        console.warn(`[fillerGenerator] Jump trait not found: ${traitId}`);
+        return item;
+    }
+
+    // Create the trait instance
+    const jumpTrait = createTraitFromDefinition(traitDef);
+
+    // Calculate new realValue based on perceivedValue and trait impact
+    // For STORY traits with positive impact: realValue = perceived * (1 + impact)
+    // For FAKE traits with negative impact: realValue = perceived * (1 + impact) [impact is negative]
+    const baseValue = item.perceivedValue ?? item.realValue;
+
+    let newRealValue: number;
+    if (isMistake) {
+        // Mistake: realValue much lower than visual
+        // e.g., impact = -0.85 means realValue = baseValue * 0.15
+        newRealValue = Math.max(10, Math.floor(baseValue * (1 + traitDef.valueImpact)));
+    } else {
+        // Bargain: realValue much higher than visual
+        // e.g., impact = 8.0 means realValue = baseValue * 9.0
+        newRealValue = Math.floor(baseValue * (1 + traitDef.valueImpact));
+    }
+
+    // Add the jump trait to hidden traits
+    const updatedHiddenTraits = [...item.hiddenTraits, jumpTrait];
+
+    // For mistake items, set isFake flag for visual feedback when revealed
+    const updatedItem: Item = {
+        ...item,
+        realValue: newRealValue,
+        hiddenTraits: updatedHiddenTraits,
+        isFake: isMistake ? true : item.isFake,
+    };
+
+    return updatedItem;
+}
+
+/**
  * Create a fallback item for filler customers with profile-based selection
  */
 function createFillerItem(day: number, profile: FillerCustomerProfile): FillerItemResult {
@@ -544,6 +696,11 @@ function createFillerItem(day: number, profile: FillerCustomerProfile): FillerIt
         });
         isUnexpected = isUnexpectedCombo(selection.template, profile);
         attrTags = selection.template.attrTags;
+
+        // Potentially attach a jump trait (捡漏/打眼)
+        if (item) {
+            item = attachJumpTrait(item);
+        }
     }
 
     if (!item) {

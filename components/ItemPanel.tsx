@@ -206,12 +206,21 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
   const handleTraitClick = (trait: ItemTrait) => {
       const isUsed = item.usedTraitIds?.includes(trait.id);
       if (isUsed || !canInteract) return;
-      
+
       const power = Math.abs(trait.valueImpact);
 
+      // Threshold for "value jump" traits (捡漏/打眼)
+      // Jump traits have extreme value impacts (e.g., +3.0 for bargains, -0.85 for mistakes)
+      const JUMP_TRAIT_THRESHOLD = 2.0;
+
       if (trait.type === 'FAKE') {
+          // Mistake (打眼): Value crashes down
           dispatch({ type: 'REALIZE_ITEM_TRUTH', payload: { itemId: item.id } });
           setFeedbackMsg({ type: 'error', text: "价值崩塌 (VALUE CRASH)" });
+      } else if (trait.type === 'STORY' && trait.valueImpact >= JUMP_TRAIT_THRESHOLD) {
+          // Bargain (捡漏): Value jumps up significantly
+          dispatch({ type: 'REALIZE_ITEM_TRUTH', payload: { itemId: item.id } });
+          setFeedbackMsg({ type: 'success', text: "价值发现 (VALUE DISCOVERY)" });
       }
 
       // 1. Dispatch global usage state (Locks trait)
@@ -224,7 +233,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
           if (trait.dialogueTrigger) {
               triggerNarrative(trait.dialogueTrigger.playerLine, trait.dialogueTrigger.customerLine, power);
           } else {
-              applyLeverage(0.05, `话题: ${trait.name}`); 
+              applyLeverage(0.05, `话题: ${trait.name}`);
           }
       }
       playSfx('STAMP');
