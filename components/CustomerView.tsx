@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { User, MessageSquareQuote, AlertCircle, Flame, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { SimLogEntry } from '../types';
+import { getCharacterPortraitPath, moodToEmotion, getPlaceholderIcon } from '../systems/assets';
 
 export const CustomerView: React.FC = () => {
   const { state } = useGame();
@@ -77,10 +78,28 @@ export const CustomerView: React.FC = () => {
       {/* Avatar Section */}
       <div className={`relative z-10 bg-gradient-to-b from-stone-900 to-[#1c1917] p-6 border-b border-[#44403c] shadow-lg transition-colors duration-500 ${isAngry ? 'bg-red-950/20' : ''}`}>
         <div className={`w-32 h-32 mx-auto bg-stone-800 rounded-full mb-4 overflow-hidden border-4 transition-all duration-300 relative group ${borderColor} ${shadowColor} ${animationClass}`}>
-          <img 
-            src={`https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`} 
-            alt="Customer" 
-            className="w-full h-full object-cover grayscale opacity-90 group-hover:grayscale-0 transition-all duration-700"
+          <img
+            src={(() => {
+              // First try portraits object (if populated)
+              const emotion = moodToEmotion(mood);
+              if (currentCustomer.portraits?.[emotion]) {
+                return currentCustomer.portraits[emotion];
+              }
+              // Derive character ID from chainId (e.g., chain_emma -> emma)
+              if (currentCustomer.chainId) {
+                const charId = currentCustomer.chainId.replace(/^chain_/, '');
+                return getCharacterPortraitPath(charId, emotion);
+              }
+              // Fallback to picsum
+              return `https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`;
+            })()}
+            alt="Customer"
+            className="w-full h-full object-cover opacity-90 transition-all duration-700"
+            onError={(e) => {
+              // Fallback to picsum placeholder if character asset not found
+              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`;
+              (e.target as HTMLImageElement).classList.add('grayscale');
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
         </div>

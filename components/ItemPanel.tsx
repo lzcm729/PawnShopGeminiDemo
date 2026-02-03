@@ -10,6 +10,7 @@ import { DecryptionText } from './ui/TextEffects';
 import { playSfx } from '../systems/game/audio';
 import { getDisplayName } from '../systems/items/tagUtils';
 import { checkItemAnomaly, getAnomalyDetectionThreshold } from '../systems/upgrades';
+import { getItemIcon } from '../systems/assets';
 
 const getIcon = (category: string) => {
     switch(category) {
@@ -326,8 +327,21 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center p-4">
-                <div className={`transition-all duration-500 p-4 border border-stone-800 rounded-full bg-stone-900/50 mb-2 ${appraising ? 'blur-sm opacity-50 scale-110' : ''}`}>
-                    {getIcon(item.category)}
+                <div className={`transition-all duration-500 w-32 h-32 border border-stone-800 rounded-lg bg-stone-900/50 mb-2 overflow-hidden flex items-center justify-center ${appraising ? 'blur-sm opacity-50 scale-110' : ''}`}>
+                    <img
+                      src={getItemIcon(item)}
+                      alt={item.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        // Hide failed image and show fallback icon
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        const fallback = (e.target as HTMLImageElement).nextElementSibling;
+                        if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                      }}
+                    />
+                    <div className="hidden items-center justify-center w-full h-full">
+                      {getIcon(item.category)}
+                    </div>
                 </div>
                 <h3 className="text-xl font-bold text-stone-200 leading-tight text-center">{getDisplayName(item)}</h3>
                 <p className="text-xs text-stone-500 font-serif italic text-center max-w-[80%]">"{item.historySnippet}"</p>
