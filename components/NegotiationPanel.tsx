@@ -144,6 +144,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   const [chatLog, setChatLog] = useState<LogEntry[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [rejectionState, setRejectionState] = useState<{show: boolean, text: string}>({show: false, text: ''});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -200,6 +201,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   useEffect(() => {
     if (currentCustomer) {
       setRejectionState({show: false, text: ''});
+      setIsSubmitting(false); // Reset submission state for new customer
 
       // SAFEGUARD: Provide default dialogue if missing
       const greetingText = currentCustomer.dialogue?.greeting || "...";
@@ -287,7 +289,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   if (!currentCustomer || !item) return null;
 
   const handleOffer = () => {
-    if (isWalkedAway) return;
+    if (isWalkedAway || isSubmitting) return;
 
     const prevPatience = patience;
     const result = submitOffer();
@@ -307,7 +309,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
     const patienceLoss = prevPatience - result.patienceRemaining;
     const subtext = patienceLoss > 0 ? `Patience -${patienceLoss} [${penaltyLabel}]` : undefined;
-    
+
     const customerLog: LogEntry = {
         id: `resp-${Date.now()}`,
         sender: 'customer',
@@ -319,6 +321,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
     setChatLog(prev => [...prev, playerLog, customerLog]);
 
     if (result.status === 'ACCEPTED') {
+        // Prevent double-click by setting submitting flag immediately
+        setIsSubmitting(true);
         const txResult = evaluateTransaction(offerPrincipal, selectedRate);
         // Directly commit transaction - deal summary shown in departure view
         setTimeout(() => {
@@ -328,6 +332,11 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   };
 
   const handleBinaryAccept = () => {
+      if (isSubmitting) return;
+
+      // Prevent double-click by setting submitting flag immediately
+      setIsSubmitting(true);
+
       const acceptedMsg = currentCustomer.dialogue?.accepted?.fair || "成交。";
 
       const mockResult: TransactionResult = {
@@ -381,7 +390,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
 
   const cashAvailable = state.stats.cash;
   const canAfford = cashAvailable >= offerPrincipal;
-  const canInteract = !isWalkedAway && !rejectionState.show;
+  const canInteract = !isWalkedAway && !rejectionState.show && !isSubmitting;
   const repaymentAmount = Math.floor(offerPrincipal * (1 + selectedRate));
   const profit = repaymentAmount - offerPrincipal;
 
@@ -501,10 +510,10 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                  </div>
                  
                  <div className="flex gap-3">
-                     <Button variant="danger" onClick={handleManualReject} className="flex-1">
+                     <Button variant="danger" onClick={handleManualReject} disabled={isSubmitting} className="flex-1">
                         REJECT
                      </Button>
-                     <Button variant="primary" onClick={handleBinaryAccept} disabled={!canFulfillDeal} className="flex-[2]">
+                     <Button variant="primary" onClick={handleBinaryAccept} disabled={!canFulfillDeal || isSubmitting} className="flex-[2]">
                         {canFulfillDeal ? "ACCEPT DEAL" : fulfillmentError}
                      </Button>
                  </div>
