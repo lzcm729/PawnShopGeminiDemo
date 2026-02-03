@@ -18,6 +18,7 @@ import { appointmentReducer } from './appointmentReducer';
 import { uiReducer } from './uiReducer';
 import { nodeReducer } from './nodeReducer';
 import { blackmarketReducer } from './blackmarketReducer';
+import { phaseReducer } from './phaseReducer';
 
 /**
  * List of domain reducers in priority order
@@ -25,6 +26,7 @@ import { blackmarketReducer } from './blackmarketReducer';
  * Returns the state unchanged if action is not handled
  */
 const domainReducers = [
+    phaseReducer,  // State machine reducer (handles PHASE_TRANSITION)
     coreReducer,
     customerReducer,
     nodeReducer,
@@ -60,6 +62,7 @@ export function gameReducer(state: GameState, action: Action): GameState {
 }
 
 // Re-export individual reducers for testing
+export { phaseReducer } from './phaseReducer';
 export { coreReducer } from './coreReducer';
 export { customerReducer } from './customerReducer';
 export { nodeReducer } from './nodeReducer';

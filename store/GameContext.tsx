@@ -34,6 +34,7 @@ import { gameReducer, Action } from './reducers';
 // === Initial State ===
 const initialState: GameState = {
     phase: GamePhase.START_SCREEN,
+    phase2: { type: 'START_SCREEN' },
     stats: {
         day: 1,
         cash: GAME_CONFIG.INITIAL_FUNDS,

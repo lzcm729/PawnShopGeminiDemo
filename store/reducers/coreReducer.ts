@@ -10,6 +10,37 @@ import { clearSave } from '../../systems/core/persistence';
 import { GAME_CONFIG } from '../../systems/game/config';
 import { INITIAL_SHOP_UPGRADES, getEffectiveNightEnergy } from '../../systems/upgrades';
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../../systems/appointment';
+import { GamePhase2 } from '../../systems/core/phases';
+
+/**
+ * Infer phase2 from old phase enum (for save migration).
+ * Maps the old GamePhase enum to the new discriminated union type.
+ */
+function inferPhase2FromLegacyPhase(phase: GamePhase): GamePhase2 {
+    switch (phase) {
+        case GamePhase.START_SCREEN:
+            return { type: 'START_SCREEN' };
+        case GamePhase.MORNING_BRIEF:
+            return { type: 'MORNING_BRIEF' };
+        case GamePhase.BUSINESS:
+            // Default to IDLE; actual subphase depends on context
+            return { type: 'BUSINESS', subphase: 'IDLE' };
+        case GamePhase.NEGOTIATION:
+            // Default to PAWN; actual mode depends on context
+            return { type: 'NEGOTIATION', mode: 'PAWN' };
+        case GamePhase.DEPARTURE:
+            return { type: 'DEPARTURE' };
+        case GamePhase.NIGHT:
+            // Default to ACTIVE; actual subphase depends on context
+            return { type: 'NIGHT', subphase: 'ACTIVE' };
+        case GamePhase.GAME_OVER:
+            return { type: 'GAME_OVER', reason: 'Unknown' };
+        case GamePhase.VICTORY:
+            return { type: 'VICTORY' };
+        default:
+            return { type: 'START_SCREEN' };
+    }
+}
 
 export function coreReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -22,6 +53,11 @@ export function coreReducer(state: GameState, action: Action): GameState {
             const pendingAppointedCandidates = action.payload.pendingAppointedCandidates || [];
             // Recalculate maxEnergy based on upgrades
             const effectiveMaxEnergy = getEffectiveNightEnergy(shopUpgrades);
+
+            // Migrate phase2 from old saves that don't have it
+            // If phase2 is missing, infer it from the old phase enum
+            const phase2 = action.payload.phase2 ?? inferPhase2FromLegacyPhase(action.payload.phase);
+
             return {
                 ...action.payload,
                 shopUpgrades,
@@ -37,7 +73,9 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 nightState: {
                     ...action.payload.nightState,
                     maxEnergy: effectiveMaxEnergy
-                }
+                },
+                // State machine migration: ensure phase2 exists
+                phase2
             };
         }
 

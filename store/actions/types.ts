@@ -11,6 +11,7 @@ import { AppointmentCandidate, AppointmentPreference } from '../../systems/appoi
 import { ItemLogEntry } from '../../types';
 import { GameNode } from '../../types/node';
 import { BlackmarketState, RiskEvent } from '../../systems/blackmarket/types';
+import { PhaseEvent } from '../../systems/core/phases';
 
 // === Action Type Union ===
 
@@ -25,6 +26,9 @@ export type Action =
     | { type: 'SET_LOADING'; payload: boolean }
     | { type: 'END_DAY' }
     | { type: 'GAME_OVER'; payload: string }
+
+    // New state machine (phase2)
+    | { type: 'PHASE_TRANSITION'; payload: PhaseEvent }
 
     // Customer management
     | { type: 'SET_CUSTOMER'; payload: Customer | null }

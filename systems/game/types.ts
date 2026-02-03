@@ -1,5 +1,6 @@
 
 import { GamePhase, DailyStats, ReputationProfile } from '../core/types';
+import { GamePhase2 } from '../core/phases';
 import { Item } from '../items/types';
 import { Customer } from '../npc/types';
 import { TransactionRecord } from '../economy/types';
@@ -36,6 +37,11 @@ export interface DealSummary {
 
 export interface GameState {
   phase: GamePhase;
+  /**
+   * New state machine phase (migration period: coexists with `phase`)
+   * Will replace `phase` after migration is complete.
+   */
+  phase2: GamePhase2;
   stats: DailyStats;
   reputation: ReputationProfile;
   inventory: Item[];

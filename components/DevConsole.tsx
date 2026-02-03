@@ -175,7 +175,7 @@ export const DevConsole: React.FC = () => {
             <span className="text-green-600">Press ` or F1 to toggle</span>
           </div>
           <div className="text-green-700 text-xs font-mono">
-            Day {state.stats.day} | ${state.stats.cash} | Phase: {state.phase}
+            Day {state.stats.day} | ${state.stats.cash} | Phase: {state.phase} | Phase2: {JSON.stringify(state.phase2)}
           </div>
         </div>
 
