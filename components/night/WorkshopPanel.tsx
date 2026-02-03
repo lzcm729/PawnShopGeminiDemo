@@ -12,6 +12,7 @@ import { useGame } from '../../store/GameContext';
 import { cn } from '../../lib/utils';
 import { ItemStatus } from '../../systems/items/types';
 import { CategoryIcon } from '../ui/CategoryIcon';
+import { getItemIcon } from '../../systems/assets';
 import {
   Wrench,
   Zap,
@@ -151,7 +152,21 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <CategoryIcon category={item.category} className="w-5 h-5 text-stone-500" />
+                    <div className="w-8 h-8 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0 overflow-hidden rounded">
+                      <img
+                        src={getItemIcon(item)}
+                        alt={item.name}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const fallback = (e.target as HTMLImageElement).nextElementSibling;
+                          if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                        }}
+                      />
+                      <div className="hidden items-center justify-center w-full h-full">
+                        <CategoryIcon category={item.category} className="w-5 h-5 text-stone-500" />
+                      </div>
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-bold truncate">{getDisplayName(item)}</span>
@@ -190,7 +205,21 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
               <div>
                 {/* Item Header */}
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-noir-400">
-                  <CategoryIcon category={selectedItem.item.category} className="w-8 h-8 text-stone-400" />
+                  <div className="w-12 h-12 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0 overflow-hidden rounded">
+                    <img
+                      src={getItemIcon(selectedItem.item)}
+                      alt={selectedItem.item.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        const fallback = (e.target as HTMLImageElement).nextElementSibling;
+                        if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                      }}
+                    />
+                    <div className="hidden items-center justify-center w-full h-full">
+                      <CategoryIcon category={selectedItem.item.category} className="w-8 h-8 text-stone-400" />
+                    </div>
+                  </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-lg">{getDisplayName(selectedItem.item)}</h3>

@@ -12,6 +12,7 @@ import { useGame } from '../../store/GameContext';
 import { cn } from '../../lib/utils';
 import { Item, ItemStatus } from '../../systems/items/types';
 import { CategoryIcon } from '../ui/CategoryIcon';
+import { getItemIcon } from '../../systems/assets';
 import {
   Sparkles,
   Zap,
@@ -262,8 +263,20 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
     >
       <div className="flex gap-3">
         {/* Icon */}
-        <div className="w-10 h-10 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0 rounded">
-          <CategoryIcon category={item.category} className="text-noir-txt-secondary w-5 h-5" />
+        <div className="w-10 h-10 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0 rounded overflow-hidden">
+          <img
+            src={getItemIcon(item)}
+            alt={item.name}
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              const fallback = (e.target as HTMLImageElement).nextElementSibling;
+              if (fallback) (fallback as HTMLElement).style.display = 'flex';
+            }}
+          />
+          <div className="hidden items-center justify-center w-full h-full">
+            <CategoryIcon category={item.category} className="text-noir-txt-secondary w-5 h-5" />
+          </div>
         </div>
 
         {/* Info */}

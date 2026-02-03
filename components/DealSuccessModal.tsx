@@ -5,26 +5,13 @@ import { Button } from './ui/Button';
 import { PackageCheck, DollarSign, Heart, Briefcase, Skull, Stamp, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
 import { getDisplayName } from '../systems/items/tagUtils';
-import { getCharacterPortraitPath, moodToEmotion } from '../systems/assets';
+import { getCharacterPortraitPath, moodToEmotion, getItemIcon } from '../systems/assets';
+import { CategoryIcon } from './ui/CategoryIcon';
 
 interface DealSuccessModalProps {
   customer: Customer;
   result: TransactionResult;
   onClose: () => void;
-}
-
-const getCategoryIcon = (category: string) => {
-    switch(category) {
-        case '服饰': return <Shirt className="w-6 h-6 text-stone-400" />;
-        case '奢侈品': return <ShoppingBag className="w-6 h-6 text-stone-400" />;
-        case '电子产品': return <Smartphone className="w-6 h-6 text-stone-400" />;
-        case '珠宝': return <Gem className="w-6 h-6 text-stone-400" />;
-        case '违禁品': return <Skull className="w-6 h-6 text-stone-400" />;
-        case '古玩': return <Archive className="w-6 h-6 text-stone-400" />;
-        case '玩具': return <Gamepad2 className="w-6 h-6 text-stone-400" />;
-        case '乐器': return <Music className="w-6 h-6 text-stone-400" />;
-        default: return <Package className="w-6 h-6 text-stone-400" />;
-    }
 }
 
 export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, result, onClose }) => {
@@ -116,7 +103,19 @@ export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, re
         {/* Item Acquired */}
         <div className="relative z-10 w-full bg-stone-800 p-3 rounded flex items-center gap-4 mb-8 border border-stone-600">
              <div className="w-12 h-12 bg-black rounded overflow-hidden flex-shrink-0 flex items-center justify-center border border-stone-700">
-                {getCategoryIcon(item.category)}
+                <img
+                  src={getItemIcon(item)}
+                  alt={item.name}
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    const fallback = (e.target as HTMLImageElement).nextElementSibling;
+                    if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                  }}
+                />
+                <div className="hidden items-center justify-center w-full h-full">
+                  <CategoryIcon category={item.category} className="w-6 h-6 text-stone-400" />
+                </div>
              </div>
              <div>
                  <div className="text-xs text-stone-500 uppercase">物品入库</div>

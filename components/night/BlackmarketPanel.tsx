@@ -15,6 +15,7 @@ import { useGame } from '../../store/GameContext';
 import { cn } from '../../lib/utils';
 import { Item } from '../../systems/items/types';
 import { CategoryIcon } from '../ui/CategoryIcon';
+import { getItemIcon } from '../../systems/assets';
 import { MarketPurchaseRequest } from '../../systems/blackmarket/types';
 import { TAG_DEFINITIONS } from '../../systems/items/tagData';
 import { getDisplayName } from '../../systems/items/tagUtils';
@@ -445,8 +446,20 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-noir-300 border border-noir-400 flex items-center justify-center rounded">
-                          <CategoryIcon category={item.category} className="w-5 h-5 text-stone-400" />
+                        <div className="w-10 h-10 bg-noir-300 border border-noir-400 flex items-center justify-center rounded overflow-hidden">
+                          <img
+                            src={getItemIcon(item)}
+                            alt={item.name}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const fallback = (e.target as HTMLImageElement).nextElementSibling;
+                              if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                            }}
+                          />
+                          <div className="hidden items-center justify-center w-full h-full">
+                            <CategoryIcon category={item.category} className="w-5 h-5 text-stone-400" />
+                          </div>
                         </div>
                         <div className="flex-1">
                           <div className="font-bold text-sm">{getDisplayName(item)}</div>
@@ -546,8 +559,20 @@ const SaleTab: React.FC<SaleTabProps> = ({
             )}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-noir-300 border border-noir-400 flex items-center justify-center rounded">
-                <CategoryIcon category={item.category} className="w-5 h-5 text-stone-400" />
+              <div className="w-10 h-10 bg-noir-300 border border-noir-400 flex items-center justify-center rounded overflow-hidden">
+                <img
+                  src={getItemIcon(item)}
+                  alt={item.name}
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    const fallback = (e.target as HTMLImageElement).nextElementSibling;
+                    if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                  }}
+                />
+                <div className="hidden items-center justify-center w-full h-full">
+                  <CategoryIcon category={item.category} className="w-5 h-5 text-stone-400" />
+                </div>
               </div>
               <div className="flex-1">
                 <div className="font-bold text-sm">{getDisplayName(item)}</div>
