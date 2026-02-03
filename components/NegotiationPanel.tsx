@@ -75,7 +75,6 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
                       (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${customer.avatarSeed}/200`;
                     }}
                  />
-                 <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.5)_50%)] bg-[length:100%_4px] pointer-events-none opacity-30"></div>
                  {isAngry && <div className="absolute inset-0 border-2 border-red-500 animate-pulse"></div>}
              </div>
              
