@@ -33,7 +33,9 @@ import {
   CheckCircle2,
   XCircle,
   ChevronRight,
+  ArrowUp,
 } from 'lucide-react';
+import { UNDERWORLD_PRICE_MODIFIERS } from '../../systems/blackmarket/types';
 
 interface BlackmarketPanelProps {
   isOpen: boolean;
@@ -321,12 +323,24 @@ interface ReputationIndicatorProps {
   repModifier: {
     modifier: number;
     label: string;
+    currentRep: number;
   };
 }
 
 const ReputationIndicator: React.FC<ReputationIndicatorProps> = ({ repModifier }) => {
   const isPositive = repModifier.modifier > 0;
   const isNegative = repModifier.modifier < 0;
+
+  // Find current tier and next tier
+  const currentTierIndex = UNDERWORLD_PRICE_MODIFIERS.findIndex(
+    tier => repModifier.currentRep >= tier.minRep && repModifier.currentRep <= tier.maxRep
+  );
+  const nextTier = currentTierIndex < UNDERWORLD_PRICE_MODIFIERS.length - 1
+    ? UNDERWORLD_PRICE_MODIFIERS[currentTierIndex + 1]
+    : null;
+
+  // Overall progress (0-100)
+  const overallProgress = repModifier.currentRep;
 
   return (
     <div className={cn(
@@ -337,19 +351,62 @@ const ReputationIndicator: React.FC<ReputationIndicatorProps> = ({ repModifier }
     )}>
       <div className="flex items-center gap-3">
         <Skull className="w-6 h-6" />
-        <div>
+        <div className="flex-1">
           <div className="text-xs uppercase tracking-wider opacity-70">黑道声誉</div>
           <div className="text-xl font-bold">{repModifier.label}</div>
         </div>
+        <div className="text-right">
+          <div className="text-lg font-mono font-bold">{repModifier.currentRep}</div>
+          <div className="text-xs opacity-70">/ 100</div>
+        </div>
       </div>
-      <div className="mt-2 text-sm">
-        价格修正:
+
+      {/* Progress bar */}
+      <div className="mt-3">
+        <div className="h-2 bg-noir-400 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-purple-700 to-purple-500 transition-all duration-300"
+            style={{ width: `${overallProgress}%` }}
+          />
+        </div>
+        {/* Tier markers */}
+        <div className="relative h-1 mt-0.5">
+          {UNDERWORLD_PRICE_MODIFIERS.slice(1).map((tier, index) => (
+            <div
+              key={index}
+              className="absolute w-0.5 h-1 bg-purple-800/50"
+              style={{ left: `${tier.minRep}%` }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Price modifier */}
+      <div className="mt-2 text-sm flex items-center justify-between">
+        <span className="opacity-70">价格修正:</span>
         <span className={cn(
-          'ml-2 font-mono font-bold',
+          'font-mono font-bold',
           isPositive ? 'text-green-400' : isNegative ? 'text-red-400' : 'text-stone-400'
         )}>
           {repModifier.modifier > 0 ? '+' : ''}{Math.round(repModifier.modifier * 100)}%
         </span>
+      </div>
+
+      {/* Next tier info */}
+      {nextTier && (
+        <div className="mt-2 pt-2 border-t border-purple-800/30 text-xs flex items-center gap-1">
+          <ArrowUp className="w-3 h-3 text-purple-500" />
+          <span className="opacity-70">下一等级:</span>
+          <span className="text-purple-300 font-medium">{nextTier.label}</span>
+          <span className="opacity-50 ml-1">
+            (需 {nextTier.minRep} 声誉, +{Math.round(nextTier.modifier * 100)}% 价格)
+          </span>
+        </div>
+      )}
+
+      {/* Explanation */}
+      <div className="mt-2 pt-2 border-t border-purple-800/30 text-xs opacity-60">
+        黑道声誉越高，黑市交易价格越好
       </div>
     </div>
   );

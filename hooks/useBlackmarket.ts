@@ -54,10 +54,14 @@ export const useBlackmarket = () => {
   }, [blackmarket.heat]);
 
   /**
-   * Reputation price modifier info
+   * Reputation price modifier info with full tier data
    */
   const repModifier = useMemo(() => {
-    return getUnderworldPriceModifier(underworldRep);
+    const base = getUnderworldPriceModifier(underworldRep);
+    return {
+      ...base,
+      currentRep: underworldRep
+    };
   }, [underworldRep]);
 
   /**
