@@ -1,16 +1,18 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { PackageOpen, Moon, Archive, Wrench, Hammer, Eye, Skull, Lock } from 'lucide-react';
-import { ItemStatus, GamePhase } from '../types';
+import { PackageOpen, Moon, Archive, Wrench, Hammer, Eye, Skull, Lock, Search } from 'lucide-react';
+import { Item, ItemStatus, GamePhase } from '../types';
 import { Modal } from './ui/Modal';
 import { ItemCard } from './ui/ItemCard';
+import { ItemDetailModal } from './ui/ItemDetailModal';
 import { playSfx } from '../systems/game/audio';
 import { cn } from '../lib/utils';
 import { getEffectiveInventoryCapacity } from '../systems/upgrades';
 
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
+  const [detailItem, setDetailItem] = useState<Item | null>(null);
 
   if (!state.showInventory) return null;
 
@@ -73,6 +75,12 @@ export const InventoryModal: React.FC = () => {
       playSfx('CLICK');
   };
 
+  // Handle opening item detail modal
+  const handleOpenDetail = (item: Item) => {
+      setDetailItem(item);
+      playSfx('CLICK');
+  };
+
   const renderActions = (item: Item) => {
       const isSold = item.status === ItemStatus.SOLD;
       const isRedeemed = item.status === ItemStatus.REDEEMED;
@@ -99,7 +107,21 @@ export const InventoryModal: React.FC = () => {
               )}
 
               {/* Action buttons grid */}
-              <div className="grid grid-cols-4 gap-1">
+              <div className="grid grid-cols-5 gap-1">
+                  {/* Detail Button - Always available */}
+                  <button
+                      onClick={() => handleOpenDetail(item)}
+                      className={cn(
+                          baseButtonClass,
+                          enabledClass,
+                          "border border-cyan-900/50 text-cyan-400 hover:border-cyan-700 hover:bg-cyan-950/30"
+                      )}
+                      title="查看物品详情"
+                  >
+                      <Search className="w-3.5 h-3.5" />
+                      <span>详情</span>
+                  </button>
+
                   {/* Repair Button */}
                   <button
                       onClick={isNightPhase ? () => handleOpenWorkshop(item.id) : undefined}
@@ -261,6 +283,16 @@ export const InventoryModal: React.FC = () => {
               )}
           </div>
       </div>
+
+      {/* Item Detail Modal */}
+      {detailItem && (
+          <ItemDetailModal
+              item={detailItem}
+              currentDay={currentDay}
+              isOpen={!!detailItem}
+              onClose={() => setDetailItem(null)}
+          />
+      )}
     </Modal>
   );
 };
