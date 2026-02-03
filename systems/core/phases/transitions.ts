@@ -109,6 +109,12 @@ export const TRANSITIONS: TransitionRule[] = [
     // ========== BUSINESS: SERVING ==========
     {
         from: (p) => p.type === 'BUSINESS' && p.subphase === 'SERVING',
+        event: 'SET_CUSTOMER_EVENT',
+        to: (_, e) => ({ type: 'NEGOTIATION', mode: (e as { mode: import('./types').NegotiationMode }).mode ?? 'PAWN' })
+        // customer data is set externally via SET_CUSTOMER action
+    },
+    {
+        from: (p) => p.type === 'BUSINESS' && p.subphase === 'SERVING',
         event: 'TRANSACTION_COMPLETE',
         to: () => ({ type: 'DEPARTURE' })
         // transaction effects are handled externally
@@ -118,6 +124,25 @@ export const TRANSITIONS: TransitionRule[] = [
         event: 'CUSTOMER_REJECTED',
         to: () => ({ type: 'DEPARTURE' }),
         effects: [actions.setSatisfactionDesperate]
+    },
+
+    // ========== NEGOTIATION (all modes) ==========
+    {
+        from: (p) => p.type === 'NEGOTIATION',
+        event: 'TRANSACTION_COMPLETE',
+        to: () => ({ type: 'DEPARTURE' })
+        // transaction effects are handled externally
+    },
+    {
+        from: (p) => p.type === 'NEGOTIATION',
+        event: 'CUSTOMER_REJECTED',
+        to: () => ({ type: 'DEPARTURE' }),
+        effects: [actions.setSatisfactionDesperate]
+    },
+    {
+        from: (p) => p.type === 'NEGOTIATION',
+        event: 'SETTLEMENT_COMPLETE',
+        to: () => ({ type: 'DEPARTURE' })
     },
 
     // ========== BUSINESS: CLOSED ==========

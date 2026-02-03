@@ -1,10 +1,11 @@
 
+import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow, checkCondition, resolveDialogue, checkRenewalRequests } from '../systems/narrative/engine';
 import { generateDailyNews } from '../systems/news/engine';
 import { generatePawnLog } from '../systems/game/utils/logGenerator';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
-import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, GamePhase, ChainUpdateEffect, MotherCondition, ExpiryEvent } from '../types';
+import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, ChainUpdateEffect, MotherCondition, ExpiryEvent } from '../types';
 import { usePawnShop } from './usePawnShop';
 import { GAME_CONFIG } from '../systems/game/config';
 import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
@@ -13,9 +14,15 @@ import { Dialogue } from '../systems/narrative/types';
 import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
 import { createTransientChain, getContractTypeFromRate, generateFillerCustomer } from '../systems/npc/fillerGenerator';
 import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
+import { PhaseEvent } from '../systems/core/phases/types';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
+
+  // Helper to send state machine events
+  const send = useCallback((event: PhaseEvent) => {
+    dispatch({ type: 'PHASE_TRANSITION', payload: event });
+  }, [dispatch]);
   const { checkDailyExpirations, calculateRedemptionCost } = usePawnShop();
 
   // Helper to check for new milestones
@@ -203,8 +210,8 @@ export const useGameEngine = () => {
     const blackmarketRiskEvent = checkRiskEvent(state.blackmarket?.heat ?? 0);
     dispatch({ type: 'BLACKMARKET_PROCESS_DAY_END', payload: { riskEvent: blackmarketRiskEvent } });
 
-    // 9. End Day (Transition to Morning)
-    dispatch({ type: 'END_DAY' });
+    // 9. End Day (Transition to Morning) - via state machine
+    send({ type: 'END_DAY' });
   };
 
   // Helper: Create a Customer from an ExpiryEvent for the settlement interface
@@ -295,6 +302,10 @@ export const useGameEngine = () => {
   };
 
   const startNewDay = () => {
+    // NOTE: Maintenance cost, blackmarket refresh, and mail processing are now handled
+    // by the state machine effects when OPEN_SHOP transitions to DAY_START.EXPIRY_CHECK.
+    // These dispatch calls are kept for backward compatibility during migration.
+
     // 0. Deduct maintenance costs for enabled COUNTER upgrades
     dispatch({ type: 'DEDUCT_MAINTENANCE_COST' });
 
@@ -353,20 +364,22 @@ export const useGameEngine = () => {
             if (customer) {
                 dispatch({ type: 'SET_CUSTOMER', payload: customer });
             } else {
-                dispatch({ type: 'START_DAY' });
+                // No valid customer created, signal expiry check done with no expiry
+                send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: false });
             }
             return;
         }
 
         // If only breach events, continue to normal day
         if (breachEvents.length > 0 && normalEvents.length === 0) {
-            dispatch({ type: 'START_DAY' });
+            // Signal expiry check done, no player-facing expiry events
+            send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: false });
             return;
         }
     }
 
-    // 5. No expiry events, proceed normally
-    dispatch({ type: 'START_DAY' });
+    // 5. No expiry events, proceed normally via state machine
+    send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: false });
   };
 
   // Process next expiry event in queue or continue to normal day
@@ -380,12 +393,13 @@ export const useGameEngine = () => {
           if (customer) {
               dispatch({ type: 'SET_CUSTOMER', payload: customer });
           } else {
-              dispatch({ type: 'START_DAY' });
+              // No valid customer, signal expiry check done
+              send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: false });
           }
       } else {
-          // All expiry events handled, continue to normal day
+          // All expiry events handled, continue to normal day via state machine
           dispatch({ type: 'SET_EXPIRY_QUEUE', payload: [] });
-          dispatch({ type: 'START_DAY' });
+          send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: false });
       }
   };
 
@@ -438,7 +452,9 @@ export const useGameEngine = () => {
               if (!forfeitItem) {
                    console.log("Skipping event: Item not forfeit");
                    dispatch({ type: 'SET_LOADING', payload: false });
-                   dispatch({ type: 'START_NIGHT' });
+                   // Signal no customer generated, then close shop via state machine
+                   send({ type: 'CUSTOMER_GENERATED', hasCustomer: false });
+                   send({ type: 'CLOSE_SHOP' });
                    return;
               }
           }
@@ -458,10 +474,12 @@ export const useGameEngine = () => {
                            const mailId = narrativeEvent.failureMailId || 'mail_generic_plea';
                            dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: mailId, delayDays: 0, metadata: { relatedItemName: item.name } } });
                            if (narrativeEvent.onFailure) applyChainEffects(narrativeEvent.chainId, narrativeEvent.onFailure);
-                           
+
                            setTimeout(() => {
                                 dispatch({ type: 'SET_LOADING', payload: false });
-                                dispatch({ type: 'START_NIGHT' });
+                                // Signal no customer generated, then close shop via state machine
+                                send({ type: 'CUSTOMER_GENERATED', hasCustomer: false });
+                                send({ type: 'CLOSE_SHOP' });
                            }, 200);
                            return;
                       }

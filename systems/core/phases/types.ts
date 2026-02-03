@@ -81,6 +81,7 @@ export type PhaseEvent =
 
     // Business events
     | { type: 'CUSTOMER_GENERATED'; hasCustomer: boolean }
+    | { type: 'SET_CUSTOMER_EVENT'; mode: NegotiationMode }
     | { type: 'TRANSACTION_COMPLETE' }
     | { type: 'CUSTOMER_REJECTED' }
     | { type: 'CLOSE_SHOP' }

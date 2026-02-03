@@ -95,10 +95,13 @@ export function coreReducer(state: GameState, action: Action): GameState {
         }
 
         case 'START_GAME':
+            // Phase transition handled by state machine (NEW_GAME event)
             clearSave();
-            return { ...state, phase: { type: 'MORNING_BRIEF' } };
+            return state;
 
         case 'START_DAY': {
+            // Phase transition handled by state machine (EXPIRY_CHECK_DONE event)
+            // This action now only handles data reset operations
             const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
 
             // Milestone Effect: Gold Standard (+2 AP)
@@ -114,7 +117,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 currentNode: null,      // Clear node when starting new day
                 dayEvents: [],
                 todayTransactions: [],
-                phase: { type: 'BUSINESS', subphase: 'IDLE' },
+                // phase transition removed - handled by state machine
                 stats: { ...state.stats, actionPoints: effectiveMaxAP, visitedToday: false },
                 violationFlags: [],
                 lastSatisfaction: null,
@@ -133,6 +136,8 @@ export function coreReducer(state: GameState, action: Action): GameState {
         }
 
         case 'OPEN_SHOP': {
+            // Phase transition handled by state machine (OPEN_SHOP event -> DAY_START.EXPIRY_CHECK)
+            // This action now only handles mail processing data
             // FIX: Process Daily Mail on Shop Open
             // This ensures that pending mails seen in Morning Brief are actually delivered to the Inbox
             const today = state.stats.day;
@@ -145,15 +150,17 @@ export function coreReducer(state: GameState, action: Action): GameState {
 
             return {
                 ...state,
-                phase: { type: 'BUSINESS', subphase: 'IDLE' },
+                // phase transition removed - handled by state machine
                 inbox: newInbox,
                 pendingMails: remainingPending
             };
         }
 
         case 'START_NIGHT':
+            // Phase transition handled by state machine (CLOSE_SHOP event)
+            // This action now only handles data cleanup
             // Sound effect removed to prevent duplicate play with UI interaction
-            return { ...state, phase: { type: 'NIGHT', subphase: 'ACTIVE' }, currentCustomer: null, currentNode: null, lastSatisfaction: null };
+            return { ...state, currentCustomer: null, currentNode: null, lastSatisfaction: null };
 
         case 'SET_PHASE':
             // Handle legacy SET_PHASE action - convert to new format if needed
@@ -219,6 +226,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 dealQuality: dealQuality || 'fair'
             } : null;
 
+            // Phase transition handled by state machine (TRANSACTION_COMPLETE event)
             return {
                 ...state,
                 stats: { ...state.stats, cash: state.stats.cash + cashDelta },
@@ -227,7 +235,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 dayEvents: [...state.dayEvents, log],
                 todayTransactions: updatedTransactions,
                 customersServedToday: servedCount,
-                phase: { type: 'DEPARTURE' },
+                // phase transition removed - handled by state machine
                 completedScenarioIds: newCompletedIds,
                 violationFlags: newViolationFlags,
                 lastDealSummary: newDealSummary
@@ -235,6 +243,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
         }
 
         case 'REJECT_DEAL': {
+            // Phase transition handled by state machine (CUSTOMER_REJECTED event)
             const servedCount = state.customersServedToday + 1;
             const completedId = state.currentCustomer?.id;
             const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds;
@@ -243,7 +252,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 ...state,
                 dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`],
                 customersServedToday: servedCount,
-                phase: { type: 'DEPARTURE' },
+                // phase transition removed - handled by state machine
                 completedScenarioIds: newCompletedIds
             };
         }

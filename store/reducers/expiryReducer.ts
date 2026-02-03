@@ -7,7 +7,6 @@ import { GameState, ReputationType, ItemStatus, TransactionRecord, SatisfactionL
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../../systems/game/utils/logGenerator';
-import { GamePhase } from '../../systems/core/phases';
 
 export function expiryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -15,10 +14,11 @@ export function expiryReducer(state: GameState, action: Action): GameState {
             return { ...state, expiryQueue: action.payload };
 
         case 'TRIGGER_EXPIRY_EVENT':
+            // Phase transition handled by state machine
             return {
                 ...state,
-                currentExpiryEvent: action.payload,
-                phase: { type: 'NEGOTIATION', mode: 'REDEEM' } as GamePhase
+                currentExpiryEvent: action.payload
+                // phase transition removed - handled by state machine
             };
 
         case 'RESOLVE_EXPIRY': {
@@ -188,6 +188,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 }
             }
 
+            // Phase transition handled by state machine (SETTLEMENT_COMPLETE or appropriate event)
             return {
                 ...state,
                 stats: { ...state.stats, cash: state.stats.cash + cashDelta },
@@ -197,10 +198,8 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 currentExpiryEvent: null,
                 todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
                 dayEvents: [...state.dayEvents, log],
-                lastSatisfaction: satisfaction,
-                phase: (isNoShow || isBreachDiscovery)
-                    ? { type: 'BUSINESS', subphase: 'IDLE' } as GamePhase
-                    : { type: 'DEPARTURE' } as GamePhase
+                lastSatisfaction: satisfaction
+                // phase transition removed - handled by state machine
             };
         }
 

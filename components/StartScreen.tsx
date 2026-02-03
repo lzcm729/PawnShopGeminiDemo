@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useGame } from '../store/GameContext';
+import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
 import { Disc, Play, RotateCcw, Volume2, VolumeX, Monitor } from 'lucide-react';
 import { hasSaveGame, loadGame, clearSave } from '../systems/core/persistence';
@@ -8,6 +9,7 @@ import { toggleMute, getMuteState, playSfx, initAudio, startAmbience } from '../
 
 export const StartScreen: React.FC = () => {
   const { dispatch } = useGame();
+  const { send } = useGameMachine();
   const [saveExists, setSaveExists] = useState(false);
   const [isMuted, setIsMuted] = useState(getMuteState());
 
@@ -35,7 +37,7 @@ export const StartScreen: React.FC = () => {
     initializeGameAudio();
     // playSfx('BOOT'); // Removed per user request
     clearSave();
-    dispatch({ type: 'START_GAME' });
+    send({ type: 'NEW_GAME' });
   };
 
   const handleMute = () => {

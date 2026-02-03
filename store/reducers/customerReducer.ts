@@ -12,7 +12,6 @@ import { Action } from '../actions/types';
 import { getPatienceBonus } from '../../systems/upgrades';
 import { generateValuationRange } from '../../systems/items/utils';
 import { createPawnNode, PawnNode } from '../../types/node';
-import { GamePhase } from '../../systems/core/phases';
 
 export function customerReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -38,11 +37,12 @@ export function customerReducer(state: GameState, action: Action): GameState {
                 pawnNode = createPawnNode(customerInit, visitCount);
             }
 
+            // Phase transition handled by state machine (SET_CUSTOMER_EVENT)
             return {
                 ...state,
                 currentCustomer: customerInit,
                 currentNode: pawnNode,
-                phase: { type: 'NEGOTIATION', mode: 'PAWN' } as GamePhase,
+                // phase transition removed - handled by state machine
                 lastSatisfaction: null
             };
         }
