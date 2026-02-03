@@ -552,7 +552,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-noir-300 border border-noir-400 flex items-center justify-center rounded overflow-hidden">
+                        <div className="w-14 h-14 bg-noir-300 border border-noir-400 flex items-center justify-center rounded overflow-hidden">
                           <img
                             src={getItemIcon(item)}
                             alt={item.name}
@@ -564,7 +564,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                             }}
                           />
                           <div className="hidden items-center justify-center w-full h-full">
-                            <CategoryIcon category={item.category} className="w-5 h-5 text-stone-400" />
+                            <CategoryIcon category={item.category} className="w-7 h-7 text-stone-400" />
                           </div>
                         </div>
                         <div className="flex-1">
@@ -666,7 +666,7 @@ const SaleTab: React.FC<SaleTabProps> = ({
             )}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-noir-300 border border-noir-400 flex items-center justify-center rounded overflow-hidden">
+              <div className="w-14 h-14 bg-noir-300 border border-noir-400 flex items-center justify-center rounded overflow-hidden">
                 <img
                   src={getItemIcon(item)}
                   alt={item.name}
@@ -678,7 +678,7 @@ const SaleTab: React.FC<SaleTabProps> = ({
                   }}
                 />
                 <div className="hidden items-center justify-center w-full h-full">
-                  <CategoryIcon category={item.category} className="w-5 h-5 text-stone-400" />
+                  <CategoryIcon category={item.category} className="w-7 h-7 text-stone-400" />
                 </div>
               </div>
               <div className="flex-1">
