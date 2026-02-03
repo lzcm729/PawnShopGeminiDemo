@@ -118,6 +118,9 @@ export interface WorkshopResult {
   /** 新的物品价值（如果变化） */
   newValue?: number;
 
+  /** 价值增加量 */
+  valueIncrease?: number;
+
   /** 叙事文本 */
   narrative: WorkshopNarrative;
 }

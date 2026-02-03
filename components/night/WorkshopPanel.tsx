@@ -517,9 +517,9 @@ const WorkshopResultModal: React.FC<WorkshopResultModalProps> = ({ result, onClo
         </div>
 
         {/* Value Change */}
-        {result.newValue !== undefined && (
+        {result.valueIncrease !== undefined && result.valueIncrease !== 0 && (
           <div className="text-sm text-stone-400 border-t border-noir-400 pt-4">
-            物品新价值: <span className="text-green-400 font-mono text-lg">${result.newValue}</span>
+            物品价值: <span className="text-green-400 font-mono text-lg">+${result.valueIncrease}</span>
           </div>
         )}
       </div>

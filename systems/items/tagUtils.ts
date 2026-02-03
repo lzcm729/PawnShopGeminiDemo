@@ -208,6 +208,9 @@ export function getActiveVariant(item: Item): ItemVariant | null {
 /**
  * 获取物品的显示名称
  * 优先级：WorkState 名称变体 > CSV模板 > 旧变体系统 > 原始名称
+ *
+ * 当物品被修复/重铸且有新名称时，显示格式为："新名称 (原：原始名称)"
+ * 如果新名称和原始名称相同，则不显示括号部分
  */
 export function getDisplayName(item: Item): string {
   // 确定实际的工作状态（兼容旧存档：wasReforged/wasRestored 为 true 但 workState 未设置）
@@ -222,13 +225,24 @@ export function getDisplayName(item: Item): string {
   const template = item.templateId ? getItemTemplate(item.templateId) :
                    item.id ? getItemTemplate(item.id) : undefined;
 
+  // 获取原始名称（用于括号显示）
+  const originalName = item.nameDefault || template?.nameDefault || item.name;
+
+  // 辅助函数：格式化带原始名称的显示
+  const formatWithOriginal = (newName: string): string => {
+    if (newName === originalName) {
+      return newName;
+    }
+    return `${newName} (原：${originalName})`;
+  };
+
   if (workState === 'REFORGED') {
     const reforgedName = item.nameReforged || template?.nameReforged;
-    if (reforgedName) return reforgedName;
+    if (reforgedName) return formatWithOriginal(reforgedName);
   }
   if (workState === 'RESTORED') {
     const restoredName = item.nameRestored || template?.nameRestored;
-    if (restoredName) return restoredName;
+    if (restoredName) return formatWithOriginal(restoredName);
   }
 
   // 默认名称

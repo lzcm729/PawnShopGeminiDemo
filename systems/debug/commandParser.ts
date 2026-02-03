@@ -1,9 +1,10 @@
 
 import { GamePhase, ReputationType, ItemStatus } from '../../types';
 import { testAllFullStoryFiles, testFullStoryByName, formatFullTestResults } from '../narrative/dsl/__tests__/fullFileTest';
-import type { Item, PawnInfo } from '../items/types';
+import type { Item, PawnInfo, WorkState } from '../items/types';
 import type { ItemTag } from '../items/tags';
 import { STATE_TAGS, ATTRIBUTE_TAGS, ESSENCE_TAGS } from '../items/tags';
+import { createItemFromTemplate, getAllItemTemplates } from '../items/csvLoader';
 
 export interface CommandResult {
   success: boolean;
@@ -103,6 +104,7 @@ export function executeCommand(
   add essence <n>       - Add essence to all types
   add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2] - Add test pawn item
   add forfeit <name> [--tags TAG1,TAG2] - Add forfeit item for blackmarket testing
+  add template <id> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|REFORGED] - Add item from CSV template
   spawn customer        - Force spawn a customer (business phase only)
   blackmarket lock <n>  - Lock blackmarket for N days
   blackmarket unlock    - Unlock blackmarket
@@ -578,8 +580,11 @@ function handleAddCommand(
     case 'forfeit':
       return handleAddForfeitCommand(args.slice(1), dispatch, getState);
 
+    case 'template':
+      return handleAddTemplateCommand(args.slice(1), dispatch, getState);
+
     default:
-      return { success: false, message: `Unknown type: ${type}. Valid types: cash, essence, item, forfeit` };
+      return { success: false, message: `Unknown type: ${type}. Valid types: cash, essence, item, forfeit, template` };
   }
 }
 
@@ -831,6 +836,168 @@ function handleAddForfeitCommand(
 }
 
 /**
+ * Parse args for template command: <templateId> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|REFORGED]
+ */
+function parseTemplateArgs(args: string[]): {
+  templateId: string;
+  status: ItemStatus;
+  workState: WorkState;
+} | null {
+  let templateId = '';
+  let status: ItemStatus = ItemStatus.FORFEIT; // Default to FORFEIT for testing
+  let workState: WorkState = 'DEFAULT';
+
+  let i = 0;
+  while (i < args.length) {
+    const arg = args[i];
+
+    if (arg === '--status') {
+      const nextArg = args[i + 1]?.toUpperCase();
+      if (nextArg === 'ACTIVE') {
+        status = ItemStatus.ACTIVE;
+      } else if (nextArg === 'FORFEIT') {
+        status = ItemStatus.FORFEIT;
+      }
+      i += 2;
+    } else if (arg === '--workState' || arg === '--workstate') {
+      const nextArg = args[i + 1]?.toUpperCase();
+      if (nextArg === 'DEFAULT' || nextArg === 'RESTORED' || nextArg === 'REFORGED') {
+        workState = nextArg as WorkState;
+      }
+      i += 2;
+    } else if (!arg.startsWith('--')) {
+      templateId = arg;
+      i++;
+    } else {
+      i++;
+    }
+  }
+
+  return templateId ? { templateId, status, workState } : null;
+}
+
+/**
+ * Get the display name based on work state
+ */
+function getNameForWorkState(item: Item): string {
+  switch (item.workState) {
+    case 'RESTORED':
+      return item.nameRestored || item.name;
+    case 'REFORGED':
+      return item.nameReforged || item.name;
+    default:
+      return item.nameDefault || item.name;
+  }
+}
+
+function handleAddTemplateCommand(
+  args: string[],
+  dispatch: (action: any) => void,
+  getState: () => any
+): CommandResult {
+  const parsed = parseTemplateArgs(args);
+
+  if (!parsed || !parsed.templateId) {
+    // List available templates
+    const templates = getAllItemTemplates();
+    const templateList = templates.map(t => `  ${t.id}: ${t.nameDefault}`).join('\n');
+    return {
+      success: false,
+      message: `Usage: add template <templateId> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|REFORGED]\n\nAvailable templates:\n${templateList || '  (no templates loaded)'}`
+    };
+  }
+
+  const state = getState();
+  const currentDay = state.stats.day;
+
+  // Create item from template
+  const item = createItemFromTemplate(parsed.templateId, {
+    status: parsed.status,
+    workState: parsed.workState,
+    pawnDate: parsed.status === ItemStatus.ACTIVE ? currentDay : currentDay - 7,
+    appraised: true,
+  });
+
+  if (!item) {
+    // Template not found - list available templates
+    const templates = getAllItemTemplates();
+    const templateList = templates.map(t => `  ${t.id}: ${t.nameDefault}`).join('\n');
+    return {
+      success: false,
+      message: `Template not found: ${parsed.templateId}\n\nAvailable templates:\n${templateList || '  (no templates loaded)'}`
+    };
+  }
+
+  // Update name based on work state
+  item.name = getNameForWorkState(item);
+
+  // Update description based on work state
+  switch (parsed.workState) {
+    case 'RESTORED':
+      item.visualDescription = item.descRestored || item.visualDescription;
+      item.wasRestored = true;
+      break;
+    case 'REFORGED':
+      item.visualDescription = item.descReforged || item.visualDescription;
+      item.wasReforged = true;
+      break;
+  }
+
+  // Set pawn info for ACTIVE items
+  if (parsed.status === ItemStatus.ACTIVE) {
+    const dueDate = currentDay + 7;
+    item.pawnInfo = {
+      principal: item.realValue * 0.7,
+      interestRate: 0.10,
+      startDate: currentDay,
+      termDays: 7,
+      dueDate: dueDate,
+      valuation: item.realValue,
+      extensionCount: 0,
+    };
+    item.pawnAmount = item.realValue * 0.7;
+  } else {
+    // FORFEIT items are owned by shop
+    item.pawnAmount = item.realValue * 0.7;
+  }
+
+  // Add creation log
+  item.logs.push({
+    id: `log-${Date.now()}`,
+    day: currentDay,
+    content: `[DevConsole] Created from template: ${parsed.templateId} (status=${parsed.status}, workState=${parsed.workState})`,
+    type: parsed.status === ItemStatus.ACTIVE ? 'ENTRY' : 'FORFEIT',
+  });
+
+  // Add item to inventory
+  const newState = {
+    ...state,
+    inventory: [...state.inventory, item],
+  };
+  dispatch({ type: 'LOAD_GAME', payload: newState });
+
+  // Build result message with name variants
+  const nameVariants = [
+    `    Default: ${item.nameDefault || '(none)'}`,
+    `    Restored: ${item.nameRestored || '(none)'}`,
+    `    Reforged: ${item.nameReforged || '(none)'}`,
+  ].join('\n');
+
+  return {
+    success: true,
+    message: `Created item from template "${parsed.templateId}"
+  ID: ${item.id}
+  Name: ${item.name}
+  Name Variants:
+${nameVariants}
+  Status: ${parsed.status}
+  WorkState: ${parsed.workState}
+  Value: $${item.realValue}
+  Tags: ${item.tags?.join(', ') || '(none)'}`,
+  };
+}
+
+/**
  * Command definition for documentation
  */
 export interface CommandDef {
@@ -931,6 +1098,17 @@ export function getAvailableCommands(): CommandDef[] {
       examples: [`add forfeit 测试钟表`, `add forfeit 贵重手表 --tags GOLD,MINT`]
     },
     {
+      command: 'add template',
+      description: 'Add item from CSV template with full name variants (nameDefault, nameRestored, nameReforged)',
+      usage: 'add template <templateId> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|REFORGED]',
+      examples: [
+        `add template item_watch_01`,
+        `add template item_watch_01 --status ACTIVE`,
+        `add template item_watch_01 --workState RESTORED`,
+        `add template item_watch_01 --status FORFEIT --workState REFORGED`
+      ]
+    },
+    {
       command: 'blackmarket lock',
       description: 'Lock blackmarket for N days',
       usage: 'blackmarket lock <n>',
@@ -991,11 +1169,15 @@ export function getAvailableCommands(): CommandDef[] {
  * Get valid values for specific command parameters
  */
 export function getCommandOptions(): Record<string, string[]> {
+  const templates = getAllItemTemplates();
   return {
     phases: Object.keys(PHASE_MAP),
     reputationTypes: Object.keys(REPUTATION_MAP),
     panels: Object.keys(PANEL_MAP),
-    itemTags: ALL_VALID_TAGS
+    itemTags: ALL_VALID_TAGS,
+    itemStatuses: ['ACTIVE', 'FORFEIT'],
+    workStates: ['DEFAULT', 'RESTORED', 'REFORGED'],
+    templateIds: templates.map(t => t.id)
   };
 }
 

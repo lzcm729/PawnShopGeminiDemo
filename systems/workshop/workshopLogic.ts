@@ -193,8 +193,10 @@ export function performRestore(
   // 标记已修复，设置加工状态
   updatedItem = { ...updatedItem, wasRestored: true, workState: 'RESTORED' };
 
-  // 计算新价值
+  // 计算价值变化
+  const oldValue = calculateTaggedValue(item);
   const newValue = calculateTaggedValue(updatedItem);
+  const valueIncrease = newValue - oldValue;
 
   // 生成叙事
   const narrative = generateRestoreNarrative(recipe, item);
@@ -208,6 +210,7 @@ export function performRestore(
     removedTags: [recipe.targetTag],
     addedTags: recipe.resultTag ? [recipe.resultTag] : undefined,
     newValue,
+    valueIncrease,
     narrative,
   };
 
@@ -238,8 +241,10 @@ export function performReforge(
   // 标记已重铸，设置加工状态
   updatedItem = { ...updatedItem, wasReforged: true, workState: 'REFORGED' };
 
-  // 计算新价值
+  // 计算价值变化
+  const oldValue = calculateTaggedValue(item);
   const newValue = calculateTaggedValue(updatedItem);
+  const valueIncrease = newValue - oldValue;
 
   // 生成叙事
   const narrative = generateReforgeNarrative(recipe, item);
@@ -252,6 +257,7 @@ export function performReforge(
     energySpent: recipe.energyCost,
     addedTags: [recipe.resultTag],
     newValue,
+    valueIncrease,
     narrative,
   };
 
