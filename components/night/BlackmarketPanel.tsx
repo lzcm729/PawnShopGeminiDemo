@@ -33,7 +33,6 @@ import {
   CheckCircle2,
   XCircle,
   ChevronRight,
-  ArrowUp,
 } from 'lucide-react';
 import { UNDERWORLD_PRICE_MODIFIERS } from '../../systems/blackmarket/types';
 
@@ -327,20 +326,87 @@ interface ReputationIndicatorProps {
   };
 }
 
+/**
+ * Individual segment in the segmented progress bar
+ */
+interface SegmentProps {
+  tier: typeof UNDERWORLD_PRICE_MODIFIERS[0];
+  isReached: boolean;
+  isCurrent: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+}
+
+const ReputationSegment: React.FC<SegmentProps> = ({
+  tier,
+  isReached,
+  isCurrent,
+  isFirst,
+  isLast,
+}) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const modifierText = tier.modifier > 0
+    ? `+${Math.round(tier.modifier * 100)}%`
+    : tier.modifier < 0
+    ? `${Math.round(tier.modifier * 100)}%`
+    : '0%';
+
+  return (
+    <div
+      className="relative flex-1 h-3"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {/* Segment bar */}
+      <div
+        className={cn(
+          'h-full transition-colors duration-300 cursor-pointer',
+          isFirst ? 'rounded-l' : '',
+          isLast ? 'rounded-r' : '',
+          isReached
+            ? isCurrent
+              ? 'bg-purple-500 ring-1 ring-purple-400 ring-inset'
+              : 'bg-purple-700'
+            : 'bg-noir-400'
+        )}
+      />
+
+      {/* Tooltip */}
+      {showTooltip && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50">
+          <div className="bg-noir-200 border border-purple-700 rounded px-3 py-2 shadow-lg whitespace-nowrap text-sm">
+            <div className="font-bold text-purple-300">{tier.label}</div>
+            <div className="text-xs text-stone-400 mt-1">
+              声誉: {tier.minRep} - {tier.maxRep}
+            </div>
+            <div className={cn(
+              'text-xs font-mono mt-1',
+              tier.modifier > 0 ? 'text-green-400' :
+              tier.modifier < 0 ? 'text-red-400' :
+              'text-stone-400'
+            )}>
+              价格修正: {modifierText}
+            </div>
+          </div>
+          {/* Tooltip arrow */}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+            <div className="border-4 border-transparent border-t-purple-700" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ReputationIndicator: React.FC<ReputationIndicatorProps> = ({ repModifier }) => {
   const isPositive = repModifier.modifier > 0;
   const isNegative = repModifier.modifier < 0;
 
-  // Find current tier and next tier
+  // Find current tier index
   const currentTierIndex = UNDERWORLD_PRICE_MODIFIERS.findIndex(
     tier => repModifier.currentRep >= tier.minRep && repModifier.currentRep <= tier.maxRep
   );
-  const nextTier = currentTierIndex < UNDERWORLD_PRICE_MODIFIERS.length - 1
-    ? UNDERWORLD_PRICE_MODIFIERS[currentTierIndex + 1]
-    : null;
-
-  // Overall progress (0-100)
-  const overallProgress = repModifier.currentRep;
 
   return (
     <div className={cn(
@@ -361,28 +427,22 @@ const ReputationIndicator: React.FC<ReputationIndicatorProps> = ({ repModifier }
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="mt-3">
-        <div className="h-2 bg-noir-400 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-purple-700 to-purple-500 transition-all duration-300"
-            style={{ width: `${overallProgress}%` }}
+      {/* Segmented progress bar */}
+      <div className="mt-3 flex gap-1">
+        {UNDERWORLD_PRICE_MODIFIERS.map((tier, index) => (
+          <ReputationSegment
+            key={index}
+            tier={tier}
+            isReached={index <= currentTierIndex}
+            isCurrent={index === currentTierIndex}
+            isFirst={index === 0}
+            isLast={index === UNDERWORLD_PRICE_MODIFIERS.length - 1}
           />
-        </div>
-        {/* Tier markers */}
-        <div className="relative h-1 mt-0.5">
-          {UNDERWORLD_PRICE_MODIFIERS.slice(1).map((tier, index) => (
-            <div
-              key={index}
-              className="absolute w-0.5 h-1 bg-purple-800/50"
-              style={{ left: `${tier.minRep}%` }}
-            />
-          ))}
-        </div>
+        ))}
       </div>
 
       {/* Price modifier */}
-      <div className="mt-2 text-sm flex items-center justify-between">
+      <div className="mt-3 text-sm flex items-center justify-between">
         <span className="opacity-70">价格修正:</span>
         <span className={cn(
           'font-mono font-bold',
@@ -392,21 +452,9 @@ const ReputationIndicator: React.FC<ReputationIndicatorProps> = ({ repModifier }
         </span>
       </div>
 
-      {/* Next tier info */}
-      {nextTier && (
-        <div className="mt-2 pt-2 border-t border-purple-800/30 text-xs flex items-center gap-1">
-          <ArrowUp className="w-3 h-3 text-purple-500" />
-          <span className="opacity-70">下一等级:</span>
-          <span className="text-purple-300 font-medium">{nextTier.label}</span>
-          <span className="opacity-50 ml-1">
-            (需 {nextTier.minRep} 声誉, +{Math.round(nextTier.modifier * 100)}% 价格)
-          </span>
-        </div>
-      )}
-
       {/* Explanation */}
       <div className="mt-2 pt-2 border-t border-purple-800/30 text-xs opacity-60">
-        黑道声誉越高，黑市交易价格越好
+        黑道声誉越高，黑市交易价格越好 (悬停查看各等级详情)
       </div>
     </div>
   );
