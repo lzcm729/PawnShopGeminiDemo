@@ -89,6 +89,20 @@ const GameContent: React.FC = () => {
     const effectiveMax = Math.max(state.maxCustomersPerDay, narrativeServed);
     const canServe = state.customersServedToday < effectiveMax;
 
+    // DEBUG: Log conditions
+    console.log('[App] generateDailyEvent check:', {
+      phase: state.phase,
+      isBusiness,
+      isLoading: state.isLoading,
+      currentCustomer: !!state.currentCustomer,
+      isIdle,
+      customersServedToday: state.customersServedToday,
+      narrativeServed,
+      effectiveMax,
+      canServe,
+      shouldTrigger: isBusiness && isIdle && canServe
+    });
+
     if (isBusiness && isIdle && canServe) {
       setLoadingText("Someone is approaching the counter...");
       generateDailyEvent();
@@ -98,23 +112,56 @@ const GameContent: React.FC = () => {
   // Sync Customer Status
   useEffect(() => {
     if (state.currentCustomer && state.currentCustomer.interactionType === 'PAWN') {
-        const needsUpdate = 
-            state.currentCustomer.patience !== negotiation.patience || 
-            state.currentCustomer.mood !== negotiation.mood || 
+        const needsUpdate =
+            state.currentCustomer.patience !== negotiation.patience ||
+            state.currentCustomer.mood !== negotiation.mood ||
             state.currentCustomer.currentAskPrice !== negotiation.currentAskPrice;
 
         if (needsUpdate) {
-            dispatch({ 
-                type: 'UPDATE_CUSTOMER_STATUS', 
-                payload: { 
-                  patience: negotiation.patience, 
-                  mood: negotiation.mood, 
-                  currentAskPrice: negotiation.currentAskPrice 
-                } 
+            dispatch({
+                type: 'UPDATE_CUSTOMER_STATUS',
+                payload: {
+                  patience: negotiation.patience,
+                  mood: negotiation.mood,
+                  currentAskPrice: negotiation.currentAskPrice
+                }
             });
         }
     }
   }, [negotiation.patience, negotiation.mood, negotiation.currentAskPrice, state.currentCustomer, dispatch]);
+
+  // Auto-trigger BUSINESS -> NEGOTIATION when customer is set
+  // This bridges the gap between SET_CUSTOMER action and state machine transition
+  // The state machine expects: BUSINESS.IDLE -> CUSTOMER_GENERATED -> BUSINESS.SERVING -> SET_CUSTOMER_EVENT -> NEGOTIATION
+  // But since generateDailyEvent doesn't send CUSTOMER_GENERATED, we handle both transitions here
+  const prevCustomerRef = useRef<typeof state.currentCustomer>(null);
+  useEffect(() => {
+    const hadNoCustomer = prevCustomerRef.current === null;
+    const hasCustomer = state.currentCustomer !== null;
+
+    // Only trigger when customer changes from null to non-null while in BUSINESS phase
+    if (hadNoCustomer && hasCustomer && PhaseIs.business(state.phase)) {
+        // Determine negotiation mode based on interactionType
+        const interactionType = state.currentCustomer!.interactionType;
+        const mode = interactionType === 'REDEEM' ? 'REDEEM'
+                   : interactionType === 'RENEWAL' ? 'RENEWAL'
+                   : interactionType === 'POST_FORFEIT' ? 'POST_FORFEIT'
+                   : 'PAWN';
+
+        if (state.phase.subphase === 'IDLE') {
+            // First transition IDLE -> SERVING, then SERVING -> NEGOTIATION
+            send({ type: 'CUSTOMER_GENERATED', hasCustomer: true });
+            // Note: React batches state updates, so we need to send the next event
+            // The PHASE_TRANSITION reducer should handle consecutive events correctly
+            send({ type: 'SET_CUSTOMER_EVENT', mode });
+        } else if (state.phase.subphase === 'SERVING') {
+            // Already in SERVING, just transition to NEGOTIATION
+            send({ type: 'SET_CUSTOMER_EVENT', mode });
+        }
+    }
+
+    prevCustomerRef.current = state.currentCustomer;
+  }, [state.currentCustomer, state.phase, send]);
 
   // Stabilize callbacks to prevent re-triggering effects in transition components
   const onDayToNightComplete = useCallback(() => {

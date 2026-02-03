@@ -404,7 +404,9 @@ export const useGameEngine = () => {
   };
 
   const generateDailyEvent = async () => {
+    console.log('[generateDailyEvent] Called, isLoading:', state.isLoading);
     if (state.isLoading) return;
+    console.log('[generateDailyEvent] Starting...');
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
