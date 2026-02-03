@@ -25,38 +25,30 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
 
   let statusColor = "bg-stone-600";
   let statusText = "UNKNOWN";
-  let borderColor = "border-noir-400";
 
   if (isReforged && isActive) {
     // Reforged active items are treated as owned (breach already occurred)
     statusColor = "bg-purple-600";
     statusText = "REFORGED (OWNED)";
-    borderColor = "border-purple-900";
   } else if (isForfeit) {
     statusColor = "bg-red-600";
     statusText = "FORFEIT (OWNED)";
-    borderColor = "border-red-900";
   } else if (isSold) {
     statusColor = "bg-noir-500";
     statusText = "SOLD";
-    borderColor = "border-noir-500 opacity-60";
   } else if (isRedeemed) {
     statusColor = "bg-green-600";
     statusText = "REDEEMED";
-    borderColor = "border-green-900";
   } else if (isActive) {
     if (daysLeft <= 1) {
         statusColor = "bg-red-500 animate-pulse";
         statusText = `CRITICAL: ${daysLeft}D`;
-        borderColor = "border-red-500";
     } else if (daysLeft <= 3) {
         statusColor = "bg-amber-600";
         statusText = `WARNING: ${daysLeft}D`;
-        borderColor = "border-amber-600";
     } else {
         statusColor = "bg-emerald-600";
         statusText = `ACTIVE: ${daysLeft}D`;
-        borderColor = "border-emerald-900";
     }
   }
 
@@ -64,7 +56,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
   const treatedAsOwned = isReforged && isActive;
 
   return (
-    <div className={cn("relative flex flex-col bg-noir-200 border-l-4 shadow-sm transition-all duration-300 group overflow-hidden font-mono", borderColor)}>
+    <div className="relative flex flex-col bg-noir-200 shadow-sm transition-all duration-300 group overflow-hidden font-mono">
       <div className="p-4 flex-1 flex flex-col gap-3">
         {/* Header: Status Badge */}
         <div className="flex items-center">
