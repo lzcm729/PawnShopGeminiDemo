@@ -124,4 +124,7 @@ export interface Item {
 
   // --- CSV TEMPLATE REFERENCE ---
   templateId?: string;           // 关联的 CSV 模板 ID
+
+  // --- BREACH SALE TRACKING ---
+  breachSaleDay?: number;        // Day item was sold as breach (while still ACTIVE)
 }

@@ -226,11 +226,14 @@ export const useGameEngine = () => {
       );
 
       // Determine redemptionIntent based on behavior
-      const intent = event.behavior === 'REDEEM' ? 'REDEEM' : 'EXTEND';
+      const intent = event.behavior === 'REDEEM' ? 'REDEEM' :
+                     event.behavior === 'BREACH_DISCOVERED' ? 'REDEEM' : 'EXTEND';
 
       // Build greeting based on behavior - use generic defaults
       let greeting = "";
-      if (event.behavior === 'REDEEM') {
+      if (event.behavior === 'BREACH_DISCOVERED') {
+          greeting = `老板，我来赎东西了... 等等，我的东西呢？！`;
+      } else if (event.behavior === 'REDEEM') {
           greeting = `老板，我来赎东西了。钱都在这，连本带利。`;
       } else {
           greeting = `老板，我... 现在还凑不够赎金。能不能再宽限几天？利息我先付着。`;
@@ -326,16 +329,40 @@ export const useGameEngine = () => {
         }
     });
 
-    // 4. If there are expiry events (REDEEM/RENEW), create customer for settlement interface
+    // 4. If there are expiry events (REDEEM/RENEW/BREACH_DISCOVERED), process them
     if (expiryEvents.length > 0) {
-        dispatch({ type: 'SET_EXPIRY_QUEUE', payload: expiryEvents });
-        const customer = createExpiryCustomer(expiryEvents[0]);
-        if (customer) {
-            dispatch({ type: 'SET_CUSTOMER', payload: customer });
-        } else {
-            dispatch({ type: 'START_DAY' });
+        // Separate breach discovery events (auto-resolve) from normal events (need player decision)
+        const breachEvents = expiryEvents.filter(e => e.behavior === 'BREACH_DISCOVERED');
+        const normalEvents = expiryEvents.filter(e => e.behavior !== 'BREACH_DISCOVERED');
+
+        // Auto-resolve all breach discovery events first
+        breachEvents.forEach(event => {
+            dispatch({
+                type: 'RESOLVE_EXPIRY',
+                payload: {
+                    choice: 'breach_discovered',
+                    itemId: event.itemId
+                }
+            });
+        });
+
+        // If there are normal events, create settlement interface
+        if (normalEvents.length > 0) {
+            dispatch({ type: 'SET_EXPIRY_QUEUE', payload: normalEvents });
+            const customer = createExpiryCustomer(normalEvents[0]);
+            if (customer) {
+                dispatch({ type: 'SET_CUSTOMER', payload: customer });
+            } else {
+                dispatch({ type: 'START_DAY' });
+            }
+            return;
         }
-        return;
+
+        // If only breach events, continue to normal day
+        if (breachEvents.length > 0 && normalEvents.length === 0) {
+            dispatch({ type: 'START_DAY' });
+            return;
+        }
     }
 
     // 5. No expiry events, proceed normally

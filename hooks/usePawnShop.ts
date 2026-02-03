@@ -150,6 +150,7 @@ export const usePawnShop = () => {
     // 6. Check Daily Expirations - Returns ExpiryEvents for REDEEM/RENEW only
     // NO_SHOW items are automatically forfeited (no player decision needed)
     // Handles both NARRATIVE chains (condition-based) and TRANSIENT chains (probability-based)
+    // Also handles breach sale discovery (SOLD items where customer returns to redeem)
     const checkDailyExpirations = useCallback((): {
         expiryEvents: ExpiryEvent[];
         noShowForfeits: { itemId: string; chainId: string; itemName: string }[]
@@ -162,6 +163,51 @@ export const usePawnShop = () => {
         const chainsToDeactivate: string[] = [];
 
         state.inventory.forEach(item => {
+            // Handle breach sale discovery: SOLD items where customer would come back to redeem
+            if (item.status === ItemStatus.SOLD && item.breachSaleDay !== undefined && item.pawnInfo) {
+                // Check if today is the due date for this breach-sold item
+                if (currentDay !== item.pawnInfo.dueDate) return;
+
+                // Find related chain to get NPC name
+                const chain = state.activeChains.find(c => c.id === item.relatedChainId);
+
+                // Calculate what redemption would have cost
+                const cost = calculateRedemptionCost(item);
+                if (!cost) return;
+
+                // Determine if customer would have come to redeem
+                // For breach sales, we check if they would have tried to redeem
+                let behavior: ExpiryBehavior = 'REDEEM';
+                if (chain) {
+                    behavior = determineExpiryBehavior(chain, item, cost.total);
+                }
+
+                // Only trigger breach discovery if customer would have come to redeem or renew
+                if (behavior === 'REDEEM' || behavior === 'RENEW') {
+                    expiryEvents.push({
+                        type: 'EXPIRY_CHECK',
+                        chainId: chain?.id || 'unknown',
+                        npcName: chain?.npcName || '顾客',
+                        itemId: item.id,
+                        itemName: item.name,
+                        behavior: 'BREACH_DISCOVERED' as ExpiryBehavior, // Special behavior for breach discovery
+                        redemptionCost: {
+                            principal: cost.principal,
+                            interest: cost.interest,
+                            total: cost.total
+                        },
+                        valuation: item.pawnInfo.valuation,
+                        interestRate: item.pawnInfo.interestRate,
+                        realValue: item.realValue,
+                        dueDate: item.pawnInfo.dueDate,
+                        isCoreItem: false
+                    });
+                }
+                // If NO_SHOW, customer never comes back, so no breach discovery
+                return;
+            }
+
+            // Normal expiration handling for ACTIVE items
             if (item.status !== ItemStatus.ACTIVE || !item.pawnInfo) return;
 
             // 只处理今天到期的物品（精确匹配）

@@ -5,7 +5,7 @@ import { Mood } from '../core/types';
 export type SatisfactionLevel = 'GRATEFUL' | 'NEUTRAL' | 'RESENTFUL' | 'DESPERATE';
 
 // === EXPIRY SYSTEM TYPES ===
-export type ExpiryBehavior = 'REDEEM' | 'RENEW' | 'NO_SHOW';
+export type ExpiryBehavior = 'REDEEM' | 'RENEW' | 'NO_SHOW' | 'BREACH_DISCOVERED';
 
 export interface ExpiryEvent {
     type: 'EXPIRY_CHECK';
@@ -32,7 +32,8 @@ export type ExpiryChoice =
     | 'renew_accept'       // 同意续当（收取当期利息）
     | 'renew_refuse'       // 拒绝续当
     | 'noshow_sell'        // 挂牌出售
-    | 'noshow_keep';       // 继续保留
+    | 'noshow_keep'        // 继续保留
+    | 'breach_discovered'; // 违约被发现（客户来赎回发现物品已被卖掉）
 
 export interface ExpiryFlowDefinition {
     // 赎回场景的玩家选项

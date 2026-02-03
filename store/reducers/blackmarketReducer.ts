@@ -43,7 +43,9 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       const newInventory = [...state.inventory];
       newInventory[itemIndex] = {
         ...item,
-        status: ItemStatus.SOLD
+        status: ItemStatus.SOLD,
+        // Track breach sale day for later penalty when customer returns
+        ...(isBreach ? { breachSaleDay: state.stats.day } : {})
       };
 
       // Update heat (capped at 10)
@@ -55,14 +57,14 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         { itemId, itemName, amount, type: 'PURCHASE' as const }
       ];
 
-      // Apply breach penalty: Humanity -3, Credibility -1
-      const newReputation = isBreach ? {
+      // Blackmarket sales always grant Underworld reputation (+2)
+      // Breach penalty (Humanity -3, Credibility -1) is deferred until customer returns to redeem
+      const newReputation = {
         ...state.reputation,
-        [ReputationType.HUMANITY]: Math.max(0, state.reputation[ReputationType.HUMANITY] - 3),
-        [ReputationType.CREDIBILITY]: Math.max(0, state.reputation[ReputationType.CREDIBILITY] - 1)
-      } : state.reputation;
+        [ReputationType.UNDERWORLD]: Math.min(100, state.reputation[ReputationType.UNDERWORLD] + 2)
+      };
 
-      const breachEvent = isBreach ? `[黑市] 违约出售当品，人情 -3，商誉 -1` : '';
+      const breachNote = isBreach ? ' (违约出售，待结算时扣减声誉)' : '';
 
       return {
         ...state,
@@ -83,8 +85,7 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         },
         dayEvents: [
           ...state.dayEvents,
-          `[黑市] 以收购价 $${amount} 出售了 ${itemName} (${tag})`,
-          ...(breachEvent ? [breachEvent] : [])
+          `[黑市] 以收购价 $${amount} 出售了 ${itemName} (${tag})，黑道 +2${breachNote}`
         ]
       };
     }
@@ -106,7 +107,9 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       const newInventory = [...state.inventory];
       newInventory[itemIndex] = {
         ...item,
-        status: ItemStatus.SOLD
+        status: ItemStatus.SOLD,
+        // Track breach sale day for later penalty when customer returns
+        ...(isBreach ? { breachSaleDay: state.stats.day } : {})
       };
 
       // Update heat (capped at 10)
@@ -118,14 +121,14 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         { itemId, itemName, amount, type: 'SALE' as const }
       ];
 
-      // Apply breach penalty: Humanity -3, Credibility -1
-      const newReputation = isBreach ? {
+      // Blackmarket sales always grant Underworld reputation (+2)
+      // Breach penalty (Humanity -3, Credibility -1) is deferred until customer returns to redeem
+      const newReputation = {
         ...state.reputation,
-        [ReputationType.HUMANITY]: Math.max(0, state.reputation[ReputationType.HUMANITY] - 3),
-        [ReputationType.CREDIBILITY]: Math.max(0, state.reputation[ReputationType.CREDIBILITY] - 1)
-      } : state.reputation;
+        [ReputationType.UNDERWORLD]: Math.min(100, state.reputation[ReputationType.UNDERWORLD] + 2)
+      };
 
-      const breachEvent = isBreach ? `[黑市] 违约出售当品，人情 -3，商誉 -1` : '';
+      const breachNote = isBreach ? ' (违约出售，待结算时扣减声誉)' : '';
 
       return {
         ...state,
@@ -142,8 +145,7 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         },
         dayEvents: [
           ...state.dayEvents,
-          `[黑市] 以出售价 $${amount} 出售了 ${itemName}`,
-          ...(breachEvent ? [breachEvent] : [])
+          `[黑市] 以出售价 $${amount} 出售了 ${itemName}，黑道 +2${breachNote}`
         ]
       };
     }

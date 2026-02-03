@@ -467,9 +467,9 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                             真实价值: ${item.realValue}
                           </div>
                           {isBreach && (
-                            <div className="flex items-center gap-1 mt-1 text-xs text-red-400">
+                            <div className="flex items-center gap-1 mt-1 text-xs text-amber-400">
                               <AlertTriangle className="w-3 h-3" />
-                              <span>违约：人情-3, 商誉-1</span>
+                              <span>仍在典当期（客户赎回时扣减声誉）</span>
                             </div>
                           )}
                         </div>
@@ -583,9 +583,9 @@ const SaleTab: React.FC<SaleTabProps> = ({
                   当金: <span className="text-stone-400 font-mono">${item.pawnAmount}</span>
                 </div>
                 {isBreach && (
-                  <div className="flex items-center gap-1 mt-1 text-xs text-red-400">
+                  <div className="flex items-center gap-1 mt-1 text-xs text-amber-400">
                     <AlertTriangle className="w-3 h-3" />
-                    <span>违约：人情-3, 商誉-1, 赔偿 ${compensation}</span>
+                    <span>仍在典当期（客户赎回时扣减声誉），赔偿 ${compensation}</span>
                   </div>
                 )}
               </div>
@@ -789,15 +789,15 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ action, checkBreach, onCo
     >
       <div className="space-y-4">
         {isBreach && (
-          <div className="bg-red-950/50 border border-red-700 p-3 rounded flex items-start gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div className="bg-amber-950/50 border border-amber-700 p-3 rounded flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <div className="font-bold text-red-400 text-sm">违约出售</div>
-              <div className="text-xs text-red-300/80 mt-1">
-                此物品仍在典当期内，出售将违反合约。
+              <div className="font-bold text-amber-400 text-sm">典当期内出售</div>
+              <div className="text-xs text-amber-300/80 mt-1">
+                此物品仍在典当期内。若客户来赎回时发现物品已售出，将扣减声誉。
               </div>
-              <div className="text-xs text-red-400 mt-1 font-mono">
-                人情 -3, 商誉 -1
+              <div className="text-xs text-amber-400 mt-1 font-mono">
+                出售即获得：黑道 +2 | 客户赎回时：人情 -3, 商誉 -1
               </div>
             </div>
           </div>

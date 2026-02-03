@@ -32,6 +32,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
             let satisfaction: SatisfactionLevel = 'NEUTRAL';
             const event = state.currentExpiryEvent;
             const isNoShow = choice === 'noshow_sell' || choice === 'noshow_keep';
+            const isBreachDiscovery = choice === 'breach_discovered';
 
             switch (choice) {
                 case 'redeem_accept': {
@@ -127,6 +128,24 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                     playSfx('CLICK');
                     break;
                 }
+                case 'breach_discovered': {
+                    // Customer came back to redeem but item was already sold via blackmarket
+                    // This is where we apply the breach penalty (deferred from blackmarket sale)
+                    repDelta = {
+                        [ReputationType.HUMANITY]: -3,
+                        [ReputationType.CREDIBILITY]: -1
+                    };
+                    log = `[违约] ${event?.npcName || '顾客'} 发现 ${item.name} 已被变卖，人情 -3，商誉 -1`;
+                    satisfaction = 'DESPERATE';
+                    playSfx('FAIL');
+                    // Clear breach tracking since penalty is now applied
+                    newInventory = newInventory.map(i =>
+                        i.id === itemId
+                            ? { ...i, breachSaleDay: undefined }
+                            : i
+                    );
+                    break;
+                }
             }
 
             // Apply reputation changes
@@ -178,7 +197,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
                 dayEvents: [...state.dayEvents, log],
                 lastSatisfaction: satisfaction,
-                phase: isNoShow ? GamePhase.BUSINESS : GamePhase.DEPARTURE
+                phase: (isNoShow || isBreachDiscovery) ? GamePhase.BUSINESS : GamePhase.DEPARTURE
             };
         }
 
