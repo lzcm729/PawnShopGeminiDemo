@@ -114,6 +114,7 @@ export type Action =
     | { type: 'SPEND_ESSENCE'; payload: { essenceType: EssenceType; amount: number } }
     | { type: 'SPEND_ESSENCE_BATCH'; payload: Partial<EssenceBalance> }
     | { type: 'CONSUME_NIGHT_ENERGY'; payload: number }
+    | { type: 'ADD_NIGHT_ENERGY'; payload: number }
     | { type: 'RESET_NIGHT_STATE' }
     | { type: 'MARK_ITEM_INSIGHTED'; payload: { itemId: string; knowledgePool: KnowledgePool } }
     | { type: 'RESET_NIGHTLY_INSIGHT_FLAGS' }

@@ -1,10 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useGame } from '../store/GameContext';
-import { Database, PlayCircle, Bug, X, Terminal, Power, DollarSign, Sparkles, Trash2, GripHorizontal } from 'lucide-react';
-import { validateEvents, ValidationIssue } from '../systems/narrative/validator';
-import { EMMA_EVENTS } from '../systems/narrative/storyRegistry';
-import { ValidationModal } from './ValidationModal';
+import { Database, Zap, Bug, X, Terminal, Power, DollarSign, Sparkles, Trash2, GripHorizontal } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
 import { useDraggable } from '../hooks/useDraggable';
 
@@ -15,9 +12,6 @@ const PANEL_HEIGHT = 500;
 export const DebugPanel: React.FC = () => {
   const { state, dispatch } = useGame();
 
-  const [showValidation, setShowValidation] = useState(false);
-  const [validationLogs, setValidationLogs] = useState<string[]>([]);
-  const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
 
   // Use the draggable hook for panel positioning
   const { elementRef, handleMouseDown, style: dragStyle, isDragging } = useDraggable({
@@ -31,12 +25,9 @@ export const DebugPanel: React.FC = () => {
       dispatch({ type: 'TOGGLE_DEBUG' });
   };
 
-  const handleValidate = () => {
-        playSfx('CLICK');
-        const result = validateEvents([...EMMA_EVENTS]);
-        setValidationLogs(result.logs);
-        setValidationIssues(result.issues);
-        setShowValidation(true);
+  const handleAddEnergy = () => {
+    playSfx('CLICK');
+    dispatch({ type: 'ADD_NIGHT_ENERGY', payload: 1 });
   };
 
   const handleAddCash = () => {
@@ -67,13 +58,6 @@ export const DebugPanel: React.FC = () => {
 
   return (
     <>
-      <ValidationModal 
-            isOpen={showValidation} 
-            onClose={() => setShowValidation(false)} 
-            logs={validationLogs} 
-            issues={validationIssues}
-      />
-
       {!state.showDebug && (
         <button
             onClick={toggleDebug}
@@ -111,11 +95,11 @@ export const DebugPanel: React.FC = () => {
             
             <div className="p-3 border-b border-green-900/30 grid grid-cols-3 gap-2 bg-green-950/5">
                 <button
-                        onClick={handleValidate}
-                        className="bg-green-900/20 border border-green-700/50 hover:bg-green-900/40 text-green-400 px-2 py-2 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
+                        onClick={handleAddEnergy}
+                        className="bg-cyan-900/20 border border-cyan-700/50 hover:bg-cyan-900/40 text-cyan-400 px-2 py-2 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
                 >
-                    <PlayCircle className="w-3 h-3" />
-                    VALIDATE
+                    <Zap className="w-3 h-3" />
+                    +ENERGY
                 </button>
                 <button
                     onClick={handleAddCash}

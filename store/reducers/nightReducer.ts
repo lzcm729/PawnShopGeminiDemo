@@ -85,6 +85,17 @@ export function nightReducer(state: GameState, action: Action): GameState {
             };
         }
 
+        case 'ADD_NIGHT_ENERGY': {
+            const amount = action.payload;
+            return {
+                ...state,
+                nightState: {
+                    ...state.nightState,
+                    energy: state.nightState.energy + amount
+                }
+            };
+        }
+
         case 'RESET_NIGHT_STATE':
             return {
                 ...state,
