@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
+import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
 import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock, Skull, Briefcase } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -22,6 +23,7 @@ import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentB
 export const NightDashboard: React.FC = () => {
     const { state, dispatch } = useGame();
     const { performNightCycle } = useGameEngine();
+    const { send, can } = useGameMachine();
     const { inbox, inventory, stats, reputation } = state;
 
     const [showMonologue, setShowMonologue] = useState(false);
@@ -80,6 +82,9 @@ export const NightDashboard: React.FC = () => {
 
     const completeNight = () => {
         setShowMonologue(false);
+        // Send state machine event for phase2 sync
+        send({ type: 'END_DAY' });
+        // Execute night cycle business logic
         performNightCycle();
     };
 

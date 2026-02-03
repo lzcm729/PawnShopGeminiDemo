@@ -2,6 +2,7 @@
 import React from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
+import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
 import { NewsCategory, ItemStatus } from '../types';
 import { Sun, CloudRain, Wind, TrendingUp, Newspaper, AlertOctagon, ArrowRight, Droplets, Calendar } from 'lucide-react';
@@ -11,6 +12,7 @@ import { getDisplayName } from '../systems/items/tagUtils';
 export const MorningBrief: React.FC = () => {
   const { state } = useGame();
   const { startNewDay } = useGameEngine();
+  const { send, can } = useGameMachine();
 
   const narratives = state.dailyNews.filter(n => n.category === NewsCategory.NARRATIVE);
   const markets = state.dailyNews.filter(n => n.category === NewsCategory.MARKET);
@@ -192,7 +194,13 @@ export const MorningBrief: React.FC = () => {
                       The City Chronicle © 2077
                   </div>
                   <Button
-                      onClick={startNewDay}
+                      onClick={() => {
+                          // Send state machine event for phase2 sync
+                          send({ type: 'OPEN_SHOP' });
+                          // Execute business logic (mail, expiry checks, etc.)
+                          startNewDay();
+                      }}
+                      disabled={!can({ type: 'OPEN_SHOP' })}
                       variant="primary"
                       className="flex-1 md:flex-none md:min-w-[200px] h-12 text-sm tracking-widest group"
                   >

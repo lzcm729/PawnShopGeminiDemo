@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useGame } from '../store/GameContext';
+import { useGameMachine } from '../hooks/useGameMachine';
 import { Customer } from '../systems/npc/types';
 import { Button } from './ui/Button';
 import { Heart, DollarSign, XCircle, HandHeart } from 'lucide-react';
@@ -12,31 +13,38 @@ interface PostForfeitPanelProps {
 
 export const PostForfeitPanel: React.FC<PostForfeitPanelProps> = ({ customer }) => {
     const { dispatch } = useGame();
+    const { send } = useGameMachine();
     const item = customer.item;
-    
+
     // Calculate values
     // Sell Low: Break even (real value or principal)
     const principal = item.pawnInfo?.principal || 0;
     const lowPrice = Math.floor(principal * 1.1); // Small profit to cover ops
-    
+
     const handleSellLow = () => {
-        dispatch({ 
-            type: 'RESOLVE_POST_FORFEIT', 
-            payload: { itemId: item.id, action: 'SELL_LOW', name: customer.name, value: lowPrice } 
+        // Send state machine event for phase2 sync (transaction complete)
+        send({ type: 'TRANSACTION_COMPLETE' });
+        dispatch({
+            type: 'RESOLVE_POST_FORFEIT',
+            payload: { itemId: item.id, action: 'SELL_LOW', name: customer.name, value: lowPrice }
         });
     };
 
     const handleGift = () => {
-        dispatch({ 
-            type: 'RESOLVE_POST_FORFEIT', 
-            payload: { itemId: item.id, action: 'GIFT', name: customer.name, value: 0 } 
+        // Send state machine event for phase2 sync (transaction complete)
+        send({ type: 'TRANSACTION_COMPLETE' });
+        dispatch({
+            type: 'RESOLVE_POST_FORFEIT',
+            payload: { itemId: item.id, action: 'GIFT', name: customer.name, value: 0 }
         });
     };
 
     const handleRefuse = () => {
-        dispatch({ 
-            type: 'RESOLVE_POST_FORFEIT', 
-            payload: { itemId: item.id, action: 'REFUSE', name: customer.name, value: 0 } 
+        // Send state machine event for phase2 sync (customer rejected)
+        send({ type: 'CUSTOMER_REJECTED' });
+        dispatch({
+            type: 'RESOLVE_POST_FORFEIT',
+            payload: { itemId: item.id, action: 'REFUSE', name: customer.name, value: 0 }
         });
     };
 

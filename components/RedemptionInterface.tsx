@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
 import { useGameEngine } from '../hooks/useGameEngine';
+import { useGameMachine } from '../hooks/useGameMachine';
 import { Item, ItemStatus, ChainUpdateEffect } from '../types';
 import { Button } from './ui/Button';
 import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, ShieldAlert, AlertTriangle, XCircle, Layers, Plus, Heart, HandHeart, Skull, Gavel } from 'lucide-react';
@@ -295,6 +296,7 @@ export const SettlementInterface: React.FC = () => {
     const { state, dispatch } = useGame();
     const { calculateRedemptionCost, calculatePenalty, processHostileTakeover, processForcedForfeiture } = usePawnShop();
     const { commitTransaction, rejectCustomer, applyChainEffects, processNextExpiryEvent } = useGameEngine();
+    const { send } = useGameMachine();
 
     const customer = state.currentCustomer;
     if (!customer) return null;
@@ -390,6 +392,9 @@ export const SettlementInterface: React.FC = () => {
     };
 
     const handleRedeem = () => {
+        // Send state machine event for phase2 sync (settlement = transaction complete)
+        send({ type: 'SETTLEMENT_COMPLETE' });
+
         if (anySold) {
             if (state.stats.cash < totalPenalty) return;
             const res = {
@@ -428,11 +433,14 @@ export const SettlementInterface: React.FC = () => {
     };
 
     const handleCharityReturn = () => {
+        // Send state machine event for phase2 sync (settlement = transaction complete)
+        send({ type: 'SETTLEMENT_COMPLETE' });
+
         const res = {
             success: true,
             message: "你是个好人。(Charity)",
             cashDelta: 0,
-            reputationDelta: { Humanity: 15 }, 
+            reputationDelta: { Humanity: 15 },
             dealQuality: 'premium' as const,
             terms: { principal: 0, rate: 0 }
         };
@@ -440,6 +448,9 @@ export const SettlementInterface: React.FC = () => {
     };
 
     const handleExtend = () => {
+        // Send state machine event for phase2 sync (settlement = transaction complete)
+        send({ type: 'SETTLEMENT_COMPLETE' });
+
         const res = {
             success: true,
             message: "续当成功。",
@@ -474,10 +485,14 @@ export const SettlementInterface: React.FC = () => {
     };
 
     const handleDismiss = () => {
+        // Send state machine event for phase2 sync
+        send({ type: 'CUSTOMER_REJECTED' });
         rejectCustomer();
     };
 
     const handleRefuseExtension = () => {
+        // Send state machine event for phase2 sync
+        send({ type: 'CUSTOMER_REJECTED' });
         targetItems.forEach(i => processForcedForfeiture(i));
         rejectCustomer();
         if (isExpirySettlement) handleExpiryCompletion('renew_refuse');
@@ -488,6 +503,8 @@ export const SettlementInterface: React.FC = () => {
         // If items are SOLD, we must pay penalty to resolve.
         // If items are ACTIVE, we pay penalty to KEEP them (forced buy out).
 
+        // Send state machine event for phase2 sync
+        send({ type: 'CUSTOMER_REJECTED' });
         rejectCustomer();
 
         if (anySold) {

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
+import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
 import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Skull, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package } from 'lucide-react';
 import { SatisfactionLevel } from '../systems/narrative/types';
@@ -30,6 +31,7 @@ const getCategoryIcon = (category: string) => {
 export const DepartureView: React.FC = () => {
   const { state, dispatch } = useGame();
   const { processNextExpiryEvent } = useGameEngine();
+  const { send, can } = useGameMachine();
   const { currentCustomer, lastSatisfaction, lastDealSummary, expiryQueue } = state;
 
   const [textComplete, setTextComplete] = useState(false);
@@ -93,6 +95,10 @@ export const DepartureView: React.FC = () => {
 
   const handleNext = () => {
       playSfx('FOOTSTEP');
+
+      // Send state machine event for phase2 sync
+      send({ type: 'DISMISS' });
+
       dispatch({ type: 'CLEAR_CUSTOMER' });
 
       // If there are remaining expiry events, process them instead of going to BUSINESS

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useGame } from '../store/GameContext';
+import { useGameMachine } from '../hooks/useGameMachine';
 import { Customer, RenewalProposal } from '../systems/npc/types';
 import { Button } from './ui/Button';
 import { CalendarClock, ArrowRight, ShieldAlert, XCircle, CheckCircle2, Package, FileText, RefreshCw } from 'lucide-react';
@@ -76,29 +77,34 @@ export const RenewalTicketPanel: React.FC<{ proposal: RenewalProposal }> = ({ pr
 
 export const RenewalRequestPanel: React.FC<RenewalRequestPanelProps> = ({ customer }) => {
     const { dispatch } = useGame();
+    const { send } = useGameMachine();
     const proposal = customer.renewalProposal!;
-    
+
     const handleAccept = () => {
         playSfx('SUCCESS');
-        dispatch({ 
-            type: 'ACCEPT_RENEWAL', 
-            payload: { 
+        // Send state machine event for phase2 sync (transaction complete)
+        send({ type: 'TRANSACTION_COMPLETE' });
+        dispatch({
+            type: 'ACCEPT_RENEWAL',
+            payload: {
                 itemId: proposal.itemId,
                 extensionDays: proposal.proposedExtensionDays,
                 interestBonus: proposal.proposedInterestBonus,
                 name: customer.name
-            } 
+            }
         });
     };
 
     const handleReject = () => {
         playSfx('CLICK');
-        dispatch({ 
-            type: 'REJECT_RENEWAL', 
-            payload: { 
+        // Send state machine event for phase2 sync (customer rejected)
+        send({ type: 'CUSTOMER_REJECTED' });
+        dispatch({
+            type: 'REJECT_RENEWAL',
+            payload: {
                 itemId: proposal.itemId,
-                name: customer.name 
-            } 
+                name: customer.name
+            }
         });
     };
 

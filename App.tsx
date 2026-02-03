@@ -3,26 +3,27 @@ import React, { useEffect, useState, useRef, useLayoutEffect, useCallback } from
 import { GameProvider, useGame } from './store/GameContext';
 import { useGameEngine } from './hooks/useGameEngine';
 import { useNegotiation } from './hooks/useNegotiation';
-import { Dashboard } from './systems/game/ui/Dashboard'; 
+import { useGameMachine, PhaseIs, PhaseMatch } from './hooks/useGameMachine';
+import { Dashboard } from './systems/game/ui/Dashboard';
 import { CustomerView } from './components/CustomerView';
 import { ItemPanel } from './components/ItemPanel';
 import { NegotiationPanel } from './components/NegotiationPanel';
 import { SettlementInterface } from './components/RedemptionInterface';
 import { RenewalRequestPanel, RenewalTicketPanel } from './components/RenewalRequestPanel';
 import { PostForfeitPanel } from './components/PostForfeitPanel';
-import { InventoryModal } from './components/InventoryModal'; 
+import { InventoryModal } from './components/InventoryModal';
 import { MailModal } from './components/MailModal';
 import { FinancialCalendar } from './components/FinancialCalendar';
 import { MedicalModal } from './components/MedicalModal';
-import { HospitalVisitModal } from './components/HospitalVisitModal'; 
+import { HospitalVisitModal } from './components/HospitalVisitModal';
 import { DebugPanel } from './components/DebugPanel';
 import { DevConsole } from './components/DevConsole';
-import { DepartureView } from './components/ShopClosedView'; 
+import { DepartureView } from './components/ShopClosedView';
 import { StartScreen } from './components/StartScreen';
 import { MorningBrief } from './components/MorningBrief';
-import { NightDashboard } from './components/NightDashboard'; 
+import { NightDashboard } from './components/NightDashboard';
 import { GameOverScreen } from './components/GameOverScreen';
-import { VictoryScreen } from './components/VictoryScreen'; 
+import { VictoryScreen } from './components/VictoryScreen';
 import { GamePhase } from './types';
 import { playSfx } from './systems/game/audio';
 import { Button } from './components/ui/Button';
@@ -33,6 +34,7 @@ import { NightToDayTransition } from './components/transitions/NightToDayTransit
 const GameContent: React.FC = () => {
   const { state, dispatch } = useGame();
   const { generateDailyEvent, processNextExpiryEvent } = useGameEngine();
+  const { send } = useGameMachine();
   const [loadingText, setLoadingText] = useState("");
   const negotiation = useNegotiation(state.currentCustomer);
   
@@ -45,10 +47,12 @@ const GameContent: React.FC = () => {
   const handleStartNight = () => {
       // 1. Start the visual transition (Shutter Down) while still in BUSINESS phase
       setShowDayToNight(true);
-      
+
       // 2. Delay the actual logical phase change until the shutter has covered the screen
       // Shutter animation takes ~1.5s to fully close
       setTimeout(() => {
+          // Send state machine event for phase2 sync
+          send({ type: 'CLOSE_SHOP' });
           dispatch({ type: 'START_NIGHT' });
       }, 1500);
   };

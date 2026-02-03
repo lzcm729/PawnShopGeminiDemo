@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
+import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
@@ -124,6 +125,7 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
 export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation }) => {
   const { state } = useGame();
   const { evaluateTransaction, commitTransaction, rejectCustomer } = useGameEngine();
+  const { send } = useGameMachine();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
 
@@ -328,6 +330,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
         const txResult = evaluateTransaction(offerPrincipal, selectedRate);
         // Directly commit transaction - deal summary shown in departure view
         setTimeout(() => {
+            // Send state machine event for phase2 sync
+            send({ type: 'TRANSACTION_COMPLETE' });
             commitTransaction(txResult);
         }, 800);
     }
@@ -351,6 +355,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           terms: { principal: 0, rate: 0.10 }
       };
 
+      // Send state machine event for phase2 sync
+      send({ type: 'TRANSACTION_COMPLETE' });
       // Directly commit transaction - deal summary shown in departure view
       commitTransaction(mockResult);
   };
@@ -362,6 +368,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
   };
 
   const completeRejection = () => {
+    // Send state machine event for phase2 sync
+    send({ type: 'CUSTOMER_REJECTED' });
     rejectCustomer();
   };
 
