@@ -17,6 +17,8 @@ type UIState = Pick<GameState,
     | 'showUpgradeShop'
     | 'showFacilityControl'
     | 'showAppointmentBoard'
+    | 'showWorkshop'
+    | 'showInsight'
 >;
 
 export function uiReducer(state: GameState, action: Action): GameState {
@@ -55,6 +57,14 @@ export function uiReducer(state: GameState, action: Action): GameState {
         case 'TOGGLE_APPOINTMENT_BOARD':
             playSfx('HOVER');
             return { ...state, showAppointmentBoard: !state.showAppointmentBoard };
+
+        case 'TOGGLE_WORKSHOP':
+            playSfx('HOVER');
+            return { ...state, showWorkshop: !state.showWorkshop };
+
+        case 'TOGGLE_INSIGHT':
+            playSfx('HOVER');
+            return { ...state, showInsight: !state.showInsight };
 
         default:
             return state;

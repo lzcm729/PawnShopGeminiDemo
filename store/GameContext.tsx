@@ -103,7 +103,10 @@ const initialState: GameState = {
     pendingAppointedCandidates: [],
     // === BLACK MARKET ===
     blackmarket: createInitialBlackmarketState(),
-    showBlackmarket: false
+    showBlackmarket: false,
+    // === NIGHT PANELS ===
+    showWorkshop: false,
+    showInsight: false
 };
 
 // === Context ===

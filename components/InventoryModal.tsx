@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { usePawnShop } from '../hooks/usePawnShop';
-import { PackageOpen, DollarSign, Moon, Archive } from 'lucide-react';
+import { PackageOpen, DollarSign, Moon, Archive, Wrench, Hammer, Eye, Skull, Lock } from 'lucide-react';
 import { ItemStatus, Item, GamePhase } from '../types';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
@@ -59,6 +59,27 @@ export const InventoryModal: React.FC = () => {
 
   const isNightPhase = state.phase === GamePhase.NIGHT;
 
+  // Handle opening Workshop panel with pre-selected item (future enhancement)
+  const handleOpenWorkshop = () => {
+      dispatch({ type: 'TOGGLE_INVENTORY' }); // Close inventory first
+      dispatch({ type: 'TOGGLE_WORKSHOP' });  // Open workshop
+      playSfx('CLICK');
+  };
+
+  // Handle opening Insight panel
+  const handleOpenInsight = () => {
+      dispatch({ type: 'TOGGLE_INVENTORY' }); // Close inventory first
+      dispatch({ type: 'TOGGLE_INSIGHT' });   // Open insight
+      playSfx('CLICK');
+  };
+
+  // Handle opening Black Market panel
+  const handleOpenBlackmarket = () => {
+      dispatch({ type: 'TOGGLE_INVENTORY' });   // Close inventory first
+      dispatch({ type: 'TOGGLE_BLACKMARKET' }); // Open black market
+      playSfx('CLICK');
+  };
+
   const renderActions = (item: Item) => {
       const isForfeit = item.status === ItemStatus.FORFEIT;
       const isActive = item.status === ItemStatus.ACTIVE;
@@ -70,59 +91,135 @@ export const InventoryModal: React.FC = () => {
       // Reforged active items are treated as owned
       const treatedAsOwned = isReforged && isActive;
 
-      // Selling/liquidating is only allowed at night (only for owned items)
-      if (!isNightPhase) {
-          if (isForfeit || treatedAsOwned) {
-              return (
-                <div className="flex items-center justify-center text-noir-txt-muted text-[10px] gap-1.5 py-1">
-                    <Moon className="w-3 h-3" />
-                    <span>夜间可售卖</span>
-                </div>
-              );
-          }
+      // Closed transactions have no actions
+      if (isSold || isRedeemed) {
           return null;
       }
 
-      // Forfeit items or reforged active items - show liquidate option
-      if (isForfeit || treatedAsOwned) {
-          if (confirmingLiquidate) {
-              return (
-                <Button
-                    variant="primary"
-                    size="sm"
-                    className="w-full text-[10px] h-7"
-                    onClick={() => handleLiquidate(item)}
-                >
-                    CONFIRM LIQUIDATE +${item.realValue}
-                </Button>
-              );
-          }
-          return (
-            <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                    "w-full text-[10px] h-7 border",
-                    treatedAsOwned
-                        ? "text-purple-400 hover:text-purple-300 hover:bg-purple-950/20 border-purple-900/30"
-                        : "text-amber-500 hover:text-amber-400 hover:bg-amber-950/20 border-amber-900/30"
-                )}
-                onClick={() => { setLiquidateConfirm(item.id); playSfx('CLICK'); }}
-                title={treatedAsOwned ? "Sell this reforged item" : "Sell this forfeited item for its real value"}
-            >
-                <DollarSign className="w-3 h-3 mr-1" />
-                LIQUIDATE NOW
-            </Button>
-          );
-      }
+      // Action button base styles
+      const baseButtonClass = "flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded text-[9px] transition-all";
+      const disabledClass = "opacity-40 cursor-not-allowed";
+      const enabledClass = "cursor-pointer hover:bg-noir-300";
 
-      if (isSold || isRedeemed) {
-          return null; // No actions for closed transactions
-      }
+      // All 4 action buttons layout
+      return (
+          <div className="flex flex-col gap-2">
+              {/* Night-only indicator when daytime */}
+              {!isNightPhase && (
+                  <div className="flex items-center justify-center text-noir-txt-muted text-[9px] gap-1 py-0.5 border-b border-noir-400/30 mb-1">
+                      <Moon className="w-3 h-3" />
+                      <span>仅夜间可操作</span>
+                  </div>
+              )}
 
-      // Active pawns (not reforged) - no direct sell option
-      // Items can only be sold through the black market
-      return null;
+              {/* Action buttons grid */}
+              <div className="grid grid-cols-4 gap-1">
+                  {/* Repair Button */}
+                  <button
+                      onClick={isNightPhase ? handleOpenWorkshop : undefined}
+                      disabled={!isNightPhase}
+                      className={cn(
+                          baseButtonClass,
+                          "border border-emerald-900/50",
+                          isNightPhase
+                              ? cn(enabledClass, "text-emerald-400 hover:border-emerald-700 hover:bg-emerald-950/30")
+                              : cn(disabledClass, "text-emerald-600/50")
+                      )}
+                      title={isNightPhase ? "修复物品 (Workshop)" : "仅夜间可用"}
+                  >
+                      <Hammer className="w-3.5 h-3.5" />
+                      <span>修复</span>
+                      {!isNightPhase && <Lock className="w-2 h-2 opacity-50" />}
+                  </button>
+
+                  {/* Reforge Button */}
+                  <button
+                      onClick={isNightPhase ? handleOpenWorkshop : undefined}
+                      disabled={!isNightPhase}
+                      className={cn(
+                          baseButtonClass,
+                          "border border-purple-900/50",
+                          isNightPhase
+                              ? cn(enabledClass, "text-purple-400 hover:border-purple-700 hover:bg-purple-950/30")
+                              : cn(disabledClass, "text-purple-600/50")
+                      )}
+                      title={isNightPhase ? "重铸物品 (Workshop)" : "仅夜间可用"}
+                  >
+                      <Wrench className="w-3.5 h-3.5" />
+                      <span>重铸</span>
+                      {!isNightPhase && <Lock className="w-2 h-2 opacity-50" />}
+                  </button>
+
+                  {/* Insight/Appraise Button */}
+                  <button
+                      onClick={isNightPhase ? handleOpenInsight : undefined}
+                      disabled={!isNightPhase}
+                      className={cn(
+                          baseButtonClass,
+                          "border border-blue-900/50",
+                          isNightPhase
+                              ? cn(enabledClass, "text-blue-400 hover:border-blue-700 hover:bg-blue-950/30")
+                              : cn(disabledClass, "text-blue-600/50")
+                      )}
+                      title={isNightPhase ? "格物研究 (Insight)" : "仅夜间可用"}
+                  >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>格物</span>
+                      {!isNightPhase && <Lock className="w-2 h-2 opacity-50" />}
+                  </button>
+
+                  {/* Sell Button */}
+                  <button
+                      onClick={isNightPhase ? handleOpenBlackmarket : undefined}
+                      disabled={!isNightPhase}
+                      className={cn(
+                          baseButtonClass,
+                          "border border-amber-900/50",
+                          isNightPhase
+                              ? cn(enabledClass, "text-amber-400 hover:border-amber-700 hover:bg-amber-950/30")
+                              : cn(disabledClass, "text-amber-600/50")
+                      )}
+                      title={isNightPhase ? "黑市出售 (Black Market)" : "仅夜间可用"}
+                  >
+                      <Skull className="w-3.5 h-3.5" />
+                      <span>出售</span>
+                      {!isNightPhase && <Lock className="w-2 h-2 opacity-50" />}
+                  </button>
+              </div>
+
+              {/* Quick liquidate for forfeit/owned items at night */}
+              {isNightPhase && (isForfeit || treatedAsOwned) && (
+                  <div className="mt-1 pt-1 border-t border-noir-400/30">
+                      {confirmingLiquidate ? (
+                          <Button
+                              variant="primary"
+                              size="sm"
+                              className="w-full text-[10px] h-7"
+                              onClick={() => handleLiquidate(item)}
+                          >
+                              CONFIRM LIQUIDATE +${item.realValue}
+                          </Button>
+                      ) : (
+                          <Button
+                              variant="ghost"
+                              size="sm"
+                              className={cn(
+                                  "w-full text-[10px] h-7 border",
+                                  treatedAsOwned
+                                      ? "text-purple-400 hover:text-purple-300 hover:bg-purple-950/20 border-purple-900/30"
+                                      : "text-amber-500 hover:text-amber-400 hover:bg-amber-950/20 border-amber-900/30"
+                              )}
+                              onClick={() => { setLiquidateConfirm(item.id); playSfx('CLICK'); }}
+                              title={treatedAsOwned ? "Sell this reforged item" : "Sell this forfeited item for its real value"}
+                          >
+                              <DollarSign className="w-3 h-3 mr-1" />
+                              快速变现 +${item.realValue}
+                          </Button>
+                      )}
+                  </div>
+              )}
+          </div>
+      );
   };
 
   // Stats

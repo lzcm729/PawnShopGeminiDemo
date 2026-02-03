@@ -24,10 +24,12 @@ export const NightDashboard: React.FC = () => {
 
     const [showMonologue, setShowMonologue] = useState(false);
     const [monologueText, setMonologueText] = useState("");
-    const [showInsightPanel, setShowInsightPanel] = useState(false);
-    const [showWorkshopPanel, setShowWorkshopPanel] = useState(false);
     const [showAppointmentBoard, setShowAppointmentBoard] = useState(false);
     const [showBlackmarket, setShowBlackmarket] = useState(false);
+
+    // Use global state for Workshop and Insight panels
+    const showInsightPanel = state.showInsight;
+    const showWorkshopPanel = state.showWorkshop;
 
     // Check if appointment board is unlocked
     const hasBoardUnlocked = hasAppointmentBoard(state.shopUpgrades);
@@ -173,7 +175,7 @@ export const NightDashboard: React.FC = () => {
 
                         {/* Insight / 格物 Button */}
                         <button
-                            onClick={() => { playSfx('CLICK'); setShowInsightPanel(true); }}
+                            onClick={() => { playSfx('CLICK'); dispatch({ type: 'TOGGLE_INSIGHT' }); }}
                             className="h-32 border border-purple-900 bg-stone-900/50 hover:bg-purple-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group"
                         >
                             <Eye className="w-8 h-8 text-purple-500 group-hover:text-purple-300 group-hover:scale-110 transition-transform" />
@@ -189,7 +191,7 @@ export const NightDashboard: React.FC = () => {
 
                         {/* Workshop / 工作台 Button */}
                         <button
-                            onClick={() => { playSfx('CLICK'); setShowWorkshopPanel(true); }}
+                            onClick={() => { playSfx('CLICK'); dispatch({ type: 'TOGGLE_WORKSHOP' }); }}
                             className="h-32 border border-amber-900 bg-stone-900/50 hover:bg-amber-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group"
                         >
                             <Wrench className="w-8 h-8 text-amber-500 group-hover:text-amber-300 group-hover:scale-110 transition-transform" />
@@ -437,13 +439,13 @@ export const NightDashboard: React.FC = () => {
             {/* Insight Panel Modal */}
             <InsightPanel
                 isOpen={showInsightPanel}
-                onClose={() => setShowInsightPanel(false)}
+                onClose={() => dispatch({ type: 'TOGGLE_INSIGHT' })}
             />
 
             {/* Workshop Panel Modal */}
             <WorkshopPanel
                 isOpen={showWorkshopPanel}
-                onClose={() => setShowWorkshopPanel(false)}
+                onClose={() => dispatch({ type: 'TOGGLE_WORKSHOP' })}
             />
 
             {/* Upgrade Shop Modal */}

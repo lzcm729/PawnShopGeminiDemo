@@ -90,4 +90,8 @@ export interface GameState {
   // === BLACK MARKET (黑市系统) ===
   blackmarket: BlackmarketState;           // 黑市状态（热度、每日收购、锁定）
   showBlackmarket: boolean;                // 黑市界面显示状态
+
+  // === NIGHT PANELS (夜间面板) ===
+  showWorkshop: boolean;                   // 工作台面板显示状态
+  showInsight: boolean;                    // 格物面板显示状态
 }
