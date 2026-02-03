@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { User, MessageSquareQuote, History, ChevronDown, ChevronUp } from 'lucide-react';
+import { getCharacterPortraitPath, moodToEmotion } from '../systems/assets';
 
 /**
  * SettlementCustomerView - 专门用于赎回/续当场景的顾客视图
@@ -45,9 +46,21 @@ export const SettlementCustomerView: React.FC = () => {
       <div className="relative z-10 bg-gradient-to-b from-stone-900 to-[#1c1917] p-6 border-b border-[#44403c] shadow-lg">
         <div className={`w-32 h-32 mx-auto bg-stone-800 rounded-full mb-4 overflow-hidden border-4 transition-all duration-300 relative group ${borderColor} ${shadowColor}`}>
           <img
-            src={`https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`}
+            src={(() => {
+              const emotion = moodToEmotion(currentCustomer.mood);
+              if (currentCustomer.portraits?.[emotion]) return currentCustomer.portraits[emotion];
+              if (currentCustomer.chainId) {
+                const charId = currentCustomer.chainId.replace(/^chain_/, '');
+                return getCharacterPortraitPath(charId, emotion);
+              }
+              return `https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`;
+            })()}
             alt="Customer"
-            className="w-full h-full object-cover grayscale opacity-90 group-hover:grayscale-0 transition-all duration-700"
+            className="w-full h-full object-cover opacity-90 transition-all duration-700"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${currentCustomer.avatarSeed}/200`;
+              (e.target as HTMLImageElement).classList.add('grayscale');
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
         </div>

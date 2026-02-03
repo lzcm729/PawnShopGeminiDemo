@@ -14,6 +14,7 @@ import { NegotiationHistory } from './NegotiationHistory';
 import { playSfx } from '../systems/game/audio';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { RollingNumber } from './ui/RollingNumber';
+import { getCharacterPortraitPath, moodToEmotion } from '../systems/assets';
 
 // ... existing interfaces ...
 interface NegotiationStateProps {
@@ -58,13 +59,24 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
         <div className="bg-noir-200 border-b border-noir-400 p-4 flex gap-4 shrink-0 shadow-lg relative overflow-hidden">
              {/* Surveillance Photo Effect */}
              <div className="relative w-16 h-16 shrink-0 border border-noir-400 p-0.5 bg-noir-300">
-                 <img 
-                    src={`https://picsum.photos/seed/${customer.avatarSeed}/200`} 
-                    alt="Subject" 
+                 <img
+                    src={(() => {
+                      const emotion = moodToEmotion(customer.mood);
+                      if (customer.portraits?.[emotion]) return customer.portraits[emotion];
+                      if (customer.chainId) {
+                        const charId = customer.chainId.replace(/^chain_/, '');
+                        return getCharacterPortraitPath(charId, emotion);
+                      }
+                      return `https://picsum.photos/seed/${customer.avatarSeed}/200`;
+                    })()}
+                    alt="Subject"
                     className={cn(
                         "w-full h-full object-cover filter contrast-125 sepia-[0.3]",
                         isAngry ? "grayscale-0" : "grayscale"
                     )}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${customer.avatarSeed}/200`;
+                    }}
                  />
                  <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.5)_50%)] bg-[length:100%_4px] pointer-events-none opacity-30"></div>
                  {isAngry && <div className="absolute inset-0 border-2 border-red-500 animate-pulse"></div>}

@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { PackageCheck, DollarSign, Heart, Briefcase, Skull, Stamp, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
 import { getDisplayName } from '../systems/items/tagUtils';
+import { getCharacterPortraitPath, moodToEmotion } from '../systems/assets';
 
 interface DealSuccessModalProps {
   customer: Customer;
@@ -54,7 +55,21 @@ export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, re
         {/* Header Content */}
         <div className="relative z-10 w-full text-center mb-8">
             <div className="w-24 h-24 mx-auto bg-stone-800 rounded-full border-2 border-pawn-accent mb-4 overflow-hidden">
-                 <img src={`https://picsum.photos/seed/${customer.avatarSeed}/200`} className="w-full h-full object-cover" />
+                 <img
+                   src={(() => {
+                     const emotion = moodToEmotion(customer.mood);
+                     if (customer.portraits?.[emotion]) return customer.portraits[emotion];
+                     if (customer.chainId) {
+                       const charId = customer.chainId.replace(/^chain_/, '');
+                       return getCharacterPortraitPath(charId, emotion);
+                     }
+                     return `https://picsum.photos/seed/${customer.avatarSeed}/200`;
+                   })()}
+                   className="w-full h-full object-cover"
+                   onError={(e) => {
+                     (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${customer.avatarSeed}/200`;
+                   }}
+                 />
             </div>
             <h2 className="text-2xl font-serif text-white mb-2">成交 (AGREED)</h2>
             <div className="bg-stone-800/80 p-4 rounded-xl border border-stone-600 shadow-inner">

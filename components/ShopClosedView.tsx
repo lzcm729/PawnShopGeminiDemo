@@ -11,6 +11,7 @@ import { playSfx } from '../systems/game/audio';
 import { GamePhase } from '../types';
 import { getDepartureMonologue } from '../systems/narrative/innerVoiceRegistry';
 import { cn } from '../lib/utils';
+import { getCharacterPortraitPath, EmotionType } from '../systems/assets';
 
 const getCategoryIcon = (category: string) => {
     switch(category) {
@@ -111,11 +112,14 @@ export const DepartureView: React.FC = () => {
   if (!currentCustomer) return null;
 
   // Avatar Variation
-  // Logic: Prefer explicit portrait if available. If not, use seed + CSS filter.
-  // We do NOT change the seed for fallback to preserve identity.
+  // Logic: Prefer explicit portrait if available. If not, derive from chainId. Finally, use picsum.
+  const emotion = satisfaction.toLowerCase() as EmotionType;
   let avatarUrl = `https://picsum.photos/seed/${currentCustomer.avatarSeed}/400`;
-  if (currentCustomer.portraits && currentCustomer.portraits[satisfaction.toLowerCase() as keyof typeof currentCustomer.portraits]) {
-      avatarUrl = currentCustomer.portraits[satisfaction.toLowerCase() as keyof typeof currentCustomer.portraits]!;
+  if (currentCustomer.portraits?.[emotion]) {
+      avatarUrl = currentCustomer.portraits[emotion]!;
+  } else if (currentCustomer.chainId) {
+      const charId = currentCustomer.chainId.replace(/^chain_/, '');
+      avatarUrl = getCharacterPortraitPath(charId, emotion);
   }
 
   // CSS Filters for Mood (Fallback)
