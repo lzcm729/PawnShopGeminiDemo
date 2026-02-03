@@ -1,10 +1,8 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useGame } from '../store/GameContext';
-import { usePawnShop } from '../hooks/usePawnShop';
-import { PackageOpen, DollarSign, Moon, Archive, Wrench, Hammer, Eye, Skull, Lock } from 'lucide-react';
-import { ItemStatus, Item, GamePhase } from '../types';
-import { Button } from './ui/Button';
+import { PackageOpen, Moon, Archive, Wrench, Hammer, Eye, Skull, Lock } from 'lucide-react';
+import { ItemStatus, GamePhase } from '../types';
 import { Modal } from './ui/Modal';
 import { ItemCard } from './ui/ItemCard';
 import { playSfx } from '../systems/game/audio';
@@ -13,9 +11,6 @@ import { getEffectiveInventoryCapacity } from '../systems/upgrades';
 
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
-  const { sellForfeitItem } = usePawnShop();
-
-  const [liquidateConfirm, setLiquidateConfirm] = useState<string | null>(null);
 
   if (!state.showInventory) return null;
 
@@ -52,11 +47,6 @@ export const InventoryModal: React.FC = () => {
       return (a.pawnDate || 0) - (b.pawnDate || 0);
   });
 
-  const handleLiquidate = (item: Item) => {
-      sellForfeitItem(item);
-      setLiquidateConfirm(null);
-  };
-
   const isNightPhase = state.phase === GamePhase.NIGHT;
 
   // Handle opening Workshop panel with pre-selected item
@@ -84,15 +74,8 @@ export const InventoryModal: React.FC = () => {
   };
 
   const renderActions = (item: Item) => {
-      const isForfeit = item.status === ItemStatus.FORFEIT;
-      const isActive = item.status === ItemStatus.ACTIVE;
       const isSold = item.status === ItemStatus.SOLD;
       const isRedeemed = item.status === ItemStatus.REDEEMED;
-      const isReforged = item.wasReforged === true;
-      const confirmingLiquidate = liquidateConfirm === item.id;
-
-      // Reforged active items are treated as owned
-      const treatedAsOwned = isReforged && isActive;
 
       // Closed transactions have no actions
       if (isSold || isRedeemed) {
@@ -189,38 +172,6 @@ export const InventoryModal: React.FC = () => {
                       {!isNightPhase && <Lock className="w-2 h-2 opacity-50" />}
                   </button>
               </div>
-
-              {/* Quick liquidate for forfeit/owned items at night */}
-              {isNightPhase && (isForfeit || treatedAsOwned) && (
-                  <div className="mt-1 pt-1 border-t border-noir-400/30">
-                      {confirmingLiquidate ? (
-                          <Button
-                              variant="primary"
-                              size="sm"
-                              className="w-full text-[10px] h-7"
-                              onClick={() => handleLiquidate(item)}
-                          >
-                              CONFIRM LIQUIDATE +${item.realValue}
-                          </Button>
-                      ) : (
-                          <Button
-                              variant="ghost"
-                              size="sm"
-                              className={cn(
-                                  "w-full text-[10px] h-7 border",
-                                  treatedAsOwned
-                                      ? "text-purple-400 hover:text-purple-300 hover:bg-purple-950/20 border-purple-900/30"
-                                      : "text-amber-500 hover:text-amber-400 hover:bg-amber-950/20 border-amber-900/30"
-                              )}
-                              onClick={() => { setLiquidateConfirm(item.id); playSfx('CLICK'); }}
-                              title={treatedAsOwned ? "Sell this reforged item" : "Sell this forfeited item for its real value"}
-                          >
-                              <DollarSign className="w-3 h-3 mr-1" />
-                              快速变现 +${item.realValue}
-                          </Button>
-                      )}
-                  </div>
-              )}
           </div>
       );
   };
