@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { useGame } from '../store/GameContext';
-import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
 import { NewsCategory, ItemStatus } from '../types';
@@ -11,7 +10,6 @@ import { getDisplayName } from '../systems/items/tagUtils';
 
 export const MorningBrief: React.FC = () => {
   const { state } = useGame();
-  const { startNewDay } = useGameEngine();
   const { send, can } = useGameMachine();
 
   const narratives = state.dailyNews.filter(n => n.category === NewsCategory.NARRATIVE);
@@ -196,9 +194,9 @@ export const MorningBrief: React.FC = () => {
                   <Button
                       onClick={() => {
                           // Send state machine event for phase2 sync
+                          // NOTE: startNewDay() is now triggered by useEffect in App.tsx
+                          // when phase transitions to DAY_START.EXPIRY_CHECK, avoiding timing issues
                           send({ type: 'OPEN_SHOP' });
-                          // Execute business logic (mail, expiry checks, etc.)
-                          startNewDay();
                       }}
                       disabled={!can({ type: 'OPEN_SHOP' })}
                       variant="primary"

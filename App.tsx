@@ -33,7 +33,7 @@ import { NightToDayTransition } from './components/transitions/NightToDayTransit
 
 const GameContent: React.FC = () => {
   const { state, dispatch } = useGame();
-  const { generateDailyEvent, processNextExpiryEvent } = useGameEngine();
+  const { generateDailyEvent, processNextExpiryEvent, startNewDay } = useGameEngine();
   const { send } = useGameMachine();
   const [loadingText, setLoadingText] = useState("");
   const negotiation = useNegotiation(state.currentCustomer);
@@ -68,6 +68,15 @@ const GameContent: React.FC = () => {
 
       prevPhaseType.current = currentType;
   }, [state.phase]);
+
+  // Phase: DAY_START.EXPIRY_CHECK -> Automatically execute startNewDay logic
+  // This useEffect ensures startNewDay runs AFTER the state machine has transitioned,
+  // avoiding timing issues where startNewDay reads stale state.
+  useEffect(() => {
+      if (PhaseIs.dayStart(state.phase) && state.phase.subphase === 'EXPIRY_CHECK') {
+          startNewDay();
+      }
+  }, [state.phase, startNewDay]);
 
   // Phase: BUSINESS -> Automatically trigger event if no customer
   // Note: canServe is always true now - the generateDailyEvent handles the logic internally
