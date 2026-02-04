@@ -1,12 +1,19 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { Package, Wrench, Check, Lock, DollarSign, Zap, Coffee, Scan } from 'lucide-react';
+import { Package, Wrench, Check, Lock, DollarSign, Zap, Coffee, Scan, ClipboardList, Skull } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getAvailableUpgradesWithStatus, getEffectiveInventoryCapacity, getEffectiveNightEnergy, BASE_INVENTORY_CAPACITY, getTotalMaintenanceCost, getPatienceBonus, getAnomalyDetectionThreshold } from '../systems/upgrades';
 import { GAME_CONFIG } from '../systems/game/config';
+import type { UpgradeLocation } from '../systems/upgrades/types';
+
+// Location category configuration
+const LOCATION_CATEGORIES: { location: UpgradeLocation; nameCn: string; nameEn: string; color: string }[] = [
+    { location: 'BACKROOM', nameCn: '后屋设施', nameEn: 'Backroom', color: 'purple' },
+    { location: 'COUNTER', nameCn: '柜台设备', nameEn: 'Counter', color: 'blue' },
+];
 
 // Circular Arc Pattern Component - represents level with purple arcs
 const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: React.ReactNode; isMaxLevel?: boolean }> = ({
@@ -108,9 +115,23 @@ export const UpgradeShopModal: React.FC = () => {
             case 'Wrench': return <Wrench className="w-6 h-6" />;
             case 'Coffee': return <Coffee className="w-6 h-6" />;
             case 'Scan': return <Scan className="w-6 h-6" />;
+            case 'ClipboardList': return <ClipboardList className="w-6 h-6" />;
+            case 'Skull': return <Skull className="w-6 h-6" />;
             default: return <Package className="w-6 h-6" />;
         }
     };
+
+    // Group upgrades by location
+    const upgradesByLocation = useMemo(() => {
+        const grouped: Record<UpgradeLocation, typeof upgradesWithStatus> = {
+            'BACKROOM': [],
+            'COUNTER': [],
+        };
+        upgradesWithStatus.forEach(upgrade => {
+            grouped[upgrade.config.location].push(upgrade);
+        });
+        return grouped;
+    }, [upgradesWithStatus]);
 
     // Calculate current effective values
     const currentCapacity = getEffectiveInventoryCapacity(state.shopUpgrades);
@@ -183,123 +204,146 @@ export const UpgradeShopModal: React.FC = () => {
                     )}
                 </div>
 
-                {/* Upgrade Cards - New Figma Style */}
-                <div className="grid grid-cols-1 gap-4">
-                    {upgradesWithStatus.map(({ config, currentLevel, isMaxLevel, canPurchase, purchaseReason, nextLevelCost, nextLevelConfig }) => {
-                        const ownedUpgrade = state.shopUpgrades.upgrades.find(u => u.upgradeId === config.id);
-                        const isOwned = currentLevel > 0;
-                        const isEnabled = ownedUpgrade?.enabled ?? true;
+                {/* Upgrade Cards - Grouped by Location */}
+                <div className="flex flex-col gap-6">
+                    {LOCATION_CATEGORIES.map(({ location, nameCn, nameEn, color }) => {
+                        const categoryUpgrades = upgradesByLocation[location];
+                        if (categoryUpgrades.length === 0) return null;
 
                         return (
-                            <div
-                                key={config.id}
-                                className={cn(
-                                    "border rounded-lg overflow-hidden transition-all",
-                                    isMaxLevel
-                                        ? "bg-noir-200 border-green-900/50"
-                                        : canPurchase
-                                            ? "bg-noir-200 border-amber-900/50 hover:border-amber-500/50"
-                                            : "bg-noir-200 border-noir-400"
-                                )}
-                            >
-                                {/* Main Card Content */}
-                                <div className="p-4 flex items-start gap-4">
-                                    {/* Left: Arc Ring with Icon */}
-                                    <LevelArcRing
-                                        currentLevel={currentLevel}
-                                        maxLevel={config.maxLevel}
-                                        icon={getIcon(config.icon)}
-                                        isMaxLevel={isMaxLevel}
-                                    />
-
-                                    {/* Right: Info */}
-                                    <div className="flex-1 min-w-0">
-                                        {/* Title Row */}
-                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                            <h3 className="font-bold text-base text-noir-txt-primary">
-                                                {config.nameCn}
-                                            </h3>
-                                            <span className="text-xs text-noir-txt-muted">
-                                                ({config.name})
-                                            </span>
-                                            <span className={cn(
-                                                "text-[10px] px-2 py-0.5 rounded uppercase font-medium",
-                                                config.location === 'BACKROOM'
-                                                    ? "bg-purple-900/50 text-purple-300 border border-purple-700/50"
-                                                    : "bg-blue-900/50 text-blue-300 border border-blue-700/50"
-                                            )}>
-                                                {config.location === 'BACKROOM' ? 'WAREHOUSE' : 'COUNTER'}
-                                            </span>
-                                            {config.location === 'COUNTER' && isOwned && (
-                                                <span className={cn(
-                                                    "text-[9px] px-1.5 py-0.5 rounded uppercase",
-                                                    isEnabled ? "bg-green-950/50 text-green-400" : "bg-red-950/50 text-red-400"
-                                                )}>
-                                                    {isEnabled ? 'ON' : 'OFF'}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Description */}
-                                        <p className="text-sm text-noir-txt-muted">
-                                            {config.description}
-                                        </p>
-                                    </div>
+                            <div key={location} className="flex flex-col gap-3">
+                                {/* Category Header */}
+                                <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                        "h-px flex-1",
+                                        color === 'purple' ? "bg-purple-700/50" : "bg-blue-700/50"
+                                    )} />
+                                    <h3 className={cn(
+                                        "text-xs font-medium tracking-widest uppercase flex items-center gap-2",
+                                        color === 'purple' ? "text-purple-400" : "text-blue-400"
+                                    )}>
+                                        <span>{nameCn}</span>
+                                        <span className="text-noir-txt-muted font-normal">({nameEn})</span>
+                                    </h3>
+                                    <div className={cn(
+                                        "h-px flex-1",
+                                        color === 'purple' ? "bg-purple-700/50" : "bg-blue-700/50"
+                                    )} />
                                 </div>
 
-                                {/* Next Level / Action Area */}
-                                {!isMaxLevel && nextLevelConfig ? (
-                                    <div className="border-t border-noir-400 bg-noir-100/50">
-                                        {/* Next Level Info */}
-                                        <div className="px-4 py-3 flex items-center gap-2">
-                                            <Zap className="w-4 h-4 text-amber-500 shrink-0" />
-                                            <span className="text-xs text-noir-txt-muted">Next Level:</span>
-                                            <span className="text-sm text-amber-400 font-medium">{nextLevelConfig.description}</span>
-                                            {nextLevelConfig.maintenanceCost && (
-                                                <span className="text-red-400 text-[10px] ml-1">
-                                                    (维护费 ${nextLevelConfig.maintenanceCost}/天)
-                                                </span>
-                                            )}
-                                        </div>
+                                {/* Upgrade Cards */}
+                                <div className="grid grid-cols-1 gap-3">
+                                    {categoryUpgrades.map(({ config, currentLevel, isMaxLevel, canPurchase, purchaseReason, nextLevelCost, nextLevelConfig }) => {
+                                        const ownedUpgrade = state.shopUpgrades.upgrades.find(u => u.upgradeId === config.id);
+                                        const isOwned = currentLevel > 0;
+                                        const isEnabled = ownedUpgrade?.enabled ?? true;
 
-                                        {/* Price & Purchase Button */}
-                                        <div className="px-4 py-3 border-t border-noir-400/50 flex items-center justify-between">
-                                            <div className="flex items-center gap-1">
-                                                <DollarSign className={cn(
-                                                    "w-5 h-5",
-                                                    canPurchase ? "text-green-500" : "text-noir-txt-muted"
-                                                )} />
-                                                <span className={cn(
-                                                    "text-lg font-mono font-bold",
-                                                    canPurchase ? "text-white" : "text-red-500"
-                                                )}>
-                                                    {nextLevelCost}
-                                                </span>
-                                            </div>
-                                            <Button
-                                                variant={canPurchase ? "primary" : "ghost"}
-                                                size="sm"
-                                                disabled={!canPurchase}
-                                                onClick={() => handlePurchase(config.id)}
+                                        return (
+                                            <div
+                                                key={config.id}
                                                 className={cn(
-                                                    "text-xs px-4",
-                                                    !canPurchase && "opacity-50 cursor-not-allowed"
+                                                    "border rounded-lg overflow-hidden transition-all",
+                                                    isMaxLevel
+                                                        ? "bg-noir-200 border-green-900/50"
+                                                        : canPurchase
+                                                            ? "bg-noir-200 border-amber-900/50 hover:border-amber-500/50"
+                                                            : "bg-noir-200 border-noir-400"
                                                 )}
                                             >
-                                                {canPurchase ? (
-                                                    <>升级到 Lv{currentLevel + 1}</>
-                                                ) : (
-                                                    <><Lock className="w-3 h-3 mr-1" />{purchaseReason}</>
-                                                )}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : isMaxLevel ? (
-                                    <div className="border-t border-green-900/50 bg-green-950/20 px-4 py-3 flex items-center justify-center gap-2 text-green-500">
-                                        <Check className="w-5 h-5" />
-                                        <span className="uppercase tracking-wider font-medium">已达到最高等级</span>
-                                    </div>
-                                ) : null}
+                                                {/* Main Card Content */}
+                                                <div className="p-4 flex items-start gap-4">
+                                                    {/* Left: Arc Ring with Icon */}
+                                                    <LevelArcRing
+                                                        currentLevel={currentLevel}
+                                                        maxLevel={config.maxLevel}
+                                                        icon={getIcon(config.icon)}
+                                                        isMaxLevel={isMaxLevel}
+                                                    />
+
+                                                    {/* Right: Info */}
+                                                    <div className="flex-1 min-w-0">
+                                                        {/* Title Row */}
+                                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                            <h3 className="font-bold text-base text-noir-txt-primary">
+                                                                {config.nameCn}
+                                                            </h3>
+                                                            <span className="text-xs text-noir-txt-muted">
+                                                                ({config.name})
+                                                            </span>
+                                                            {config.location === 'COUNTER' && isOwned && (
+                                                                <span className={cn(
+                                                                    "text-[9px] px-1.5 py-0.5 rounded uppercase",
+                                                                    isEnabled ? "bg-green-950/50 text-green-400" : "bg-red-950/50 text-red-400"
+                                                                )}>
+                                                                    {isEnabled ? 'ON' : 'OFF'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Description */}
+                                                        <p className="text-sm text-noir-txt-muted">
+                                                            {config.description}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Next Level / Action Area */}
+                                                {!isMaxLevel && nextLevelConfig ? (
+                                                    <div className="border-t border-noir-400 bg-noir-100/50">
+                                                        {/* Next Level Info */}
+                                                        <div className="px-4 py-3 flex items-center gap-2">
+                                                            <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                                                            <span className="text-xs text-noir-txt-muted">Next Level:</span>
+                                                            <span className="text-sm text-amber-400 font-medium">{nextLevelConfig.description}</span>
+                                                            {nextLevelConfig.maintenanceCost && (
+                                                                <span className="text-red-400 text-[10px] ml-1">
+                                                                    (维护费 ${nextLevelConfig.maintenanceCost}/天)
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Price & Purchase Button */}
+                                                        <div className="px-4 py-3 border-t border-noir-400/50 flex items-center justify-between">
+                                                            <div className="flex items-center gap-1">
+                                                                <DollarSign className={cn(
+                                                                    "w-5 h-5",
+                                                                    canPurchase ? "text-green-500" : "text-noir-txt-muted"
+                                                                )} />
+                                                                <span className={cn(
+                                                                    "text-lg font-mono font-bold",
+                                                                    canPurchase ? "text-white" : "text-red-500"
+                                                                )}>
+                                                                    {nextLevelCost}
+                                                                </span>
+                                                            </div>
+                                                            <Button
+                                                                variant={canPurchase ? "primary" : "ghost"}
+                                                                size="sm"
+                                                                disabled={!canPurchase}
+                                                                onClick={() => handlePurchase(config.id)}
+                                                                className={cn(
+                                                                    "text-xs px-4",
+                                                                    !canPurchase && "opacity-50 cursor-not-allowed"
+                                                                )}
+                                                            >
+                                                                {canPurchase ? (
+                                                                    <>升级到 Lv{currentLevel + 1}</>
+                                                                ) : (
+                                                                    <><Lock className="w-3 h-3 mr-1" />{purchaseReason}</>
+                                                                )}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ) : isMaxLevel ? (
+                                                    <div className="border-t border-green-900/50 bg-green-950/20 px-4 py-3 flex items-center justify-center gap-2 text-green-500">
+                                                        <Check className="w-5 h-5" />
+                                                        <span className="uppercase tracking-wider font-medium">已达到最高等级</span>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         );
                     })}
@@ -307,8 +351,8 @@ export const UpgradeShopModal: React.FC = () => {
 
                 {/* Info Footer */}
                 <div className="text-[10px] text-noir-txt-muted text-center border-t border-noir-400 pt-3 space-y-1">
-                    <div><span className="text-purple-400">Warehouse</span> 升级无维护费用，永久生效。</div>
-                    <div><span className="text-blue-400">Counter</span> 升级有每日维护费，可在夜间开关。</div>
+                    <div><span className="text-purple-400">后屋设施</span> 升级无维护费用，永久生效。</div>
+                    <div><span className="text-blue-400">柜台设备</span> 升级有每日维护费，可在夜间开关。</div>
                 </div>
             </div>
         </Modal>
