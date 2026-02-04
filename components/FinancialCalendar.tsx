@@ -2,7 +2,8 @@
 import React from 'react';
 import { useGame } from '../store/GameContext';
 import { useFinancialProjection } from '../hooks/useFinancialProjection';
-import { X, AlertTriangle, Calendar, Mail, Clock } from 'lucide-react';
+import { X, AlertTriangle, Calendar, Mail, Clock, HelpCircle } from 'lucide-react';
+import { HelpTooltip } from './ui/Tooltip';
 import { CalendarDayData } from '../systems/economy/types';
 
 export const FinancialCalendar: React.FC = () => {
@@ -21,6 +22,7 @@ export const FinancialCalendar: React.FC = () => {
                         <h2 className="text-2xl font-mono font-bold text-stone-200 flex items-center gap-3">
                             <Calendar className="w-6 h-6 text-pawn-accent" />
                             综合日程预测 (SCHEDULE_OS)
+                            <HelpTooltip text="查看未来28天的财务预测。红色圆点表示医疗账单到期，时钟表示物品到期。提前规划避免破产。" />
                         </h2>
                         <p className="text-stone-500 text-xs font-mono mt-1 uppercase tracking-widest">
                             Rolling Horizon: 28 Days // T-2 to T+25

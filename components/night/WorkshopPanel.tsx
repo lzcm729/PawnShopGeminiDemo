@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
+import { HelpTooltip } from '../ui/Tooltip';
 import { Button } from '../ui/Button';
 import { useWorkshop } from '../../hooks/useWorkshop';
 import { useGame } from '../../store/GameContext';
@@ -100,6 +101,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
         <span className="flex items-center gap-2">
           <Wrench className="w-5 h-5" />
           工作台 (Workshop)
+          <HelpTooltip text="修复损坏物品或重铸提升价值。修复消除负面特征恢复估价，重铸增加正面特征。消耗精魄和精力。" />
         </span>
       }
       size="xl"

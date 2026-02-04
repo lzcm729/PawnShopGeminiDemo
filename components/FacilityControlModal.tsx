@@ -2,6 +2,7 @@
 import React from 'react';
 import { useGame } from '../store/GameContext';
 import { Modal } from './ui/Modal';
+import { HelpTooltip } from './ui/Tooltip';
 import { Package, Wrench, Power, ToggleLeft, ToggleRight, Coins, Coffee, Scan } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getCounterUpgradesForToggle, getTotalMaintenanceCost, getPatienceBonus, getAnomalyDetectionThreshold } from '../systems/upgrades';
@@ -42,6 +43,7 @@ export const FacilityControlModal: React.FC = () => {
                 title={
                     <span className="font-mono tracking-widest flex items-center gap-2">
                         <Power className="w-5 h-5" /> FACILITY_CONTROL
+                        <HelpTooltip text="开关柜台设施。启用的设施提供被动效果（如增加耐心、检测仿品），但每日消耗维护费。" />
                     </span>
                 }
                 size="sm"
@@ -64,6 +66,7 @@ export const FacilityControlModal: React.FC = () => {
             title={
                 <span className="font-mono tracking-widest flex items-center gap-2">
                     <Power className="w-5 h-5" /> FACILITY_CONTROL
+                    <HelpTooltip text="开关柜台设施。启用的设施提供被动效果（如增加耐心、检测仿品），但每日消耗维护费。" />
                 </span>
             }
             size="md"

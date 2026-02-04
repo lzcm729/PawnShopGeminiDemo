@@ -7,6 +7,7 @@
 
 import React, { useEffect } from 'react';
 import { Modal } from '../ui/Modal';
+import { HelpTooltip } from '../ui/Tooltip';
 import { Button } from '../ui/Button';
 import { useGame } from '../../store/GameContext';
 import { cn } from '../../lib/utils';
@@ -112,6 +113,7 @@ export const AppointmentBoardPanel: React.FC<AppointmentBoardPanelProps> = ({
           <span className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5" />
             预约板 (Appointment Board)
+            <HelpTooltip text="预览明日可能来访的客户，选择邀请。可筛选客户类型，升级后预览更多客户、邀请更多人。" />
           </span>
         }
         size="md"
@@ -137,6 +139,7 @@ export const AppointmentBoardPanel: React.FC<AppointmentBoardPanelProps> = ({
         <span className="flex items-center gap-2">
           <ClipboardList className="w-5 h-5 text-teal-400" />
           {levelName} (Lv{boardConfig.level})
+          <HelpTooltip text="预览明日可能来访的客户，选择邀请。可筛选客户类型，升级后预览更多客户、邀请更多人。" />
         </span>
       }
       size="lg"

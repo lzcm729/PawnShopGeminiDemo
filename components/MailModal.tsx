@@ -7,6 +7,7 @@ import { interpolateMailBody } from '../systems/narrative/mailUtils';
 import { NewsCategory } from '../types';
 import { playSfx } from '../systems/game/audio';
 import { Modal } from './ui/Modal';
+import { HelpTooltip } from './ui/Tooltip';
 import { cn } from '../lib/utils';
 import { TypewriterText } from './ui/TextEffects';
 
@@ -43,7 +44,7 @@ export const MailModal: React.FC = () => {
     <Modal
         isOpen={state.showMail}
         onClose={() => dispatch({ type: 'TOGGLE_MAIL' })}
-        title={<><Terminal className="w-5 h-5 text-green-500" /> SECURE_LINK_V1.0.4</>}
+        title={<span className="flex items-center gap-2"><Terminal className="w-5 h-5 text-green-500" /> SECURE_LINK_V1.0.4 <HelpTooltip text="查看和回复邮件，获取客户信息和任务。重要通知会在这里出现，部分邮件附带奖励可领取。" /></span>}
         size="xl"
         noPadding
         className="border-green-900 shadow-[0_0_50px_rgba(0,255,0,0.1)]"

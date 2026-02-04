@@ -9,6 +9,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
+import { HelpTooltip } from '../ui/Tooltip';
 import { Button } from '../ui/Button';
 import { useBlackmarket } from '../../hooks/useBlackmarket';
 import { useGame } from '../../store/GameContext';
@@ -169,6 +170,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
         <span className="flex items-center gap-2">
           <Skull className="w-5 h-5" />
           黑市 (Black Market)
+          <HelpTooltip text="出售绝当物品获取现金。满足收购订单获得高价，直售价格较低。交易产生热度，热度过高会引来警方行动。" />
         </span>
       }
       size="xl"

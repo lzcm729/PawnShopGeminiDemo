@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { Modal } from './ui/Modal';
+import { HelpTooltip } from './ui/Tooltip';
 import { Button } from './ui/Button';
 import { Package, Wrench, Check, Lock, DollarSign, Zap, Coffee, Scan, ClipboardList, Skull } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -146,6 +147,7 @@ export const UpgradeShopModal: React.FC = () => {
             title={
                 <span className="font-mono tracking-widest flex items-center gap-2">
                     <Wrench className="w-5 h-5" /> SHOP_UPGRADE_SYS
+                    <HelpTooltip text="购买店铺升级，扩展库存容量、解锁新功能。后屋设施提供被动加成，柜台设备需要每日维护费。" />
                 </span>
             }
             size="lg"

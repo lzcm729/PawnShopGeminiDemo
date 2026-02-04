@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
+import { HelpTooltip } from '../ui/Tooltip';
 import { Button } from '../ui/Button';
 import { useInsight } from '../../hooks/useInsight';
 import { useGame } from '../../store/GameContext';
@@ -109,16 +110,7 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
         <span className="flex items-center gap-2">
           <Eye className="w-5 h-5" />
           格物 (Insight)
-          {/* Help Tooltip */}
-          <span className="relative group ml-1">
-            <HelpCircle className="w-4 h-4 text-stone-500 cursor-help" />
-            <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 p-3 bg-noir-100 border border-noir-400 rounded shadow-lg text-xs text-stone-300 font-normal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-              <strong className="text-purple-400 block mb-1">格物系统</strong>
-              研究库存物品，提取精魄用于夜间活动。<br/><br/>
-              每次格物消耗精力，可收窄估价区间、发现隐藏特征。<br/><br/>
-              当物品的知识被完全提取时，触发<span className="text-yellow-400">「顿悟」</span>，获得额外奖励并返还精力。
-            </span>
-          </span>
+          <HelpTooltip text="研究库存物品，提取精魄用于夜间活动。每次格物消耗精力，可收窄估价、发现特征。知识耗尽时触发「顿悟」获得额外奖励。" />
         </span>
       }
       size="xl"

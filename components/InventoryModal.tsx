@@ -5,6 +5,7 @@ import { PackageOpen, Moon, Archive, Wrench, Hammer, Eye, Skull, Lock, Search } 
 import { Item, ItemStatus } from '../types';
 import { PhaseIs } from '../systems/core/phases';
 import { Modal } from './ui/Modal';
+import { HelpTooltip } from './ui/Tooltip';
 import { ItemCard } from './ui/ItemCard';
 import { ItemDetailModal } from './ui/ItemDetailModal';
 import { playSfx } from '../systems/game/audio';
@@ -218,7 +219,7 @@ export const InventoryModal: React.FC = () => {
     <Modal
       isOpen={state.showInventory}
       onClose={() => dispatch({ type: 'TOGGLE_INVENTORY' })}
-      title={<span className="font-mono tracking-widest flex items-center gap-2"><PackageOpen className="w-5 h-5" /> VAULT_MANAGEMENT_SYS</span>}
+      title={<span className="font-mono tracking-widest flex items-center gap-2"><PackageOpen className="w-5 h-5" /> VAULT_MANAGEMENT_SYS <HelpTooltip text="管理库存物品。查看当品详情、到期日期、物品历史。夜间可进行格物研究、修复重铸、黑市出售。" /></span>}
       size="xl"
       noPadding
     >
