@@ -8,6 +8,17 @@
 import { Item, ItemTrait, ItemStatus, TraitType, WorkState } from './types';
 import { ItemTag, STATE_TAGS, ATTRIBUTE_TAGS, ESSENCE_TAGS } from './tags';
 
+// Callback to notify other systems when CSV data is reloaded
+let onDataReloadCallback: (() => void) | null = null;
+
+/**
+ * Register a callback to be called when CSV data is reloaded
+ * Used by fillerGenerator to clear its template cache
+ */
+export function onCSVDataReload(callback: () => void): void {
+  onDataReloadCallback = callback;
+}
+
 // ============================================================================
 // 类型验证
 // ============================================================================
@@ -428,9 +439,13 @@ export function initializeCSVData(itemsCSV?: string, traitsCSV?: string): void {
   }
 
   initialized = true;
-  // Log only in development
-  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-    console.log(`[csvLoader] Loaded ${itemTemplateRegistry.size} item templates, ${traitDefinitionRegistry.size} trait definitions`);
+  // Log loaded counts for debugging
+  const fillerCount = Array.from(itemTemplateRegistry.values()).filter(t => t.fillerPool).length;
+  console.log(`[csvLoader] Loaded ${itemTemplateRegistry.size} item templates (${fillerCount} filler pool), ${traitDefinitionRegistry.size} trait definitions`);
+
+  // Notify other systems that data has been reloaded
+  if (onDataReloadCallback) {
+    onDataReloadCallback();
   }
 }
 

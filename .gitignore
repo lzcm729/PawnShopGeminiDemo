@@ -37,4 +37,6 @@ test-results/
 release/
 
 # Generated assets (character portraits, item icons)
-assets/
+assets/*
+# But track CSV data files (data-driven content)
+!assets/data/

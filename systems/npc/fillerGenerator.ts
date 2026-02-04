@@ -11,7 +11,7 @@
 import { Customer, BehaviorTag, Dialogue } from '../../types';
 import { Item, ItemStatus } from '../items/types';
 import { Mood } from '../core/types';
-import { createItemFromTemplate, getItemTemplate, ItemTemplate, getTraitDefinition, createTraitFromDefinition, getFillerPoolTemplateIds } from '../items/csvLoader';
+import { createItemFromTemplate, getItemTemplate, ItemTemplate, getTraitDefinition, createTraitFromDefinition, getFillerPoolTemplateIds, onCSVDataReload } from '../items/csvLoader';
 import { initializeKnowledgePool } from '../items/tagUtils';
 import { ContractType, EventChainState } from '../narrative/types';
 import { getCharacterPortraits } from '../assets';
@@ -146,6 +146,12 @@ function getFillerItemTemplates(): string[] {
 export function clearFillerTemplateCache(): void {
     cachedFillerTemplateIds = null;
 }
+
+// Register callback to clear cache when CSV data is reloaded
+onCSVDataReload(() => {
+    clearFillerTemplateCache();
+    console.log('[fillerGenerator] Filler template cache cleared after CSV reload');
+});
 
 // ============================================================================
 // VALUE JUMP TRAITS (捡漏/打眼)

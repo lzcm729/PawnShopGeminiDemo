@@ -91,12 +91,23 @@ export async function loadItemDataFromFiles(
       fetch(traitsUrl),
     ]);
 
+    if (!itemsResponse.ok) {
+      throw new Error(`Failed to load items CSV: ${itemsResponse.status} ${itemsResponse.statusText}`);
+    }
+    if (!traitsResponse.ok) {
+      throw new Error(`Failed to load traits CSV: ${traitsResponse.status} ${traitsResponse.statusText}`);
+    }
+
     const itemsCSV = await itemsResponse.text();
     const traitsCSV = await traitsResponse.text();
+
+    console.log(`[dataInit] Loaded Items CSV: ${itemsCSV.length} bytes`);
+    console.log(`[dataInit] Loaded Traits CSV: ${traitsCSV.length} bytes`);
 
     initializeCSVData(itemsCSV, traitsCSV);
   } catch (error) {
     console.error('[dataInit] Failed to load CSV files:', error);
+    console.warn('[dataInit] Falling back to embedded default data (no Filler_Pool support)');
     // 失败时使用默认数据
     initializeItemData();
   }

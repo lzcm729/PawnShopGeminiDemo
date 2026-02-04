@@ -20,17 +20,12 @@ export type ItemState = 'default' | 'restored' | 'reforged';
  * 获取物品图标路径
  *
  * 目录结构: assets/items/{itemId}/{state}.png
- * 例如: assets/items/watch_01/default.png
+ * 例如: assets/items/item_watch_01/default.png
  *
- * ID 转换规则:
- * - item_watch_01 → watch_01 (移除 item_ 前缀)
- * - emma_item_clothes → emma_clothes (移除 _item_ 中缀)
+ * ID 直接用作目录名，不做转换。
  */
 export function getItemIconPath(itemId: string, state: ItemState = 'default'): string {
-  let cleanId = itemId
-    .replace(/^item_/, '')     // item_watch_01 → watch_01
-    .replace(/_item_/, '_');    // emma_item_clothes → emma_clothes
-  return `${ASSETS_BASE}/items/${cleanId}/${state}.png`;
+  return `${ASSETS_BASE}/items/${itemId}/${state}.png`;
 }
 
 /**
