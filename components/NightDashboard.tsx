@@ -95,13 +95,23 @@ export const NightDashboard: React.FC = () => {
                 <InnerVoiceDisplay text={monologueText} onComplete={completeNight} />
             )}
 
-            {/* Background: Dark Office */}
-            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-20 blur-sm pointer-events-none grayscale contrast-125"></div>
+            {/* Background: Pawn Shop Night Interior */}
+            <div className="absolute inset-0 bg-[url('/assets/backgrounds/night_dashboard.png')] bg-cover bg-center opacity-30 pointer-events-none"></div>
             
-            {/* Desk Light Overlay */}
-            <div 
-                className="absolute inset-0 bg-radial-gradient from-amber-500/10 to-black pointer-events-none transition-opacity duration-75"
-                style={{ opacity: lampFlicker * 0.5 }}
+            {/* Desk Light Overlay - warm glow from lamp */}
+            <div
+                className="absolute inset-0 pointer-events-none transition-opacity duration-75"
+                style={{
+                    opacity: lampFlicker * 0.4,
+                    background: 'radial-gradient(ellipse 60% 50% at 30% 70%, rgba(251, 191, 36, 0.15) 0%, transparent 70%)'
+                }}
+            ></div>
+            {/* Neon glow from window - subtle blue/pink */}
+            <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                    background: 'radial-gradient(ellipse 40% 60% at 80% 40%, rgba(147, 197, 253, 0.08) 0%, transparent 60%)'
+                }}
             ></div>
 
             <div className="relative z-10 w-full max-w-6xl h-[80vh] flex gap-8 p-8">
