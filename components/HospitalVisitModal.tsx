@@ -112,6 +112,14 @@ export const HospitalVisitModal: React.FC = () => {
         return "text-blue-400";
     };
 
+    // Health status mapping based on health percentage
+    const getHealthStatus = (health: number) => {
+        if (health >= 70) return { text: '稳定', color: 'text-blue-400' };
+        if (health >= 40) return { text: '恶化中', color: 'text-amber-400' };
+        return { text: '危急', color: 'text-red-400' };
+    };
+    const healthStatus = getHealthStatus(motherStatus.health);
+
     return (
         <Modal
             isOpen={state.showVisit}
@@ -142,7 +150,7 @@ export const HospitalVisitModal: React.FC = () => {
                             <div className={cn("absolute top-2 right-2 text-[10px] animate-pulse", motherStatus.risk > 40 ? "text-red-500" : "text-blue-400")}>
                                 {motherStatus.risk > 40 ? "CRITICAL ALERT" : "LIVE MONITORING"}
                             </div>
-                            <div className="absolute bottom-2 left-2 text-2xl font-bold text-white tracking-widest">{Math.round(motherStatus.health)} BPM</div>
+                            <div className={cn("absolute bottom-2 left-2 text-2xl font-bold tracking-widest", healthStatus.color)}>{healthStatus.text}</div>
                         </div>
                     </div>
 

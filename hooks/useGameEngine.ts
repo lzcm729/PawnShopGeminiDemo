@@ -165,19 +165,19 @@ export const useGameEngine = () => {
 
     if (medicalBill.status === 'PAID') {
         newCareLevel = 'Premium';
-        newHealth += (2 + decayModifier); 
-        newRisk = Math.max(5, newRisk - 5); 
+        newHealth = Math.min(100, newHealth + 2 + decayModifier);  // Recovery +2% (+3% with saint_guardian), capped at 100
+        newRisk = Math.max(5, newRisk - 5);
         newStatus = 'Improving';
         // logMessage handled by payment action
     } else if (isBillOverdue) {
         newCareLevel = 'None';
-        newHealth -= 15; 
-        newRisk = Math.min(100, newRisk + 10); 
+        newHealth -= 15;  // Rapid decay -15%
+        newRisk = Math.min(100, newRisk + 10);
         newStatus = 'Worsening';
         logMessage = "警告：医药费断缴！药物已停供，母亲病情急剧恶化。";
     } else {
+        // PENDING status: health remains stable (no change)
         newCareLevel = 'Basic';
-        newHealth = newHealth - 1 + decayModifier; 
         newStatus = 'Stable';
     }
 

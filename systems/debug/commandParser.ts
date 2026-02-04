@@ -98,6 +98,8 @@ export function executeCommand(
   set ap <n>            - Set action points
   set energy <n>        - Set night energy
   set heat <n>          - Set blackmarket heat (0-10)
+  set health <n>        - Set mother's health (0-100)
+  set bill-status <s>   - Set medical bill status (PAID|PENDING|OVERDUE)
   set chain <id> <var> <val> - Set chain variable (e.g., set chain chain_emma funds 400)
   open <panel>          - Open panel (upgrade|mail|calendar|inventory|medical|visit|debug|appointment|blackmarket)
   close <panel>         - Close panel
@@ -357,6 +359,44 @@ function handleSetCommand(
         success: true,
         message: `Chain ${chainId}: ${variable} = ${parsedValue} (type: ${typeof parsedValue})`
       };
+    }
+
+    case 'health': {
+      const health = parseInt(value, 10);
+      if (isNaN(health) || health < 0 || health > 100) {
+        return { success: false, message: 'Health must be between 0 and 100' };
+      }
+      const state = getState();
+      const newState = {
+        ...state,
+        stats: {
+          ...state.stats,
+          motherStatus: { ...state.stats.motherStatus, health }
+        }
+      };
+      dispatch({ type: 'LOAD_GAME', payload: newState });
+      return { success: true, message: `Mother's health set to ${health}` };
+    }
+
+    case 'bill-status': {
+      const statusValue = value.toUpperCase();
+      const validStatuses = ['PAID', 'PENDING', 'OVERDUE'];
+      if (!validStatuses.includes(statusValue)) {
+        return {
+          success: false,
+          message: `Invalid bill status: ${value}. Valid statuses: ${validStatuses.join(', ')}`
+        };
+      }
+      const state = getState();
+      const newState = {
+        ...state,
+        stats: {
+          ...state.stats,
+          medicalBill: { ...state.stats.medicalBill, status: statusValue as 'PAID' | 'PENDING' | 'OVERDUE' }
+        }
+      };
+      dispatch({ type: 'LOAD_GAME', payload: newState });
+      return { success: true, message: `Medical bill status set to ${statusValue}` };
     }
 
     default:
@@ -1142,6 +1182,18 @@ export function getAvailableCommands(): CommandDef[] {
       examples: [`set heat 0`, `set heat 5`, `set heat 9`]
     },
     {
+      command: 'set health',
+      description: 'Set mother\'s health (0-100)',
+      usage: 'set health <n>',
+      examples: [`set health 50`, `set health 100`, `set health 0`]
+    },
+    {
+      command: 'set bill-status',
+      description: 'Set medical bill status',
+      usage: 'set bill-status <status>',
+      examples: [`set bill-status PAID`, `set bill-status PENDING`, `set bill-status OVERDUE`]
+    },
+    {
       command: 'set chain',
       description: 'Set a chain variable value (for testing event triggers)',
       usage: 'set chain <chainId> <variable> <value>',
@@ -1275,7 +1327,8 @@ export function getCommandOptions(): Record<string, string[]> {
     itemTags: ALL_VALID_TAGS,
     itemStatuses: ['ACTIVE', 'FORFEIT'],
     workStates: ['DEFAULT', 'RESTORED', 'REFORGED'],
-    templateIds: templates.map(t => t.id)
+    templateIds: templates.map(t => t.id),
+    billStatuses: ['PAID', 'PENDING', 'OVERDUE']
   };
 }
 

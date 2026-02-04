@@ -22,6 +22,14 @@ export const MedicalModal: React.FC = () => {
     const canPayBill = cash >= medicalBill.amount && medicalBill.status !== 'PAID';
     const isBillOverdue = medicalBill.status === 'OVERDUE' || (daysUntilBill <= 0 && medicalBill.status !== 'PAID');
 
+    // Health status mapping based on health percentage
+    const getHealthStatus = (health: number) => {
+        if (health >= 70) return { text: '稳定', color: 'text-teal-400' };
+        if (health >= 40) return { text: '恶化中', color: 'text-amber-400' };
+        return { text: '危急', color: 'text-red-400' };
+    };
+    const healthStatus = getHealthStatus(healthPercent);
+
     // Prices
     const COST_INJECTION = 200;
     const COST_THERAPY = 500;
@@ -79,10 +87,10 @@ export const MedicalModal: React.FC = () => {
                         <div className="h-32 border border-teal-800 bg-[#051212] rounded relative overflow-hidden flex items-center justify-center shadow-inner">
                             <div className="absolute inset-0 opacity-20 bg-[url('https://upload.wikimedia.org/wikipedia/commons/9/9e/ECG_Principle_slow.gif')] bg-cover bg-center mix-blend-screen"></div>
                             <div className="absolute top-2 right-2 text-xs font-bold text-teal-700 animate-pulse">LIVE FEED</div>
-                            
+
                             <div className="z-10 text-center">
-                                <div className="text-4xl font-black text-white tracking-widest">{Math.round(healthPercent)} <span className="text-sm text-teal-600">BPM</span></div>
-                                <div className="text-[10px] text-teal-600 uppercase mt-1">Sinus Rhythm / Stable</div>
+                                <div className={cn("text-3xl font-black tracking-widest", healthStatus.color)}>{healthStatus.text}</div>
+                                <div className="text-[10px] text-teal-600 uppercase mt-1">病情状态 / Health Status</div>
                             </div>
                         </div>
 
