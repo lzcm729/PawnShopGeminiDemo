@@ -69,7 +69,6 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
     acceptLockdown,
   } = useBlackmarket();
 
-  const [selectedTab, setSelectedTab] = useState<'purchase' | 'sale'>('purchase');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
     type: 'sell_purchase' | 'sell_direct' | 'pay_fine' | 'accept_lockdown';
@@ -90,8 +89,6 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
       );
       if (existsInSellable) {
         setSelectedItemId(state.pendingSelectedItemId);
-        // Switch to sale tab since the item is sellable
-        setSelectedTab('sale');
       }
       // Clear the pending selection
       dispatch({ type: 'SET_PENDING_SELECTED_ITEM', payload: null });
@@ -233,60 +230,49 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
           </div>
         )}
 
-        {/* Tab Selector */}
+        {/* Two-Column Layout: Purchase & Sale */}
         {isMarketOpen && !hasRiskEvent && (
-          <>
-            <div className="flex gap-2 border-b border-noir-400 pb-2">
-              <button
-                onClick={() => setSelectedTab('purchase')}
-                className={cn(
-                  'px-4 py-2 rounded-t text-sm font-bold transition-colors',
-                  selectedTab === 'purchase'
-                    ? 'bg-green-900/50 text-green-400 border border-green-700 border-b-0'
-                    : 'text-stone-500 hover:text-stone-300'
-                )}
-              >
+          <div className="grid grid-cols-2 gap-4">
+            {/* Left Column: 今日收购 */}
+            <div className="flex flex-col">
+              <div className="px-4 py-2 bg-green-900/50 text-green-400 border border-green-700 rounded-t text-sm font-bold">
                 <TrendingUp className="w-4 h-4 inline mr-2" />
                 今日收购 ({fulfilledCount}/{totalPurchaseRequests})
-              </button>
-              <button
-                onClick={() => setSelectedTab('sale')}
-                className={cn(
-                  'px-4 py-2 rounded-t text-sm font-bold transition-colors',
-                  selectedTab === 'sale'
-                    ? 'bg-amber-900/50 text-amber-400 border border-amber-700 border-b-0'
-                    : 'text-stone-500 hover:text-stone-300'
-                )}
-              >
-                <TrendingDown className="w-4 h-4 inline mr-2" />
-                自由出售 ({sellableItems.length})
-              </button>
+              </div>
+              <div className="flex-1 border border-t-0 border-green-900 rounded-b p-3 overflow-y-auto max-h-[500px]">
+                <PurchaseTab
+                  requests={blackmarket.daily.purchaseRequests}
+                  getEligibleItems={getEligibleItems}
+                  getPurchasePrice={getPurchasePrice}
+                  checkBreach={checkBreach}
+                  getCompensation={getCompensation}
+                  onSell={handleSellToPurchase}
+                  selectedItemId={selectedItemId}
+                  onSelectItem={setSelectedItemId}
+                />
+              </div>
             </div>
 
-            {/* Tab Content */}
-            {selectedTab === 'purchase' ? (
-              <PurchaseTab
-                requests={blackmarket.daily.purchaseRequests}
-                getEligibleItems={getEligibleItems}
-                getPurchasePrice={getPurchasePrice}
-                checkBreach={checkBreach}
-                onSell={handleSellToPurchase}
-                selectedItemId={selectedItemId}
-                onSelectItem={setSelectedItemId}
-              />
-            ) : (
-              <SaleTab
-                items={sellableItems}
-                getSalePrice={getSalePrice}
-                checkBreach={checkBreach}
-                getCompensation={getCompensation}
-                getProfit={getProfit}
-                onSell={handleSellDirect}
-                selectedItemId={selectedItemId}
-                onSelectItem={setSelectedItemId}
-              />
-            )}
-          </>
+            {/* Right Column: 自由出售 */}
+            <div className="flex flex-col">
+              <div className="px-4 py-2 bg-amber-900/50 text-amber-400 border border-amber-700 rounded-t text-sm font-bold">
+                <TrendingDown className="w-4 h-4 inline mr-2" />
+                自由出售 ({sellableItems.length})
+              </div>
+              <div className="flex-1 border border-t-0 border-amber-900 rounded-b p-3 overflow-y-auto max-h-[500px]">
+                <SaleTab
+                  items={sellableItems}
+                  getSalePrice={getSalePrice}
+                  checkBreach={checkBreach}
+                  getCompensation={getCompensation}
+                  getProfit={getProfit}
+                  onSell={handleSellDirect}
+                  selectedItemId={selectedItemId}
+                  onSelectItem={setSelectedItemId}
+                />
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Today's Sales Summary */}
@@ -492,11 +478,121 @@ const CommissionIndicator: React.FC<CommissionIndicatorProps> = ({ commissionInf
   );
 };
 
+// ============================================================================
+// Shared Item Card Component
+// ============================================================================
+
+interface BlackmarketItemCardProps {
+  item: Item;
+  price: number;
+  profit: number;
+  isSelected: boolean;
+  isBreach: boolean;
+  compensation: number;
+  variant: 'purchase' | 'sale';
+  onSelect: () => void;
+  onSell: () => void;
+}
+
+const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
+  item,
+  price,
+  profit,
+  isSelected,
+  isBreach,
+  compensation,
+  variant,
+  onSelect,
+  onSell,
+}) => {
+  const [estMin, estMax] = item.currentRange;
+  const colorScheme = variant === 'purchase'
+    ? { selected: 'border-green-500 bg-green-950/30', price: 'text-green-400', btn: 'bg-green-900 hover:bg-green-800 border-green-700' }
+    : { selected: 'border-amber-500 bg-amber-950/30', price: 'text-amber-400', btn: 'bg-amber-900 hover:bg-amber-800 border-amber-700' };
+
+  return (
+    <div
+      onClick={onSelect}
+      className={cn(
+        'p-3 rounded border transition-all cursor-pointer hover:bg-noir-200',
+        isBreach ? 'border-red-700 bg-red-950/20' : '',
+        isSelected ? colorScheme.selected : !isBreach ? 'border-noir-400' : ''
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-14 h-14 bg-noir-300 border border-noir-400 flex items-center justify-center rounded overflow-hidden">
+          <img
+            src={getItemIcon(item)}
+            alt={item.name}
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              const fallback = (e.target as HTMLImageElement).nextElementSibling;
+              if (fallback) (fallback as HTMLElement).style.display = 'flex';
+            }}
+          />
+          <div className="hidden items-center justify-center w-full h-full">
+            <CategoryIcon category={item.category} className="w-7 h-7 text-stone-400" />
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="font-bold text-sm">{getDisplayName(item)}</div>
+          <div className="text-xs text-stone-500">
+            估价: ${estMin} - ${estMax}
+          </div>
+          <div className="text-xs text-stone-500">
+            当金: <span className="text-stone-400 font-mono">${item.pawnAmount}</span>
+          </div>
+          {isBreach && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-amber-400">
+              <AlertTriangle className="w-3 h-3" />
+              <span>仍在典当期，赔偿 ${compensation}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1 mt-1 text-xs text-purple-400">
+            <Skull className="w-3 h-3" />
+            <span>出售获得：黑道 +2</span>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-xs text-stone-500">售价</div>
+          <div className={cn('text-lg font-mono font-bold', colorScheme.price)}>
+            ${price}
+          </div>
+          <div className="text-xs text-stone-500">
+            利润: <span className={cn(
+              'font-mono',
+              profit >= 0 ? 'text-green-400' : 'text-red-400'
+            )}>{profit >= 0 ? '+' : ''}${profit}</span>
+          </div>
+        </div>
+        {isSelected && (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSell();
+            }}
+            className={cn('h-8 px-3 text-xs', colorScheme.btn)}
+          >
+            出售
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// Purchase Tab
+// ============================================================================
+
 interface PurchaseTabProps {
   requests: MarketPurchaseRequest[];
   getEligibleItems: (request: MarketPurchaseRequest) => Item[];
   getPurchasePrice: (item: Item, request: MarketPurchaseRequest) => number;
   checkBreach: (item: Item) => boolean;
+  getCompensation: (item: Item) => number;
   onSell: (item: Item, request: MarketPurchaseRequest) => void;
   selectedItemId: string | null;
   onSelectItem: (id: string | null) => void;
@@ -507,6 +603,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
   getEligibleItems,
   getPurchasePrice,
   checkBreach,
+  getCompensation,
   onSell,
   selectedItemId,
   onSelectItem,
@@ -562,19 +659,11 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className={cn(
-                  'text-xs',
-                  isFulfilled ? 'text-stone-600' : 'text-green-300/70'
-                )}>
-                  收购价格
-                </div>
-                <div className={cn(
-                  'font-mono font-bold',
-                  isFulfilled ? 'text-stone-500' : 'text-green-400'
-                )}>
-                  溢价 +{Math.round((request.priceMultiplier - 1) * 100)}%
-                </div>
+              <div className={cn(
+                'font-mono font-bold',
+                isFulfilled ? 'text-stone-500' : 'text-green-400'
+              )}>
+                溢价 +{Math.round((request.priceMultiplier - 1) * 100)}%
               </div>
             </div>
 
@@ -590,69 +679,23 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                     const price = getPurchasePrice(item, request);
                     const isSelected = selectedItemId === item.id;
                     const isBreach = checkBreach(item);
+                    const compensation = getCompensation(item);
+                    // 典当期内出售需扣除赔偿金，绝当物品扣除当金
+                    const profit = isBreach ? price - compensation : price - item.pawnAmount;
 
                     return (
-                      <div
+                      <BlackmarketItemCard
                         key={item.id}
-                        onClick={() => onSelectItem(isSelected ? null : item.id)}
-                        className={cn(
-                          'p-3 rounded border transition-all cursor-pointer hover:bg-noir-200',
-                          isBreach ? 'border-red-700 bg-red-950/20' : '',
-                          isSelected ? 'border-green-500 bg-green-950/30' : !isBreach ? 'border-noir-400' : ''
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-14 h-14 bg-noir-300 border border-noir-400 flex items-center justify-center rounded overflow-hidden">
-                            <img
-                              src={getItemIcon(item)}
-                              alt={item.name}
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                                const fallback = (e.target as HTMLImageElement).nextElementSibling;
-                                if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                              }}
-                            />
-                            <div className="hidden items-center justify-center w-full h-full">
-                              <CategoryIcon category={item.category} className="w-7 h-7 text-stone-400" />
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-bold text-sm">{getDisplayName(item)}</div>
-                            <div className="text-xs text-stone-500">
-                              真实价值: ${item.realValue}
-                            </div>
-                            {isBreach && (
-                              <div className="flex items-center gap-1 mt-1 text-xs text-amber-400">
-                                <AlertTriangle className="w-3 h-3" />
-                                <span>仍在典当期（客户赎回时扣减声誉）</span>
-                              </div>
-                            )}
-                            {/* Underworld reputation gain indicator */}
-                            <div className="flex items-center gap-1 mt-1 text-xs text-purple-400">
-                              <Skull className="w-3 h-3" />
-                              <span>出售获得：黑道 +2</span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-mono font-bold text-green-400">
-                              ${price}
-                            </div>
-                          </div>
-                          {isSelected && (
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSell(item, request);
-                              }}
-                              className="h-8 px-3 text-xs bg-green-900 hover:bg-green-800 border-green-700"
-                            >
-                              出售
-                              <ChevronRight className="w-4 h-4 ml-1" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
+                        item={item}
+                        price={price}
+                        profit={profit}
+                        isSelected={isSelected}
+                        isBreach={isBreach}
+                        compensation={compensation}
+                        variant="purchase"
+                        onSelect={() => onSelectItem(isSelected ? null : item.id)}
+                        onSell={() => onSell(item, request)}
+                      />
                     );
                   })
                 )}
@@ -704,80 +747,20 @@ const SaleTab: React.FC<SaleTabProps> = ({
         const isBreach = checkBreach(item);
         const compensation = getCompensation(item);
         const profit = getProfit(item, salePrice);
-        const [estMin, estMax] = item.currentRange;
 
         return (
-          <div
+          <BlackmarketItemCard
             key={item.id}
-            onClick={() => onSelectItem(isSelected ? null : item.id)}
-            className={cn(
-              'p-3 rounded border transition-all cursor-pointer hover:bg-noir-200',
-              isBreach ? 'border-red-700 bg-red-950/20' : '',
-              isSelected ? 'border-amber-500 bg-amber-950/30' : !isBreach ? 'border-noir-400' : ''
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 bg-noir-300 border border-noir-400 flex items-center justify-center rounded overflow-hidden">
-                <img
-                  src={getItemIcon(item)}
-                  alt={item.name}
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    const fallback = (e.target as HTMLImageElement).nextElementSibling;
-                    if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                  }}
-                />
-                <div className="hidden items-center justify-center w-full h-full">
-                  <CategoryIcon category={item.category} className="w-7 h-7 text-stone-400" />
-                </div>
-              </div>
-              <div className="flex-1">
-                <div className="font-bold text-sm">{getDisplayName(item)}</div>
-                <div className="text-xs text-stone-500">
-                  估价: ${estMin} - ${estMax}
-                </div>
-                <div className="text-xs text-stone-500">
-                  当金: <span className="text-stone-400 font-mono">${item.pawnAmount}</span>
-                </div>
-                {isBreach && (
-                  <div className="flex items-center gap-1 mt-1 text-xs text-amber-400">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>仍在典当期（客户赎回时扣减声誉），赔偿 ${compensation}</span>
-                  </div>
-                )}
-                {/* Underworld reputation gain indicator */}
-                <div className="flex items-center gap-1 mt-1 text-xs text-purple-400">
-                  <Skull className="w-3 h-3" />
-                  <span>出售获得：黑道 +2</span>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-stone-500">售价</div>
-                <div className="text-lg font-mono font-bold text-amber-400">
-                  ${salePrice}
-                </div>
-                <div className="text-xs text-stone-500">
-                  利润: <span className={cn(
-                    'font-mono',
-                    profit >= 0 ? 'text-green-400' : 'text-red-400'
-                  )}>{profit >= 0 ? '+' : ''}${profit}</span>
-                </div>
-              </div>
-              {isSelected && (
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSell(item);
-                  }}
-                  className="h-8 px-3 text-xs bg-amber-900 hover:bg-amber-800 border-amber-700"
-                >
-                  出售
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              )}
-            </div>
-          </div>
+            item={item}
+            price={salePrice}
+            profit={profit}
+            isSelected={isSelected}
+            isBreach={isBreach}
+            compensation={compensation}
+            variant="sale"
+            onSelect={() => onSelectItem(isSelected ? null : item.id)}
+            onSell={() => onSell(item)}
+          />
         );
       })}
     </div>
