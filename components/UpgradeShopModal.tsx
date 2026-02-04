@@ -101,28 +101,10 @@ const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: Rea
 export const UpgradeShopModal: React.FC = () => {
     const { state, dispatch } = useGame();
 
-    if (!state.showUpgradeShop) return null;
-
     const upgradesWithStatus = getAvailableUpgradesWithStatus(state.stats.cash, state.shopUpgrades);
     const totalMaintenanceCost = getTotalMaintenanceCost(state.shopUpgrades);
 
-    const handlePurchase = (upgradeId: string) => {
-        dispatch({ type: 'PURCHASE_UPGRADE', payload: { upgradeId } });
-    };
-
-    const getIcon = (iconName?: string) => {
-        switch (iconName) {
-            case 'Package': return <Package className="w-6 h-6" />;
-            case 'Wrench': return <Wrench className="w-6 h-6" />;
-            case 'Coffee': return <Coffee className="w-6 h-6" />;
-            case 'Scan': return <Scan className="w-6 h-6" />;
-            case 'ClipboardList': return <ClipboardList className="w-6 h-6" />;
-            case 'Skull': return <Skull className="w-6 h-6" />;
-            default: return <Package className="w-6 h-6" />;
-        }
-    };
-
-    // Group upgrades by location
+    // Group upgrades by location - useMemo must be called before any conditional returns
     const upgradesByLocation = useMemo(() => {
         const grouped: Record<UpgradeLocation, typeof upgradesWithStatus> = {
             'BACKROOM': [],
@@ -139,6 +121,25 @@ export const UpgradeShopModal: React.FC = () => {
     const currentEnergy = getEffectiveNightEnergy(state.shopUpgrades);
     const patienceBonus = getPatienceBonus(state.shopUpgrades);
     const anomalyThreshold = getAnomalyDetectionThreshold(state.shopUpgrades);
+
+    // Early return AFTER all hooks
+    if (!state.showUpgradeShop) return null;
+
+    const handlePurchase = (upgradeId: string) => {
+        dispatch({ type: 'PURCHASE_UPGRADE', payload: { upgradeId } });
+    };
+
+    const getIcon = (iconName?: string) => {
+        switch (iconName) {
+            case 'Package': return <Package className="w-6 h-6" />;
+            case 'Wrench': return <Wrench className="w-6 h-6" />;
+            case 'Coffee': return <Coffee className="w-6 h-6" />;
+            case 'Scan': return <Scan className="w-6 h-6" />;
+            case 'ClipboardList': return <ClipboardList className="w-6 h-6" />;
+            case 'Skull': return <Skull className="w-6 h-6" />;
+            default: return <Package className="w-6 h-6" />;
+        }
+    };
 
     return (
         <Modal
