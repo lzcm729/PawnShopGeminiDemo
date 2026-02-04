@@ -118,7 +118,7 @@ export function calculatePurchasePrice(
   const { commission } = getUnderworldCommission(underworldRep);
 
   // Final price = realValue * marketMultiplier * (1 - commission)
-  // Higher reputation = lower/negative commission = player keeps more
+  // Higher reputation = lower commission (0-20%), player keeps more
   const finalPrice = basePrice * marketMultiplier * (1 - commission);
 
   return Math.floor(finalPrice);
@@ -139,7 +139,7 @@ export function calculateSalePrice(
   const { commission } = getUnderworldCommission(underworldRep);
 
   // Final price = realValue * saleMultiplier * (1 - commission)
-  // Higher reputation = lower/negative commission = player keeps more
+  // Higher reputation = lower commission (0-20%), player keeps more
   const finalPrice = basePrice * saleMultiplier * (1 - commission);
 
   return Math.floor(finalPrice);
