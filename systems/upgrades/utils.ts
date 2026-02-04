@@ -315,3 +315,11 @@ export function hasBlackMarketContact(upgradeState: ShopUpgradeState): boolean {
   const owned = upgradeState.upgrades.find(u => u.upgradeId === 'black_market_contact');
   return (owned?.currentLevel ?? 0) > 0;
 }
+
+/**
+ * Check if precision bench (workshop) is unlocked
+ */
+export function hasPrecisionBench(upgradeState: ShopUpgradeState): boolean {
+  const owned = upgradeState.upgrades.find(u => u.upgradeId === 'precision_bench');
+  return (owned?.currentLevel ?? 0) > 0;
+}

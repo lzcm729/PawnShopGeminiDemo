@@ -9,7 +9,7 @@ import { ItemCard } from './ui/ItemCard';
 import { ItemDetailModal } from './ui/ItemDetailModal';
 import { playSfx } from '../systems/game/audio';
 import { cn } from '../lib/utils';
-import { getEffectiveInventoryCapacity, hasBlackMarketContact } from '../systems/upgrades';
+import { getEffectiveInventoryCapacity, hasBlackMarketContact, hasPrecisionBench } from '../systems/upgrades';
 
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -52,6 +52,7 @@ export const InventoryModal: React.FC = () => {
 
   const isNightPhase = PhaseIs.night(state.phase);
   const hasBlackMarket = hasBlackMarketContact(state.shopUpgrades);
+  const hasWorkshop = hasPrecisionBench(state.shopUpgrades);
 
   // Handle opening Workshop panel with pre-selected item
   const handleOpenWorkshop = (itemId: string) => {
@@ -126,38 +127,38 @@ export const InventoryModal: React.FC = () => {
 
                   {/* Repair Button */}
                   <button
-                      onClick={isNightPhase ? () => handleOpenWorkshop(item.id) : undefined}
-                      disabled={!isNightPhase}
+                      onClick={isNightPhase && hasWorkshop ? () => handleOpenWorkshop(item.id) : undefined}
+                      disabled={!isNightPhase || !hasWorkshop}
                       className={cn(
                           baseButtonClass,
                           "border border-emerald-900/50",
-                          isNightPhase
+                          isNightPhase && hasWorkshop
                               ? cn(enabledClass, "text-emerald-400 hover:border-emerald-700 hover:bg-emerald-950/30")
                               : cn(disabledClass, "text-emerald-600/50")
                       )}
-                      title={isNightPhase ? "修复物品 (Workshop)" : "仅夜间可用"}
+                      title={!hasWorkshop ? "需要解锁「精密工作台」" : isNightPhase ? "修复物品 (Workshop)" : "仅夜间可用"}
                   >
                       <Hammer className="w-3.5 h-3.5" />
                       <span>修复</span>
-                      {!isNightPhase && <Lock className="w-2 h-2 opacity-50" />}
+                      {(!isNightPhase || !hasWorkshop) && <Lock className="w-2 h-2 opacity-50" />}
                   </button>
 
                   {/* Reforge Button */}
                   <button
-                      onClick={isNightPhase ? () => handleOpenWorkshop(item.id) : undefined}
-                      disabled={!isNightPhase}
+                      onClick={isNightPhase && hasWorkshop ? () => handleOpenWorkshop(item.id) : undefined}
+                      disabled={!isNightPhase || !hasWorkshop}
                       className={cn(
                           baseButtonClass,
                           "border border-purple-900/50",
-                          isNightPhase
+                          isNightPhase && hasWorkshop
                               ? cn(enabledClass, "text-purple-400 hover:border-purple-700 hover:bg-purple-950/30")
                               : cn(disabledClass, "text-purple-600/50")
                       )}
-                      title={isNightPhase ? "重铸物品 (Workshop)" : "仅夜间可用"}
+                      title={!hasWorkshop ? "需要解锁「精密工作台」" : isNightPhase ? "重铸物品 (Workshop)" : "仅夜间可用"}
                   >
                       <Wrench className="w-3.5 h-3.5" />
                       <span>重铸</span>
-                      {!isNightPhase && <Lock className="w-2 h-2 opacity-50" />}
+                      {(!isNightPhase || !hasWorkshop) && <Lock className="w-2 h-2 opacity-50" />}
                   </button>
 
                   {/* Insight/Appraise Button */}

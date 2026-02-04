@@ -41,7 +41,7 @@ export const PRECISION_BENCH: UpgradeConfig = {
   effectType: 'NIGHT_ENERGY',
   maxLevel: 3,
   levels: [
-    { level: 1, cost: 1500, effectValue: 1, description: '夜间精力上限 3 -> 4' },
+    { level: 1, cost: 1500, effectValue: 1, description: '解锁工作台，夜间精力上限 3 -> 4' },
     { level: 2, cost: 3000, effectValue: 2, description: '夜间精力上限 4 -> 5' },
     { level: 3, cost: 6000, effectValue: 3, description: '夜间精力上限 5 -> 6' },
   ],

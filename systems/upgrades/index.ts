@@ -16,5 +16,6 @@ export {
   getAppointmentBoardLevel,
   getActiveAppointmentBoardConfig,
   hasAppointmentBoard,
-  hasBlackMarketContact
+  hasBlackMarketContact,
+  hasPrecisionBench
 } from './utils';
