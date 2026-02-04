@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
 import { useAppraisal } from '../hooks/useAppraisal';
 import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert, CheckCircle2, Radio } from 'lucide-react';
+import { APPRAISAL_TEMPLATES } from '../systems/game/templates/appraisalFeedback';
+import type { AppraisalFeedback } from './NegotiationPanel';
 import { Button } from './ui/Button';
 import { ItemTrait } from '../types';
 import { getUncertaintyRisk } from '../systems/items/utils';
@@ -28,12 +30,13 @@ const getIcon = (category: string) => {
 
 interface ItemPanelProps {
   applyLeverage: (power: number, description: string) => void;
-  triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void; 
+  triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void;
   canInteract: boolean;
-  currentAskPrice: number; 
+  currentAskPrice: number;
+  onAppraisalFeedback?: (feedback: AppraisalFeedback) => void;
 }
 
-export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarrative, canInteract, currentAskPrice }) => {
+export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarrative, canInteract, currentAskPrice, onAppraisalFeedback }) => {
   const { state, dispatch } = useGame();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
@@ -174,30 +177,53 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
   const handleAppraiseClick = () => {
       setAppraising(true);
       setFeedbackMsg(null);
-      
+
       setTimeout(() => {
           const result = performAppraisal();
           setAppraising(false);
-          
+
           if (!result.success) {
-              if (result.failureReason === 'NO_AP') setFeedbackMsg({ type: 'warning', text: "行动点不足 (No AP)" });
-              else if (result.failureReason === 'NO_PATIENCE') setFeedbackMsg({ type: 'warning', text: "客户失去了耐心 (No Patience)" });
-              else if (result.failureReason === 'ALREADY_KNOWN') setFeedbackMsg({ type: 'warning', text: "暂无更多线索 (No New Traits)" });
+              if (result.failureReason === 'NO_AP') {
+                  setFeedbackMsg({ type: 'warning', text: "行动点不足 (No AP)" });
+                  onAppraisalFeedback?.({ type: 'NO_AP', text: APPRAISAL_TEMPLATES.NO_AP });
+              } else if (result.failureReason === 'NO_PATIENCE') {
+                  setFeedbackMsg({ type: 'warning', text: "客户失去了耐心 (No Patience)" });
+                  onAppraisalFeedback?.({ type: 'NO_PATIENCE', text: APPRAISAL_TEMPLATES.NO_PATIENCE });
+              } else if (result.failureReason === 'ALREADY_KNOWN') {
+                  setFeedbackMsg({ type: 'warning', text: "暂无更多线索 (No New Traits)" });
+                  onAppraisalFeedback?.({ type: 'ALREADY_KNOWN', text: APPRAISAL_TEMPLATES.ALREADY_KNOWN });
+              }
           } else {
               if (result.event && result.event.type !== 'NORMAL') {
                    if (result.event.type === 'MISHAP') {
                        setFeedbackMsg({ type: 'error', text: result.event.message || "鉴定失误" });
+                       onAppraisalFeedback?.({ type: 'MISHAP', text: APPRAISAL_TEMPLATES.MISHAP });
                    } else if (result.event.type === 'IMPATIENT') {
                        setFeedbackMsg({ type: 'error', text: result.event.message || "客户不耐烦" });
+                       onAppraisalFeedback?.({ type: 'IMPATIENT', text: APPRAISAL_TEMPLATES.IMPATIENT });
                    } else if (result.event.type === 'LUCKY_FIND') {
                        setFeedbackMsg({ type: 'success', text: result.event.message || "意外发现!" });
+                       onAppraisalFeedback?.({ type: 'LUCKY_FIND', text: APPRAISAL_TEMPLATES.LUCKY_FIND });
                    }
-              } else {
-                   if (result.newTraitsFound.length > 0) {
-                      setFeedbackMsg({ type: 'success', text: `发现了 ${result.newTraitsFound.length} 个新特征!` });
-                   } else {
-                      setFeedbackMsg({ type: 'success', text: "估值范围已更新 (Range Narrowed)" });
-                   }
+              }
+
+              // Send feedback for each discovered trait
+              if (result.newTraitsFound.length > 0) {
+                  setFeedbackMsg({ type: 'success', text: `发现了 ${result.newTraitsFound.length} 个新特征!` });
+                  for (const trait of result.newTraitsFound) {
+                      // Use the player's inner monologue from the trait data
+                      const monologueText = trait.dialogueTrigger?.playerLine || trait.description;
+                      onAppraisalFeedback?.({
+                          type: 'TRAIT_DISCOVERED',
+                          text: monologueText,
+                          traitId: trait.id,
+                          traitName: trait.name,
+                      });
+                  }
+              } else if (!result.event || result.event.type === 'NORMAL') {
+                  // Range narrowed without trait discovery
+                  setFeedbackMsg({ type: 'success', text: "估值范围已更新 (Range Narrowed)" });
+                  onAppraisalFeedback?.({ type: 'RANGE_NARROWED', text: APPRAISAL_TEMPLATES.RANGE_NARROWED });
               }
           }
       }, 600);
@@ -231,7 +257,9 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
           applyLeverage(power, trait.name);
       } else if (trait.type === 'STORY') {
           if (trait.dialogueTrigger) {
-              triggerNarrative(trait.dialogueTrigger.playerLine, trait.dialogueTrigger.customerLine, power);
+              // Use playerUseLine (正式对话) when available, fallback to playerLine (内心独白)
+              const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
+              triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, power);
           } else {
               applyLeverage(0.05, `话题: ${trait.name}`);
           }

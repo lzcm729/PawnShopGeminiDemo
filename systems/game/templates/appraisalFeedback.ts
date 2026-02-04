@@ -1,0 +1,38 @@
+/**
+ * Appraisal Feedback Templates
+ *
+ * Standard text templates for appraisal-related inner monologues.
+ * These appear in the chat panel during negotiation phase.
+ */
+
+export const APPRAISAL_TEMPLATES = {
+    /** When player has no action points left */
+    NO_AP: "今天已经精疲力竭了，看不出更多东西来...",
+
+    /** When customer has no patience remaining */
+    NO_PATIENCE: "客户明显不耐烦了，不能再拖延了。",
+
+    /** When appraisal roll results in mishap (range expands) */
+    MISHAP: "糟糕...好像搞错了什么，判断受到干扰。",
+
+    /** When range narrowed but no trait discovered */
+    RANGE_NARROWED: "虽然没发现什么特别的，但心里更有底了。",
+
+    /** When lucky find event triggers bonus trait discovery */
+    LUCKY_FIND: "运气不错，意外发现了一些线索！",
+
+    /** When impatient event triggers extra patience cost */
+    IMPATIENT: "动作太慢了，客户开始坐立不安...",
+
+    /** When all traits already discovered */
+    ALREADY_KNOWN: "这东西我已经看得很透彻了。",
+} as const;
+
+export type AppraisalTemplateKey = keyof typeof APPRAISAL_TEMPLATES;
+
+/**
+ * Get appraisal feedback text by key
+ */
+export function getAppraisalFeedbackText(key: AppraisalTemplateKey): string {
+    return APPRAISAL_TEMPLATES[key];
+}

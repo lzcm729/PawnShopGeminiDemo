@@ -101,6 +101,7 @@ export interface TraitDefinition {
   storyText: string;
   dialoguePlayer?: string;
   dialogueCustomer?: string;
+  dialoguePlayerUse?: string;  // Player line when using the trait in negotiation
 }
 
 // ============================================================================
@@ -159,6 +160,7 @@ interface RawTraitDefinition {
   storyText: string;
   dialoguePlayer: string;
   dialogueCustomer: string;
+  dialoguePlayerUse: string;
 }
 
 /** Schema for Traits.csv */
@@ -171,6 +173,7 @@ const TRAIT_SCHEMA: CSVSchema = {
   'Story_Text': stringCol('storyText'),
   'Dialogue_Player': stringCol('dialoguePlayer'),
   'Dialogue_Customer': stringCol('dialogueCustomer'),
+  'Dialogue_Player_Use': stringCol('dialoguePlayerUse'),
 };
 
 // ============================================================================
@@ -233,6 +236,7 @@ export function loadTraitDefinitionsFromCSV(csvContent: string): void {
       storyText: raw.storyText,
       dialoguePlayer: raw.dialoguePlayer || undefined,
       dialogueCustomer: raw.dialogueCustomer || undefined,
+      dialoguePlayerUse: raw.dialoguePlayerUse || undefined,
     };
 
     traitDefinitionRegistry.set(definition.id, definition);
@@ -308,6 +312,7 @@ export function createTraitFromDefinition(def: TraitDefinition): ItemTrait {
       ? {
           playerLine: def.dialoguePlayer,
           customerLine: def.dialogueCustomer,
+          playerUseLine: def.dialoguePlayerUse,
         }
       : undefined,
   };

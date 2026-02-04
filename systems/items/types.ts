@@ -22,8 +22,9 @@ export interface ItemTrait {
   discoveryDifficulty: number; // 0.0 - 1.0 (Higher is harder to find)
   // Narrative Trigger
   dialogueTrigger?: {
-      playerLine: string;
-      customerLine: string;
+      playerLine: string;       // Inner monologue when discovering (appraisal)
+      customerLine: string;     // Customer's response
+      playerUseLine?: string;   // Formal dialogue when using trait (negotiation)
   };
 }
 

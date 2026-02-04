@@ -7,7 +7,7 @@ import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
-import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
@@ -32,17 +32,26 @@ interface NegotiationStateProps {
         currentAskPrice: number;
         offerHistory: OfferRecord[];
         revealedMinimum: boolean;
-    }
+    };
+    appraisalFeedbacks?: AppraisalFeedback[];
 }
 
 interface LogEntry {
     id: string;
     sender: 'player' | 'customer' | 'system';
     text: string;
-    subtext?: string; 
+    subtext?: string;
     sentiment?: 'neutral' | 'negative' | 'positive';
-    type?: 'INTEL';
+    type?: 'INTEL' | 'INNER_MONOLOGUE';
     data?: any;
+}
+
+// Appraisal feedback structure passed from ItemPanel
+export interface AppraisalFeedback {
+    type: 'TRAIT_DISCOVERED' | 'RANGE_NARROWED' | 'MISHAP' | 'NO_AP' | 'NO_PATIENCE' | 'IMPATIENT' | 'LUCKY_FIND' | 'ALREADY_KNOWN';
+    text: string;
+    traitId?: string;
+    traitName?: string;
 }
 
 const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: string }> = ({ customer, patience, mood }) => {
@@ -122,7 +131,7 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
     )
 }
 
-export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation }) => {
+export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation, appraisalFeedbacks = [] }) => {
   const { state } = useGame();
   const { evaluateTransaction, commitTransaction, rejectCustomer } = useGameEngine();
   const { send } = useGameMachine();
@@ -272,6 +281,47 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
           setChatLog(prev => [...prev, ...newEntries]);
       }
   }, [lastAction]);
+
+  // Track processed feedback IDs to avoid duplicates
+  const processedFeedbacksRef = useRef<Set<string>>(new Set());
+
+  // Convert appraisal feedbacks to inner monologue entries
+  useEffect(() => {
+      if (appraisalFeedbacks.length === 0) return;
+
+      const newEntries: LogEntry[] = [];
+
+      for (const feedback of appraisalFeedbacks) {
+          // Create a unique ID for this feedback
+          const feedbackId = `${feedback.type}-${feedback.traitId || 'generic'}-${Date.now()}`;
+
+          // Skip if already processed (using trait name + type as key to prevent duplicates)
+          const dedupeKey = `${feedback.type}-${feedback.traitName || feedback.text.slice(0, 20)}`;
+          if (processedFeedbacksRef.current.has(dedupeKey)) continue;
+          processedFeedbacksRef.current.add(dedupeKey);
+
+          newEntries.push({
+              id: feedbackId,
+              sender: 'player',
+              text: feedback.text,
+              sentiment: feedback.type === 'MISHAP' || feedback.type === 'NO_AP' || feedback.type === 'NO_PATIENCE' || feedback.type === 'IMPATIENT'
+                  ? 'negative'
+                  : feedback.type === 'TRAIT_DISCOVERED' || feedback.type === 'LUCKY_FIND'
+                  ? 'positive'
+                  : 'neutral',
+              type: 'INNER_MONOLOGUE',
+          });
+      }
+
+      if (newEntries.length > 0) {
+          setChatLog(prev => [...prev, ...newEntries]);
+      }
+  }, [appraisalFeedbacks]);
+
+  // Clear processed feedbacks when customer changes
+  useEffect(() => {
+      processedFeedbacksRef.current.clear();
+  }, [currentCustomer?.id]);
 
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
       const defaultLines = { standard: "行吧，那我走了。", angry: "浪费时间！", desperate: "求求你了..." };
@@ -485,12 +535,29 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation 
                   );
               }
 
+              // Inner monologue (appraisal feedback) - special styling
+              if (log.type === 'INNER_MONOLOGUE') {
+                  return (
+                      <div key={log.id} className="flex flex-col max-w-[90%] items-end ml-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
+                          <div className="px-4 py-3 rounded-lg relative shadow-sm text-sm border bg-[#2a2a3a] border-[#3a3a4a] rounded-br-none flex items-start gap-2">
+                              <Search className="w-4 h-4 text-blue-400/70 shrink-0 mt-0.5" />
+                              <span className="font-serif italic text-stone-300 leading-relaxed">
+                                  {log.text}
+                              </span>
+                          </div>
+                          <span className="text-[9px] font-mono font-bold mt-1 px-1 uppercase tracking-wider text-blue-400/60">
+                              INNER THOUGHT
+                          </span>
+                      </div>
+                  );
+              }
+
               return (
                   <div key={log.id} className={cn("flex flex-col max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300", isPlayer ? "items-end ml-auto" : "items-start")}>
                       <div className={cn(
                           "px-4 py-3 rounded-lg relative shadow-sm text-sm border",
-                          isPlayer 
-                              ? "bg-noir-300 border-noir-400 text-noir-txt-primary font-mono text-right rounded-br-none border-l-[3px] border-l-amber-600" 
+                          isPlayer
+                              ? "bg-noir-300 border-noir-400 text-noir-txt-primary font-mono text-right rounded-br-none border-l-[3px] border-l-amber-600"
                               : "bg-noir-200 border-noir-400 text-stone-300 font-serif leading-relaxed rounded-bl-none"
                       )}>
                           {log.text}

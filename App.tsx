@@ -1,5 +1,6 @@
 
-import React, { useEffect, useState, useRef, useLayoutEffect, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useLayoutEffect, useCallback, useMemo } from 'react';
+import type { AppraisalFeedback } from './components/NegotiationPanel';
 import { GameProvider, useGame } from './store/GameContext';
 import { useGameEngine } from './hooks/useGameEngine';
 import { useNegotiation } from './hooks/useNegotiation';
@@ -43,6 +44,9 @@ const GameContent: React.FC = () => {
   const prevPhaseType = useRef<string>(state.phase.type);
   const [showDayToNight, setShowDayToNight] = useState(false);
   const [showNightToDay, setShowNightToDay] = useState(false);
+
+  // Appraisal Feedback State - for displaying inner monologues in chat
+  const [appraisalFeedbacks, setAppraisalFeedbacks] = useState<AppraisalFeedback[]>([]);
 
   // Manual Trigger for Day -> Night Transition
   const handleStartNight = () => {
@@ -187,6 +191,21 @@ const GameContent: React.FC = () => {
     prevCustomerRef.current = state.currentCustomer;
   }, [state.currentCustomer, state.phase, send]);
 
+  // Clear appraisal feedbacks when customer changes
+  const prevCustomerIdRef = useRef<string | null>(null);
+  useEffect(() => {
+      const currentId = state.currentCustomer?.id ?? null;
+      if (prevCustomerIdRef.current !== currentId) {
+          setAppraisalFeedbacks([]);
+          prevCustomerIdRef.current = currentId;
+      }
+  }, [state.currentCustomer?.id]);
+
+  // Callback to handle appraisal feedback from ItemPanel
+  const handleAppraisalFeedback = useCallback((feedback: AppraisalFeedback) => {
+      setAppraisalFeedbacks(prev => [...prev, feedback]);
+  }, []);
+
   // Stabilize callbacks to prevent re-triggering effects in transition components
   const onDayToNightComplete = useCallback(() => {
       setShowDayToNight(false);
@@ -313,11 +332,12 @@ const GameContent: React.FC = () => {
                             {/* Left Panel */}
                             <div className="lg:col-span-6 h-full border-r border-white/10 overflow-hidden relative">
                                 {isNegotiating ? (
-                                <ItemPanel 
-                                    applyLeverage={negotiation.applyLeverage} 
+                                <ItemPanel
+                                    applyLeverage={negotiation.applyLeverage}
                                     triggerNarrative={negotiation.triggerNarrative}
                                     canInteract={!negotiation.isWalkedAway}
                                     currentAskPrice={negotiation.currentAskPrice}
+                                    onAppraisalFeedback={handleAppraisalFeedback}
                                 />
                                 ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-stone-700 font-mono relative bg-[#0c0a09]">
@@ -338,7 +358,7 @@ const GameContent: React.FC = () => {
                             {/* Right Panel */}
                             <div className="lg:col-span-6 h-full overflow-hidden relative">
                                 {isNegotiating ? (
-                                <NegotiationPanel negotiation={negotiation} />
+                                <NegotiationPanel negotiation={negotiation} appraisalFeedbacks={appraisalFeedbacks} />
                                 ) : (
                                     <div className="h-full flex flex-col items-center justify-center text-stone-600 font-mono text-center p-8 bg-[#1c1917]">
                                         {isShopClosed ? (
