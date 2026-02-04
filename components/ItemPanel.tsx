@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
 import { useAppraisal } from '../hooks/useAppraisal';
-import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert, CheckCircle2, Radio } from 'lucide-react';
+import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert, CheckCircle2, Radio, Sparkles } from 'lucide-react';
 import { APPRAISAL_TEMPLATES } from '../systems/game/templates/appraisalFeedback';
 import type { AppraisalFeedback } from './NegotiationPanel';
 import { Button } from './ui/Button';
@@ -231,16 +231,13 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
 
       const power = Math.abs(trait.valueImpact);
 
-      // Threshold for "value jump" traits (捡漏/打眼)
-      // Jump traits have extreme value impacts (e.g., +3.0 for bargains, -0.85 for mistakes)
-      const JUMP_TRAIT_THRESHOLD = 2.0;
-
+      // Handle value-changing traits (打眼/捡漏)
       if (trait.type === 'FAKE') {
           // Mistake (打眼): Value crashes down
           dispatch({ type: 'REALIZE_ITEM_TRUTH', payload: { itemId: item.id } });
           setFeedbackMsg({ type: 'error', text: "价值崩塌 (VALUE CRASH)" });
-      } else if (trait.type === 'STORY' && trait.valueImpact >= JUMP_TRAIT_THRESHOLD) {
-          // Bargain (捡漏): Value jumps up significantly
+      } else if (trait.type === 'JACKPOT') {
+          // Jackpot (捡漏): Value jumps up significantly
           dispatch({ type: 'REALIZE_ITEM_TRUTH', payload: { itemId: item.id } });
           setFeedbackMsg({ type: 'success', text: "价值发现 (VALUE DISCOVERY)" });
       }
@@ -249,16 +246,19 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
       dispatch({ type: 'MARK_TRAIT_USED', payload: { traitId: trait.id } });
 
       // 2. Dispatch negotiation impact
-      if (trait.type === 'FLAW' || trait.type === 'FAKE') {
+      // JACKPOT traits: player discovered hidden value, no price leverage
+      // FLAW/FAKE traits: player points out issues, can leverage for lower price
+      // STORY traits: dialogue/rapport building, minimal leverage
+      const negotiationPower = trait.type === 'JACKPOT' ? 0 : power;
+
+      if (trait.dialogueTrigger) {
+          // Use playerUseLine (正式对话) when available, fallback to playerLine (内心独白)
+          const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
+          triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, negotiationPower);
+      } else if (trait.type === 'FLAW' || trait.type === 'FAKE') {
           applyLeverage(power, trait.name);
-      } else if (trait.type === 'STORY') {
-          if (trait.dialogueTrigger) {
-              // Use playerUseLine (正式对话) when available, fallback to playerLine (内心独白)
-              const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
-              triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, power);
-          } else {
-              applyLeverage(0.05, `话题: ${trait.name}`);
-          }
+      } else if (trait.type === 'STORY' || trait.type === 'JACKPOT') {
+          applyLeverage(0, `话题: ${trait.name}`);
       }
       playSfx('STAMP');
   };
@@ -520,6 +520,13 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                              bgColor = isUsed ? "bg-stone-200" : "bg-purple-50";
                              icon = <Skull className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-purple-600'}`}/>;
                              label = "点击揭穿";
+                         } else if (trait.type === 'JACKPOT') {
+                             borderColor = "border-amber-500";
+                             bgColor = isUsed ? "bg-stone-200" : "bg-amber-50";
+                             icon = <Sparkles className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-amber-600'}`}/>;
+                             impactText = `+${Math.abs(trait.valueImpact * 100)}%`;
+                             impactColor = "text-amber-600";
+                             label = "捡漏发现";
                          }
                          
                          if (isUsed) {
@@ -549,6 +556,14 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                                             <span>
                                                 {trait.type === 'FAKE' ? "价值崩塌" : `底价 -${cashImpact} (${impactText})`}
                                             </span>
+                                        </div>
+                                    </div>
+                                 )}
+                                 {hoveredTrait?.id === trait.id && !isUsed && canInteract && trait.type === 'JACKPOT' && (
+                                    <div className="absolute -top-8 right-0 bg-black/90 text-white text-[10px] px-2 py-1 rounded shadow-xl z-50 whitespace-nowrap border border-amber-600 animate-in fade-in slide-in-from-bottom-1">
+                                        <div className="flex items-center gap-1">
+                                            <Sparkles className="w-3 h-3 text-amber-500" />
+                                            <span>价值发现 ({impactText})</span>
                                         </div>
                                     </div>
                                  )}

@@ -11,7 +11,7 @@ export enum ItemStatus {
   SOLD = 'SOLD'            // Sold to third party.
 }
 
-export type TraitType = 'FLAW' | 'STORY' | 'FAKE';
+export type TraitType = 'FLAW' | 'STORY' | 'FAKE' | 'JACKPOT';
 
 export interface ItemTrait {
   id: string;

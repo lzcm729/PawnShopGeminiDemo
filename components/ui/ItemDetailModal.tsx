@@ -283,7 +283,8 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                                         "p-2 rounded border text-xs",
                                         trait.type === 'FLAW' && "border-red-900/50 bg-red-950/20",
                                         trait.type === 'STORY' && "border-blue-900/50 bg-blue-950/20",
-                                        trait.type === 'FAKE' && "border-purple-900/50 bg-purple-950/20"
+                                        trait.type === 'FAKE' && "border-purple-900/50 bg-purple-950/20",
+                                        trait.type === 'JACKPOT' && "border-amber-900/50 bg-amber-950/20"
                                     )}
                                 >
                                     <div className="flex items-center justify-between mb-1">
@@ -291,7 +292,8 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                                             "font-bold",
                                             trait.type === 'FLAW' && "text-red-400",
                                             trait.type === 'STORY' && "text-blue-400",
-                                            trait.type === 'FAKE' && "text-purple-400"
+                                            trait.type === 'FAKE' && "text-purple-400",
+                                            trait.type === 'JACKPOT' && "text-amber-400"
                                         )}>
                                             {trait.name}
                                         </span>
@@ -299,7 +301,8 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                                             "text-[10px] px-1.5 py-0.5 rounded",
                                             trait.type === 'FLAW' && "bg-red-900/50 text-red-400",
                                             trait.type === 'STORY' && "bg-blue-900/50 text-blue-400",
-                                            trait.type === 'FAKE' && "bg-purple-900/50 text-purple-400"
+                                            trait.type === 'FAKE' && "bg-purple-900/50 text-purple-400",
+                                            trait.type === 'JACKPOT' && "bg-amber-900/50 text-amber-400"
                                         )}>
                                             {trait.type}
                                         </span>

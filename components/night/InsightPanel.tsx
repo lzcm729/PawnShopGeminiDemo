@@ -355,11 +355,11 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
                   key={trait.id}
                   className={cn(
                     'px-1 py-0.5 text-[9px] rounded shrink-0',
-                    trait.type === 'FLAW'
-                      ? 'bg-red-900/50 text-red-400 border border-red-800'
-                      : trait.type === 'STORY'
-                      ? 'bg-amber-900/50 text-amber-400 border border-amber-800'
-                      : 'bg-stone-700 text-stone-300 border border-stone-600'
+                    trait.type === 'FLAW' && 'bg-red-900/50 text-red-400 border border-red-800',
+                    trait.type === 'STORY' && 'bg-blue-900/50 text-blue-400 border border-blue-800',
+                    trait.type === 'FAKE' && 'bg-purple-900/50 text-purple-400 border border-purple-800',
+                    trait.type === 'JACKPOT' && 'bg-amber-900/50 text-amber-400 border border-amber-800',
+                    !['FLAW', 'STORY', 'FAKE', 'JACKPOT'].includes(trait.type) && 'bg-stone-700 text-stone-300 border border-stone-600'
                   )}
                 >
                   {trait.name}
