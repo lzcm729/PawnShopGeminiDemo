@@ -247,9 +247,9 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
 
       // 2. Dispatch negotiation impact
       // JACKPOT traits: player discovered hidden value, no price leverage
+      // STORY traits: dialogue/rapport building only, no price leverage
       // FLAW/FAKE traits: player points out issues, can leverage for lower price
-      // STORY traits: dialogue/rapport building, minimal leverage
-      const negotiationPower = trait.type === 'JACKPOT' ? 0 : power;
+      const negotiationPower = (trait.type === 'JACKPOT' || trait.type === 'STORY') ? 0 : power;
 
       if (trait.dialogueTrigger) {
           // Use playerUseLine (正式对话) when available, fallback to playerLine (内心独白)
