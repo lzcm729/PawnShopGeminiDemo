@@ -64,6 +64,8 @@ export interface ItemTemplate {
   descReforged: string;
   /** Fit tags for filler customer matching (age, appearance, item tags) */
   fitTags: string[];
+  /** Whether this item is available for filler customer generation */
+  fillerPool?: boolean;
 }
 
 /** CSV 特征定义（从 Traits.csv 加载） */
@@ -176,6 +178,10 @@ export function loadItemTemplatesFromCSV(csvContent: string): void {
       return idx !== undefined ? (row[idx] || '') : '';
     };
 
+    // Parse Filler_Pool: true/false/1/0, default to false if missing
+    const fillerPoolRaw = get('Filler_Pool').toLowerCase();
+    const fillerPool = fillerPoolRaw === 'true' || fillerPoolRaw === '1';
+
     const template: ItemTemplate = {
       id: get('ID'),
       nameDefault: get('Name_Default'),
@@ -193,6 +199,7 @@ export function loadItemTemplatesFromCSV(csvContent: string): void {
       descRestored: get('Desc_Restored') || get('Desc_Default'),
       descReforged: get('Desc_Reforged') || get('Desc_Default'),
       fitTags: parseSemicolonList(get('Fit_Tags')),
+      fillerPool,
     };
 
     if (template.id) {
@@ -254,6 +261,16 @@ export function getItemTemplate(id: string): ItemTemplate | undefined {
  */
 export function getAllItemTemplates(): ItemTemplate[] {
   return Array.from(itemTemplateRegistry.values());
+}
+
+/**
+ * 获取填充物品池模板ID列表
+ * 仅返回 fillerPool === true 的物品模板ID
+ */
+export function getFillerPoolTemplateIds(): string[] {
+  return Array.from(itemTemplateRegistry.values())
+    .filter(t => t.fillerPool === true)
+    .map(t => t.id);
 }
 
 /**

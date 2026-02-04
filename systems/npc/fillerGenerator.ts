@@ -11,7 +11,7 @@
 import { Customer, BehaviorTag, Dialogue } from '../../types';
 import { Item, ItemStatus } from '../items/types';
 import { Mood } from '../core/types';
-import { createItemFromTemplate, getItemTemplate, ItemTemplate, getTraitDefinition, createTraitFromDefinition } from '../items/csvLoader';
+import { createItemFromTemplate, getItemTemplate, ItemTemplate, getTraitDefinition, createTraitFromDefinition, getFillerPoolTemplateIds } from '../items/csvLoader';
 import { initializeKnowledgePool } from '../items/tagUtils';
 import { ContractType, EventChainState } from '../narrative/types';
 import { getCharacterPortraits } from '../assets';
@@ -123,26 +123,29 @@ const TAG_EFFECTS: Record<BehaviorTag, { floorMod: number; patienceMod: number; 
 };
 
 /**
- * Item templates for filler customers
+ * Cached filler item template IDs
+ * Loaded from CSV via getFillerPoolTemplateIds() on first access
  */
-const FILLER_ITEM_TEMPLATES = [
-    // 钟表
-    'item_watch_01',        // 停摆的旧表 $500
-    'item_watch_gambler',   // 金标手表 $400
-    // 首饰/珠宝
-    'item_ring_01',         // 蒙尘的戒指 $300
-    'item_diamond_mystery', // 裸钻 $3000
-    // 艺术品/古董
-    'item_painting_01',     // 褪色的油画 $800
-    'item_vase_01',         // 裂纹花瓶 $1200
-    // 书籍
-    'item_book_01',         // 虫蛀旧书 $200
-    // 电子产品
-    'item_console_student', // 便携游戏机 $1000
-];
+let cachedFillerTemplateIds: string[] | null = null;
 
-// Template pools are now loaded from CSV via fillerTemplateLoader.ts
-// Fallback data is embedded in the loader for resilience
+/**
+ * Get filler item template IDs from CSV registry
+ * Caches result for performance
+ */
+function getFillerItemTemplates(): string[] {
+    if (cachedFillerTemplateIds === null) {
+        cachedFillerTemplateIds = getFillerPoolTemplateIds();
+    }
+    return cachedFillerTemplateIds;
+}
+
+/**
+ * Clear the cached filler template IDs
+ * Call this after CSV data is reloaded
+ */
+export function clearFillerTemplateCache(): void {
+    cachedFillerTemplateIds = null;
+}
 
 // ============================================================================
 // VALUE JUMP TRAITS (捡漏/打眼)
@@ -584,7 +587,7 @@ function selectWeightedTemplate(
     // Build weighted list, excluding templates already in inventory
     const weightedTemplates: { templateId: string; template: ItemTemplate; weight: number }[] = [];
 
-    for (const templateId of FILLER_ITEM_TEMPLATES) {
+    for (const templateId of getFillerItemTemplates()) {
         // Skip templates already in inventory (deduplication)
         if (excludeTemplateIds.has(templateId)) {
             continue;
@@ -599,7 +602,7 @@ function selectWeightedTemplate(
     // If all templates are excluded, fall back to allowing duplicates
     // This ensures generation is never blocked
     if (weightedTemplates.length === 0) {
-        for (const templateId of FILLER_ITEM_TEMPLATES) {
+        for (const templateId of getFillerItemTemplates()) {
             const template = getItemTemplate(templateId);
             if (template) {
                 const weight = calculateItemWeight(template, profile);
