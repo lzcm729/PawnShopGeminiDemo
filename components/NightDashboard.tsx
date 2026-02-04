@@ -254,14 +254,25 @@ export const NightDashboard: React.FC = () => {
                                         "hover:bg-teal-950/50 cursor-pointer",
                                         appointedCount > 0 ? "border-teal-500" : "border-teal-900"
                                       )
-                                    : "border-stone-800 opacity-50 grayscale cursor-not-allowed"
+                                    : "border-stone-700/50 cursor-default hover:border-teal-900/50"
                             )}
                         >
-                            {/* Lock overlay for locked state */}
+                            {/* Locked state overlay */}
                             {!hasBoardUnlocked && (
-                                <div className="absolute top-2 right-2 w-5 h-5 bg-stone-700 rounded-full flex items-center justify-center">
-                                    <Lock className="w-3 h-3 text-stone-400" />
-                                </div>
+                                <>
+                                    {/* Diagonal stripes pattern */}
+                                    <div
+                                        className="absolute inset-0 opacity-20 pointer-events-none"
+                                        style={{
+                                            backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.03) 8px, rgba(255,255,255,0.03) 16px)'
+                                        }}
+                                    />
+                                    {/* Central lock overlay */}
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <Lock className="w-6 h-6 text-teal-500/70 mb-2" />
+                                        <span className="text-[10px] text-teal-400/80 font-medium">需要「预约板」升级</span>
+                                    </div>
+                                </>
                             )}
                             {hasBoardUnlocked && appointedCount > 0 && (
                                 <div className="absolute top-2 right-2 w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
@@ -272,7 +283,7 @@ export const NightDashboard: React.FC = () => {
                                 "w-8 h-8 transition-transform",
                                 hasBoardUnlocked
                                     ? "text-teal-500 group-hover:text-teal-300 group-hover:scale-110"
-                                    : "text-stone-600"
+                                    : "text-teal-900/50"
                             )} />
                             <div className="flex flex-col items-center">
                                 <span className={cn(
@@ -282,11 +293,11 @@ export const NightDashboard: React.FC = () => {
                                     Appointments {hasBoardUnlocked ? `(Lv${boardLevel})` : ''}
                                 </span>
                                 <span className={cn(
-                                    "text-[9px] mt-1",
+                                    "text-[9px] mt-1 flex items-center gap-1",
                                     hasBoardUnlocked ? "text-teal-500/70" : "text-stone-600"
                                 )}>
                                     {!hasBoardUnlocked
-                                        ? 'Requires upgrade'
+                                        ? <><Lock className="w-3 h-3" /> 未解锁</>
                                         : appointedCount > 0
                                             ? `${appointedCount} customer(s) invited`
                                             : 'Preview & invite customers'}
@@ -309,14 +320,25 @@ export const NightDashboard: React.FC = () => {
                                         "hover:bg-blue-950/50 cursor-pointer",
                                         maintenanceCost > 0 ? "border-blue-500" : "border-blue-900"
                                       )
-                                    : "border-stone-800 opacity-50 grayscale cursor-not-allowed"
+                                    : "border-stone-700/50 cursor-default hover:border-blue-900/50"
                             )}
                         >
-                            {/* Lock overlay for locked state */}
+                            {/* Locked state overlay */}
                             {!hasCounterFacilities && (
-                                <div className="absolute top-2 right-2 w-5 h-5 bg-stone-700 rounded-full flex items-center justify-center">
-                                    <Lock className="w-3 h-3 text-stone-400" />
-                                </div>
+                                <>
+                                    {/* Diagonal stripes pattern */}
+                                    <div
+                                        className="absolute inset-0 opacity-20 pointer-events-none"
+                                        style={{
+                                            backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.03) 8px, rgba(255,255,255,0.03) 16px)'
+                                        }}
+                                    />
+                                    {/* Central lock overlay */}
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <Lock className="w-6 h-6 text-blue-500/70 mb-2" />
+                                        <span className="text-[10px] text-blue-400/80 font-medium">需要柜台设施升级</span>
+                                    </div>
+                                </>
                             )}
                             {hasCounterFacilities && maintenanceCost > 0 && (
                                 <div className="absolute top-2 right-2 bg-red-500/80 rounded px-1.5 py-0.5">
@@ -327,7 +349,7 @@ export const NightDashboard: React.FC = () => {
                                 "w-8 h-8 transition-transform",
                                 hasCounterFacilities
                                     ? "text-blue-500 group-hover:text-blue-300 group-hover:scale-110"
-                                    : "text-stone-600"
+                                    : "text-blue-900/50"
                             )} />
                             <div className="flex flex-col items-center">
                                 <span className={cn(
@@ -337,10 +359,10 @@ export const NightDashboard: React.FC = () => {
                                     设施控制 (Facility)
                                 </span>
                                 <span className={cn(
-                                    "text-[9px] mt-1",
+                                    "text-[9px] mt-1 flex items-center gap-1",
                                     hasCounterFacilities ? "text-blue-500/70" : "text-stone-600"
                                 )}>
-                                    {hasCounterFacilities ? '开关柜台设施' : 'Requires upgrade'}
+                                    {hasCounterFacilities ? '开关柜台设施' : <><Lock className="w-3 h-3" /> 未解锁</>}
                                 </span>
                             </div>
                         </button>
