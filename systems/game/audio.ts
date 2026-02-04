@@ -6,29 +6,68 @@ let audioCtx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
 let ambienceGain: GainNode | null = null;
 let isMuted = localStorage.getItem('pawn_audio_muted') === 'true';
+let userHasInteracted = false;
 
 // Track references for loops
 const activeLoops: { [key: string]: AudioScheduledSourceNode } = {};
 const noiseBuffers: { [key: string]: AudioBuffer } = {};
 
-export const initAudio = () => {
+// Listen for user interaction to enable audio
+const enableAudioOnInteraction = () => {
+    if (userHasInteracted) return;
+    userHasInteracted = true;
+
+    // Initialize audio context on first interaction
     if (!audioCtx) {
-        audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        masterGain = audioCtx.createGain();
-        masterGain.gain.value = isMuted ? 0 : 1.0;
-        masterGain.connect(audioCtx.destination);
-
-        ambienceGain = audioCtx.createGain();
-        ambienceGain.gain.value = 0; // Disabled ambience volume by default
-        ambienceGain.connect(masterGain);
-
-        // Pre-generate noise buffers for performance
-        createNoiseBuffer('pink', 2); // 2 seconds of pink noise
-        createNoiseBuffer('white', 0.5); // 0.5 seconds of white noise
-        createNoiseBuffer('brown', 2); // 2 seconds of brown noise for rumble
+        initAudioContext();
+    } else if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
     }
-    
-    if (audioCtx.state === 'suspended') {
+
+    // Remove listeners after first interaction
+    document.removeEventListener('click', enableAudioOnInteraction);
+    document.removeEventListener('keydown', enableAudioOnInteraction);
+    document.removeEventListener('touchstart', enableAudioOnInteraction);
+};
+
+// Set up listeners (safe to call multiple times)
+if (typeof document !== 'undefined') {
+    document.addEventListener('click', enableAudioOnInteraction, { once: true });
+    document.addEventListener('keydown', enableAudioOnInteraction, { once: true });
+    document.addEventListener('touchstart', enableAudioOnInteraction, { once: true });
+}
+
+const initAudioContext = () => {
+    if (audioCtx) return audioCtx;
+
+    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = isMuted ? 0 : 1.0;
+    masterGain.connect(audioCtx.destination);
+
+    ambienceGain = audioCtx.createGain();
+    ambienceGain.gain.value = 0; // Disabled ambience volume by default
+    ambienceGain.connect(masterGain);
+
+    // Pre-generate noise buffers for performance
+    createNoiseBuffer('pink', 2); // 2 seconds of pink noise
+    createNoiseBuffer('white', 0.5); // 0.5 seconds of white noise
+    createNoiseBuffer('brown', 2); // 2 seconds of brown noise for rumble
+
+    return audioCtx;
+};
+
+export const initAudio = () => {
+    // Only initialize if user has interacted
+    if (!userHasInteracted) {
+        return null;
+    }
+
+    if (!audioCtx) {
+        initAudioContext();
+    }
+
+    if (audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume();
     }
     return audioCtx;
