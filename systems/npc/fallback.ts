@@ -137,10 +137,21 @@ const FALLBACK_PRESETS: FallbackCustomerPreset[] = [
 /**
  * 获取一个随机的 fallback 客户
  * @param day 当前游戏天数
+ * @param excludeTemplateIds 要排除的物品模板 ID（库存中已有的物品）
+ *                           如果所有模板都被排除，则允许重复（降级处理）
  * @returns 完整的客户对象
  */
-export const getFallbackCustomer = (day: number): Customer => {
-  const preset = FALLBACK_PRESETS[Math.floor(Math.random() * FALLBACK_PRESETS.length)];
+export const getFallbackCustomer = (day: number, excludeTemplateIds?: Set<string>): Customer => {
+  // Filter presets to exclude items already in inventory
+  let availablePresets = FALLBACK_PRESETS;
+  if (excludeTemplateIds && excludeTemplateIds.size > 0) {
+    const filtered = FALLBACK_PRESETS.filter(p => !excludeTemplateIds.has(p.templateId));
+    // Only use filtered list if there are options left; otherwise fall back to all presets
+    if (filtered.length > 0) {
+      availablePresets = filtered;
+    }
+  }
+  const preset = availablePresets[Math.floor(Math.random() * availablePresets.length)];
   return createCustomerFromPreset(preset, day);
 };
 

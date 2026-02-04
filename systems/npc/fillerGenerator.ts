@@ -572,16 +572,39 @@ function isUnexpectedCombo(template: ItemTemplate, profile: FillerCustomerProfil
 
 /**
  * Select an item template using weighted random based on profile
+ *
+ * @param profile Customer profile for weight calculation
+ * @param excludeTemplateIds Template IDs to exclude (items already in inventory)
+ *                           If all templates are excluded, falls back to allowing duplicates
  */
-function selectWeightedTemplate(profile: FillerCustomerProfile): { templateId: string; template: ItemTemplate } | null {
-    // Build weighted list
+function selectWeightedTemplate(
+    profile: FillerCustomerProfile,
+    excludeTemplateIds: Set<string> = new Set()
+): { templateId: string; template: ItemTemplate } | null {
+    // Build weighted list, excluding templates already in inventory
     const weightedTemplates: { templateId: string; template: ItemTemplate; weight: number }[] = [];
 
     for (const templateId of FILLER_ITEM_TEMPLATES) {
+        // Skip templates already in inventory (deduplication)
+        if (excludeTemplateIds.has(templateId)) {
+            continue;
+        }
         const template = getItemTemplate(templateId);
         if (template) {
             const weight = calculateItemWeight(template, profile);
             weightedTemplates.push({ templateId, template, weight });
+        }
+    }
+
+    // If all templates are excluded, fall back to allowing duplicates
+    // This ensures generation is never blocked
+    if (weightedTemplates.length === 0) {
+        for (const templateId of FILLER_ITEM_TEMPLATES) {
+            const template = getItemTemplate(templateId);
+            if (template) {
+                const weight = calculateItemWeight(template, profile);
+                weightedTemplates.push({ templateId, template, weight });
+            }
         }
     }
 
@@ -675,15 +698,23 @@ function attachJumpTrait(item: Item): Item {
 
 /**
  * Create a fallback item for filler customers with profile-based selection
+ *
+ * @param day Current game day
+ * @param profile Customer profile
+ * @param excludeTemplateIds Template IDs to exclude (items already in inventory)
  */
-function createFillerItem(day: number, profile: FillerCustomerProfile): FillerItemResult {
+function createFillerItem(
+    day: number,
+    profile: FillerCustomerProfile,
+    excludeTemplateIds: Set<string> = new Set()
+): FillerItemResult {
     // Ensure reasons are loaded
     if (!isReasonsLoaded()) {
         initializeFillerReasons();
     }
 
-    // Select template using weighted random
-    const selection = selectWeightedTemplate(profile);
+    // Select template using weighted random, excluding templates in inventory
+    const selection = selectWeightedTemplate(profile, excludeTemplateIds);
 
     let item: Item | null = null;
     let isUnexpected = false;
@@ -765,9 +796,15 @@ function getGenericPortraitId(profile: FillerCustomerProfile): string {
  *
  * @param day Current game day
  * @param profile Optional specific profile (random if not provided)
+ * @param excludeTemplateIds Template IDs to exclude (items already in inventory).
+ *                           Pass this to avoid generating duplicate items.
  * @returns Customer with inferred behavior tags and redemption resolve
  */
-export function generateFillerCustomer(day: number, profile?: FillerCustomerProfile): Customer {
+export function generateFillerCustomer(
+    day: number,
+    profile?: FillerCustomerProfile,
+    excludeTemplateIds?: Set<string>
+): Customer {
     const customerProfile = profile || generateRandomProfile();
     const behaviorTags = inferBehaviorTags(customerProfile);
     const redemptionResolve = inferRedemptionResolve(customerProfile, behaviorTags);
@@ -776,8 +813,8 @@ export function generateFillerCustomer(day: number, profile?: FillerCustomerProf
     const description = generateDescription(customerProfile);
     const dialogue = generateFillerDialogue(customerProfile);
 
-    // Create item with profile-based selection
-    const { item, isUnexpected, attrTags } = createFillerItem(day, customerProfile);
+    // Create item with profile-based selection, excluding items already in inventory
+    const { item, isUnexpected, attrTags } = createFillerItem(day, customerProfile, excludeTemplateIds);
 
     // If this is an unexpected combination, get a narrative reason
     if (isUnexpected) {

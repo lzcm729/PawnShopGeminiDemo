@@ -573,7 +573,14 @@ export const useGameEngine = () => {
       const canGenerateFiller = fillerServed < fillerAllowedCount;
 
       if (canGenerateFiller) {
-          const fillerCustomer = generateFillerCustomer(state.stats.day);
+          // Collect template IDs from inventory to avoid duplicate items
+          // Only consider ACTIVE items (pawned, not yet redeemed/forfeited/sold)
+          const excludeTemplateIds = new Set<string>(
+              state.inventory
+                  .filter(item => item.status === ItemStatus.ACTIVE && item.templateId)
+                  .map(item => item.templateId!)
+          );
+          const fillerCustomer = generateFillerCustomer(state.stats.day, undefined, excludeTemplateIds);
           if (fillerCustomer) {
               setTimeout(() => {
                   dispatch({ type: 'SET_CUSTOMER', payload: fillerCustomer });
