@@ -183,13 +183,8 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
           setAppraising(false);
 
           if (!result.success) {
-              if (result.failureReason === 'NO_AP') {
-                  setFeedbackMsg({ type: 'warning', text: "行动点不足 (No AP)" });
-                  onAppraisalFeedback?.({ type: 'NO_AP', text: APPRAISAL_TEMPLATES.NO_AP });
-              } else if (result.failureReason === 'NO_PATIENCE') {
-                  setFeedbackMsg({ type: 'warning', text: "客户失去了耐心 (No Patience)" });
-                  onAppraisalFeedback?.({ type: 'NO_PATIENCE', text: APPRAISAL_TEMPLATES.NO_PATIENCE });
-              } else if (result.failureReason === 'ALREADY_KNOWN') {
+              // Only ALREADY_KNOWN can occur - AP/patience are handled at UI level
+              if (result.failureReason === 'ALREADY_KNOWN') {
                   setFeedbackMsg({ type: 'warning', text: "暂无更多线索 (No New Traits)" });
                   onAppraisalFeedback?.({ type: 'ALREADY_KNOWN', text: APPRAISAL_TEMPLATES.ALREADY_KNOWN });
               }

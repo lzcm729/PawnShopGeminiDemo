@@ -7,7 +7,7 @@ import { generateAppraisalLog } from '../systems/game/utils/logGenerator';
 
 interface AppraisalResult {
     success: boolean;
-    failureReason?: 'NO_AP' | 'NO_PATIENCE' | 'ALREADY_KNOWN';
+    failureReason?: 'ALREADY_KNOWN';
     newTraitsFound: ItemTrait[];
     newRange: [number, number];
     event?: AppraisalEvent;
@@ -35,22 +35,8 @@ export const useAppraisal = () => {
             h => !revealedTraits.some(r => r.id === h.id)
         );
 
-        if (state.stats.actionPoints <= 0) {
-            return { 
-                success: false, 
-                failureReason: 'NO_AP', 
-                newTraitsFound: [], 
-                newRange: item.currentRange 
-            };
-        }
-        if (customer.patience <= 0) {
-            return { 
-                success: false, 
-                failureReason: 'NO_PATIENCE', 
-                newTraitsFound: [], 
-                newRange: item.currentRange 
-            };
-        }
+        // Note: AP and patience checks are handled at UI level (button disabled)
+        // When AP=0, button is disabled; when patience=0, customer leaves
 
         const event = rollAppraisalEvent(
             item.appraisalCount || 0,

@@ -6,12 +6,6 @@
  */
 
 export const APPRAISAL_TEMPLATES = {
-    /** When player has no action points left */
-    NO_AP: "今天已经精疲力竭了，看不出更多东西来...",
-
-    /** When customer has no patience remaining */
-    NO_PATIENCE: "客户明显不耐烦了，不能再拖延了。",
-
     /** When appraisal roll results in mishap (range expands) */
     MISHAP: "糟糕...好像搞错了什么，判断受到干扰。",
 

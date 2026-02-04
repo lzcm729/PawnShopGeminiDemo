@@ -48,7 +48,7 @@ interface LogEntry {
 
 // Appraisal feedback structure passed from ItemPanel
 export interface AppraisalFeedback {
-    type: 'TRAIT_DISCOVERED' | 'RANGE_NARROWED' | 'MISHAP' | 'NO_AP' | 'NO_PATIENCE' | 'IMPATIENT' | 'LUCKY_FIND' | 'ALREADY_KNOWN';
+    type: 'TRAIT_DISCOVERED' | 'RANGE_NARROWED' | 'MISHAP' | 'IMPATIENT' | 'LUCKY_FIND' | 'ALREADY_KNOWN';
     text: string;
     traitId?: string;
     traitName?: string;
@@ -309,7 +309,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               id: feedbackId,
               sender: 'player',
               text: feedback.text,
-              sentiment: feedback.type === 'MISHAP' || feedback.type === 'NO_AP' || feedback.type === 'NO_PATIENCE' || feedback.type === 'IMPATIENT'
+              sentiment: feedback.type === 'MISHAP' || feedback.type === 'IMPATIENT'
                   ? 'negative'
                   : feedback.type === 'TRAIT_DISCOVERED' || feedback.type === 'LUCKY_FIND'
                   ? 'positive'
@@ -559,8 +559,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                           case 'LUCKY_FIND': return '意外发现';
                           case 'MISHAP': return '鉴定失误';
                           case 'IMPATIENT': return '客户不耐烦';
-                          case 'NO_AP': return '行动点不足';
-                          case 'NO_PATIENCE': return '客户耐心耗尽';
                           case 'ALREADY_KNOWN': return '暂无新发现';
                           default: return null;
                       }
