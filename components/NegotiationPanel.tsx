@@ -282,23 +282,28 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       }
   }, [lastAction]);
 
-  // Track processed feedback IDs to avoid duplicates
-  const processedFeedbacksRef = useRef<Set<string>>(new Set());
+  // Track discovered trait IDs to avoid duplicate trait entries
+  const discoveredTraitIdsRef = useRef<Set<string>>(new Set());
+  // Track how many feedbacks we've already processed
+  const processedCountRef = useRef<number>(0);
 
   // Convert appraisal feedbacks to inner monologue entries
   useEffect(() => {
       if (appraisalFeedbacks.length === 0) return;
+      // Only process new feedbacks (skip already processed ones)
+      if (appraisalFeedbacks.length <= processedCountRef.current) return;
 
       const newEntries: LogEntry[] = [];
 
-      for (const feedback of appraisalFeedbacks) {
-          // Create a unique ID for this feedback
-          const feedbackId = `${feedback.type}-${feedback.traitId || 'generic'}-${Date.now()}`;
+      for (let i = processedCountRef.current; i < appraisalFeedbacks.length; i++) {
+          const feedback = appraisalFeedbacks[i];
+          const feedbackId = `inner-${feedback.type}-${Date.now()}-${i}`;
 
-          // Skip if already processed (using trait name + type as key to prevent duplicates)
-          const dedupeKey = `${feedback.type}-${feedback.traitName || feedback.text.slice(0, 20)}`;
-          if (processedFeedbacksRef.current.has(dedupeKey)) continue;
-          processedFeedbacksRef.current.add(dedupeKey);
+          // Only dedupe TRAIT_DISCOVERED to prevent same trait showing twice
+          if (feedback.type === 'TRAIT_DISCOVERED' && feedback.traitId) {
+              if (discoveredTraitIdsRef.current.has(feedback.traitId)) continue;
+              discoveredTraitIdsRef.current.add(feedback.traitId);
+          }
 
           newEntries.push({
               id: feedbackId,
@@ -313,14 +318,17 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           });
       }
 
+      processedCountRef.current = appraisalFeedbacks.length;
+
       if (newEntries.length > 0) {
           setChatLog(prev => [...prev, ...newEntries]);
       }
   }, [appraisalFeedbacks]);
 
-  // Clear processed feedbacks when customer changes
+  // Clear tracking refs when customer changes
   useEffect(() => {
-      processedFeedbacksRef.current.clear();
+      discoveredTraitIdsRef.current.clear();
+      processedCountRef.current = 0;
   }, [currentCustomer?.id]);
 
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
