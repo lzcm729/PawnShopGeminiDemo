@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, RefObject } from 'react';
+import React, { useState, useEffect, useCallback, useRef, RefObject } from 'react';
 
 export interface Position {
   x: number;
