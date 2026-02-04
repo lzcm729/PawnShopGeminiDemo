@@ -542,7 +542,7 @@ function calculateItemWeight(template: ItemTemplate, profile: FillerCustomerProf
         return 1;
     }
 
-    const profileTags = [profile.age, profile.appearance, profile.gender];
+    const profileTags: string[] = [profile.age, profile.appearance, profile.gender];
     let matchScore = 0;
 
     for (const tag of fitTags) {
@@ -566,7 +566,7 @@ function isUnexpectedCombo(template: ItemTemplate, profile: FillerCustomerProfil
         return false;
     }
 
-    const profileTags = [profile.age, profile.appearance, profile.gender];
+    const profileTags: string[] = [profile.age, profile.appearance, profile.gender];
 
     // Check if ANY profile tag matches
     for (const tag of fitTags) {
@@ -851,7 +851,7 @@ export function generateFillerCustomer(
         anxious: 'Annoyed',
         calm: 'Neutral',
         reluctant: 'Neutral',
-        eager: 'Friendly'
+        eager: 'Happy'
     };
 
     // Get generic portrait based on profile
