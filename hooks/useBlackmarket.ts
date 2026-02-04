@@ -13,7 +13,7 @@ import {
   MarketPurchaseRequest,
   getHeatLevel,
   getHeatConfig,
-  getUnderworldPriceModifier
+  getUnderworldCommission
 } from '../systems/blackmarket/types';
 import {
   calculatePurchasePrice,
@@ -54,10 +54,11 @@ export const useBlackmarket = () => {
   }, [blackmarket.heat]);
 
   /**
-   * Reputation price modifier info with full tier data
+   * Commission rate info based on reputation
+   * Higher reputation = lower commission = player keeps more money
    */
-  const repModifier = useMemo(() => {
-    const base = getUnderworldPriceModifier(underworldRep);
+  const commissionInfo = useMemo(() => {
+    const base = getUnderworldCommission(underworldRep);
     return {
       ...base,
       currentRep: underworldRep
@@ -175,11 +176,11 @@ export const useBlackmarket = () => {
    */
   const getSalePriceRange = useCallback((item: Item): { min: number; max: number } => {
     const { saleMultiplierMin, saleMultiplierMax } = blackmarket.daily;
-    const { modifier } = getUnderworldPriceModifier(underworldRep);
+    const { commission } = getUnderworldCommission(underworldRep);
 
     return {
-      min: Math.floor(item.realValue * saleMultiplierMin * (1 + modifier)),
-      max: Math.floor(item.realValue * saleMultiplierMax * (1 + modifier))
+      min: Math.floor(item.realValue * saleMultiplierMin * (1 - commission)),
+      max: Math.floor(item.realValue * saleMultiplierMax * (1 - commission))
     };
   }, [blackmarket.daily, underworldRep]);
 
@@ -265,7 +266,7 @@ export const useBlackmarket = () => {
     // State
     blackmarket,
     heatInfo,
-    repModifier,
+    commissionInfo,
     isMarketOpen,
     daysUntilReopen,
     canPurchase,

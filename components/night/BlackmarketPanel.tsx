@@ -34,7 +34,7 @@ import {
   XCircle,
   ChevronRight,
 } from 'lucide-react';
-import { UNDERWORLD_PRICE_MODIFIERS } from '../../systems/blackmarket/types';
+import { UNDERWORLD_COMMISSION_TIERS } from '../../systems/blackmarket/types';
 
 interface BlackmarketPanelProps {
   isOpen: boolean;
@@ -46,7 +46,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
   const {
     blackmarket,
     heatInfo,
-    repModifier,
+    commissionInfo,
     isMarketOpen,
     daysUntilReopen,
     canPurchase,
@@ -196,7 +196,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
         {/* Heat & Reputation Status */}
         <div className="grid grid-cols-2 gap-4">
           <HeatIndicator heatInfo={heatInfo} />
-          <ReputationIndicator repModifier={repModifier} />
+          <CommissionIndicator commissionInfo={commissionInfo} />
         </div>
 
         {/* Tab Selector */}
@@ -319,9 +319,9 @@ const HeatIndicator: React.FC<HeatIndicatorProps> = ({ heatInfo }) => {
   );
 };
 
-interface ReputationIndicatorProps {
-  repModifier: {
-    modifier: number;
+interface CommissionIndicatorProps {
+  commissionInfo: {
+    commission: number;
     label: string;
     currentRep: number;
   };
@@ -331,14 +331,14 @@ interface ReputationIndicatorProps {
  * Individual segment in the segmented progress bar
  */
 interface SegmentProps {
-  tier: typeof UNDERWORLD_PRICE_MODIFIERS[0];
+  tier: typeof UNDERWORLD_COMMISSION_TIERS[0];
   isReached: boolean;
   isCurrent: boolean;
   isFirst: boolean;
   isLast: boolean;
 }
 
-const ReputationSegment: React.FC<SegmentProps> = ({
+const CommissionSegment: React.FC<SegmentProps> = ({
   tier,
   isReached,
   isCurrent,
@@ -347,10 +347,11 @@ const ReputationSegment: React.FC<SegmentProps> = ({
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const modifierText = tier.modifier > 0
-    ? `+${Math.round(tier.modifier * 100)}%`
-    : tier.modifier < 0
-    ? `${Math.round(tier.modifier * 100)}%`
+  // Commission display: positive = fee charged, negative = bonus (player gets more)
+  const commissionText = tier.commission > 0
+    ? `${Math.round(tier.commission * 100)}%`
+    : tier.commission < 0
+    ? `${Math.round(tier.commission * 100)}%` // Shows negative as bonus
     : '0%';
 
   return (
@@ -383,11 +384,11 @@ const ReputationSegment: React.FC<SegmentProps> = ({
             </div>
             <div className={cn(
               'text-xs font-mono mt-1',
-              tier.modifier > 0 ? 'text-green-400' :
-              tier.modifier < 0 ? 'text-red-400' :
+              tier.commission > 0 ? 'text-red-400' :
+              tier.commission < 0 ? 'text-green-400' :
               'text-stone-400'
             )}>
-              价格修正: {modifierText}
+              手续费: {commissionText}
             </div>
           </div>
           {/* Tooltip arrow */}
@@ -400,62 +401,63 @@ const ReputationSegment: React.FC<SegmentProps> = ({
   );
 };
 
-const ReputationIndicator: React.FC<ReputationIndicatorProps> = ({ repModifier }) => {
-  const isPositive = repModifier.modifier > 0;
-  const isNegative = repModifier.modifier < 0;
+const CommissionIndicator: React.FC<CommissionIndicatorProps> = ({ commissionInfo }) => {
+  // For commission: positive = fee charged (bad), negative = bonus (good)
+  const isBonus = commissionInfo.commission < 0;
+  const isFee = commissionInfo.commission > 0;
 
   // Find current tier index
-  const currentTierIndex = UNDERWORLD_PRICE_MODIFIERS.findIndex(
-    tier => repModifier.currentRep >= tier.minRep && repModifier.currentRep <= tier.maxRep
+  const currentTierIndex = UNDERWORLD_COMMISSION_TIERS.findIndex(
+    tier => commissionInfo.currentRep >= tier.minRep && commissionInfo.currentRep <= tier.maxRep
   );
 
   return (
     <div className={cn(
       'p-4 rounded border',
-      isPositive ? 'border-purple-700 bg-purple-950/30 text-purple-400' :
-      isNegative ? 'border-stone-700 bg-stone-900/30 text-stone-400' :
+      isBonus ? 'border-purple-700 bg-purple-950/30 text-purple-400' :
+      isFee ? 'border-stone-700 bg-stone-900/30 text-stone-400' :
       'border-stone-600 bg-stone-900/30 text-stone-300'
     )}>
       <div className="flex items-center gap-3">
         <Skull className="w-6 h-6" />
         <div className="flex-1">
           <div className="text-xs uppercase tracking-wider opacity-70">黑道声誉</div>
-          <div className="text-xl font-bold">{repModifier.label}</div>
+          <div className="text-xl font-bold">{commissionInfo.label}</div>
         </div>
         <div className="text-right">
-          <div className="text-lg font-mono font-bold">{repModifier.currentRep}</div>
+          <div className="text-lg font-mono font-bold">{commissionInfo.currentRep}</div>
           <div className="text-xs opacity-70">/ 100</div>
         </div>
       </div>
 
       {/* Segmented progress bar */}
       <div className="mt-3 flex gap-1">
-        {UNDERWORLD_PRICE_MODIFIERS.map((tier, index) => (
-          <ReputationSegment
+        {UNDERWORLD_COMMISSION_TIERS.map((tier, index) => (
+          <CommissionSegment
             key={index}
             tier={tier}
             isReached={index <= currentTierIndex}
             isCurrent={index === currentTierIndex}
             isFirst={index === 0}
-            isLast={index === UNDERWORLD_PRICE_MODIFIERS.length - 1}
+            isLast={index === UNDERWORLD_COMMISSION_TIERS.length - 1}
           />
         ))}
       </div>
 
-      {/* Price modifier */}
+      {/* Commission rate */}
       <div className="mt-3 text-sm flex items-center justify-between">
-        <span className="opacity-70">价格修正:</span>
+        <span className="opacity-70">手续费:</span>
         <span className={cn(
           'font-mono font-bold',
-          isPositive ? 'text-green-400' : isNegative ? 'text-red-400' : 'text-stone-400'
+          isBonus ? 'text-green-400' : isFee ? 'text-red-400' : 'text-stone-400'
         )}>
-          {repModifier.modifier > 0 ? '+' : ''}{Math.round(repModifier.modifier * 100)}%
+          {Math.round(commissionInfo.commission * 100)}%
         </span>
       </div>
 
       {/* Explanation */}
       <div className="mt-2 pt-2 border-t border-purple-800/30 text-xs opacity-60">
-        黑道声誉越高，黑市交易价格越好 (悬停查看各等级详情)
+        黑道声誉越高，手续费越低 (悬停查看各等级详情)
       </div>
     </div>
   );

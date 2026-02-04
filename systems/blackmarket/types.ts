@@ -106,15 +106,28 @@ export interface BlackmarketState {
 // ============================================================================
 
 /**
- * Reputation-based price modifiers for Underworld reputation
+ * Reputation-based commission rates for Underworld reputation
+ * Higher reputation = lower commission (player keeps more money)
+ * Commission is deducted from the sale price: finalPrice = basePrice * (1 - commission)
  */
-export const UNDERWORLD_PRICE_MODIFIERS: { minRep: number; maxRep: number; modifier: number; label: string }[] = [
-  { minRep: 0, maxRep: 19, modifier: -0.20, label: '生面孔' },
-  { minRep: 20, maxRep: 39, modifier: -0.10, label: '见过几次' },
-  { minRep: 40, maxRep: 59, modifier: 0, label: '熟客' },
-  { minRep: 60, maxRep: 79, modifier: 0.10, label: '老主顾' },
-  { minRep: 80, maxRep: 100, modifier: 0.20, label: '自己人' }
+export const UNDERWORLD_COMMISSION_TIERS: { minRep: number; maxRep: number; commission: number; label: string }[] = [
+  { minRep: 0, maxRep: 19, commission: 0.20, label: '生面孔' },
+  { minRep: 20, maxRep: 39, commission: 0.10, label: '见过几次' },
+  { minRep: 40, maxRep: 59, commission: 0, label: '熟客' },
+  { minRep: 60, maxRep: 79, commission: -0.10, label: '老主顾' },
+  { minRep: 80, maxRep: 100, commission: -0.20, label: '自己人' }
 ];
+
+/**
+ * @deprecated Use UNDERWORLD_COMMISSION_TIERS instead
+ * Kept for backward compatibility
+ */
+export const UNDERWORLD_PRICE_MODIFIERS = UNDERWORLD_COMMISSION_TIERS.map(tier => ({
+  minRep: tier.minRep,
+  maxRep: tier.maxRep,
+  modifier: -tier.commission, // Convert commission to modifier for backward compatibility
+  label: tier.label
+}));
 
 /**
  * Default black market state
@@ -154,11 +167,21 @@ export function getHeatConfig(heat: number): HeatConfig {
 }
 
 /**
- * Get price modifier based on Underworld reputation
+ * Get commission rate based on Underworld reputation
+ * Higher reputation = lower (or negative) commission = player keeps more money
  */
-export function getUnderworldPriceModifier(underworldRep: number): { modifier: number; label: string } {
-  const config = UNDERWORLD_PRICE_MODIFIERS.find(
+export function getUnderworldCommission(underworldRep: number): { commission: number; label: string } {
+  const config = UNDERWORLD_COMMISSION_TIERS.find(
     m => underworldRep >= m.minRep && underworldRep <= m.maxRep
   );
-  return config ?? { modifier: 0, label: '熟客' };
+  return config ?? { commission: 0, label: '熟客' };
+}
+
+/**
+ * @deprecated Use getUnderworldCommission instead
+ * Get price modifier based on Underworld reputation (kept for backward compatibility)
+ */
+export function getUnderworldPriceModifier(underworldRep: number): { modifier: number; label: string } {
+  const { commission, label } = getUnderworldCommission(underworldRep);
+  return { modifier: -commission, label };
 }
