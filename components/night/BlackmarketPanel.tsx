@@ -57,6 +57,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
     upgradeInfo,
     getEligibleItems,
     getSellableItems,
+    hasUnfulfilledPurchaseMatch,
     checkBreach,
     getCompensation,
     getProfit,
@@ -266,6 +267,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
                   checkBreach={checkBreach}
                   getCompensation={getCompensation}
                   getProfit={getProfit}
+                  hasUnfulfilledPurchaseMatch={hasUnfulfilledPurchaseMatch}
                   onSell={handleSellDirect}
                   selectedItemId={selectedItemId}
                   onSelectItem={setSelectedItemId}
@@ -490,6 +492,8 @@ interface BlackmarketItemCardProps {
   isBreach: boolean;
   compensation: number;
   variant: 'purchase' | 'sale';
+  disabled?: boolean;
+  disabledReason?: string;
   onSelect: () => void;
   onSell: () => void;
 }
@@ -502,6 +506,8 @@ const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
   isBreach,
   compensation,
   variant,
+  disabled = false,
+  disabledReason,
   onSelect,
   onSell,
 }) => {
@@ -512,11 +518,14 @@ const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
 
   return (
     <div
-      onClick={onSelect}
+      onClick={disabled ? undefined : onSelect}
       className={cn(
-        'p-3 rounded border transition-all cursor-pointer hover:bg-noir-200',
-        isBreach ? 'border-red-700 bg-red-950/20' : '',
-        isSelected ? colorScheme.selected : !isBreach ? 'border-noir-400' : ''
+        'p-3 rounded border transition-all',
+        disabled
+          ? 'border-stone-700 bg-stone-900/50 opacity-60 cursor-not-allowed'
+          : 'cursor-pointer hover:bg-noir-200',
+        !disabled && isBreach ? 'border-red-700 bg-red-950/20' : '',
+        !disabled && isSelected ? colorScheme.selected : !disabled && !isBreach ? 'border-noir-400' : ''
       )}
     >
       <div className="flex items-center gap-3">
@@ -543,30 +552,38 @@ const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
           <div className="text-xs text-stone-500">
             当金: <span className="text-stone-400 font-mono">${item.pawnAmount}</span>
           </div>
-          {isBreach && (
+          {!disabled && isBreach && (
             <div className="flex items-center gap-1 mt-1 text-xs text-amber-400">
               <AlertTriangle className="w-3 h-3" />
               <span>仍在典当期，赔偿 ${compensation}</span>
             </div>
           )}
-          <div className="flex items-center gap-1 mt-1 text-xs text-purple-400">
-            <Skull className="w-3 h-3" />
-            <span>出售获得：黑道 +2</span>
-          </div>
+          {!disabled && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-purple-400">
+              <Skull className="w-3 h-3" />
+              <span>出售获得：黑道 +2</span>
+            </div>
+          )}
+          {disabled && disabledReason && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-stone-500">
+              <Lock className="w-3 h-3" />
+              <span>{disabledReason}</span>
+            </div>
+          )}
         </div>
         <div className="text-right">
           <div className="text-xs text-stone-500">售价</div>
-          <div className={cn('text-lg font-mono font-bold', colorScheme.price)}>
+          <div className={cn('text-lg font-mono font-bold', disabled ? 'text-stone-500' : colorScheme.price)}>
             ${price}
           </div>
           <div className="text-xs text-stone-500">
             利润: <span className={cn(
               'font-mono',
-              profit >= 0 ? 'text-green-400' : 'text-red-400'
+              disabled ? 'text-stone-500' : profit >= 0 ? 'text-green-400' : 'text-red-400'
             )}>{profit >= 0 ? '+' : ''}${profit}</span>
           </div>
         </div>
-        {isSelected && (
+        {isSelected && !disabled && (
           <Button
             onClick={(e) => {
               e.stopPropagation();
@@ -617,9 +634,12 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
     );
   }
 
+  // 按溢价从高到低排序
+  const sortedRequests = [...requests].sort((a, b) => b.priceMultiplier - a.priceMultiplier);
+
   return (
     <div className="space-y-6">
-      {requests.map((request, index) => {
+      {sortedRequests.map((request, index) => {
         const eligibleItems = getEligibleItems(request);
         const tagDef = TAG_DEFINITIONS[request.tag];
         const isFulfilled = request.fulfilled;
@@ -677,7 +697,9 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                 ) : (
                   eligibleItems.map(item => {
                     const price = getPurchasePrice(item, request);
-                    const isSelected = selectedItemId === item.id;
+                    // 使用 item.id:request.tag 作为组合键，避免同一物品在多个收购列表中同时被选中
+                    const selectionKey = `${item.id}:${request.tag}`;
+                    const isSelected = selectedItemId === selectionKey;
                     const isBreach = checkBreach(item);
                     const compensation = getCompensation(item);
                     // 典当期内出售需扣除赔偿金，绝当物品扣除当金
@@ -685,7 +707,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
 
                     return (
                       <BlackmarketItemCard
-                        key={item.id}
+                        key={selectionKey}
                         item={item}
                         price={price}
                         profit={profit}
@@ -693,7 +715,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                         isBreach={isBreach}
                         compensation={compensation}
                         variant="purchase"
-                        onSelect={() => onSelectItem(isSelected ? null : item.id)}
+                        onSelect={() => onSelectItem(isSelected ? null : selectionKey)}
                         onSell={() => onSell(item, request)}
                       />
                     );
@@ -714,6 +736,7 @@ interface SaleTabProps {
   checkBreach: (item: Item) => boolean;
   getCompensation: (item: Item) => number;
   getProfit: (item: Item, salePrice: number) => number;
+  hasUnfulfilledPurchaseMatch: (item: Item) => boolean;
   onSell: (item: Item) => void;
   selectedItemId: string | null;
   onSelectItem: (id: string | null) => void;
@@ -725,6 +748,7 @@ const SaleTab: React.FC<SaleTabProps> = ({
   checkBreach,
   getCompensation,
   getProfit,
+  hasUnfulfilledPurchaseMatch,
   onSell,
   selectedItemId,
   onSelectItem,
@@ -747,6 +771,7 @@ const SaleTab: React.FC<SaleTabProps> = ({
         const isBreach = checkBreach(item);
         const compensation = getCompensation(item);
         const profit = getProfit(item, salePrice);
+        const inPurchaseList = hasUnfulfilledPurchaseMatch(item);
 
         return (
           <BlackmarketItemCard
@@ -754,11 +779,13 @@ const SaleTab: React.FC<SaleTabProps> = ({
             item={item}
             price={salePrice}
             profit={profit}
-            isSelected={isSelected}
+            isSelected={isSelected && !inPurchaseList}
             isBreach={isBreach}
             compensation={compensation}
             variant="sale"
-            onSelect={() => onSelectItem(isSelected ? null : item.id)}
+            disabled={inPurchaseList}
+            disabledReason="在收购清单中"
+            onSelect={() => !inPurchaseList && onSelectItem(isSelected ? null : item.id)}
             onSell={() => onSell(item)}
           />
         );

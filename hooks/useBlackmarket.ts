@@ -147,6 +147,15 @@ export const useBlackmarket = () => {
   }, [inventory]);
 
   /**
+   * Check if an item has a better price available through unfulfilled purchase requests
+   * Used to disable direct sale for items that should use purchase channel
+   */
+  const hasUnfulfilledPurchaseMatch = useCallback((item: Item): boolean => {
+    const unfulfilledRequests = blackmarket.daily.purchaseRequests.filter(r => !r.fulfilled);
+    return unfulfilledRequests.some(request => isEligibleForPurchase(item, request));
+  }, [blackmarket.daily.purchaseRequests]);
+
+  /**
    * Check if a specific item is eligible for a purchase request
    */
   const checkEligibility = useCallback((item: Item, request: MarketPurchaseRequest): boolean => {
@@ -313,6 +322,7 @@ export const useBlackmarket = () => {
     // Item queries
     getEligibleItems,
     getSellableItems,
+    hasUnfulfilledPurchaseMatch,
     checkEligibility,
     checkSellable,
     checkBreach,
