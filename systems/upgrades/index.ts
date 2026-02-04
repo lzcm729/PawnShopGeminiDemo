@@ -15,5 +15,6 @@ export {
   getCounterUpgradesForToggle,
   getAppointmentBoardLevel,
   getActiveAppointmentBoardConfig,
-  hasAppointmentBoard
+  hasAppointmentBoard,
+  hasBlackMarketContact
 } from './utils';

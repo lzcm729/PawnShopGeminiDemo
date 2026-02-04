@@ -6,6 +6,8 @@ import type { Item, PawnInfo, WorkState } from '../items/types';
 import type { ItemTag } from '../items/tags';
 import { STATE_TAGS, ATTRIBUTE_TAGS, ESSENCE_TAGS } from '../items/tags';
 import { createItemFromTemplate, getAllItemTemplates } from '../items/csvLoader';
+import { AVAILABLE_UPGRADES, getUpgradeConfig } from '../upgrades/config';
+import type { OwnedUpgrade } from '../upgrades/types';
 
 export interface CommandResult {
   success: boolean;
@@ -101,6 +103,7 @@ export function executeCommand(
   set health <n>        - Set mother's health (0-100)
   set bill-status <s>   - Set medical bill status (PAID|PENDING|OVERDUE)
   set chain <id> <var> <val> - Set chain variable (e.g., set chain chain_emma funds 400)
+  set upgrade <id> <level> - Set upgrade level (0 to remove, e.g., set upgrade black_market_contact 1)
   open <panel>          - Open panel (upgrade|mail|calendar|inventory|medical|visit|debug|appointment|blackmarket)
   close <panel>         - Close panel
   close shop            - Close shop and enter night phase (business phase only)
@@ -397,6 +400,82 @@ function handleSetCommand(
       };
       dispatch({ type: 'LOAD_GAME', payload: newState });
       return { success: true, message: `Medical bill status set to ${statusValue}` };
+    }
+
+    case 'upgrade': {
+      // Format: set upgrade <upgradeId> <level>
+      const parts = value.split(/\s+/);
+      if (parts.length < 2) {
+        const availableIds = AVAILABLE_UPGRADES.map(u => u.id).join(', ');
+        return {
+          success: false,
+          message: `Usage: set upgrade <upgradeId> <level>\nAvailable upgrades: ${availableIds}`
+        };
+      }
+      const [upgradeId, levelStr] = parts;
+      const level = parseInt(levelStr, 10);
+      if (isNaN(level) || level < 0) {
+        return { success: false, message: 'Level must be a non-negative number (0 to remove upgrade)' };
+      }
+
+      // Validate upgrade ID exists in config
+      const upgradeConfig = getUpgradeConfig(upgradeId);
+      if (!upgradeConfig) {
+        const availableIds = AVAILABLE_UPGRADES.map(u => u.id).join(', ');
+        return {
+          success: false,
+          message: `Invalid upgrade ID: ${upgradeId}\nAvailable upgrades: ${availableIds}`
+        };
+      }
+
+      // Validate level is within max
+      if (level > upgradeConfig.maxLevel) {
+        return {
+          success: false,
+          message: `Level ${level} exceeds max level ${upgradeConfig.maxLevel} for ${upgradeConfig.nameCn} (${upgradeId})`
+        };
+      }
+
+      const state = getState();
+      const currentUpgrades: OwnedUpgrade[] = state.shopUpgrades?.upgrades || [];
+      const existingIndex = currentUpgrades.findIndex((u: OwnedUpgrade) => u.upgradeId === upgradeId);
+
+      let newUpgrades: OwnedUpgrade[];
+      let message: string;
+
+      if (level === 0) {
+        // Remove the upgrade
+        if (existingIndex === -1) {
+          return { success: true, message: `Upgrade ${upgradeId} was not owned (no change)` };
+        }
+        newUpgrades = currentUpgrades.filter((_: OwnedUpgrade, i: number) => i !== existingIndex);
+        message = `Removed upgrade: ${upgradeConfig.nameCn} (${upgradeId})`;
+      } else {
+        // Add or update the upgrade
+        const newUpgrade: OwnedUpgrade = {
+          upgradeId,
+          currentLevel: level,
+          enabled: true
+        };
+
+        if (existingIndex === -1) {
+          // Add new upgrade
+          newUpgrades = [...currentUpgrades, newUpgrade];
+          message = `Added upgrade: ${upgradeConfig.nameCn} (${upgradeId}) at level ${level}`;
+        } else {
+          // Update existing upgrade
+          newUpgrades = [...currentUpgrades];
+          newUpgrades[existingIndex] = newUpgrade;
+          message = `Updated upgrade: ${upgradeConfig.nameCn} (${upgradeId}) to level ${level}`;
+        }
+      }
+
+      const newState = {
+        ...state,
+        shopUpgrades: { ...state.shopUpgrades, upgrades: newUpgrades }
+      };
+      dispatch({ type: 'LOAD_GAME', payload: newState });
+      return { success: true, message };
     }
 
     default:
@@ -1200,6 +1279,12 @@ export function getAvailableCommands(): CommandDef[] {
       examples: [`set chain chain_emma funds 400`, `set chain chain_emma hope 30`, `set chain chain_zhao morale 50`]
     },
     {
+      command: 'set upgrade',
+      description: 'Set upgrade level (0 to remove upgrade)',
+      usage: 'set upgrade <upgradeId> <level>',
+      examples: [`set upgrade black_market_contact 1`, `set upgrade appointment_board 3`, `set upgrade tea_set 0`]
+    },
+    {
       command: 'open',
       description: 'Open a panel',
       usage: 'open <panel>',
@@ -1328,7 +1413,8 @@ export function getCommandOptions(): Record<string, string[]> {
     itemStatuses: ['ACTIVE', 'FORFEIT'],
     workStates: ['DEFAULT', 'RESTORED', 'REFORGED'],
     templateIds: templates.map(t => t.id),
-    billStatuses: ['PAID', 'PENDING', 'OVERDUE']
+    billStatuses: ['PAID', 'PENDING', 'OVERDUE'],
+    upgradeIds: AVAILABLE_UPGRADES.map(u => u.id)
   };
 }
 

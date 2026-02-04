@@ -18,7 +18,7 @@ import { FacilityControlModal } from './FacilityControlModal';
 import { getHeatLevel } from '../systems/blackmarket/types';
 import { Tooltip } from './ui/Tooltip';
 import { ReputationType } from '../systems/core/types';
-import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost } from '../systems/upgrades';
+import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost, hasBlackMarketContact } from '../systems/upgrades';
 
 export const NightDashboard: React.FC = () => {
     const { state, dispatch } = useGame();
@@ -46,6 +46,7 @@ export const NightDashboard: React.FC = () => {
     const maintenanceCost = getTotalMaintenanceCost(state.shopUpgrades);
 
     // Black market state
+    const hasBlackMarket = hasBlackMarketContact(state.shopUpgrades);
     const blackmarketHeat = state.blackmarket?.heat ?? 0;
     const blackmarketHeatLevel = getHeatLevel(blackmarketHeat);
     const isBlackmarketLocked = state.blackmarket?.isLocked ?? false;
@@ -420,12 +421,20 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </button>
 
-                        {/* Black Market Button */}
+                        {/* Black Market Button (always visible, locked if not unlocked) */}
                         <button
-                            onClick={() => { playSfx('CLICK'); setShowBlackmarket(true); }}
+                            onClick={() => {
+                                if (hasBlackMarket) {
+                                    playSfx('CLICK');
+                                    setShowBlackmarket(true);
+                                }
+                            }}
+                            disabled={!hasBlackMarket}
                             className={cn(
                                 "h-32 border bg-stone-900/50 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
-                                isBlackmarketLocked
+                                !hasBlackMarket
+                                    ? "border-stone-700/50 cursor-default hover:border-purple-900/50"
+                                    : isBlackmarketLocked
                                     ? "border-red-900 opacity-70"
                                     : hasRiskEvent
                                     ? "border-red-500 animate-pulse"
@@ -436,45 +445,70 @@ export const NightDashboard: React.FC = () => {
                                     : "border-stone-700 hover:bg-stone-800"
                             )}
                         >
-                            {/* Lock indicator */}
-                            {isBlackmarketLocked && (
+                            {/* Locked state overlay (not purchased) */}
+                            {!hasBlackMarket && (
+                                <>
+                                    {/* Diagonal stripes pattern */}
+                                    <div
+                                        className="absolute inset-0 opacity-20 pointer-events-none"
+                                        style={{
+                                            backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.03) 8px, rgba(255,255,255,0.03) 16px)'
+                                        }}
+                                    />
+                                    {/* Central lock overlay */}
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <Lock className="w-6 h-6 text-purple-500/70 mb-2" />
+                                        <span className="text-[10px] text-purple-400/80 font-medium">需要「黑市联络电话」升级</span>
+                                    </div>
+                                </>
+                            )}
+                            {/* Lock indicator (market temporarily closed) */}
+                            {hasBlackMarket && isBlackmarketLocked && (
                                 <div className="absolute top-2 right-2 w-5 h-5 bg-red-700 rounded-full flex items-center justify-center">
                                     <Lock className="w-3 h-3 text-white" />
                                 </div>
                             )}
                             {/* Risk event indicator */}
-                            {hasRiskEvent && !isBlackmarketLocked && (
+                            {hasBlackMarket && hasRiskEvent && !isBlackmarketLocked && (
                                 <div className="absolute top-2 right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
                                     <AlertCircle className="w-3 h-3 text-white" />
                                 </div>
                             )}
                             {/* Forfeit count badge */}
-                            {forfeitItems > 0 && !isBlackmarketLocked && !hasRiskEvent && (
+                            {hasBlackMarket && forfeitItems > 0 && !isBlackmarketLocked && !hasRiskEvent && (
                                 <div className="absolute top-2 right-2 w-5 h-5 bg-stone-600 rounded-full flex items-center justify-center">
                                     <span className="text-[10px] font-bold text-white">{forfeitItems}</span>
                                 </div>
                             )}
                             <Skull className={cn(
-                                "w-8 h-8 transition-transform group-hover:scale-110",
-                                isBlackmarketLocked ? "text-red-700" :
-                                blackmarketHeatLevel === 'DANGER' ? "text-red-500" :
-                                blackmarketHeatLevel === 'WARNING' ? "text-orange-500" :
-                                "text-stone-500 group-hover:text-stone-300"
+                                "w-8 h-8 transition-transform",
+                                !hasBlackMarket
+                                    ? "text-purple-900/50"
+                                    : isBlackmarketLocked ? "text-red-700" :
+                                    blackmarketHeatLevel === 'DANGER' ? "text-red-500" :
+                                    blackmarketHeatLevel === 'WARNING' ? "text-orange-500" :
+                                    "text-stone-500 group-hover:text-stone-300 group-hover:scale-110"
                             )} />
                             <div className="flex flex-col items-center">
-                                <span className="text-xs uppercase tracking-widest group-hover:text-white">
+                                <span className={cn(
+                                    "text-xs uppercase tracking-widest",
+                                    hasBlackMarket ? "group-hover:text-white" : "text-stone-600"
+                                )}>
                                     黑市 (Black Market)
                                 </span>
                                 <span className={cn(
-                                    "text-[9px] mt-1",
+                                    "text-[9px] mt-1 flex items-center gap-1",
+                                    !hasBlackMarket ? "text-stone-600" :
                                     isBlackmarketLocked ? "text-red-500" :
                                     blackmarketHeatLevel === 'DANGER' ? "text-red-400" :
                                     blackmarketHeatLevel === 'WARNING' ? "text-orange-400" :
                                     "text-stone-500/70"
                                 )}>
-                                    {isBlackmarketLocked ? '已关闭' :
-                                     hasRiskEvent ? '警方行动!' :
-                                     forfeitItems > 0 ? `${forfeitItems} 件可出售` : '变卖绝当物品'}
+                                    {!hasBlackMarket
+                                        ? <><Lock className="w-3 h-3" /> 未解锁</>
+                                        : isBlackmarketLocked ? '已关闭' :
+                                         hasRiskEvent ? '警方行动!' :
+                                         forfeitItems > 0 ? `${forfeitItems} 件可出售` : '变卖绝当物品'}
                                 </span>
                             </div>
                         </button>

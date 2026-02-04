@@ -17,7 +17,8 @@ export type UpgradeEffectType =
   | 'NIGHT_ENERGY'          // Precision bench: +night energy
   | 'PATIENCE_BONUS'        // Tea set: +customer patience
   | 'ANOMALY_DETECTION'     // Spectrometer: detect fakes/treasures
-  | 'APPOINTMENT_BOARD';    // Appointment board: preview/invite customers
+  | 'APPOINTMENT_BOARD'     // Appointment board: preview/invite customers
+  | 'BLACK_MARKET_CONTACT'; // Black market contact: unlock black market access
 
 /**
  * Appointment board level configuration

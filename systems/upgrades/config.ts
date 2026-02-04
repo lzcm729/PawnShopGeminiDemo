@@ -114,6 +114,25 @@ export const APPOINTMENT_BOARD: UpgradeConfig = {
 };
 
 /**
+ * Black Market Contact (Backroom)
+ * Unlocks access to the black market for selling items
+ * One-time purchase, no maintenance cost
+ */
+export const BLACK_MARKET_CONTACT: UpgradeConfig = {
+  id: 'black_market_contact',
+  name: 'Black Market Contact',
+  nameCn: '黑市联络电话',
+  description: 'A shady contact number that opens doors to underground trading.',
+  location: 'BACKROOM',
+  effectType: 'BLACK_MARKET_CONTACT',
+  maxLevel: 1,
+  levels: [
+    { level: 1, cost: 1000, effectValue: 1, description: '解锁黑市交易渠道' },
+  ],
+  icon: 'Skull',
+};
+
+/**
  * Appointment board level configurations with detailed features
  */
 export const APPOINTMENT_BOARD_LEVELS: AppointmentBoardLevelConfig[] = [
@@ -139,6 +158,7 @@ export const AVAILABLE_UPGRADES: UpgradeConfig[] = [
   STORAGE_EXPANSION,
   PRECISION_BENCH,
   APPOINTMENT_BOARD,
+  BLACK_MARKET_CONTACT,
   // Counter (has maintenance, can be toggled)
   TEA_SET,
   SPECTROMETER,

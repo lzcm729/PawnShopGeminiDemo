@@ -9,7 +9,7 @@ import { ItemCard } from './ui/ItemCard';
 import { ItemDetailModal } from './ui/ItemDetailModal';
 import { playSfx } from '../systems/game/audio';
 import { cn } from '../lib/utils';
-import { getEffectiveInventoryCapacity } from '../systems/upgrades';
+import { getEffectiveInventoryCapacity, hasBlackMarketContact } from '../systems/upgrades';
 
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -51,6 +51,7 @@ export const InventoryModal: React.FC = () => {
   });
 
   const isNightPhase = PhaseIs.night(state.phase);
+  const hasBlackMarket = hasBlackMarketContact(state.shopUpgrades);
 
   // Handle opening Workshop panel with pre-selected item
   const handleOpenWorkshop = (itemId: string) => {
@@ -179,20 +180,20 @@ export const InventoryModal: React.FC = () => {
 
                   {/* Sell Button */}
                   <button
-                      onClick={isNightPhase ? () => handleOpenBlackmarket(item.id) : undefined}
-                      disabled={!isNightPhase}
+                      onClick={isNightPhase && hasBlackMarket ? () => handleOpenBlackmarket(item.id) : undefined}
+                      disabled={!isNightPhase || !hasBlackMarket}
                       className={cn(
                           baseButtonClass,
                           "border border-amber-900/50",
-                          isNightPhase
+                          isNightPhase && hasBlackMarket
                               ? cn(enabledClass, "text-amber-400 hover:border-amber-700 hover:bg-amber-950/30")
                               : cn(disabledClass, "text-amber-600/50")
                       )}
-                      title={isNightPhase ? "黑市出售 (Black Market)" : "仅夜间可用"}
+                      title={!hasBlackMarket ? "需要解锁「黑市联络电话」" : isNightPhase ? "黑市出售 (Black Market)" : "仅夜间可用"}
                   >
                       <Skull className="w-3.5 h-3.5" />
                       <span>出售</span>
-                      {!isNightPhase && <Lock className="w-2 h-2 opacity-50" />}
+                      {(!isNightPhase || !hasBlackMarket) && <Lock className="w-2 h-2 opacity-50" />}
                   </button>
               </div>
           </div>
