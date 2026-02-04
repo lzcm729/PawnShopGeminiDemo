@@ -543,19 +543,16 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                   );
               }
 
-              // Inner monologue (appraisal feedback) - special styling
+              // Inner monologue (appraisal feedback) - subtle styling, lower visual priority
               if (log.type === 'INNER_MONOLOGUE') {
                   return (
-                      <div key={log.id} className="flex flex-col max-w-[90%] items-end ml-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
-                          <div className="px-4 py-3 rounded-lg relative shadow-sm text-sm border bg-[#2a2a3a] border-[#3a3a4a] rounded-br-none flex items-start gap-2">
-                              <Search className="w-4 h-4 text-blue-400/70 shrink-0 mt-0.5" />
-                              <span className="font-serif italic text-stone-300 leading-relaxed">
+                      <div key={log.id} className="flex flex-col max-w-[85%] items-end ml-auto animate-in fade-in slide-in-from-bottom-2 duration-300 opacity-70 hover:opacity-90 transition-opacity">
+                          <div className="px-3 py-2 rounded relative text-xs flex items-start gap-1.5 border-l-2 border-stone-600/30 bg-stone-900/20">
+                              <Search className="w-3 h-3 text-stone-500 shrink-0 mt-0.5" />
+                              <span className="font-serif italic text-stone-400/80 leading-relaxed">
                                   {log.text}
                               </span>
                           </div>
-                          <span className="text-[9px] font-mono font-bold mt-1 px-1 uppercase tracking-wider text-blue-400/60">
-                              INNER THOUGHT
-                          </span>
                       </div>
                   );
               }
