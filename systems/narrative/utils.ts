@@ -51,13 +51,15 @@ export const makeItem = (base: ItemBase, chainId: string): Partial<Item> & { nam
     const defaults = getDefaultItemTemplate();
 
     // Use realValue from: 1) story DSL, 2) CSV template, 3) _default template
-    const realValue = base.realValue || template?.realValue || defaults?.realValue;
-    if (!realValue) {
-        console.error(`[makeItem] No realValue found for "${base.name}" - check _default row in Items_Base.csv`);
+    // Use ?? to preserve 0 as a valid value (e.g., virtual items)
+    const realValue = base.realValue ?? template?.realValue ?? defaults?.realValue ?? 100;
+    if (base.realValue === undefined && template?.realValue === undefined && defaults?.realValue === undefined) {
+        console.warn(`[makeItem] No realValue found for "${base.name}" - using emergency fallback 100`);
     }
 
     const perceivedValue = base.perceivedValue ?? template?.visualValue ?? defaults?.visualValue ?? realValue;
-    const uncertainty = base.uncertainty ?? template?.uncertainty ?? defaults?.uncertainty;
+    // Emergency fallback 0.3 if CSV not yet loaded (story parsing happens before CSV load)
+    const uncertainty = base.uncertainty ?? template?.uncertainty ?? defaults?.uncertainty ?? 0.3;
 
     const range = generateValuationRange(realValue, perceivedValue, uncertainty);
 
