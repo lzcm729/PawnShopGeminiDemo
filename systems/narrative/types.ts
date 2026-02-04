@@ -295,8 +295,9 @@ export interface CustomerPortraits {
     angry?: string;
 }
 
-// Re-export BehaviorTag from npc/types for backward compatibility
-export type { BehaviorTag } from '../npc/types';
+// Import and re-export BehaviorTag from npc/types for backward compatibility
+import type { BehaviorTag } from '../npc/types';
+export type { BehaviorTag };
 
 // === 事件链类型 ===
 export type ChainType = 'NARRATIVE' | 'TRANSIENT';

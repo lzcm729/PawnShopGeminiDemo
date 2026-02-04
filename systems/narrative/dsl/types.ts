@@ -292,8 +292,9 @@ export interface TraitBlock extends ASTNode {
 
 // === CUSTOMER BLOCK ===
 
-// Re-export BehaviorTag from npc/types for DSL use
-export type { BehaviorTag } from '../../npc/types';
+// Import and re-export BehaviorTag from npc/types for DSL use
+import type { BehaviorTag } from '../../npc/types';
+export type { BehaviorTag };
 
 export interface CustomerBlock extends ASTNode {
     type: 'CustomerBlock';
