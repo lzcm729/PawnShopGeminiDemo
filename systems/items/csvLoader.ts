@@ -1,12 +1,20 @@
 /**
- * CSV 配置加载器
+ * CSV Configuration Loader
  *
- * 从 CSV 文件加载物品模板和特征定义，
- * 提供运行时创建物品实例的功能。
+ * Loads item templates and trait definitions from CSV files,
+ * providing runtime item instance creation functionality.
  */
 
-import { Item, ItemTrait, ItemStatus, TraitType, WorkState } from './types';
+import { Item, ItemTrait, ItemStatus, TraitType } from './types';
 import { ItemTag, STATE_TAGS, ATTRIBUTE_TAGS, ESSENCE_TAGS } from './tags';
+import {
+  parseCSV,
+  CSVSchema,
+  stringCol,
+  numberCol,
+  booleanCol,
+  listCol,
+} from '../utils/csvReader';
 
 // Callback to notify other systems when CSV data is reloaded
 let onDataReloadCallback: (() => void) | null = null;
@@ -20,43 +28,47 @@ export function onCSVDataReload(callback: () => void): void {
 }
 
 // ============================================================================
-// 类型验证
+// Type Validation
 // ============================================================================
 
-/** 有效的 TraitType 值 */
+/** Valid TraitType values */
 const VALID_TRAIT_TYPES: TraitType[] = ['FLAW', 'STORY', 'FAKE'];
 
-/** 所有有效的 ItemTag 值 */
+/** All valid ItemTag values */
 const ALL_VALID_TAGS: ItemTag[] = [...STATE_TAGS, ...ATTRIBUTE_TAGS, ...ESSENCE_TAGS];
 
-/** 验证是否为有效的 ItemTag */
+/** Validate if string is a valid ItemTag */
 function isValidItemTag(tag: string): tag is ItemTag {
   return ALL_VALID_TAGS.includes(tag as ItemTag);
 }
 
-/** 验证是否为有效的 TraitType */
+/** Validate if string is a valid TraitType */
 function isValidTraitType(type: string): type is TraitType {
   return VALID_TRAIT_TYPES.includes(type as TraitType);
 }
 
-/** 解析并验证 ItemTag 列表 */
+/** Parse and validate ItemTag list */
 function parseItemTags(value: string): ItemTag[] {
-  return parseSemicolonList(value).filter(isValidItemTag);
+  if (!value || value.trim() === '') return [];
+  return value
+    .split(';')
+    .map(s => s.trim())
+    .filter(isValidItemTag);
 }
 
-/** 解析并验证 TraitType */
+/** Parse and validate TraitType */
 function parseTraitType(value: string): TraitType {
   if (isValidTraitType(value)) {
     return value;
   }
-  return 'STORY'; // 默认值
+  return 'STORY'; // Default value
 }
 
 // ============================================================================
-// 类型定义
+// Type Definitions
 // ============================================================================
 
-/** CSV 物品模板（从 Items_Base.csv 加载） */
+/** CSV item template (loaded from Items_Base.csv) */
 export interface ItemTemplate {
   id: string;
   nameDefault: string;
@@ -76,10 +88,10 @@ export interface ItemTemplate {
   /** Fit tags for filler customer matching (age, appearance, item tags) */
   fitTags: string[];
   /** Whether this item is available for filler customer generation */
-  fillerPool?: boolean;
+  fillerPool: boolean;
 }
 
-/** CSV 特征定义（从 Traits.csv 加载） */
+/** CSV trait definition (loaded from Traits.csv) */
 export interface TraitDefinition {
   id: string;
   name: string;
@@ -92,191 +104,154 @@ export interface TraitDefinition {
 }
 
 // ============================================================================
-// CSV 解析
+// CSV Schemas
 // ============================================================================
 
-/**
- * 解析 CSV 字符串为二维数组
- * 支持引号内的逗号和换行
- */
-function parseCSV(csv: string): string[][] {
-  const lines: string[][] = [];
-  let currentLine: string[] = [];
-  let currentField = '';
-  let inQuotes = false;
-
-  for (let i = 0; i < csv.length; i++) {
-    const char = csv[i];
-    const nextChar = csv[i + 1];
-
-    if (inQuotes) {
-      if (char === '"' && nextChar === '"') {
-        // 转义的引号
-        currentField += '"';
-        i++;
-      } else if (char === '"') {
-        // 结束引号
-        inQuotes = false;
-      } else {
-        currentField += char;
-      }
-    } else {
-      if (char === '"') {
-        inQuotes = true;
-      } else if (char === ',') {
-        currentLine.push(currentField.trim());
-        currentField = '';
-      } else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
-        currentLine.push(currentField.trim());
-        if (currentLine.length > 1 || currentLine[0] !== '') {
-          lines.push(currentLine);
-        }
-        currentLine = [];
-        currentField = '';
-        if (char === '\r') i++;
-      } else if (char !== '\r') {
-        currentField += char;
-      }
-    }
-  }
-
-  // 处理最后一行
-  if (currentField || currentLine.length > 0) {
-    currentLine.push(currentField.trim());
-    if (currentLine.length > 1 || currentLine[0] !== '') {
-      lines.push(currentLine);
-    }
-  }
-
-  return lines;
+/** Raw parsed item from CSV (before post-processing) */
+interface RawItemTemplate {
+  id: string;
+  nameDefault: string;
+  nameRestored: string;
+  nameReforged: string;
+  category: string;
+  realValue: number;
+  visualValue: number;
+  uncertainty: number;
+  initStateTags: string;  // Raw string, will be parsed
+  attrTags: string;       // Raw string, will be parsed
+  hiddenTraitIds: string[];
+  knowCap: number;
+  descDefault: string;
+  descRestored: string;
+  descReforged: string;
+  fitTags: string[];
+  fillerPool: boolean;
 }
 
-/**
- * 解析分号分隔的字符串为数组
- */
-function parseSemicolonList(value: string): string[] {
-  if (!value || value.trim() === '') return [];
-  return value.split(';').map(s => s.trim()).filter(s => s !== '');
+/** Schema for Items_Base.csv */
+const ITEM_SCHEMA: CSVSchema = {
+  'ID': stringCol('id'),
+  'Name_Default': stringCol('nameDefault'),
+  'Name_Restored': stringCol('nameRestored'),
+  'Name_Reforged': stringCol('nameReforged'),
+  'Category': stringCol('category'),
+  'Real_Value': numberCol('realValue', 0),
+  'Visual_Value': numberCol('visualValue', 0),
+  'Uncertainty': numberCol('uncertainty', 0.3),
+  'Init_State_Tags': stringCol('initStateTags'),  // Parsed later with validation
+  'Attr_Tags': stringCol('attrTags'),             // Parsed later with validation
+  'Hidden_Traits': listCol('hiddenTraitIds', ';'),
+  'Know_Cap': numberCol('knowCap', 100),
+  'Desc_Default': stringCol('descDefault'),
+  'Desc_Restored': stringCol('descRestored'),
+  'Desc_Reforged': stringCol('descReforged'),
+  'Fit_Tags': listCol('fitTags', ';'),
+  'Filler_Pool': booleanCol('fillerPool', false),
+};
+
+/** Raw parsed trait from CSV */
+interface RawTraitDefinition {
+  id: string;
+  name: string;
+  type: string;  // Raw string, will be validated
+  valueImpact: number;
+  detectDiff: number;
+  storyText: string;
+  dialoguePlayer: string;
+  dialogueCustomer: string;
 }
 
+/** Schema for Traits.csv */
+const TRAIT_SCHEMA: CSVSchema = {
+  'ID': stringCol('id'),
+  'Name': stringCol('name'),
+  'Type': stringCol('type'),  // Validated later
+  'Value_Impact': numberCol('valueImpact', 0),
+  'Detect_Diff': numberCol('detectDiff', 0.5),
+  'Story_Text': stringCol('storyText'),
+  'Dialogue_Player': stringCol('dialoguePlayer'),
+  'Dialogue_Customer': stringCol('dialogueCustomer'),
+};
+
 // ============================================================================
-// 注册表
+// Registries
 // ============================================================================
 
-/** 物品模板注册表 */
+/** Item template registry */
 const itemTemplateRegistry = new Map<string, ItemTemplate>();
 
-/** 特征定义注册表 */
+/** Trait definition registry */
 const traitDefinitionRegistry = new Map<string, TraitDefinition>();
 
 /**
- * 加载物品模板 CSV
+ * Load item templates from CSV content
  */
 export function loadItemTemplatesFromCSV(csvContent: string): void {
-  const rows = parseCSV(csvContent);
-  if (rows.length < 2) return; // 至少要有表头和一行数据
+  const rawItems = parseCSV<RawItemTemplate>(csvContent, ITEM_SCHEMA);
 
-  const headers = rows[0];
-  const headerIndex = new Map<string, number>();
-  headers.forEach((h, i) => headerIndex.set(h, i));
+  for (const raw of rawItems) {
+    if (!raw.id) continue;
 
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (row.length === 0 || (row.length === 1 && row[0] === '')) continue;
-
-    const get = (key: string): string => {
-      const idx = headerIndex.get(key);
-      return idx !== undefined ? (row[idx] || '') : '';
-    };
-
-    // Parse Filler_Pool: true/false/1/0, default to false if missing
-    const fillerPoolRaw = get('Filler_Pool').toLowerCase();
-    const fillerPool = fillerPoolRaw === 'true' || fillerPoolRaw === '1';
-
+    // Post-process: validate and convert tags
     const template: ItemTemplate = {
-      id: get('ID'),
-      nameDefault: get('Name_Default'),
-      nameRestored: get('Name_Restored'),
-      nameReforged: get('Name_Reforged'),
-      category: get('Category'),
-      realValue: parseInt(get('Real_Value')) || 0,
-      visualValue: parseInt(get('Visual_Value')) || 0,
-      uncertainty: parseFloat(get('Uncertainty')) || 0.3,
-      initStateTags: parseItemTags(get('Init_State_Tags')),
-      attrTags: parseItemTags(get('Attr_Tags')),
-      hiddenTraitIds: parseSemicolonList(get('Hidden_Traits')),
-      knowCap: parseInt(get('Know_Cap')) || 100,
-      descDefault: get('Desc_Default'),
-      descRestored: get('Desc_Restored') || get('Desc_Default'),
-      descReforged: get('Desc_Reforged') || get('Desc_Default'),
-      fitTags: parseSemicolonList(get('Fit_Tags')),
-      fillerPool,
+      ...raw,
+      initStateTags: parseItemTags(raw.initStateTags),
+      attrTags: parseItemTags(raw.attrTags),
+      // Use default description if restored/reforged are empty
+      descRestored: raw.descRestored || raw.descDefault,
+      descReforged: raw.descReforged || raw.descDefault,
     };
 
-    if (template.id) {
-      itemTemplateRegistry.set(template.id, template);
-    }
+    itemTemplateRegistry.set(template.id, template);
   }
 }
 
 /**
- * 加载特征定义 CSV
+ * Load trait definitions from CSV content
  */
 export function loadTraitDefinitionsFromCSV(csvContent: string): void {
-  const rows = parseCSV(csvContent);
-  if (rows.length < 2) return;
+  const rawTraits = parseCSV<RawTraitDefinition>(csvContent, TRAIT_SCHEMA);
 
-  const headers = rows[0];
-  const headerIndex = new Map<string, number>();
-  headers.forEach((h, i) => headerIndex.set(h, i));
+  for (const raw of rawTraits) {
+    if (!raw.id) continue;
 
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (row.length === 0 || (row.length === 1 && row[0] === '')) continue;
-
-    const get = (key: string): string => {
-      const idx = headerIndex.get(key);
-      return idx !== undefined ? (row[idx] || '') : '';
-    };
-
+    // Post-process: validate type and convert optional fields
     const definition: TraitDefinition = {
-      id: get('ID'),
-      name: get('Name'),
-      type: parseTraitType(get('Type')),
-      valueImpact: parseFloat(get('Value_Impact')) || 0,
-      detectDiff: parseFloat(get('Detect_Diff')) || 0.5,
-      storyText: get('Story_Text'),
-      dialoguePlayer: get('Dialogue_Player') || undefined,
-      dialogueCustomer: get('Dialogue_Customer') || undefined,
+      id: raw.id,
+      name: raw.name,
+      type: parseTraitType(raw.type),
+      valueImpact: raw.valueImpact,
+      detectDiff: raw.detectDiff,
+      storyText: raw.storyText,
+      dialoguePlayer: raw.dialoguePlayer || undefined,
+      dialogueCustomer: raw.dialogueCustomer || undefined,
     };
 
-    if (definition.id) {
-      traitDefinitionRegistry.set(definition.id, definition);
-    }
+    traitDefinitionRegistry.set(definition.id, definition);
   }
 }
 
 // ============================================================================
-// 查询 API
+// Query API
 // ============================================================================
 
 /**
- * 获取物品模板
+ * Get item template by ID
  */
 export function getItemTemplate(id: string): ItemTemplate | undefined {
   return itemTemplateRegistry.get(id);
 }
 
 /**
- * 获取所有物品模板
+ * Get all item templates
  */
 export function getAllItemTemplates(): ItemTemplate[] {
   return Array.from(itemTemplateRegistry.values());
 }
 
 /**
- * 获取填充物品池模板ID列表
- * 仅返回 fillerPool === true 的物品模板ID
+ * Get filler pool template IDs
+ * Returns only template IDs where fillerPool === true
  */
 export function getFillerPoolTemplateIds(): string[] {
   return Array.from(itemTemplateRegistry.values())
@@ -285,25 +260,25 @@ export function getFillerPoolTemplateIds(): string[] {
 }
 
 /**
- * 获取特征定义
+ * Get trait definition by ID
  */
 export function getTraitDefinition(id: string): TraitDefinition | undefined {
   return traitDefinitionRegistry.get(id);
 }
 
 /**
- * 获取所有特征定义
+ * Get all trait definitions
  */
 export function getAllTraitDefinitions(): TraitDefinition[] {
   return Array.from(traitDefinitionRegistry.values());
 }
 
 // ============================================================================
-// 物品创建
+// Item Creation
 // ============================================================================
 
 /**
- * 从特征定义创建 ItemTrait 实例
+ * Create ItemTrait instance from trait definition
  */
 export function createTraitFromDefinition(def: TraitDefinition): ItemTrait {
   return {
@@ -323,11 +298,11 @@ export function createTraitFromDefinition(def: TraitDefinition): ItemTrait {
 }
 
 /**
- * 从模板创建物品实例
+ * Create item instance from template
  *
- * @param templateId 物品模板 ID
- * @param overrides 覆盖的字段
- * @returns 新的物品实例，如果模板不存在则返回 null
+ * @param templateId Item template ID
+ * @param overrides Fields to override
+ * @returns New item instance, or null if template not found
  */
 export function createItemFromTemplate(
   templateId: string,
@@ -339,7 +314,7 @@ export function createItemFromTemplate(
     return null;
   }
 
-  // 从特征 ID 创建隐藏特征
+  // Create hidden traits from trait IDs
   const hiddenTraits: ItemTrait[] = [];
   for (const traitId of template.hiddenTraitIds) {
     const traitDef = getTraitDefinition(traitId);
@@ -350,10 +325,10 @@ export function createItemFromTemplate(
     }
   }
 
-  // 合并初始标签
+  // Merge initial tags
   const tags: ItemTag[] = [...template.initStateTags, ...template.attrTags];
 
-  // 生成估值范围
+  // Generate estimate range
   const anchor = template.visualValue || template.realValue;
   const width = anchor * template.uncertainty;
   const skewFactor = 0.2 + (Math.random() * 0.6);
@@ -410,7 +385,7 @@ export function createItemFromTemplate(
     knowledgePool: {
       capacity: template.knowCap,
       extracted: 0,
-      essenceYield: { craft: 0.34, time: 0.33, vibe: 0.33 }, // 会被 initializeKnowledgePool 重新计算
+      essenceYield: { craft: 0.34, time: 0.33, vibe: 0.33 }, // Will be recalculated by initializeKnowledgePool
     },
     ...overrides,
   };
@@ -419,14 +394,14 @@ export function createItemFromTemplate(
 }
 
 // ============================================================================
-// 初始化
+// Initialization
 // ============================================================================
 
 let initialized = false;
 
 /**
- * 初始化 CSV 数据（从内嵌的默认数据）
- * 在生产环境中，这些数据应该从文件或 API 加载
+ * Initialize CSV data (from embedded default data)
+ * In production, this data should be loaded from files or API
  */
 export function initializeCSVData(itemsCSV?: string, traitsCSV?: string): void {
   if (initialized && !itemsCSV && !traitsCSV) return;
@@ -450,14 +425,14 @@ export function initializeCSVData(itemsCSV?: string, traitsCSV?: string): void {
 }
 
 /**
- * 检查是否已初始化
+ * Check if CSV data is initialized
  */
 export function isCSVDataInitialized(): boolean {
   return initialized;
 }
 
 /**
- * 清空注册表（用于测试）
+ * Clear registries (for testing)
  */
 export function clearRegistries(): void {
   itemTemplateRegistry.clear();
