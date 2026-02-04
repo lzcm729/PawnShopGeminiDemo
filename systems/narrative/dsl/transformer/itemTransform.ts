@@ -5,6 +5,7 @@
 
 import { ItemBlock, TraitBlock } from '../types';
 import { Item, ItemTrait, ItemStatus } from '../../../items/types';
+import { getAllTraitDefinitions, createTraitFromDefinition } from '../../../items/csvLoader';
 
 /**
  * Transform an ItemBlock AST node into item properties for makeItem
@@ -43,8 +44,29 @@ export function transformItem(ast: ItemBlock, chainId: string): Partial<Item> & 
 
 /**
  * Transform a TraitBlock AST node into an ItemTrait
+ * If a CSV trait definition with the same name exists, use its dialogueTrigger
  */
 function transformTrait(ast: TraitBlock): ItemTrait {
+    // Try to find matching CSV trait by name (for dialogueTrigger)
+    const csvTraits = getAllTraitDefinitions();
+    const matchingCsvTrait = csvTraits.find(t => t.name === ast.name);
+
+    // If CSV has this trait, use its dialogueTrigger
+    if (matchingCsvTrait) {
+        const csvTrait = createTraitFromDefinition(matchingCsvTrait);
+        return {
+            id: ast.id,
+            name: ast.name,
+            type: ast.traitType,
+            description: ast.description,
+            valueImpact: ast.valueImpact,
+            discoveryDifficulty: ast.discoveryDifficulty,
+            // Use dialogueTrigger from CSV (includes playerLine, customerLine, playerUseLine)
+            dialogueTrigger: csvTrait.dialogueTrigger
+        };
+    }
+
+    // Fallback: no CSV match, use DSL-defined dialogue if any
     const trait: ItemTrait = {
         id: ast.id,
         name: ast.name,
