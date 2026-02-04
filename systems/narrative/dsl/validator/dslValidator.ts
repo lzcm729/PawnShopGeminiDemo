@@ -324,18 +324,14 @@ function validateEvent(event: EventBlock, context: ValidationContext, issues: Va
 }
 
 function validateItem(item: ItemBlock, issues: ValidationIssue[]): void {
-    if (!item.name) {
+    // Note: name, realValue, and other properties now come from CSV templates.
+    // DSL only needs to specify the item ID and optional story-specific overrides.
+    // No validation needed for CSV-sourced fields.
+
+    if (!item.id) {
         issues.push({
             severity: 'error',
-            message: `Item '${item.id}' missing name`,
-            location: item.location
-        });
-    }
-
-    if (item.realValue <= 0 && !item.isVirtual) {
-        issues.push({
-            severity: 'warning',
-            message: `Item '${item.id}' has non-positive real_value: ${item.realValue}`,
+            message: 'Item missing id',
             location: item.location
         });
     }
