@@ -571,7 +571,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                   'font-mono font-bold',
                   isFulfilled ? 'text-stone-500' : 'text-green-400'
                 )}>
-                  {Math.round(request.priceMultiplier * 100)}% 真实价值
+                  溢价 +{Math.round((request.priceMultiplier - 1) * 100)}%
                 </div>
               </div>
             </div>
