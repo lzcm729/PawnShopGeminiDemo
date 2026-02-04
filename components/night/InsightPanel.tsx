@@ -135,21 +135,15 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
 
         {/* Main Content: List + Detail Panel */}
         <div className="flex gap-4">
-          {/* Item List */}
-          <div className={cn(
-            'space-y-4 transition-all',
-            selectedItemData ? 'w-1/2' : 'w-full'
-          )}>
+          {/* Item List - Fixed width */}
+          <div className="w-1/2 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
             {/* Can Insight */}
             {canInsightItems.length > 0 && (
               <div>
                 <h4 className="text-xs uppercase text-stone-500 tracking-wider mb-2">
                   可研究的物品 ({canInsightItems.length})
                 </h4>
-                <div className={cn(
-                  'grid gap-3',
-                  selectedItemData ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'
-                )}>
+                <div className="grid gap-3 grid-cols-1">
                   {canInsightItems.map(({ item, status, primaryEssence }) => (
                     <InsightItemCard
                       key={item.id}
@@ -173,10 +167,7 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
                 <h4 className="text-xs uppercase text-stone-500 tracking-wider mb-2">
                   无法研究 ({cannotInsightItems.length})
                 </h4>
-                <div className={cn(
-                  'grid gap-3 opacity-60',
-                  selectedItemData ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'
-                )}>
+                <div className="grid gap-3 grid-cols-1 opacity-60">
                   {cannotInsightItems.map(({ item, status, primaryEssence }) => (
                     <InsightItemCard
                       key={item.id}
@@ -204,9 +195,9 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
             )}
           </div>
 
-          {/* Detail Panel */}
-          {selectedItemData && (
-            <div className="w-1/2">
+          {/* Detail Panel - Fixed width, always visible */}
+          <div className="w-1/2">
+            {selectedItemData ? (
               <ItemDetailPanel
                 item={selectedItemData.item}
                 status={selectedItemData.status}
@@ -215,8 +206,16 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
                 isProcessing={isProcessing}
                 currentEnergy={currentEnergy}
               />
-            </div>
-          )}
+            ) : (
+              <div className="bg-noir-200 border border-noir-400 rounded-lg p-6 h-full flex flex-col items-center justify-center text-center min-h-[300px]">
+                <Eye className="w-12 h-12 text-stone-600 mb-4" />
+                <p className="text-stone-500 mb-2">选择物品查看详情</p>
+                <p className="text-xs text-stone-600">
+                  点击左侧可研究的物品，<br />查看格物预期和操作
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Modal>
@@ -432,23 +431,6 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
             </div>
           )}
         </div>
-
-        {/* Action */}
-        {canInsight && isSelected && (
-          <div className="flex items-center">
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                onInsight();
-              }}
-              disabled={isProcessing}
-              className="h-8 px-3 text-xs bg-purple-900 hover:bg-purple-800 border-purple-700"
-            >
-              {isProcessing ? '...' : '格物'}
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -666,9 +648,8 @@ const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-stone-400 flex items-center gap-1">
                 <span className="text-purple-400">+{actualExtraction}</span>
-                <span>
-                  {ESSENCE_ICONS[primaryType]} {ESSENCE_DISPLAY_NAMES[primaryType]}
-                </span>
+                <Sparkles className="w-3 h-3 text-purple-400" />
+                <span>精魄</span>
               </span>
               <span className="text-stone-500">(必得)</span>
             </div>
@@ -705,8 +686,10 @@ const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
                   <span className="text-yellow-500">(顿悟)</span>
                 </div>
                 <div className="flex items-center justify-between text-yellow-400">
-                  <span>
-                    额外 +{epiphanyBonus} {ESSENCE_ICONS[primaryType]}
+                  <span className="flex items-center gap-1">
+                    额外 +{epiphanyBonus}
+                    <Sparkles className="w-3 h-3" />
+                    精魄
                   </span>
                   <span className="text-yellow-500">(顿悟)</span>
                 </div>

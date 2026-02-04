@@ -103,6 +103,10 @@ export const useAppraisal = () => {
 
         const updatedRevealed = [...revealedTraits, ...uniqueNewTraits];
 
+        // Remove discovered traits from hidden traits
+        const discoveredIds = new Set(uniqueNewTraits.map(t => t.id));
+        const updatedHidden = hiddenTraits.filter(t => !discoveredIds.has(t.id));
+
         let newUncertainty = item.uncertainty;
         
         if (event.type === 'MISHAP') {
@@ -161,11 +165,12 @@ export const useAppraisal = () => {
                 itemId: item.id,
                 newRange: newRange,
                 revealedTraits: updatedRevealed,
+                hiddenTraits: updatedHidden,
                 newUncertainty,
                 newPerceived: item.perceivedValue,
                 incrementAppraisalCount: true,
                 hasNegativeEvent: hasNegative ? true : undefined,
-                log 
+                log
             }
         });
 

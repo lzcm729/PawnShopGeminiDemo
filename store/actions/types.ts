@@ -47,7 +47,7 @@ export type Action =
 
     // Appraisal & Item knowledge
     | { type: 'APPRAISE_ITEM' }
-    | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: any[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry } }
+    | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: any[]; hiddenTraits?: any[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry } }
     | { type: 'REALIZE_ITEM_TRUTH'; payload: { itemId: string } }
     | { type: 'MARK_TRAIT_USED'; payload: { traitId: string } }
     | { type: 'CONSUME_AP'; payload: number }
