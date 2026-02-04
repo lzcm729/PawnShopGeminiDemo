@@ -103,38 +103,53 @@ export const useAppraisal = () => {
              newUncertainty = Math.max(0.05, newUncertainty * 0.85);
         }
 
-        const CONVERGENCE_SPEED = 0.15;
-        const anchor = item.perceivedValue ?? item.realValue;
         const [currentMin, currentMax] = item.currentRange;
 
-        let calcMin = currentMin + (anchor - currentMin) * CONVERGENCE_SPEED;
-        let calcMax = currentMax - (currentMax - anchor) * CONVERGENCE_SPEED;
-        
-        if (event.type === 'MISHAP') {
-             calcMin = currentMin - (anchor * 0.05);
-             calcMax = currentMax + (anchor * 0.05);
-        }
+        // Check if we found traits through normal discovery (not LUCKY_FIND bonus)
+        const bonusTraitIds = new Set(bonusTraits.map(t => t.id));
+        const hasNormalDiscovery = uniqueNewTraits.some(t => !bonusTraitIds.has(t.id));
 
-        const roundToHuman = (val: number) => Math.round(val);
+        let newRange: [number, number];
 
-        let nextMin = roundToHuman(calcMin);
-        let nextMax = roundToHuman(calcMax);
-
-        if (event.type !== 'MISHAP') {
-             nextMin = Math.max(currentMin, nextMin);
-             nextMax = Math.min(currentMax, nextMax);
+        // Normal trait discovery: don't narrow range (trait itself is the reward)
+        // LUCKY_FIND only or no discovery: narrow range as usual
+        if (hasNormalDiscovery && event.type !== 'MISHAP') {
+            // Keep current range when normal traits are discovered
+            newRange = [currentMin, currentMax];
         } else {
-             nextMin = Math.max(0, nextMin);
-             nextMax = Math.min(anchor * 3, nextMax);
-        }
+            // Narrow or expand range
+            const CONVERGENCE_SPEED = 0.15;
+            const anchor = item.perceivedValue ?? item.realValue;
 
-        if (nextMin > nextMax) {
-            const mid = Math.floor((nextMin + nextMax) / 2);
-            nextMin = mid;
-            nextMax = mid;
-        }
+            let calcMin = currentMin + (anchor - currentMin) * CONVERGENCE_SPEED;
+            let calcMax = currentMax - (currentMax - anchor) * CONVERGENCE_SPEED;
 
-        const newRange: [number, number] = [nextMin, nextMax];
+            if (event.type === 'MISHAP') {
+                 calcMin = currentMin - (anchor * 0.05);
+                 calcMax = currentMax + (anchor * 0.05);
+            }
+
+            const roundToHuman = (val: number) => Math.round(val);
+
+            let nextMin = roundToHuman(calcMin);
+            let nextMax = roundToHuman(calcMax);
+
+            if (event.type !== 'MISHAP') {
+                 nextMin = Math.max(currentMin, nextMin);
+                 nextMax = Math.min(currentMax, nextMax);
+            } else {
+                 nextMin = Math.max(0, nextMin);
+                 nextMax = Math.min(anchor * 3, nextMax);
+            }
+
+            if (nextMin > nextMax) {
+                const mid = Math.floor((nextMin + nextMax) / 2);
+                nextMin = mid;
+                nextMax = mid;
+            }
+
+            newRange = [nextMin, nextMax];
+        }
 
         let log = undefined;
         if (uniqueNewTraits.length > 0) {
