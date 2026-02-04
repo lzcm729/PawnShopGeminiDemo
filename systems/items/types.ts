@@ -1,5 +1,5 @@
-import { ItemTag, ItemVariant, KnowledgePool } from './tags';
-export { ItemTag, ItemVariant, KnowledgePool };
+import type { ItemTag, ItemVariant, KnowledgePool } from './tags';
+export type { ItemTag, ItemVariant, KnowledgePool };
 
 // 物品加工状态（互斥）
 export type WorkState = 'DEFAULT' | 'RESTORED' | 'REFORGED';

@@ -9,14 +9,9 @@ import { EventChainState, StoryEvent, MailTemplate } from '../../types';
 import { parseStoryContent, LoadedStory } from './dsl/loader';
 
 // Import raw .story files (Vite ?raw import)
-// TypeScript doesn't support query params in module specifiers, but Vite handles this at build time
-// @ts-expect-error Vite raw import
 import emmaStoryRaw from './stories-dsl/emma.story?raw';
-// @ts-expect-error Vite raw import
 import susanStoryRaw from './stories-dsl/susan.story?raw';
-// @ts-expect-error Vite raw import
 import zhaoStoryRaw from './stories-dsl/zhao.story?raw';
-// @ts-expect-error Vite raw import
 import linStoryRaw from './stories-dsl/lin.story?raw';
 
 // === PARSE ALL STORIES AT MODULE LOAD ===
