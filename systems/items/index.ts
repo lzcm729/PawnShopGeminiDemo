@@ -33,7 +33,4 @@ export {
 } from './csvLoader';
 
 // 数据初始化
-export {
-  initializeItemData,
-  loadItemDataFromFiles,
-} from './dataInit';
+export { initializeItemData } from './dataInit';
