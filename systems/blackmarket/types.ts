@@ -109,13 +109,14 @@ export interface BlackmarketState {
  * Reputation-based commission rates for Underworld reputation
  * Higher reputation = lower commission (player keeps more money)
  * Commission is deducted from the sale price: finalPrice = basePrice * (1 - commission)
+ * Commission range: 0% (best, "insider") to 20% (worst, "stranger")
  */
 export const UNDERWORLD_COMMISSION_TIERS: { minRep: number; maxRep: number; commission: number; label: string }[] = [
-  { minRep: 0, maxRep: 19, commission: 0.20, label: '生面孔' },
-  { minRep: 20, maxRep: 39, commission: 0.10, label: '见过几次' },
-  { minRep: 40, maxRep: 59, commission: 0, label: '熟客' },
-  { minRep: 60, maxRep: 79, commission: -0.10, label: '老主顾' },
-  { minRep: 80, maxRep: 100, commission: -0.20, label: '自己人' }
+  { minRep: 0, maxRep: 19, commission: 0.20, label: '生面孔' },    // 20% commission
+  { minRep: 20, maxRep: 39, commission: 0.15, label: '见过几次' }, // 15% commission
+  { minRep: 40, maxRep: 59, commission: 0.10, label: '熟客' },     // 10% commission
+  { minRep: 60, maxRep: 79, commission: 0.05, label: '老主顾' },   // 5% commission
+  { minRep: 80, maxRep: 100, commission: 0, label: '自己人' }       // 0% commission (best)
 ];
 
 /**
@@ -168,7 +169,7 @@ export function getHeatConfig(heat: number): HeatConfig {
 
 /**
  * Get commission rate based on Underworld reputation
- * Higher reputation = lower (or negative) commission = player keeps more money
+ * Higher reputation = lower commission (0% at max) = player keeps more money
  */
 export function getUnderworldCommission(underworldRep: number): { commission: number; label: string } {
   const config = UNDERWORLD_COMMISSION_TIERS.find(

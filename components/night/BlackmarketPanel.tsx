@@ -347,12 +347,8 @@ const CommissionSegment: React.FC<SegmentProps> = ({
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  // Commission display: positive = fee charged, negative = bonus (player gets more)
-  const commissionText = tier.commission > 0
-    ? `${Math.round(tier.commission * 100)}%`
-    : tier.commission < 0
-    ? `${Math.round(tier.commission * 100)}%` // Shows negative as bonus
-    : '0%';
+  // Commission display: 0% = best (no fee), positive = fee charged
+  const commissionText = `${Math.round(tier.commission * 100)}%`;
 
   return (
     <div
@@ -384,9 +380,7 @@ const CommissionSegment: React.FC<SegmentProps> = ({
             </div>
             <div className={cn(
               'text-xs font-mono mt-1',
-              tier.commission > 0 ? 'text-red-400' :
-              tier.commission < 0 ? 'text-green-400' :
-              'text-stone-400'
+              tier.commission > 0 ? 'text-red-400' : 'text-green-400'
             )}>
               手续费: {commissionText}
             </div>
@@ -402,9 +396,9 @@ const CommissionSegment: React.FC<SegmentProps> = ({
 };
 
 const CommissionIndicator: React.FC<CommissionIndicatorProps> = ({ commissionInfo }) => {
-  // For commission: positive = fee charged (bad), negative = bonus (good)
-  const isBonus = commissionInfo.commission < 0;
-  const isFee = commissionInfo.commission > 0;
+  // Commission: 0% = best (no fee, green), positive = fee charged (red)
+  const isNoFee = commissionInfo.commission === 0;
+  const hasFee = commissionInfo.commission > 0;
 
   // Find current tier index
   const currentTierIndex = UNDERWORLD_COMMISSION_TIERS.findIndex(
@@ -414,8 +408,8 @@ const CommissionIndicator: React.FC<CommissionIndicatorProps> = ({ commissionInf
   return (
     <div className={cn(
       'p-4 rounded border',
-      isBonus ? 'border-purple-700 bg-purple-950/30 text-purple-400' :
-      isFee ? 'border-stone-700 bg-stone-900/30 text-stone-400' :
+      isNoFee ? 'border-green-700 bg-green-950/30 text-green-400' :
+      hasFee ? 'border-purple-700 bg-purple-950/30 text-purple-400' :
       'border-stone-600 bg-stone-900/30 text-stone-300'
     )}>
       <div className="flex items-center gap-3">
@@ -449,7 +443,7 @@ const CommissionIndicator: React.FC<CommissionIndicatorProps> = ({ commissionInf
         <span className="opacity-70">手续费:</span>
         <span className={cn(
           'font-mono font-bold',
-          isBonus ? 'text-green-400' : isFee ? 'text-red-400' : 'text-stone-400'
+          isNoFee ? 'text-green-400' : 'text-red-400'
         )}>
           {Math.round(commissionInfo.commission * 100)}%
         </span>
