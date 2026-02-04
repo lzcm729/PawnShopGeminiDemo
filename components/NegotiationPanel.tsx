@@ -315,6 +315,10 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                   ? 'positive'
                   : 'neutral',
               type: 'INNER_MONOLOGUE',
+              data: {
+                  feedbackType: feedback.type,
+                  traitName: feedback.traitName,
+              },
           });
       }
 
@@ -545,13 +549,38 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
               // Inner monologue (appraisal feedback) - subtle styling, lower visual priority
               if (log.type === 'INNER_MONOLOGUE') {
+                  // Generate result label based on feedback type
+                  const getResultLabel = () => {
+                      const feedbackType = log.data?.feedbackType;
+                      const traitName = log.data?.traitName;
+                      switch (feedbackType) {
+                          case 'TRAIT_DISCOVERED': return traitName ? `发现线索：${traitName}` : '发现线索';
+                          case 'RANGE_NARROWED': return '估值范围收缩';
+                          case 'LUCKY_FIND': return '意外发现';
+                          case 'MISHAP': return '鉴定失误';
+                          case 'IMPATIENT': return '客户不耐烦';
+                          case 'NO_AP': return '行动点不足';
+                          case 'NO_PATIENCE': return '客户耐心耗尽';
+                          case 'ALREADY_KNOWN': return '暂无新发现';
+                          default: return null;
+                      }
+                  };
+                  const resultLabel = getResultLabel();
+
                   return (
                       <div key={log.id} className="flex flex-col max-w-[85%] items-end ml-auto animate-in fade-in slide-in-from-bottom-2 duration-300 opacity-70 hover:opacity-90 transition-opacity">
                           <div className="px-3 py-2 rounded relative text-xs flex items-start gap-1.5 border-l-2 border-stone-600/30 bg-stone-900/20">
                               <Search className="w-3 h-3 text-stone-500 shrink-0 mt-0.5" />
-                              <span className="font-serif italic text-stone-400/80 leading-relaxed">
-                                  {log.text}
-                              </span>
+                              <div className="flex flex-col gap-1">
+                                  <span className="font-serif italic text-stone-400/80 leading-relaxed">
+                                      {log.text}
+                                  </span>
+                                  {resultLabel && (
+                                      <span className="text-[10px] text-stone-500/70 font-mono">
+                                          → {resultLabel}
+                                      </span>
+                                  )}
+                              </div>
                           </div>
                       </div>
                   );
