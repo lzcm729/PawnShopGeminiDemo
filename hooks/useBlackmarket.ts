@@ -26,13 +26,18 @@ import {
   getEligibleItemsForSale,
   getHeatGain,
   getBreachCompensation,
-  calculateSaleProfit
+  calculateSaleProfit,
+  getHeatDecayRate,
+  getPurchasePriceBonus
 } from '../systems/blackmarket/blackmarketService';
+import { getBlackMarketContactLevel, getActiveBlackMarketConfig } from '../systems/upgrades';
 
 export const useBlackmarket = () => {
   const { state, dispatch } = useGame();
-  const { blackmarket, inventory, reputation } = state;
+  const { blackmarket, inventory, reputation, shopUpgrades } = state;
   const underworldRep = reputation[ReputationType.UNDERWORLD];
+  const blackMarketLevel = getBlackMarketContactLevel(shopUpgrades);
+  const blackMarketConfig = getActiveBlackMarketConfig(shopUpgrades);
 
   // ========================================================================
   // Computed State
@@ -93,6 +98,21 @@ export const useBlackmarket = () => {
   const remainingPurchaseSlots = useMemo(() => {
     return blackmarket.daily.purchaseLimit - blackmarket.daily.purchasedCount;
   }, [blackmarket.daily.purchaseLimit, blackmarket.daily.purchasedCount]);
+
+  /**
+   * Upgrade info for display
+   */
+  const upgradeInfo = useMemo(() => {
+    const heatDecay = getHeatDecayRate(blackMarketLevel);
+    const priceBonus = getPurchasePriceBonus(blackMarketLevel);
+    return {
+      level: blackMarketLevel,
+      dailyLimit: blackmarket.daily.purchaseLimit,
+      heatDecay,
+      priceBonus,
+      priceBonusPercent: Math.round(priceBonus * 100)
+    };
+  }, [blackMarketLevel, blackmarket.daily.purchaseLimit]);
 
   // ========================================================================
   // Item Queries
@@ -157,10 +177,11 @@ export const useBlackmarket = () => {
 
   /**
    * Get price for selling item to market purchase request
+   * Includes upgrade-based price bonus
    */
   const getPurchasePrice = useCallback((item: Item, request: MarketPurchaseRequest): number => {
-    return calculatePurchasePrice(item, request, underworldRep);
-  }, [underworldRep]);
+    return calculatePurchasePrice(item, request, underworldRep, blackMarketLevel);
+  }, [underworldRep, blackMarketLevel]);
 
   /**
    * Get price for player-initiated sale
@@ -196,7 +217,7 @@ export const useBlackmarket = () => {
     if (!canPurchase) return;
     if (!isEligibleForPurchase(item, request)) return;
 
-    const price = calculatePurchasePrice(item, request, underworldRep);
+    const price = calculatePurchasePrice(item, request, underworldRep, blackMarketLevel);
     const heatGain = getHeatGain(true);
 
     dispatch({
@@ -209,7 +230,7 @@ export const useBlackmarket = () => {
         heatGain
       }
     });
-  }, [isMarketOpen, canPurchase, underworldRep, dispatch]);
+  }, [isMarketOpen, canPurchase, underworldRep, blackMarketLevel, dispatch]);
 
   /**
    * Sell item via player sale track (low price track)
@@ -271,6 +292,7 @@ export const useBlackmarket = () => {
     daysUntilReopen,
     canPurchase,
     remainingPurchaseSlots,
+    upgradeInfo,
 
     // Item queries
     getEligibleItems,

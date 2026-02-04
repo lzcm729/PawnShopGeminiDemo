@@ -34,6 +34,16 @@ export interface AppointmentBoardLevelConfig {
 }
 
 /**
+ * Black market contact level configuration
+ */
+export interface BlackMarketLevelConfig {
+  level: number;
+  dailyPurchaseLimit: number;  // Max items that can be sold to purchase requests per day
+  heatDecay: number;           // Heat decay per day
+  purchasePriceBonus: number;  // Bonus % on purchase prices (0.05 = +5%)
+}
+
+/**
  * Appointment candidate preference filter (Lv5 feature)
  */
 export type AppointmentPreference = 'balanced' | 'needy' | 'casual';

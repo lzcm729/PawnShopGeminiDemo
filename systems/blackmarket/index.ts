@@ -34,6 +34,11 @@ export {
   applyHeatDecay,
   checkRiskEvent,
 
+  // Upgrade-based helpers
+  getDailyPurchaseLimit,
+  getPurchasePriceBonus,
+  getHeatDecayRate,
+
   // State management
   processEndOfDay,
   processStartOfDay

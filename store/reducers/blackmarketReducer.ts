@@ -8,8 +8,10 @@ import { ReputationType } from '../../systems/core/types';
 import { Action } from '../actions/types';
 import {
   generateDailyBlackmarketState,
-  processStartOfDay
+  processStartOfDay,
+  applyHeatDecay
 } from '../../systems/blackmarket/blackmarketService';
+import { getBlackMarketContactLevel } from '../../systems/upgrades/utils';
 
 export function blackmarketReducer(state: GameState, action: Action): GameState {
   switch (action.type) {
@@ -207,11 +209,14 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
     case 'BLACKMARKET_PROCESS_DAY_END': {
       const { riskEvent } = action.payload;
 
-      // Apply heat decay
-      const newHeat = Math.max(0, state.blackmarket.heat - 1);
+      // Get upgrade level for heat decay rate and daily limits
+      const upgradeLevel = getBlackMarketContactLevel(state.shopUpgrades);
 
-      // Generate new daily state
-      const newDaily = generateDailyBlackmarketState();
+      // Apply heat decay (rate depends on upgrade level)
+      const newHeat = applyHeatDecay(state.blackmarket.heat, upgradeLevel);
+
+      // Generate new daily state with upgrade-based purchase limit
+      const newDaily = generateDailyBlackmarketState(upgradeLevel);
 
       return {
         ...state,
@@ -229,10 +234,13 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       // Process start of day (check lock expiration)
       const updatedState = processStartOfDay(state.blackmarket, state.stats.day);
 
-      // Generate new daily requests if not locked
+      // Get upgrade level for daily limits
+      const upgradeLevel = getBlackMarketContactLevel(state.shopUpgrades);
+
+      // Generate new daily requests if not locked, with upgrade-based purchase limit
       const newDaily = updatedState.isLocked
         ? state.blackmarket.daily
-        : generateDailyBlackmarketState();
+        : generateDailyBlackmarketState(upgradeLevel);
 
       return {
         ...state,

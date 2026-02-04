@@ -5,6 +5,7 @@
  * - Daily market generation (purchase requests)
  * - Price calculation with reputation modifiers
  * - Heat management and risk events
+ * - Upgrade-based enhancements (daily limits, heat decay, price bonuses)
  */
 
 import { Item, ItemStatus } from '../items/types';
@@ -19,6 +20,8 @@ import {
   getHeatConfig,
   getUnderworldCommission
 } from './types';
+import { BlackMarketLevelConfig } from '../upgrades/types';
+import { BLACK_MARKET_LEVELS } from '../upgrades/config';
 
 // ============================================================================
 // Daily Market Generation
@@ -84,15 +87,48 @@ export function generateDailySaleMultipliers(): { min: number; max: number } {
 }
 
 /**
- * Generate a fresh daily state
+ * Get the daily purchase limit based on black market upgrade level
+ * @param upgradeLevel The black market contact upgrade level (0-5)
  */
-export function generateDailyBlackmarketState(): BlackmarketDailyState {
+export function getDailyPurchaseLimit(upgradeLevel: number): number {
+  if (upgradeLevel <= 0) return 3; // Default if not unlocked (shouldn't happen)
+  const config = BLACK_MARKET_LEVELS.find(l => l.level === upgradeLevel);
+  return config?.dailyPurchaseLimit ?? 3;
+}
+
+/**
+ * Get the purchase price bonus based on black market upgrade level
+ * @param upgradeLevel The black market contact upgrade level (0-5)
+ * @returns Bonus multiplier (e.g., 0.05 for +5%)
+ */
+export function getPurchasePriceBonus(upgradeLevel: number): number {
+  if (upgradeLevel <= 0) return 0;
+  const config = BLACK_MARKET_LEVELS.find(l => l.level === upgradeLevel);
+  return config?.purchasePriceBonus ?? 0;
+}
+
+/**
+ * Get the heat decay rate based on black market upgrade level
+ * @param upgradeLevel The black market contact upgrade level (0-5)
+ */
+export function getHeatDecayRate(upgradeLevel: number): number {
+  if (upgradeLevel <= 0) return 1; // Default decay
+  const config = BLACK_MARKET_LEVELS.find(l => l.level === upgradeLevel);
+  return config?.heatDecay ?? 1;
+}
+
+/**
+ * Generate a fresh daily state
+ * @param upgradeLevel Optional black market contact upgrade level (defaults to 1)
+ */
+export function generateDailyBlackmarketState(upgradeLevel: number = 1): BlackmarketDailyState {
   const { min, max } = generateDailySaleMultipliers();
+  const purchaseLimit = getDailyPurchaseLimit(upgradeLevel);
 
   return {
     purchaseRequests: generateDailyPurchaseRequests(),
     purchasedCount: 0,
-    purchaseLimit: 3,
+    purchaseLimit,
     saleMultiplierMin: min,
     saleMultiplierMax: max
   };
@@ -107,19 +143,23 @@ export function generateDailyBlackmarketState(): BlackmarketDailyState {
  * @param item The item being sold
  * @param purchaseRequest The market's purchase request
  * @param underworldRep Player's Underworld reputation
+ * @param upgradeLevel Optional black market upgrade level for price bonus (default 1)
  */
 export function calculatePurchasePrice(
   item: Item,
   purchaseRequest: MarketPurchaseRequest,
-  underworldRep: number
+  underworldRep: number,
+  upgradeLevel: number = 1
 ): number {
   const basePrice = item.realValue;
   const marketMultiplier = purchaseRequest.priceMultiplier;
   const { commission } = getUnderworldCommission(underworldRep);
+  const priceBonus = getPurchasePriceBonus(upgradeLevel);
 
-  // Final price = realValue * marketMultiplier * (1 - commission)
-  // Higher reputation = lower commission (0-20%), player keeps more
-  const finalPrice = basePrice * marketMultiplier * (1 - commission);
+  // Final price = realValue * marketMultiplier * (1 + priceBonus) * (1 - commission)
+  // priceBonus: upgrade bonus (0%, 5%, 10%)
+  // commission: reputation-based fee (0-20%), higher reputation = lower commission
+  const finalPrice = basePrice * marketMultiplier * (1 + priceBonus) * (1 - commission);
 
   return Math.floor(finalPrice);
 }
@@ -289,9 +329,12 @@ export function getHeatGain(isPurchase: boolean): number {
 
 /**
  * Apply daily heat decay
+ * @param currentHeat Current heat level
+ * @param upgradeLevel Optional black market upgrade level for decay rate (default 1)
  */
-export function applyHeatDecay(currentHeat: number): number {
-  return Math.max(0, currentHeat - 1);
+export function applyHeatDecay(currentHeat: number, upgradeLevel: number = 1): number {
+  const decayRate = getHeatDecayRate(upgradeLevel);
+  return Math.max(0, currentHeat - decayRate);
 }
 
 /**
@@ -380,16 +423,20 @@ export function createInitialBlackmarketState(): BlackmarketState {
 
 /**
  * Process end of day for blackmarket
- * - Apply heat decay
+ * - Apply heat decay (based on upgrade level)
  * - Check lock expiration
- * - Generate new daily state
+ * - Generate new daily state (with upgrade-based purchase limit)
+ * @param state Current blackmarket state
+ * @param currentDay Current game day
+ * @param upgradeLevel Optional black market upgrade level (default 1)
  */
 export function processEndOfDay(
   state: BlackmarketState,
-  currentDay: number
+  currentDay: number,
+  upgradeLevel: number = 1
 ): { newState: BlackmarketState; riskEvent: RiskEvent | null } {
-  // Apply heat decay
-  const newHeat = applyHeatDecay(state.heat);
+  // Apply heat decay (rate depends on upgrade level)
+  const newHeat = applyHeatDecay(state.heat, upgradeLevel);
 
   // Check if lock has expired
   const isStillLocked = state.isLocked && state.lockUntilDay > currentDay;
@@ -412,7 +459,7 @@ export function processEndOfDay(
       heat: newHeat,
       isLocked: finalLocked,
       lockUntilDay: finalLockUntilDay,
-      daily: generateDailyBlackmarketState(),
+      daily: generateDailyBlackmarketState(upgradeLevel),
       todaySales: [],
       lastRiskEvent: riskEvent
     },

@@ -2,7 +2,7 @@
 // Shop Upgrade Configuration
 // Defines all available upgrades, their costs, and effects
 
-import { UpgradeConfig, AppointmentBoardLevelConfig } from './types';
+import { UpgradeConfig, AppointmentBoardLevelConfig, BlackMarketLevelConfig } from './types';
 
 /**
  * Storage Expansion (Backroom)
@@ -115,19 +115,24 @@ export const APPOINTMENT_BOARD: UpgradeConfig = {
 
 /**
  * Black Market Contact (Backroom)
- * Unlocks access to the black market for selling items
- * One-time purchase, no maintenance cost
+ * Multi-level upgrade that improves black market capabilities
+ * Lv1: Unlock basic access
+ * Lv2-5: Increase daily limits, heat decay, and price bonuses
  */
 export const BLACK_MARKET_CONTACT: UpgradeConfig = {
   id: 'black_market_contact',
   name: 'Black Market Contact',
-  nameCn: '黑市联络电话',
-  description: 'A shady contact number that opens doors to underground trading.',
+  nameCn: '黑市联络网',
+  description: 'Deepen your connections in the underground trading network.',
   location: 'BACKROOM',
   effectType: 'BLACK_MARKET_CONTACT',
-  maxLevel: 1,
+  maxLevel: 5,
   levels: [
-    { level: 1, cost: 1000, effectValue: 1, description: '解锁黑市交易渠道' },
+    { level: 1, cost: 1000,  effectValue: 1, description: 'Lv1 联络人：解锁黑市，每日收购3件' },
+    { level: 2, cost: 2500,  effectValue: 2, description: 'Lv2 街头口碑：每日收购4件' },
+    { level: 3, cost: 5000,  effectValue: 3, description: 'Lv3 情报网络：每日收购5件，热度-2/天，收购价+5%' },
+    { level: 4, cost: 8000,  effectValue: 4, description: 'Lv4 洗钱渠道：每日收购6件' },
+    { level: 5, cost: 15000, effectValue: 5, description: 'Lv5 内部人士：每日收购8件，热度-3/天，收购价+10%' },
   ],
   icon: 'Skull',
 };
@@ -148,6 +153,33 @@ export const APPOINTMENT_BOARD_LEVELS: AppointmentBoardLevelConfig[] = [
  */
 export function getAppointmentBoardLevelConfig(level: number): AppointmentBoardLevelConfig | undefined {
   return APPOINTMENT_BOARD_LEVELS.find(l => l.level === level);
+}
+
+/**
+ * Black market contact level configurations with detailed features
+ * Based on design spec:
+ * | Level | Name | Cost | Daily Purchase | Heat Decay | Price Bonus |
+ * |-------|------|------|----------------|------------|-------------|
+ * | Lv1 | 黑市联络人 | $1,000 | 3 | -1/day | +0% |
+ * | Lv2 | 街头口碑 | $2,500 | 4 | -1/day | +0% |
+ * | Lv3 | 情报网络 | $5,000 | 5 | -2/day | +5% |
+ * | Lv4 | 洗钱渠道 | $8,000 | 6 | -2/day | +5% |
+ * | Lv5 | 内部人士 | $15,000 | 8 | -3/day | +10% |
+ */
+export const BLACK_MARKET_LEVELS: BlackMarketLevelConfig[] = [
+  { level: 1, dailyPurchaseLimit: 3, heatDecay: 1, purchasePriceBonus: 0 },
+  { level: 2, dailyPurchaseLimit: 4, heatDecay: 1, purchasePriceBonus: 0 },
+  { level: 3, dailyPurchaseLimit: 5, heatDecay: 2, purchasePriceBonus: 0.05 },
+  { level: 4, dailyPurchaseLimit: 6, heatDecay: 2, purchasePriceBonus: 0.05 },
+  { level: 5, dailyPurchaseLimit: 8, heatDecay: 3, purchasePriceBonus: 0.10 },
+];
+
+/**
+ * Get black market level config
+ * Returns undefined if level is 0 (not unlocked)
+ */
+export function getBlackMarketLevelConfig(level: number): BlackMarketLevelConfig | undefined {
+  return BLACK_MARKET_LEVELS.find(l => l.level === level);
 }
 
 /**

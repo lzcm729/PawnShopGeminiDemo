@@ -2,8 +2,8 @@
 // Shop Upgrade Utility Functions
 // Helpers for computing upgrade effects and managing upgrade state
 
-import { ShopUpgradeState, UpgradeEffects, OwnedUpgrade, AppointmentBoardLevelConfig } from './types';
-import { getUpgradeConfig, getUpgradeLevelConfig, AVAILABLE_UPGRADES, BASE_INVENTORY_CAPACITY, getAppointmentBoardLevelConfig } from './config';
+import { ShopUpgradeState, UpgradeEffects, OwnedUpgrade, AppointmentBoardLevelConfig, BlackMarketLevelConfig } from './types';
+import { getUpgradeConfig, getUpgradeLevelConfig, AVAILABLE_UPGRADES, BASE_INVENTORY_CAPACITY, getAppointmentBoardLevelConfig, getBlackMarketLevelConfig } from './config';
 import { GAME_CONFIG } from '../game/config';
 
 /**
@@ -314,6 +314,24 @@ export function hasAppointmentBoard(upgradeState: ShopUpgradeState): boolean {
 export function hasBlackMarketContact(upgradeState: ShopUpgradeState): boolean {
   const owned = upgradeState.upgrades.find(u => u.upgradeId === 'black_market_contact');
   return (owned?.currentLevel ?? 0) > 0;
+}
+
+/**
+ * Get the current black market contact level (0 if not purchased)
+ */
+export function getBlackMarketContactLevel(upgradeState: ShopUpgradeState): number {
+  const owned = upgradeState.upgrades.find(u => u.upgradeId === 'black_market_contact');
+  return owned?.currentLevel ?? 0;
+}
+
+/**
+ * Get the active black market contact configuration based on current level
+ * Returns null if black market contact is not purchased
+ */
+export function getActiveBlackMarketConfig(upgradeState: ShopUpgradeState): BlackMarketLevelConfig | null {
+  const level = getBlackMarketContactLevel(upgradeState);
+  if (level === 0) return null;
+  return getBlackMarketLevelConfig(level) || null;
 }
 
 /**

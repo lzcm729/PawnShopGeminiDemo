@@ -51,6 +51,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
     daysUntilReopen,
     canPurchase,
     remainingPurchaseSlots,
+    upgradeInfo,
     getEligibleItems,
     getSellableItems,
     checkBreach,
@@ -195,9 +196,38 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
 
         {/* Heat & Reputation Status */}
         <div className="grid grid-cols-2 gap-4">
-          <HeatIndicator heatInfo={heatInfo} />
+          <HeatIndicator heatInfo={heatInfo} heatDecay={upgradeInfo.heatDecay} />
           <CommissionIndicator commissionInfo={commissionInfo} />
         </div>
+
+        {/* Upgrade Effects Display */}
+        {upgradeInfo.level > 0 && (
+          <div className="bg-purple-950/30 border border-purple-800 rounded p-3">
+            <div className="flex items-center gap-2 text-xs text-purple-300">
+              <Skull className="w-4 h-4" />
+              <span className="font-bold">黑市联络网 Lv{upgradeInfo.level}</span>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+              <div className="text-center">
+                <div className="text-stone-500">每日收购</div>
+                <div className="font-mono text-purple-400">{upgradeInfo.dailyLimit} 件</div>
+              </div>
+              <div className="text-center">
+                <div className="text-stone-500">热度衰减</div>
+                <div className="font-mono text-purple-400">-{upgradeInfo.heatDecay}/天</div>
+              </div>
+              <div className="text-center">
+                <div className="text-stone-500">收购价加成</div>
+                <div className={cn(
+                  "font-mono",
+                  upgradeInfo.priceBonusPercent > 0 ? "text-green-400" : "text-stone-500"
+                )}>
+                  {upgradeInfo.priceBonusPercent > 0 ? `+${upgradeInfo.priceBonusPercent}%` : '-'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tab Selector */}
         {isMarketOpen && !hasRiskEvent && (
@@ -235,6 +265,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
                 requests={blackmarket.daily.purchaseRequests}
                 canPurchase={canPurchase}
                 remainingSlots={remainingPurchaseSlots}
+                purchaseLimit={blackmarket.daily.purchaseLimit}
                 getEligibleItems={getEligibleItems}
                 getPurchasePrice={getPurchasePrice}
                 checkBreach={checkBreach}
@@ -288,9 +319,10 @@ interface HeatIndicatorProps {
     displayName: string;
     description: string;
   };
+  heatDecay?: number;
 }
 
-const HeatIndicator: React.FC<HeatIndicatorProps> = ({ heatInfo }) => {
+const HeatIndicator: React.FC<HeatIndicatorProps> = ({ heatInfo, heatDecay = 1 }) => {
   const levelColors: Record<string, string> = {
     SAFE: 'text-green-500 border-green-700 bg-green-950/30',
     WATCHED: 'text-yellow-500 border-yellow-700 bg-yellow-950/30',
@@ -308,7 +340,9 @@ const HeatIndicator: React.FC<HeatIndicatorProps> = ({ heatInfo }) => {
         </div>
       </div>
       <div className="mt-2 text-sm opacity-70">{heatInfo.description}</div>
-      <div className="mt-1 text-xs text-stone-500">每件出售 +2 热度</div>
+      <div className="mt-1 text-xs text-stone-500">
+        每件出售 +2 热度 | 每日衰减 -{heatDecay}
+      </div>
       {heatInfo.riskPercent > 0 && (
         <div className="mt-1 text-xs flex items-center gap-1">
           <ShieldAlert className="w-3 h-3" />
@@ -461,6 +495,7 @@ interface PurchaseTabProps {
   requests: MarketPurchaseRequest[];
   canPurchase: boolean;
   remainingSlots: number;
+  purchaseLimit: number;
   getEligibleItems: (request: MarketPurchaseRequest) => Item[];
   getPurchasePrice: (item: Item, request: MarketPurchaseRequest) => number;
   checkBreach: (item: Item) => boolean;
@@ -473,6 +508,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
   requests,
   canPurchase,
   remainingSlots,
+  purchaseLimit,
   getEligibleItems,
   getPurchasePrice,
   checkBreach,
@@ -493,7 +529,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
     <div className="space-y-6">
       {!canPurchase && (
         <div className="bg-amber-950/30 border border-amber-700 p-3 rounded text-amber-400 text-sm">
-          今日收购限额已满 (3件)
+          今日收购限额已满 ({purchaseLimit}件)
         </div>
       )}
 
