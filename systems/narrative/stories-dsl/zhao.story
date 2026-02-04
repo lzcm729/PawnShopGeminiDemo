@@ -392,15 +392,14 @@
     trigger: day >= 4
     target_item: zhao_item_medal
 
-    @item zhao_virtual_deal_low
-        name: "收购邀约：勋章029"
-        category: "其他"
-        visual_description: "一份收购合同。"
-        history: "我是来帮我的客户解决遗憾的。"
-        appraisal_note: "这是违约出售客户当品。"
-        archive_summary: "玩家拒绝了第一次诱惑。"
-        real_value: 5000
-        virtual: true
+    @interaction
+        type: PURCHASE_OFFER
+        target_item: zhao_item_medal
+        title: "收购邀约：勋章029"
+        description: "一份收购合同。"
+        reason: "我是来帮我的客户解决遗憾的。"
+        note: "这是违约出售客户当品。"
+        offer_value: 5000
 
     @customer
         name: "收藏顾问"
@@ -634,15 +633,14 @@
     trigger: medal_sold_early == 1
     target_item: zhao_item_cert
 
-    @item zhao_virtual_deal_cert
-        name: "收购邀约：证书与合影"
-        category: "其他"
-        visual_description: "一份收购合同。"
-        history: "勋章已经到手了，现在只差证书。"
-        appraisal_note: "只买证书，价格自然低得多。"
-        archive_summary: "收藏家已拿到勋章，回来收购证书。"
-        real_value: 8000
-        virtual: true
+    @interaction
+        type: PURCHASE_OFFER
+        target_item: zhao_item_cert
+        title: "收购邀约：证书与合影"
+        description: "一份收购合同。"
+        reason: "勋章已经到手了，现在只差证书。"
+        note: "只买证书，价格自然低得多。"
+        offer_value: 8000
 
     @customer
         name: "收藏顾问"
@@ -703,15 +701,14 @@
     trigger: medal_sold_early == 0
     target_item: zhao_item_medal
 
-    @item zhao_virtual_deal_high
-        name: "收购邀约：全套立功档案"
-        category: "其他"
-        visual_description: "一份加急的收购合同。"
-        history: "客户说，这是最后一次报价。"
-        appraisal_note: "这是出卖灵魂的价格。"
-        archive_summary: "玩家在巨大的金钱诱惑面前动摇了吗？"
-        real_value: 38000
-        virtual: true
+    @interaction
+        type: PURCHASE_OFFER
+        target_item: zhao_item_medal
+        title: "收购邀约：全套立功档案"
+        description: "一份加急的收购合同。"
+        reason: "客户说，这是最后一次报价。"
+        note: "这是出卖灵魂的价格。"
+        offer_value: 38000
 
     @customer
         name: "收藏顾问"

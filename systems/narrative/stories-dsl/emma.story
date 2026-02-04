@@ -1080,15 +1080,13 @@ HR说我"气质不够自信"。
     trigger: stage == 3
     trigger: days_since_interview >= 3
 
-    @item emma_laptop_request
-        name: "借用请求"
-        category: "其他"
-        visual_description: "艾玛想借用她之前典当的电脑。"
-        history: "网吧的电脑太卡了，作品集打不开..."
-        appraisal_note: "这是一个人情请求，不涉及金钱交易。"
-        archive_summary: "艾玛在最困难的时候请求帮助。"
-        real_value: 0
-        virtual: true
+    @interaction
+        type: BORROW_REQUEST
+        target_item: emma_item_laptop
+        title: "借用请求"
+        description: "艾玛想借用她之前典当的电脑。"
+        reason: "网吧的电脑太卡了，作品集打不开..."
+        note: "这是一个人情请求，不涉及金钱交易。"
 
     @customer
         name: "艾玛"

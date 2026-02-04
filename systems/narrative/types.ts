@@ -333,6 +333,20 @@ export interface CustomerTemplate {
     pawnTermDays?: number;  // 自定义典当期限（默认7天）
 }
 
+// === INTERACTION TYPES ===
+
+export type InteractionType = 'BORROW_REQUEST' | 'PURCHASE_OFFER' | 'RETURN_VISIT';
+
+export interface Interaction {
+    type: InteractionType;
+    targetItemId?: string;      // 引用的真实物品 ID
+    title: string;              // 显示标题
+    description: string;        // 描述
+    reason?: string;            // 顾客的理由
+    note?: string;              // 备注（显示在鉴定区域）
+    offerValue?: number;        // 收购出价（仅 PURCHASE_OFFER）
+}
+
 export interface StoryEvent {
   id: string;
   chainId: string;
@@ -342,6 +356,7 @@ export interface StoryEvent {
 
   template: CustomerTemplate;
   item?: Partial<Item>;
+  interaction?: Interaction;    // 新增：与 item 互斥
 
   onComplete?: ChainUpdateEffect[];
   outcomes?: {

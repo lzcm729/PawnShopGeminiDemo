@@ -11,6 +11,8 @@ import {
     MailBlock,
     EventBlock,
     ItemBlock,
+    InteractionBlock,
+    InteractionType,
     CustomerBlock,
     DialogueBlock,
     OutcomesBlock,
@@ -290,6 +292,7 @@ export function createEventBlock(
     options?: {
         eventType?: 'STANDARD' | 'REDEMPTION_CHECK' | 'POST_FORFEIT_VISIT';
         item?: ItemBlock;
+        interaction?: InteractionBlock;
         customer?: CustomerBlock;
         outcomes?: OutcomesBlock;
         onReject?: ActionNode[];
@@ -340,6 +343,30 @@ export function createItemBlock(
         id,
         name,
         realValue,
+        location,
+        ...options
+    };
+}
+
+// === INTERACTION BLOCK ===
+
+export function createInteractionBlock(
+    interactionType: InteractionType,
+    title: string,
+    description: string,
+    location: SourceLocation,
+    options?: {
+        targetItemId?: string;
+        reason?: string;
+        note?: string;
+        offerValue?: number;
+    }
+): InteractionBlock {
+    return {
+        type: 'InteractionBlock',
+        interactionType,
+        title,
+        description,
         location,
         ...options
     };

@@ -16,7 +16,8 @@ import {
     AcceptedDialogueNode,
     RejectionLinesNode,
     ExitDialoguesNode,
-    DialogueVariantNode
+    DialogueVariantNode,
+    InteractionBlock
 } from '../types';
 import {
     StoryEvent,
@@ -30,7 +31,8 @@ import {
     DialogueVariant,
     AcceptedLines,
     RejectionLines,
-    ExitLines
+    ExitLines,
+    Interaction
 } from '../../types';
 import { Item, ItemStatus } from '../../../items/types';
 import { transformCondition } from './chainTransform';
@@ -53,10 +55,15 @@ export function transformEvent(ast: EventBlock, chainId: string): StoryEvent {
         event.type = ast.eventType;
     }
 
-    // Transform item if present
+    // Transform item if present (mutually exclusive with interaction)
     if (ast.item) {
         const itemTemplate = createItemTemplate(ast.item, ast.chainId || chainId);
         event.item = makeItem(itemTemplate.base, itemTemplate.chainId);
+    }
+
+    // Transform interaction if present (mutually exclusive with item)
+    if (ast.interaction) {
+        event.interaction = transformInteraction(ast.interaction);
     }
 
     // Transform outcomes
@@ -101,6 +108,35 @@ export function transformEvent(ast: EventBlock, chainId: string): StoryEvent {
     }
 
     return event;
+}
+
+/**
+ * Transform InteractionBlock into Interaction
+ */
+function transformInteraction(ast: InteractionBlock): Interaction {
+    const interaction: Interaction = {
+        type: ast.interactionType,
+        title: ast.title,
+        description: ast.description
+    };
+
+    if (ast.targetItemId) {
+        interaction.targetItemId = ast.targetItemId;
+    }
+
+    if (ast.reason) {
+        interaction.reason = ast.reason;
+    }
+
+    if (ast.note) {
+        interaction.note = ast.note;
+    }
+
+    if (ast.offerValue !== undefined) {
+        interaction.offerValue = ast.offerValue;
+    }
+
+    return interaction;
 }
 
 /**

@@ -242,6 +242,7 @@ export interface EventBlock extends ASTNode {
     eventType?: 'STANDARD' | 'REDEMPTION_CHECK' | 'POST_FORFEIT_VISIT';
     triggerConditions: ConditionNode[];
     item?: ItemBlock;
+    interaction?: InteractionBlock;  // 新增：与 item 互斥
     customer?: CustomerBlock;
     outcomes?: OutcomesBlock;
     onReject?: ActionNode[];
@@ -274,6 +275,21 @@ export interface ItemBlock extends ASTNode {
     sentimentalValue?: boolean;
     isVirtual?: boolean;
     traits?: TraitBlock[];
+}
+
+// === INTERACTION BLOCK ===
+
+export type InteractionType = 'BORROW_REQUEST' | 'PURCHASE_OFFER' | 'RETURN_VISIT';
+
+export interface InteractionBlock extends ASTNode {
+    type: 'InteractionBlock';
+    interactionType: InteractionType;
+    targetItemId?: string;      // 引用的真实物品 ID
+    title: string;              // 显示标题
+    description: string;        // 描述
+    reason?: string;            // 顾客的理由
+    note?: string;              // 备注（显示在鉴定区域）
+    offerValue?: number;        // 收购出价（仅 PURCHASE_OFFER）
 }
 
 export interface TraitBlock extends ASTNode {

@@ -9,6 +9,8 @@ import * as AST from '../ast';
 import {
     EventBlock,
     ItemBlock,
+    InteractionBlock,
+    InteractionType,
     CustomerBlock,
     DialogueBlock,
     OutcomesBlock,
@@ -40,6 +42,7 @@ export class EventBlockParser extends BaseParser {
         let eventType: 'STANDARD' | 'REDEMPTION_CHECK' | 'POST_FORFEIT_VISIT' | undefined;
         const triggerConditions: ConditionNode[] = [];
         let item: ItemBlock | undefined;
+        let interaction: InteractionBlock | undefined;
         let customer: CustomerBlock | undefined;
         let outcomes: OutcomesBlock | undefined;
         let onReject: ActionNode[] | undefined;
@@ -67,6 +70,9 @@ export class EventBlockParser extends BaseParser {
                     switch (blockType) {
                         case '@item':
                             item = this.parseItemBlock();
+                            break;
+                        case '@interaction':
+                            interaction = this.parseInteractionBlock();
                             break;
                         case '@customer':
                             customer = this.parseCustomerBlock();
@@ -135,9 +141,15 @@ export class EventBlockParser extends BaseParser {
 
         if (!chainId) throw new DSLMissingFieldError('chain', '@event', location, this.source);
 
+        // Validate: item and interaction are mutually exclusive
+        if (item && interaction) {
+            throw new DSLParseError('@item and @interaction are mutually exclusive in @event', location, this.source);
+        }
+
         return AST.createEventBlock(id, chainId, triggerConditions, location, {
             eventType,
             item,
+            interaction,
             customer,
             outcomes,
             onReject,
@@ -266,6 +278,82 @@ export class EventBlockParser extends BaseParser {
             sentimentalValue,
             isVirtual,
             traits
+        });
+    }
+
+    // === INTERACTION BLOCK ===
+
+    private parseInteractionBlock(): InteractionBlock {
+        const location = this.currentLocation();
+        this.consume('AT_BLOCK', '@interaction');
+        this.skipNewlines();
+
+        let interactionType: InteractionType = 'BORROW_REQUEST';
+        let targetItemId: string | undefined;
+        let title = '';
+        let description = '';
+        let reason: string | undefined;
+        let note: string | undefined;
+        let offerValue: number | undefined;
+
+        if (this.check('INDENT')) {
+            this.advance();
+            this.skipNewlines();
+
+            while (!this.isAtEnd() && !this.check('DEDENT') && !this.check('AT_BLOCK', ['@customer', '@outcomes', '@on_reject', '@expiry_flows', '@dynamic_flows'])) {
+                this.skipNewlines();
+                if (this.check('DEDENT')) break;
+
+                if (this.check('AT_BLOCK')) {
+                    break;
+                } else if (this.check('IDENTIFIER')) {
+                    const propName = this.advance().value;
+                    this.consume('COLON', ':');
+
+                    switch (propName) {
+                        case 'type':
+                            const typeVal = this.consumeIdentifier('interaction type').toUpperCase();
+                            interactionType = typeVal as InteractionType;
+                            break;
+                        case 'target_item':
+                            targetItemId = this.consumeIdentifier('item id');
+                            break;
+                        case 'title':
+                            title = this.parseStringValue();
+                            break;
+                        case 'description':
+                            description = this.parseStringValue();
+                            break;
+                        case 'reason':
+                            reason = this.parseStringValue();
+                            break;
+                        case 'note':
+                            note = this.parseStringValue();
+                            break;
+                        case 'offer_value':
+                            offerValue = this.parseNumberValue();
+                            break;
+                    }
+                    this.skipNewlines();
+                } else {
+                    break;
+                }
+            }
+
+            if (this.check('DEDENT')) {
+                this.advance();
+            }
+        }
+
+        // title and description are required
+        if (!title) throw new DSLMissingFieldError('title', '@interaction', location, this.source);
+        if (!description) throw new DSLMissingFieldError('description', '@interaction', location, this.source);
+
+        return AST.createInteractionBlock(interactionType, title, description, location, {
+            targetItemId,
+            reason,
+            note,
+            offerValue
         });
     }
 
