@@ -12,9 +12,6 @@ export const APPRAISAL_TEMPLATES = {
     /** When range narrowed but no trait discovered */
     RANGE_NARROWED: "虽然没发现什么特别的，但心里更有底了。",
 
-    /** When lucky find event triggers bonus trait discovery */
-    LUCKY_FIND: "运气不错，意外发现了一些线索！",
-
     /** When impatient event triggers extra patience cost */
     IMPATIENT: "动作太慢了，客户开始坐立不安...",
 

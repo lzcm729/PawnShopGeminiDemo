@@ -9,6 +9,7 @@ interface AppraisalResult {
     success: boolean;
     failureReason?: 'ALREADY_KNOWN';
     newTraitsFound: ItemTrait[];
+    bonusTraitIds: string[];  // Traits discovered via LUCKY_FIND
     newRange: [number, number];
     event?: AppraisalEvent;
 }
@@ -19,11 +20,12 @@ export const useAppraisal = () => {
 
     const performAppraisal = useCallback((): AppraisalResult => {
         if (!customer) {
-            return { 
-                success: false, 
-                failureReason: 'ALREADY_KNOWN', 
-                newTraitsFound: [], 
-                newRange: [0, 0] 
+            return {
+                success: false,
+                failureReason: 'ALREADY_KNOWN',
+                newTraitsFound: [],
+                bonusTraitIds: [],
+                newRange: [0, 0]
             };
         }
 
@@ -163,6 +165,7 @@ export const useAppraisal = () => {
         return {
             success: true,
             newTraitsFound: uniqueNewTraits,
+            bonusTraitIds: bonusTraits.map(t => t.id),
             newRange,
             event
         };

@@ -189,16 +189,15 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                   onAppraisalFeedback?.({ type: 'ALREADY_KNOWN', text: APPRAISAL_TEMPLATES.ALREADY_KNOWN });
               }
           } else {
-              if (result.event && result.event.type !== 'NORMAL') {
+              // Handle negative events (MISHAP, IMPATIENT)
+              // LUCKY_FIND is not shown separately - bonus traits are marked in TRAIT_DISCOVERED
+              if (result.event && (result.event.type === 'MISHAP' || result.event.type === 'IMPATIENT')) {
                    if (result.event.type === 'MISHAP') {
                        setFeedbackMsg({ type: 'error', text: result.event.message || "鉴定失误" });
                        onAppraisalFeedback?.({ type: 'MISHAP', text: APPRAISAL_TEMPLATES.MISHAP });
-                   } else if (result.event.type === 'IMPATIENT') {
+                   } else {
                        setFeedbackMsg({ type: 'error', text: result.event.message || "客户不耐烦" });
                        onAppraisalFeedback?.({ type: 'IMPATIENT', text: APPRAISAL_TEMPLATES.IMPATIENT });
-                   } else if (result.event.type === 'LUCKY_FIND') {
-                       setFeedbackMsg({ type: 'success', text: result.event.message || "意外发现!" });
-                       onAppraisalFeedback?.({ type: 'LUCKY_FIND', text: APPRAISAL_TEMPLATES.LUCKY_FIND });
                    }
               }
 
@@ -208,11 +207,13 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                   for (const trait of result.newTraitsFound) {
                       // Use the player's inner monologue from the trait data
                       const monologueText = trait.dialogueTrigger?.playerLine || trait.description;
+                      const isBonus = result.bonusTraitIds.includes(trait.id);
                       onAppraisalFeedback?.({
                           type: 'TRAIT_DISCOVERED',
                           text: monologueText,
                           traitId: trait.id,
                           traitName: trait.name,
+                          isBonus,
                       });
                   }
               } else if (!result.event || result.event.type === 'NORMAL') {

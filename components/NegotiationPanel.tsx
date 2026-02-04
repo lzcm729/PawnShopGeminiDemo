@@ -48,10 +48,11 @@ interface LogEntry {
 
 // Appraisal feedback structure passed from ItemPanel
 export interface AppraisalFeedback {
-    type: 'TRAIT_DISCOVERED' | 'RANGE_NARROWED' | 'MISHAP' | 'IMPATIENT' | 'LUCKY_FIND' | 'ALREADY_KNOWN';
+    type: 'TRAIT_DISCOVERED' | 'RANGE_NARROWED' | 'MISHAP' | 'IMPATIENT' | 'ALREADY_KNOWN';
     text: string;
     traitId?: string;
     traitName?: string;
+    isBonus?: boolean;  // True if discovered via LUCKY_FIND
 }
 
 const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: string }> = ({ customer, patience, mood }) => {
@@ -311,13 +312,14 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               text: feedback.text,
               sentiment: feedback.type === 'MISHAP' || feedback.type === 'IMPATIENT'
                   ? 'negative'
-                  : feedback.type === 'TRAIT_DISCOVERED' || feedback.type === 'LUCKY_FIND'
+                  : feedback.type === 'TRAIT_DISCOVERED'
                   ? 'positive'
                   : 'neutral',
               type: 'INNER_MONOLOGUE',
               data: {
                   feedbackType: feedback.type,
                   traitName: feedback.traitName,
+                  isBonus: feedback.isBonus,
               },
           });
       }
@@ -553,10 +555,13 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                   const getResultLabel = () => {
                       const feedbackType = log.data?.feedbackType;
                       const traitName = log.data?.traitName;
+                      const isBonus = log.data?.isBonus;
                       switch (feedbackType) {
-                          case 'TRAIT_DISCOVERED': return traitName ? `发现线索：${traitName}` : '发现线索';
+                          case 'TRAIT_DISCOVERED': {
+                              const label = traitName ? `发现线索：${traitName}` : '发现线索';
+                              return isBonus ? `✦ ${label}` : label;
+                          }
                           case 'RANGE_NARROWED': return '估值范围收缩';
-                          case 'LUCKY_FIND': return '意外发现';
                           case 'MISHAP': return '鉴定失误';
                           case 'IMPATIENT': return '客户不耐烦';
                           case 'ALREADY_KNOWN': return '暂无新发现';
