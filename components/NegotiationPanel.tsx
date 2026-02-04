@@ -638,7 +638,14 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                  <div className="flex justify-between items-center text-xs font-mono bg-black/20 p-2 rounded border border-noir-300">
                       <div className="flex items-center gap-2 text-noir-txt-muted">
                           <DollarSign className="w-3 h-3" />
-                          <span>ASK: <span className="text-noir-txt-primary font-bold">${currentAskPrice}</span></span>
+                          <span>ASK:
+                              {currentAskPrice < currentCustomer.desiredAmount && (
+                                  <span className="text-stone-500 line-through mr-1">${currentCustomer.desiredAmount}</span>
+                              )}
+                              <span className={currentAskPrice < currentCustomer.desiredAmount ? "text-pawn-green font-bold" : "text-noir-txt-primary font-bold"}>
+                                  ${currentAskPrice}
+                              </span>
+                          </span>
                       </div>
                       <div className="flex items-center gap-2 text-amber-500/80">
                           <Calendar className="w-3 h-3" />
