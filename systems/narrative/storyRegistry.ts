@@ -7,12 +7,19 @@
 
 import { EventChainState, StoryEvent, MailTemplate } from '../../types';
 import { parseStoryContent, LoadedStory } from './dsl/loader';
+// IMPORTANT: Initialize CSV data BEFORE parsing stories
+// Stories need CSV templates for item data (name, traits, values)
+import { initializeItemData } from '../items/dataInit';
 
 // Import raw .story files (Vite ?raw import)
 import emmaStoryRaw from './stories-dsl/emma.story?raw';
 import susanStoryRaw from './stories-dsl/susan.story?raw';
 import zhaoStoryRaw from './stories-dsl/zhao.story?raw';
 import linStoryRaw from './stories-dsl/lin.story?raw';
+
+// === INITIALIZE CSV DATA FIRST ===
+// This ensures item templates are available when parsing stories
+initializeItemData();
 
 // === PARSE ALL STORIES AT MODULE LOAD ===
 
