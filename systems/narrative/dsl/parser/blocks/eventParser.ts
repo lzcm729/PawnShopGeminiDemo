@@ -249,7 +249,8 @@ export class EventBlockParser extends BaseParser {
             }
         }
 
-        if (!name) throw new DSLMissingFieldError('name', '@item', location, this.source);
+        // name is optional if item ID matches a CSV template
+        // (transformer will fill in name from CSV)
 
         return AST.createItemBlock(id, name, realValue, location, {
             category,

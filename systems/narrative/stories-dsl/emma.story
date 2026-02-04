@@ -727,31 +727,10 @@ HR说我"气质不够自信"。
     trigger: stage == 0
 
     @item emma_item_clothes
-        name: "名牌职业套装"
-        category: "服饰"
-        visual_description: "当季新款的高定职业套装，用料考究。"
         history: "穿这套衣服签下了我的第一个大单，那是我的高光时刻。"
         appraisal_note: "做工精良，二手市场的硬通货。"
         archive_summary: "艾玛为了应对失业危机，典当了她的战袍。"
-        real_value: 1200
-        stolen: false
-        fake: false
         sentimental: true
-
-        @traits
-            @trait t_emma_01_tag
-                name: "干洗标签"
-                type: STORY
-                description: "领口挂着干洗标签，保养得很好。"
-                value_impact: 0
-                discovery: 0.3
-
-            @trait t_emma_01_stain
-                name: "墨水渍"
-                type: FLAW
-                description: "袖口内侧有一道不起眼的墨水划痕。"
-                value_impact: -0.1
-                discovery: 0.5
 
     @customer
         name: "艾玛"
@@ -864,31 +843,9 @@ HR说我"气质不够自信"。
     trigger: funds <= 400
 
     @item emma_item_skincare
-        name: "贵妇面霜礼盒"
-        category: "奢侈品"
-        visual_description: "一套未拆封的高级护肤品，包装精美。"
         history: "去年生日他说要送我这个，结果到了那天说'最近手头紧，你先垫一下，回头给你'。后来... 算了，不重要了。"
         appraisal_note: "虽然未拆封，但生产日期是一年前。"
         archive_summary: "艾玛的生活质量正在急剧下降。"
-        real_value: 600
-        stolen: false
-        fake: false
-        sentimental: false
-
-        @traits
-            @trait t_emma_02_exp
-                name: "临期"
-                type: FLAW
-                description: "距离保质期仅剩3个月。"
-                value_impact: -0.3
-                discovery: 0.2
-
-            @trait t_emma_02_spoon
-                name: "配件缺失"
-                type: STORY
-                description: "包装有轻微撕扯痕迹，取样勺丢失。"
-                value_impact: 0
-                discovery: 0.1
 
     @customer
         name: "艾玛"
@@ -996,31 +953,10 @@ HR说我"气质不够自信"。
     trigger: funds < 100
 
     @item emma_item_laptop
-        name: "轻薄笔记本"
-        category: "电子产品"
-        visual_description: "贴满贴纸的旧款笔记本，键盘磨损严重。"
         history: "这台电脑里存着我所有的作品集，还有未完成的面试作业。"
         appraisal_note: "硬盘数据未清除，包含了大量个人隐私。"
         archive_summary: "为了生存，艾玛放弃了她最后的生产工具。"
-        real_value: 1500
-        stolen: false
-        fake: false
         sentimental: true
-
-        @traits
-            @trait t_emma_03_data
-                name: "重要资料"
-                type: STORY
-                description: "桌面上有个名为'2077面试终稿'的文件夹。"
-                value_impact: 0.2
-                discovery: 0.1
-
-            @trait t_emma_03_batt
-                name: "电池鼓包"
-                type: FLAW
-                description: "电池轻微鼓包，续航堪忧。"
-                value_impact: -0.2
-                discovery: 0.3
 
     @customer
         name: "艾玛"
@@ -1153,9 +1089,6 @@ HR说我"气质不够自信"。
         archive_summary: "艾玛在最困难的时候请求帮助。"
         real_value: 0
         virtual: true
-        stolen: false
-        fake: false
-        sentimental: false
 
     @customer
         name: "艾玛"
@@ -1225,24 +1158,10 @@ HR说我"气质不够自信"。
     trigger: stage == 4
 
     @item emma_item_watch
-        name: "男士机械表"
-        category: "钟表"
-        visual_description: "一块看起来有些年头的男表，表带断了一半。"
         history: "这是他留下的... 他说这不值钱，让我扔了。"
         appraisal_note: "虽然旧，但机芯是原装进口的，有一定价值。"
         archive_summary: "艾玛为了最后一点希望，典当了前男友的遗弃物。"
-        real_value: 800
-        stolen: false
-        fake: false
         sentimental: true
-
-        @traits
-            @trait t_emma_04_engrave
-                name: "刻字"
-                type: STORY
-                description: "表盖背面刻着 'To E, Forever'。但'Forever'被刮花了，像是故意划掉的。"
-                value_impact: 0.1
-                discovery: 0.2
 
     @customer
         name: "艾玛"

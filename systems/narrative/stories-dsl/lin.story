@@ -19,34 +19,10 @@
     trigger: stage == 0
 
     @item lin_item_watch
-        name: "古董机械表"
-        category: "钟表"
         condition: "需保养"
-        visual_description: "表盘泛黄，看起来像地摊货。"
         history: "爷爷留下的，我也不懂表。"
         appraisal_note: "劳力士'保罗纽曼'迪通拿，极品捡漏！"
         archive_summary: "价值连城的古董表。"
-        real_value: 150000
-        perceived_value: 300
-        uncertainty: 0.5
-        stolen: false
-        fake: false
-        sentimental: false
-
-        @traits
-            @trait trait-lin-rare
-                name: "保罗纽曼盘面"
-                type: STORY
-                description: "独特的'Exotic'表盘设计。"
-                value_impact: 500.0
-                discovery: 0.9
-
-            @trait trait-lin-flaw
-                name: "表蒙划痕"
-                type: FLAW
-                description: "划痕。"
-                value_impact: -0.01
-                discovery: 0.1
 
     @customer
         name: "小林"

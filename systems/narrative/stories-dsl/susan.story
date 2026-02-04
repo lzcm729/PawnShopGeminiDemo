@@ -22,34 +22,11 @@
     trigger: stage == 0
 
     @item susan_item_bag
-        name: "鳄鱼皮铂金包"
-        category: "奢侈品"
         condition: "99新"
-        visual_description: "色泽光亮，五金件闪耀。"
         history: "上个月在巴黎买的，我老公送的。"
         appraisal_note: "高仿A货。"
         archive_summary: "一只精仿的奢侈品包。"
-        real_value: 200
-        perceived_value: 80000
-        uncertainty: 0.4
-        stolen: false
         fake: true
-        sentimental: false
-
-        @traits
-            @trait trait-susan-fake
-                name: "走线歪斜"
-                type: FAKE
-                description: "底部缝线不够直，非专柜品质。"
-                value_impact: -0.99
-                discovery: 0.5
-
-            @trait trait-susan-smell
-                name: "胶水气味"
-                type: FAKE
-                description: "刺鼻的工业胶水味。"
-                value_impact: -0.5
-                discovery: 0.3
 
     @customer
         name: "苏珊"

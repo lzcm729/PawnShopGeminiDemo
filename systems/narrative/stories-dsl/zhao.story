@@ -310,43 +310,11 @@
     trigger: stage == 0
 
     @item zhao_item_medal
-        name: "一等功勋章 (编号029)"
-        category: "古玩"
         condition: "磨损"
-        visual_description: "一枚沉甸甸的军功章，珐琅面有裂纹。"
         history: "79年那会儿，全连就剩下三个人。"
         appraisal_note: "背刻名字与持有人不符，疑似战友遗物。"
         archive_summary: "周老为了给孙子攒婚礼红包，典当了生死之交的遗物。"
-        real_value: 8000
-        uncertainty: 0.3
-        stolen: false
-        fake: false
         sentimental: true
-
-        @traits
-            @trait trait_zhao_ribbon
-                name: "后配绶带"
-                type: FLAW
-                description: "绶带颜色极新，非原装。"
-                value_impact: -0.1
-                discovery: 0.3
-
-            @trait trait_zhao_name
-                name: "背刻姓名 '张援朝'"
-                type: STORY
-                description: "背面刻的名字不是周守义。"
-                value_impact: 0
-                discovery: 0.2
-
-            @trait trait_zhao_rare
-                name: "编号029"
-                type: STORY
-                description: "早期批次，收藏市场极度稀缺。"
-                value_impact: 2.0
-                discovery: 0.9
-                @dialogue_trigger
-                    player: "这编号... 市场上有很多人在找。"
-                    customer: "别卖给那些倒爷！这是给我兄弟留的位置！"
 
     @customer
         name: "周守义"
@@ -492,26 +460,11 @@
     trigger: day >= 6
 
     @item zhao_item_cert
-        name: "立功证书与合影"
-        category: "古玩"
         condition: "泛黄"
-        visual_description: "一套完整的纸质文件，证书边缘手写着密密麻麻的名单。"
         history: "这上面... 记着那天牺牲的所有人。"
         appraisal_note: "这是'证明链'的关键部分。有了它，勋章身价倍增。"
         archive_summary: "周老因为药物费用再次典当。"
-        real_value: 2000
-        uncertainty: 0.2
-        stolen: false
-        fake: false
         sentimental: true
-
-        @traits
-            @trait t_zhao_list
-                name: "牺牲名单"
-                type: STORY
-                description: "边缘手写着十七个人的名字。"
-                value_impact: 0.5
-                discovery: 0.1
 
     @customer
         name: "周守义"
