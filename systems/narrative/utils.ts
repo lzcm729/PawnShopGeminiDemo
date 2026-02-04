@@ -1,6 +1,6 @@
 
 import { generateValuationRange } from '../items/utils';
-import { getItemTemplate } from '../items/csvLoader';
+import { getItemTemplate, getDefaultItemTemplate } from '../items/csvLoader';
 import { Item, ItemTrait, ItemStatus, WorkState } from '../items/types';
 
 /**
@@ -46,17 +46,18 @@ interface ItemBase {
  * @returns A fully formed Item object
  */
 export const makeItem = (base: ItemBase, chainId: string): Partial<Item> & { name: string; relatedChainId: string } => {
-    // Try to get CSV template for fallback values
+    // Fallback chain: story DSL → item CSV template → _default CSV template
     const template = base.id ? getItemTemplate(base.id) : undefined;
+    const defaults = getDefaultItemTemplate();
 
-    // Use realValue from: 1) story DSL, 2) CSV template, 3) default 100
-    const realValue = base.realValue || template?.realValue || 100;
-    if (!base.realValue && !template?.realValue) {
-        console.warn(`[makeItem] Missing realValue for "${base.name}", defaulting to 100`);
+    // Use realValue from: 1) story DSL, 2) CSV template, 3) _default template
+    const realValue = base.realValue || template?.realValue || defaults?.realValue;
+    if (!realValue) {
+        console.error(`[makeItem] No realValue found for "${base.name}" - check _default row in Items_Base.csv`);
     }
 
-    const perceivedValue = base.perceivedValue ?? template?.visualValue ?? realValue;
-    const uncertainty = base.uncertainty ?? template?.uncertainty ?? 0.2;
+    const perceivedValue = base.perceivedValue ?? template?.visualValue ?? defaults?.visualValue ?? realValue;
+    const uncertainty = base.uncertainty ?? template?.uncertainty ?? defaults?.uncertainty;
 
     const range = generateValuationRange(realValue, perceivedValue, uncertainty);
 

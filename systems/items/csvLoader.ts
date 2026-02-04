@@ -183,6 +183,9 @@ const itemTemplateRegistry = new Map<string, ItemTemplate>();
 /** Trait definition registry */
 const traitDefinitionRegistry = new Map<string, TraitDefinition>();
 
+/** Default item template (from _default row in CSV) */
+let defaultItemTemplate: ItemTemplate | null = null;
+
 /**
  * Load item templates from CSV content
  */
@@ -202,7 +205,12 @@ export function loadItemTemplatesFromCSV(csvContent: string): void {
       descReforged: raw.descReforged || raw.descDefault,
     };
 
-    itemTemplateRegistry.set(template.id, template);
+    // Store _default row separately as the fallback template
+    if (template.id === '_default') {
+      defaultItemTemplate = template;
+    } else {
+      itemTemplateRegistry.set(template.id, template);
+    }
   }
 }
 
@@ -257,6 +265,14 @@ export function getFillerPoolTemplateIds(): string[] {
   return Array.from(itemTemplateRegistry.values())
     .filter(t => t.fillerPool === true)
     .map(t => t.id);
+}
+
+/**
+ * Get default item template (from _default row in CSV)
+ * Used as final fallback for missing values
+ */
+export function getDefaultItemTemplate(): ItemTemplate | null {
+  return defaultItemTemplate;
 }
 
 /**
@@ -416,7 +432,12 @@ export function initializeCSVData(itemsCSV?: string, traitsCSV?: string): void {
   initialized = true;
   // Log loaded counts for debugging
   const fillerCount = Array.from(itemTemplateRegistry.values()).filter(t => t.fillerPool).length;
-  console.log(`[csvLoader] Loaded ${itemTemplateRegistry.size} item templates (${fillerCount} filler pool), ${traitDefinitionRegistry.size} trait definitions`);
+  const hasDefault = defaultItemTemplate !== null;
+  console.log(`[csvLoader] Loaded ${itemTemplateRegistry.size} item templates (${fillerCount} filler pool), ${traitDefinitionRegistry.size} trait definitions, default template: ${hasDefault ? 'yes' : 'MISSING!'}`);
+
+  if (!hasDefault) {
+    console.warn('[csvLoader] No _default row found in Items_Base.csv - add a row with ID="_default" for fallback values');
+  }
 
   // Notify other systems that data has been reloaded
   if (onDataReloadCallback) {
@@ -437,5 +458,6 @@ export function isCSVDataInitialized(): boolean {
 export function clearRegistries(): void {
   itemTemplateRegistry.clear();
   traitDefinitionRegistry.clear();
+  defaultItemTemplate = null;
   initialized = false;
 }
