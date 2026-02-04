@@ -15,3 +15,16 @@ zhao_item_medal,一等功勋章,修复勋章,珍贵军功章,古玩,8000,8000,0.
 zhao_item_cert,立功证书与合影,修复证书,珍贵历史档案,古玩,2000,2000,0.2,,VINTAGE_REAL;SENTIMENTAL,trait_zhao_list,100,一套完整的纸质文件，证书边缘手写着密密麻麻的名单。,经过脱酸处理和专业装裱，文件保存完好。,经考证为重要历史档案，具有极高的文献价值。,,false
 lin_item_watch,古董机械表,保养古董表,传奇名表,钟表,150000,300,0.5,DIRTY,MECHANICAL;VINTAGE_REAL,trait_lin_rare;trait_lin_scratch,200,表盘泛黄，看起来像地摊货。,经过专业保养，机芯恢复精准。,劳力士"保罗纽曼"迪通拿，传奇名表，价值连城。,,false
 susan_item_bag,鳄鱼皮铂金包,清洁铂金包,限量铂金包,奢侈品,200,80000,0.4,,TRENDY;ARTISTIC,trait_susan_stitch;trait_susan_glue,80,色泽光亮，五金件闪耀。,经过专业清洁和保养，皮质恢复光泽。,（实为高仿A货）,,false
+item_violin_01,蒙尘的小提琴,调音修复的提琴,名家演奏琴,乐器,800,600,0.35,DIRTY;BROKEN,ARTISTIC;VINTAGE_REAL,trait_luthier_label,120,琴身布满灰尘，琴弦断了两根，但木纹细腻。,更换新弦后音色温润，共鸣腔保养完好。,琴身内贴有某意大利制琴师的手写标签。,elderly;middle;decent,true
+item_guitar_01,旧木吉他,调整后的民谣吉他,传奇歌手遗物,乐器,500,400,0.3,DIRTY,ARTISTIC;SENTIMENTAL,trait_autograph,100,品丝有磨损痕迹，琴身有几处划痕，但音色依然清亮。,调整琴颈弧度后手感极佳，音色圆润。,经考证曾为某著名民谣歌手所有，琴身内有签名。,young;middle;plain,true
+item_camera_01,老旧胶片相机,清洁保养的相机,徕卡珍藏版,相机,600,450,0.4,DIRTY,MECHANICAL;VINTAGE_REAL,trait_serial_plate,100,镜头有轻微霉斑，快门声音沙哑。,镜头清洗后通透，快门修复后清脆利落。,经查证序列号为早期限量版，极具收藏价值。,elderly;middle;decent,true
+item_camera_02,双反相机,翻新双反相机,海鸥经典款,相机,400,350,0.25,DIRTY;BROKEN,MECHANICAL;VINTAGE_REAL,,80,取景器模糊，皮革蒙皮开裂。,蒙皮更换后手感极佳，光路重新校准。,经鉴定为早期国产相机精品，品相罕见。,elderly;SENTIMENTAL,true
+item_stamp_01,一册旧邮票,整理后的邮册,珍稀错版票,收藏品,300,200,0.45,DIRTY,VINTAGE_REAL;SENTIMENTAL,trait_printing_error,80,邮册发黄，部分邮票有折痕。,经过重新整理装帧，邮票保存完好。,其中一枚为著名错版票，存世极少。,elderly,true
+item_coin_01,旧铜钱一串,清理后的古钱,宋代铁母,收藏品,400,250,0.5,DIRTY,VINTAGE_REAL,trait_mold_coin,100,铜绿斑驳，部分字迹模糊。,清理后包浆自然，字口清晰。,经鉴定其中一枚为铸钱用的铁母，价值极高。,elderly;middle,true
+item_figure_01,旧手办,修复的限定手办,绝版限定品,收藏品,200,180,0.2,DIRTY;BROKEN,TRENDY,trait_numbered,60,关节松动，涂装有掉漆。,经过重新上色和关节修复，品相如新。,经查证为某动漫周边首发限定版，早已绝版。,young;plain,true
+item_bag_01,旧皮质手包,清洁保养手包,中古奢侈包,皮具,500,400,0.3,DIRTY,TRENDY;SENTIMENTAL,trait_date_code,80,五金件有氧化，皮面有使用痕迹。,清洁保养后皮质恢复光泽。,经日期码考证为某品牌早期限量款。,female;middle;decent,true
+item_wallet_01,旧皮夹,保养后的皮夹,手工定制皮夹,皮具,150,120,0.2,DIRTY,SENTIMENTAL,trait_monogram,50,边缘磨损，内衬有污渍。,清洁保养后质感柔软。,内侧发现手工烫印的定制字样。,male;middle,true
+item_whisky_01,老威士忌,保存完好的威士忌,珍稀单桶原酒,酒类,800,600,0.4,,VINTAGE_REAL,trait_cask_number,100,酒标略有磨损，液面有轻微下降。,经过专业酒窖保存，品质稳定。,经查证为某酒厂限量单桶装瓶，存世极少。,middle;fancy;male,true
+item_maotai_01,老茅台,品相完好的茅台,陈年飞天茅台,酒类,1500,1200,0.35,,VINTAGE_REAL;SENTIMENTAL,trait_vintage_year,120,酒瓶封口完好，酒线正常。,经过专业鉴定，确认年份真实。,经查证为八十年代出厂，陈年佳酿。,elderly;middle;fancy,true
+item_inkstone_01,旧砚台,清洗后的端砚,名坑老坑砚,文房,400,300,0.4,DIRTY,VINTAGE_REAL;ARTISTIC,trait_pit_mark,100,砚面有墨渍，边缘有磕碰。,清洗后石质细腻，发墨极佳。,经鉴定为端溪老坑石，极为珍贵。,elderly;decent,true
+item_seal_01,旧印章,清理后的寿山石印,名家篆刻印,文房,350,280,0.35,DIRTY,ARTISTIC;SENTIMENTAL,trait_carver_mark,90,印面有残墨，钮部有轻微磨损。,清理后石质温润，印文清晰。,经考证为某金石名家所刻，边款可辨。,elderly;middle,true
