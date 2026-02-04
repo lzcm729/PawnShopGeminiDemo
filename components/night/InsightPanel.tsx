@@ -56,6 +56,7 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
   const [lastResult, setLastResult] = useState<{
     result: InsightResult;
     narrative: InsightNarrative;
+    oldRange: [number, number];
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -76,12 +77,18 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
 
   const handleInsight = (itemId: string) => {
     setIsProcessing(true);
+
+    // Capture old range before insight
+    const itemData = insightableItems.find(i => i.item.id === itemId);
+    const oldRange: [number, number] = itemData?.item.currentRange ?? [0, 0];
+
     const output = doInsight(itemId);
 
     if (output?.success && output.result && output.narrative) {
       setLastResult({
         result: output.result,
         narrative: output.narrative,
+        oldRange,
       });
     }
 
@@ -669,6 +676,7 @@ interface InsightResultModalProps {
   result: {
     result: InsightResult;
     narrative: InsightNarrative;
+    oldRange: [number, number];
   } | null;
   onClose: () => void;
 }
@@ -677,6 +685,8 @@ const InsightResultModal: React.FC<InsightResultModalProps> = ({ result, onClose
   if (!result) return null;
 
   const isEpiphany = result.result.isEpiphany;
+  const { rangeNarrowed, newRange, valueLocked, traitDiscovered } = result.result;
+  const oldRange = result.oldRange;
 
   return (
     <Modal
@@ -708,6 +718,58 @@ const InsightResultModal: React.FC<InsightResultModalProps> = ({ result, onClose
             <p className="text-yellow-300">{result.narrative.epiphanyText}</p>
           )}
         </div>
+
+        {/* Appraisal Results: Range Narrowing and Trait Discovery */}
+        {(rangeNarrowed || traitDiscovered) && (
+          <div className="mb-4 space-y-2">
+            {/* Range Narrowing */}
+            {rangeNarrowed && newRange && (
+              <div className="flex items-center gap-2 text-sm">
+                <ChevronRight className="w-4 h-4 text-pawn-green" />
+                <span className="text-stone-400">估价收窄:</span>
+                <span className="text-stone-500 line-through">
+                  ${oldRange[0].toLocaleString()} ~ ${oldRange[1].toLocaleString()}
+                </span>
+                <span className="text-stone-400">→</span>
+                {valueLocked ? (
+                  <span className="text-pawn-green font-medium flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    ${newRange[0].toLocaleString()} (已锁定)
+                  </span>
+                ) : (
+                  <span className="text-pawn-accent font-medium">
+                    ${newRange[0].toLocaleString()} ~ ${newRange[1].toLocaleString()}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Trait Discovery */}
+            {traitDiscovered && (
+              <div className="flex items-start gap-2 text-sm">
+                <Star className="w-4 h-4 text-yellow-400 mt-0.5" />
+                <div>
+                  <span className="text-stone-400">发现特征:</span>
+                  <span className={cn(
+                    'ml-2 px-2 py-0.5 rounded text-xs',
+                    traitDiscovered.type === 'FLAW' && 'bg-red-900/50 text-red-400 border border-red-800',
+                    traitDiscovered.type === 'STORY' && 'bg-blue-900/50 text-blue-400 border border-blue-800',
+                    traitDiscovered.type === 'FAKE' && 'bg-purple-900/50 text-purple-400 border border-purple-800',
+                    traitDiscovered.type === 'JACKPOT' && 'bg-amber-900/50 text-amber-400 border border-amber-800',
+                    !['FLAW', 'STORY', 'FAKE', 'JACKPOT'].includes(traitDiscovered.type) && 'bg-stone-700 text-stone-300 border border-stone-600'
+                  )}>
+                    {traitDiscovered.name}
+                  </span>
+                  {traitDiscovered.description && (
+                    <p className="text-stone-500 text-xs mt-1 ml-0">
+                      {traitDiscovered.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Essence Gained */}
         <div className="flex flex-wrap gap-3">
