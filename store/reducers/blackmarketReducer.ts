@@ -34,10 +34,11 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       // Allow both FORFEIT and ACTIVE items to be sold
       if (item.status !== ItemStatus.FORFEIT && item.status !== ItemStatus.ACTIVE) return state;
 
-      // Check purchase limit
-      if (state.blackmarket.daily.purchasedCount >= state.blackmarket.daily.purchaseLimit) {
-        return state;
-      }
+      // Find the unfulfilled purchase request for this tag
+      const requestIndex = state.blackmarket.daily.purchaseRequests.findIndex(
+        req => req.tag === tag && !req.fulfilled
+      );
+      if (requestIndex === -1) return state; // No matching unfulfilled request
 
       // Check if this is a breach (selling ACTIVE item in redemption period)
       const isBreach = item.status === ItemStatus.ACTIVE;
@@ -58,6 +59,13 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         ...state.blackmarket.todaySales,
         { itemId, itemName, amount, type: 'PURCHASE' as const }
       ];
+
+      // Mark the specific request as fulfilled
+      const newPurchaseRequests = [...state.blackmarket.daily.purchaseRequests];
+      newPurchaseRequests[requestIndex] = {
+        ...newPurchaseRequests[requestIndex],
+        fulfilled: true
+      };
 
       // Blackmarket sales always grant Underworld reputation (+2)
       // Breach penalty (Humanity -3, Credibility -1) is deferred until customer returns to redeem
@@ -81,7 +89,7 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
           heat: newHeat,
           daily: {
             ...state.blackmarket.daily,
-            purchasedCount: state.blackmarket.daily.purchasedCount + 1
+            purchaseRequests: newPurchaseRequests
           },
           todaySales: newTodaySales
         },

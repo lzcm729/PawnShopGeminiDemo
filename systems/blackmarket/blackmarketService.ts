@@ -41,16 +41,20 @@ function getTradeableTags(): ItemTag[] {
 
 /**
  * Generate random purchase requests for the day
- * Returns 1-2 tags with random price multipliers (1.10-1.40)
+ * Generates exactly `count` requests with different tags, each can be fulfilled once
+ * @param count Number of purchase requests to generate (equals daily purchase limit)
+ * @returns Array of MarketPurchaseRequest, each with a unique tag and fulfilled: false
  */
-export function generateDailyPurchaseRequests(): MarketPurchaseRequest[] {
+export function generateDailyPurchaseRequests(count: number): MarketPurchaseRequest[] {
   const tradeableTags = getTradeableTags();
-  const numTags = Math.random() < 0.5 ? 1 : 2;  // 50% chance for 1 or 2
+
+  // Ensure we don't try to generate more requests than available tags
+  const numRequests = Math.min(count, tradeableTags.length);
 
   const selectedTags: ItemTag[] = [];
   const requests: MarketPurchaseRequest[] = [];
 
-  for (let i = 0; i < numTags; i++) {
+  for (let i = 0; i < numRequests; i++) {
     // Avoid duplicates
     let tag: ItemTag;
     do {
@@ -64,7 +68,8 @@ export function generateDailyPurchaseRequests(): MarketPurchaseRequest[] {
 
     requests.push({
       tag,
-      priceMultiplier: Math.round(priceMultiplier * 100) / 100  // Round to 2 decimals
+      priceMultiplier: Math.round(priceMultiplier * 100) / 100,  // Round to 2 decimals
+      fulfilled: false
     });
   }
 
@@ -126,9 +131,9 @@ export function generateDailyBlackmarketState(upgradeLevel: number = 1): Blackma
   const purchaseLimit = getDailyPurchaseLimit(upgradeLevel);
 
   return {
-    purchaseRequests: generateDailyPurchaseRequests(),
-    purchasedCount: 0,
-    purchaseLimit,
+    // Generate N purchase requests where N = purchaseLimit
+    // Each request has a different tag and can be fulfilled once
+    purchaseRequests: generateDailyPurchaseRequests(purchaseLimit),
     saleMultiplierMin: min,
     saleMultiplierMax: max
   };

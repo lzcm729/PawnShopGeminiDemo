@@ -60,10 +60,12 @@ export interface RiskEvent {
 
 /**
  * Daily purchase request from the black market
+ * Each request can only be fulfilled once (by selling 1 item)
  */
 export interface MarketPurchaseRequest {
   tag: ItemTag;
   priceMultiplier: number; // 1.10 - 1.40
+  fulfilled: boolean;      // Whether this specific request has been fulfilled
 }
 
 /**
@@ -71,9 +73,8 @@ export interface MarketPurchaseRequest {
  */
 export interface BlackmarketDailyState {
   // Purchase track (market buying from player)
-  purchaseRequests: MarketPurchaseRequest[];  // 1-2 tags per day
-  purchasedCount: number;                      // Items sold today (max 3)
-  purchaseLimit: number;                       // Daily purchase limit (3)
+  // Each request represents one purchase slot (N requests = N different tags, each can be fulfilled once)
+  purchaseRequests: MarketPurchaseRequest[];
 
   // Sale track (player selling to market)
   saleMultiplierMin: number;  // 0.60 - 0.70
@@ -139,8 +140,6 @@ export const INITIAL_BLACKMARKET_STATE: BlackmarketState = {
   lockUntilDay: 0,
   daily: {
     purchaseRequests: [],
-    purchasedCount: 0,
-    purchaseLimit: 3,
     saleMultiplierMin: 0.60,
     saleMultiplierMax: 0.85
   },

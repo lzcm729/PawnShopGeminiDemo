@@ -116,6 +116,7 @@ export function executeCommand(
   spawn customer        - Force spawn a customer (business phase only)
   blackmarket lock <n>  - Lock blackmarket for N days
   blackmarket unlock    - Unlock blackmarket
+  blackmarket refresh   - Force refresh daily purchase requests
   chains                - View active event chains
   customers             - View today's customer count
   state <path>          - View game state (e.g., state reputation, state stats.day)
@@ -537,7 +538,7 @@ function handleBlackmarketCommand(
   getState: () => any
 ): CommandResult {
   if (args.length < 1) {
-    return { success: false, message: 'Usage: blackmarket <lock|unlock> [days]' };
+    return { success: false, message: 'Usage: blackmarket <lock|unlock|refresh> [days]' };
   }
 
   const subCommand = args[0].toLowerCase();
@@ -572,8 +573,13 @@ function handleBlackmarketCommand(
       return { success: true, message: 'Blackmarket unlocked' };
     }
 
+    case 'refresh': {
+      dispatch({ type: 'BLACKMARKET_REFRESH_DAILY' });
+      return { success: true, message: 'Blackmarket daily state refreshed (purchase requests regenerated)' };
+    }
+
     default:
-      return { success: false, message: `Unknown blackmarket command: ${subCommand}. Use 'lock' or 'unlock'.` };
+      return { success: false, message: `Unknown blackmarket command: ${subCommand}. Use 'lock', 'unlock', or 'refresh'.` };
   }
 }
 
@@ -1354,6 +1360,12 @@ export function getAvailableCommands(): CommandDef[] {
       description: 'Unlock blackmarket immediately',
       usage: 'blackmarket unlock',
       examples: [`blackmarket unlock`]
+    },
+    {
+      command: 'blackmarket refresh',
+      description: 'Force refresh daily purchase requests (triggers BLACKMARKET_REFRESH_DAILY)',
+      usage: 'blackmarket refresh',
+      examples: [`blackmarket refresh`]
     },
     {
       command: 'spawn customer',

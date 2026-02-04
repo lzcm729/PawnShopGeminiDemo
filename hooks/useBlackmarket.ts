@@ -86,18 +86,32 @@ export const useBlackmarket = () => {
   }, [blackmarket.isLocked, blackmarket.lockUntilDay, state.stats.day]);
 
   /**
-   * Can still purchase today (under limit)
+   * Count of fulfilled purchase requests
+   */
+  const fulfilledCount = useMemo(() => {
+    return blackmarket.daily.purchaseRequests.filter(req => req.fulfilled).length;
+  }, [blackmarket.daily.purchaseRequests]);
+
+  /**
+   * Total number of purchase requests (equals daily limit)
+   */
+  const totalPurchaseRequests = useMemo(() => {
+    return blackmarket.daily.purchaseRequests.length;
+  }, [blackmarket.daily.purchaseRequests]);
+
+  /**
+   * Can still purchase today (has unfulfilled requests)
    */
   const canPurchase = useMemo(() => {
-    return blackmarket.daily.purchasedCount < blackmarket.daily.purchaseLimit;
-  }, [blackmarket.daily.purchasedCount, blackmarket.daily.purchaseLimit]);
+    return blackmarket.daily.purchaseRequests.some(req => !req.fulfilled);
+  }, [blackmarket.daily.purchaseRequests]);
 
   /**
    * Remaining purchase slots for today
    */
   const remainingPurchaseSlots = useMemo(() => {
-    return blackmarket.daily.purchaseLimit - blackmarket.daily.purchasedCount;
-  }, [blackmarket.daily.purchaseLimit, blackmarket.daily.purchasedCount]);
+    return blackmarket.daily.purchaseRequests.filter(req => !req.fulfilled).length;
+  }, [blackmarket.daily.purchaseRequests]);
 
   /**
    * Upgrade info for display
@@ -107,12 +121,12 @@ export const useBlackmarket = () => {
     const priceBonus = getPurchasePriceBonus(blackMarketLevel);
     return {
       level: blackMarketLevel,
-      dailyLimit: blackmarket.daily.purchaseLimit,
+      dailyLimit: totalPurchaseRequests, // Use request count as daily limit
       heatDecay,
       priceBonus,
       priceBonusPercent: Math.round(priceBonus * 100)
     };
-  }, [blackMarketLevel, blackmarket.daily.purchaseLimit]);
+  }, [blackMarketLevel, totalPurchaseRequests]);
 
   // ========================================================================
   // Item Queries
@@ -214,7 +228,7 @@ export const useBlackmarket = () => {
    */
   const sellToPurchase = useCallback((item: Item, request: MarketPurchaseRequest) => {
     if (!isMarketOpen) return;
-    if (!canPurchase) return;
+    if (request.fulfilled) return; // This specific request is already fulfilled
     if (!isEligibleForPurchase(item, request)) return;
 
     const price = calculatePurchasePrice(item, request, underworldRep, blackMarketLevel);
@@ -230,7 +244,7 @@ export const useBlackmarket = () => {
         heatGain
       }
     });
-  }, [isMarketOpen, canPurchase, underworldRep, blackMarketLevel, dispatch]);
+  }, [isMarketOpen, underworldRep, blackMarketLevel, dispatch]);
 
   /**
    * Sell item via player sale track (low price track)
@@ -292,6 +306,8 @@ export const useBlackmarket = () => {
     daysUntilReopen,
     canPurchase,
     remainingPurchaseSlots,
+    fulfilledCount,
+    totalPurchaseRequests,
     upgradeInfo,
 
     // Item queries
