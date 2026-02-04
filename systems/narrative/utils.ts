@@ -22,7 +22,7 @@ interface ItemBase {
     appraised?: boolean;
     pawnDate?: number;
     status?: ItemStatus;
-    realValue: number;
+    realValue?: number;  // Optional - can come from CSV template if not specified
     perceivedValue?: number;
     uncertainty?: number;
     hiddenTraits?: ItemTrait[];
@@ -46,19 +46,19 @@ interface ItemBase {
  * @returns A fully formed Item object
  */
 export const makeItem = (base: ItemBase, chainId: string): Partial<Item> & { name: string; relatedChainId: string } => {
-    // Validate required fields
-    if (!base.realValue || base.realValue <= 0) {
-        console.warn('[makeItem] Missing or invalid realValue, defaulting to 100');
+    // Try to get CSV template for fallback values
+    const template = base.id ? getItemTemplate(base.id) : undefined;
+
+    // Use realValue from: 1) story DSL, 2) CSV template, 3) default 100
+    const realValue = base.realValue || template?.realValue || 100;
+    if (!base.realValue && !template?.realValue) {
+        console.warn(`[makeItem] Missing realValue for "${base.name}", defaulting to 100`);
     }
 
-    const realValue = base.realValue || 100;
-    const perceivedValue = base.perceivedValue ?? realValue;
-    const uncertainty = base.uncertainty ?? 0.2;
+    const perceivedValue = base.perceivedValue ?? template?.visualValue ?? realValue;
+    const uncertainty = base.uncertainty ?? template?.uncertainty ?? 0.2;
 
     const range = generateValuationRange(realValue, perceivedValue, uncertainty);
-
-    // 尝试从 CSV 模板获取名称变体
-    const template = base.id ? getItemTemplate(base.id) : undefined;
 
     return {
         ...base,
