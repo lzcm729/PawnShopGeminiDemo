@@ -7,7 +7,7 @@ import { GameState, Customer, Mood, ReputationProfile, Item, EventChainState, Sa
 import { GamePhase } from '../../systems/core/phases';
 import { EssenceType, EssenceBalance } from '../../systems/economy/essence';
 import { KnowledgePool } from '../../systems/items/tags';
-import { ItemTag, WorkState } from '../../systems/items/types';
+import { ItemTag, ItemTrait, WorkState } from '../../systems/items/types';
 import { AppointmentCandidate, AppointmentPreference } from '../../systems/appointment';
 import { ItemLogEntry } from '../../types';
 import { GameNode } from '../../types/node';
@@ -121,7 +121,14 @@ export type Action =
     | { type: 'CONSUME_NIGHT_ENERGY'; payload: number }
     | { type: 'ADD_NIGHT_ENERGY'; payload: number }
     | { type: 'RESET_NIGHT_STATE' }
-    | { type: 'MARK_ITEM_INSIGHTED'; payload: { itemId: string; knowledgePool: KnowledgePool } }
+    | { type: 'MARK_ITEM_INSIGHTED'; payload: {
+    itemId: string;
+    knowledgePool: KnowledgePool;
+    currentRange?: [number, number];
+    perceivedValue?: number;  // undefined means locked (show real value)
+    hiddenTraits?: ItemTrait[];
+    revealedTraits?: ItemTrait[];
+  } }
     | { type: 'RESET_NIGHTLY_INSIGHT_FLAGS' }
     | { type: 'RECORD_NIGHT_ACTION'; payload: string }
     | { type: 'UPDATE_ITEM_TAGS'; payload: { itemId: string; tags?: ItemTag[]; wasRestored?: boolean; wasReforged?: boolean; workState?: WorkState } }

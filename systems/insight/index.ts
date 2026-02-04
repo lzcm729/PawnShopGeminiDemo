@@ -23,4 +23,6 @@ export {
   getBlockReasonText,
   getPrimaryEssenceType,
   resetInsightedFlags,
+  // 夜间鉴定相关
+  isValueLocked,
 } from './insightLogic';

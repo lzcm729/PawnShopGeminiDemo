@@ -20,6 +20,10 @@ export const GAME_CONFIG = {
     DEFAULT_KNOWLEDGE_CAPACITY: 100,   // 默认知识池容量 (D3: 确保需多夜才能顿悟)
     INSIGHT_EXTRACTION_RATE: 20,       // 每次格物提取量
     EPIPHANY_BONUS_RATIO: 0.2,         // 顿悟额外奖励比例
+    // --- 夜间鉴定参数 (Night Appraisal) ---
+    INSIGHT_RANGE_SHRINK_RATE: 0.20,   // 格物时估价收窄比例 (~20%)
+    INSIGHT_TRAIT_DISCOVERY_CHANCE: 0.25, // 格物时特征发现概率 (25%)
+    VALUE_LOCK_THRESHOLD: 0.05,        // 估价锁定阈值（区间宽度/真值 < 5%）
   },
   
   INITIAL_MOTHER_STATUS: {

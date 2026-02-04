@@ -155,13 +155,17 @@ export const useInsight = (): UseInsightReturn => {
         });
       }
 
-      // 更新物品状态（标记为已格物，更新知识池）
+      // 更新物品状态（标记为已格物，更新知识池、估价区间、特征等）
       // 注意：MARK_ITEM_INSIGHTED 已经会自动记录到 actionsThisNight
       dispatch({
         type: 'MARK_ITEM_INSIGHTED',
         payload: {
           itemId: item.id,
           knowledgePool: updatedItem.knowledgePool!,
+          currentRange: updatedItem.currentRange,
+          perceivedValue: updatedItem.perceivedValue,
+          hiddenTraits: updatedItem.hiddenTraits,
+          revealedTraits: updatedItem.revealedTraits,
         },
       });
 

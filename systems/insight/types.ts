@@ -11,7 +11,7 @@
  */
 
 import { EssenceCost } from '../economy/essence';
-import { Item } from '../items/types';
+import { Item, ItemTrait } from '../items/types';
 
 // ============================================================================
 // 格物结果
@@ -44,6 +44,20 @@ export interface InsightResult {
 
   /** 剩余知识量 */
   remainingKnowledge: number;
+
+  // --- 夜间鉴定新增字段 ---
+
+  /** 估价区间是否收窄 */
+  rangeNarrowed?: boolean;
+
+  /** 新的估价区间（如果收窄） */
+  newRange?: [number, number];
+
+  /** 估价是否锁定为真值 */
+  valueLocked?: boolean;
+
+  /** 本次发现的特征（概率触发，单个） */
+  traitDiscovered?: ItemTrait;
 }
 
 // ============================================================================
@@ -71,6 +85,17 @@ export interface InsightStatus {
 
   /** 是否接近顿悟 */
   nearEpiphany: boolean;
+
+  // --- 夜间鉴定状态字段 ---
+
+  /** 估价是否已锁定为真值 */
+  isValueLocked: boolean;
+
+  /** 未发现的隐藏特征数量 */
+  hiddenTraitCount: number;
+
+  /** 已发现的特征数量 */
+  revealedTraitCount: number;
 }
 
 /**

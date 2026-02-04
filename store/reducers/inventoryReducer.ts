@@ -367,12 +367,20 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
         }
 
         case 'MARK_ITEM_INSIGHTED': {
-            const { itemId, knowledgePool } = action.payload;
+            const { itemId, knowledgePool, currentRange, perceivedValue, hiddenTraits, revealedTraits } = action.payload;
             return {
                 ...state,
                 inventory: state.inventory.map(item =>
                     item.id === itemId
-                        ? { ...item, insightedTonight: true, knowledgePool }
+                        ? {
+                            ...item,
+                            insightedTonight: true,
+                            knowledgePool,
+                            currentRange: currentRange ?? item.currentRange,
+                            perceivedValue: perceivedValue,  // Can be undefined (locked/show real value)
+                            hiddenTraits: hiddenTraits ?? item.hiddenTraits,
+                            revealedTraits: revealedTraits ?? item.revealedTraits,
+                        }
                         : item
                 ),
                 nightState: {

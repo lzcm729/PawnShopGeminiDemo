@@ -8,7 +8,7 @@
  * - 生成格物叙事文本
  */
 
-import { Item, ItemStatus } from '../items/types';
+import { Item, ItemStatus, ItemTrait } from '../items/types';
 import { KnowledgePool } from '../items/tags';
 import { EssenceCost } from '../economy/essence';
 import { NightState } from '../game/types';
@@ -36,7 +36,79 @@ const getInsightConfig = () => ({
   extractionRate: GAME_CONFIG.NIGHT.INSIGHT_EXTRACTION_RATE,
   epiphanyBonusRatio: GAME_CONFIG.NIGHT.EPIPHANY_BONUS_RATIO,
   defaultCapacity: GAME_CONFIG.NIGHT.DEFAULT_KNOWLEDGE_CAPACITY,
+  // 夜间鉴定配置
+  rangeShrinkRate: GAME_CONFIG.NIGHT.INSIGHT_RANGE_SHRINK_RATE,
+  traitDiscoveryChance: GAME_CONFIG.NIGHT.INSIGHT_TRAIT_DISCOVERY_CHANCE,
+  valueLockThreshold: GAME_CONFIG.NIGHT.VALUE_LOCK_THRESHOLD,
 });
+
+// ============================================================================
+// 夜间鉴定辅助函数
+// ============================================================================
+
+/**
+ * 检查物品估价是否已锁定（区间足够小）
+ */
+export function isValueLocked(item: Item): boolean {
+  const config = getInsightConfig();
+  const [min, max] = item.currentRange;
+  const width = max - min;
+  const realValue = item.realValue;
+
+  // 区间宽度 / 真值 < 阈值时视为锁定
+  // 或者区间宽度小于 100（绝对值兜底）
+  return (width / realValue < config.valueLockThreshold) || (width < 100);
+}
+
+/**
+ * 收窄估价区间，向真值靠拢
+ *
+ * @param item 物品
+ * @returns 新的估价区间
+ */
+function shrinkRange(item: Item): [number, number] {
+  const config = getInsightConfig();
+  const [min, max] = item.currentRange;
+  const realValue = item.realValue;
+
+  // Lerp 向真值收窄
+  const newMin = min + (realValue - min) * config.rangeShrinkRate;
+  const newMax = max - (max - realValue) * config.rangeShrinkRate;
+
+  return [Math.round(newMin), Math.round(newMax)];
+}
+
+/**
+ * 检查收窄后的区间是否应该锁定
+ */
+function shouldLockAfterShrink(newRange: [number, number], realValue: number): boolean {
+  const config = getInsightConfig();
+  const [min, max] = newRange;
+  const width = max - min;
+
+  return (width / realValue < config.valueLockThreshold) || (width < 100);
+}
+
+/**
+ * 尝试发现一个隐藏特征
+ *
+ * @param item 物品
+ * @returns 发现的特征，如果没有发现返回 undefined
+ */
+function tryDiscoverTrait(item: Item): ItemTrait | undefined {
+  const config = getInsightConfig();
+  const hiddenTraits = item.hiddenTraits || [];
+
+  // 没有隐藏特征
+  if (hiddenTraits.length === 0) return undefined;
+
+  // 概率检查
+  if (Math.random() > config.traitDiscoveryChance) return undefined;
+
+  // 随机选择一个隐藏特征
+  const index = Math.floor(Math.random() * hiddenTraits.length);
+  return hiddenTraits[index];
+}
 
 // ============================================================================
 // 检查函数
@@ -91,6 +163,11 @@ export function getInsightStatus(item: Item, nightState: NightState): InsightSta
     reason = 'NO_ENERGY';
   }
 
+  // 夜间鉴定状态
+  const valueLocked = isValueLocked(item);
+  const hiddenTraitCount = (item.hiddenTraits || []).length;
+  const revealedTraitCount = (item.revealedTraits || []).length;
+
   return {
     canInsight,
     reason,
@@ -98,6 +175,10 @@ export function getInsightStatus(item: Item, nightState: NightState): InsightSta
     remainingKnowledge: remaining,
     estimatedYield: pool.essenceYield,
     nearEpiphany,
+    // 夜间鉴定状态
+    isValueLocked: valueLocked,
+    hiddenTraitCount,
+    revealedTraitCount,
   };
 }
 
@@ -114,6 +195,15 @@ export function canInsight(item: Item, nightState: NightState): boolean {
 
 /**
  * 执行格物操作
+ *
+ * 格物产出三项收益：
+ * 1. 点数（必得）- 直到知识池清空
+ * 2. 估价收窄 ~20%（必得）- 直到估价锁定
+ * 3. 特征发现 25%（概率）- 直到特征全开
+ *
+ * 顿悟时的兜底机制：
+ * - 如果估价还没锁定 -> 强制锁定为 realValue
+ * - 如果特征还有未发现的 -> 强制全开
  *
  * @param item 物品（将被修改）
  * @param nightState 夜间状态（用于检查）
@@ -158,7 +248,75 @@ export function performInsight(
     );
   }
 
+  // =========================================================================
+  // 夜间鉴定：估价收窄逻辑
+  // =========================================================================
+  let rangeNarrowed = false;
+  let newRange: [number, number] | undefined;
+  let valueLocked = false;
+  let updatedCurrentRange = workingItem.currentRange;
+  let updatedPerceivedValue = workingItem.perceivedValue;
+
+  const wasValueLocked = isValueLocked(workingItem);
+
+  if (isEpiphany) {
+    // 顿悟兜底：强制锁定估价为真值
+    if (!wasValueLocked) {
+      rangeNarrowed = true;
+      newRange = [workingItem.realValue, workingItem.realValue];
+      valueLocked = true;
+      updatedCurrentRange = newRange;
+      updatedPerceivedValue = undefined; // 真值已知，清除 perceivedValue
+    }
+  } else if (!wasValueLocked) {
+    // 普通格物：收窄估价区间
+    const shrunkRange = shrinkRange(workingItem);
+    rangeNarrowed = true;
+    newRange = shrunkRange;
+    updatedCurrentRange = shrunkRange;
+
+    // 检查是否在收窄后达到锁定阈值
+    if (shouldLockAfterShrink(shrunkRange, workingItem.realValue)) {
+      valueLocked = true;
+      newRange = [workingItem.realValue, workingItem.realValue];
+      updatedCurrentRange = newRange;
+      updatedPerceivedValue = undefined;
+    }
+  }
+
+  // =========================================================================
+  // 夜间鉴定：特征发现逻辑
+  // =========================================================================
+  let traitDiscovered: ItemTrait | undefined;
+  let updatedHiddenTraits = [...(workingItem.hiddenTraits || [])];
+  let updatedRevealedTraits = [...(workingItem.revealedTraits || [])];
+
+  if (isEpiphany) {
+    // 顿悟兜底：强制全开所有隐藏特征
+    if (updatedHiddenTraits.length > 0) {
+      // 将所有隐藏特征移动到已发现
+      updatedRevealedTraits = [...updatedRevealedTraits, ...updatedHiddenTraits];
+      // 如果只有一个特征，记录为"发现的特征"用于 UI 显示
+      if (updatedHiddenTraits.length === 1) {
+        traitDiscovered = updatedHiddenTraits[0];
+      }
+      updatedHiddenTraits = [];
+    }
+  } else {
+    // 普通格物：概率发现特征
+    const discovered = tryDiscoverTrait(workingItem);
+    if (discovered) {
+      traitDiscovered = discovered;
+      // 从隐藏特征中移除
+      updatedHiddenTraits = updatedHiddenTraits.filter(t => t.id !== discovered.id);
+      // 添加到已发现特征
+      updatedRevealedTraits = [...updatedRevealedTraits, discovered];
+    }
+  }
+
+  // =========================================================================
   // 更新物品状态
+  // =========================================================================
   const updatedItem: Item = {
     ...workingItem,
     knowledgePool: {
@@ -166,6 +324,11 @@ export function performInsight(
       extracted: newExtracted,
     },
     insightedTonight: true,
+    // 夜间鉴定更新
+    currentRange: updatedCurrentRange,
+    perceivedValue: updatedPerceivedValue,
+    hiddenTraits: updatedHiddenTraits,
+    revealedTraits: updatedRevealedTraits,
   };
 
   const result: InsightResult = {
@@ -175,6 +338,13 @@ export function performInsight(
     bonusEssence,
     extractedAmount,
     remainingKnowledge: pool.capacity - newExtracted,
+    // 夜间鉴定结果
+    rangeNarrowed,
+    newRange,
+    valueLocked,
+    traitDiscovered,
+    // 顿悟时锁定的价值
+    lockedValue: valueLocked ? workingItem.realValue : undefined,
   };
 
   return { result, updatedItem };
