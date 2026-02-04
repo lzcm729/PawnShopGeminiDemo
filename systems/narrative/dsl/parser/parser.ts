@@ -120,11 +120,12 @@ export class Parser {
     /**
      * Create a block parser instance with shared token state
      */
-    private createBlockParser<T extends { tokens: Token[]; current: number }>(
+    private createBlockParser<T>(
         ParserClass: new (source: string, filename?: string) => T
     ): T {
         const parser = new ParserClass(this.source, this.filename);
         // Share token state with the block parser
+        // Using 'any' cast because tokens/current are protected in base class
         (parser as any).tokens = this.tokens;
         (parser as any).current = this.current;
         return parser;
@@ -133,8 +134,8 @@ export class Parser {
     /**
      * Sync token position after block parser finishes
      */
-    private syncPosition(parser: { current: number }): void {
-        this.current = parser.current;
+    private syncPosition(parser: unknown): void {
+        this.current = (parser as any).current;
     }
 
     private delegateToStoryParser(): StoryBlock {
