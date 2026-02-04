@@ -120,14 +120,12 @@ export function financialReducer(state: GameState, action: Action): GameState {
         case 'VISIT_MOTHER': {
             const { motherStatus, visitedToday } = state.stats;
             if (visitedToday) return state;
+            // Comfort reduces complication risk - no external rewards, pure emotional choice
             const newMother = { ...motherStatus, risk: Math.max(0, motherStatus.risk - 1) };
-            const newRep = { ...state.reputation };
-            newRep[ReputationType.HUMANITY] = Math.min(100, newRep[ReputationType.HUMANITY] + 2);
             return {
                 ...state,
                 stats: { ...state.stats, motherStatus: newMother, visitedToday: true },
-                reputation: newRep,
-                dayEvents: [...state.dayEvents, "前往医院探望了母亲。(Humanity +2, Risk -1%)"]
+                dayEvents: [...state.dayEvents, "前往医院探望了母亲。"]
             };
         }
 

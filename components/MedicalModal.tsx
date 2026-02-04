@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { Activity, HeartPulse, ShieldAlert, CreditCard, Syringe, PlusSquare, AlertTriangle, Battery } from 'lucide-react';
+import { Activity, HeartPulse, ShieldAlert, CreditCard, Syringe, PlusSquare, AlertTriangle, Battery, Wallet } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 
@@ -56,7 +56,21 @@ export const MedicalModal: React.FC = () => {
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.05)_1px,transparent_1px)] bg-[length:20px_20px] pointer-events-none"></div>
                 <div className="absolute inset-0 bg-radial-gradient from-transparent to-[#020b0b] pointer-events-none"></div>
 
-                <div className="flex-1 p-8 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 overflow-y-auto">
+                {/* Cash Display Bar */}
+                <div className="px-8 pt-4 pb-2 border-b border-teal-900/50 relative z-10 flex justify-end items-center">
+                    <div className="flex items-center gap-2 bg-black/40 border border-teal-800/50 rounded px-4 py-2">
+                        <Wallet className="w-4 h-4 text-teal-600" />
+                        <span className="text-[10px] text-teal-700 uppercase">Available Funds</span>
+                        <span className={cn(
+                            "text-lg font-bold font-mono",
+                            cash < medicalBill.amount ? "text-red-400" : "text-teal-300"
+                        )}>
+                            ${cash.toLocaleString()}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="flex-1 p-8 pt-4 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 overflow-y-auto">
                     
                     {/* LEFT COLUMN: PATIENT MONITOR */}
                     <div className="space-y-6">

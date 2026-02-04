@@ -96,7 +96,9 @@ export const NightDashboard: React.FC = () => {
             )}
 
             {/* Background: Pawn Shop Night Interior */}
-            <div className="absolute inset-0 bg-[url('/assets/backgrounds/night_dashboard.png')] bg-cover bg-center opacity-30 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[url('/assets/backgrounds/night_dashboard.png')] bg-cover bg-center opacity-25 blur-[2px] pointer-events-none"></div>
+            {/* Subtle vignette overlay */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30 pointer-events-none"></div>
             
             {/* Desk Light Overlay - warm glow from lamp */}
             <div
@@ -124,6 +126,85 @@ export const NightDashboard: React.FC = () => {
                             Day {stats.day} Complete. <br/>
                             Store Status: LOCKED.
                         </p>
+
+                        {/* Mother's Care - Emotional Banner */}
+                        <div className={cn(
+                            "mt-8 border rounded-lg overflow-hidden flex items-stretch",
+                            isOverdue ? "border-red-500/60 bg-red-950/20" : "border-rose-900/40 bg-stone-900/30"
+                        )}>
+                            {/* Left: Icon & Title */}
+                            <div className={cn(
+                                "px-6 py-5 flex items-center gap-4 border-r",
+                                isOverdue ? "border-red-900/50" : "border-stone-800/50"
+                            )}>
+                                <Heart className={cn(
+                                    "w-10 h-10 shrink-0",
+                                    isOverdue ? "text-red-400 animate-pulse" : "text-rose-400"
+                                )} />
+                                <div>
+                                    <span className="text-lg uppercase tracking-[0.15em] text-stone-200 font-medium">
+                                        母亲
+                                    </span>
+                                    {isOverdue && (
+                                        <div className="mt-1 text-[10px] text-red-400 font-bold flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3" />
+                                            医疗账单逾期!
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Right: Action Buttons */}
+                            <div className="flex-1 flex divide-x divide-stone-800/50">
+                                <button
+                                    onClick={() => dispatch({ type: 'TOGGLE_MEDICAL' })}
+                                    className="flex-1 py-4 px-4 flex items-center justify-center gap-3 hover:bg-stone-800/50 transition-colors group"
+                                >
+                                    <Activity className={cn(
+                                        "w-6 h-6 group-hover:scale-110 transition-transform shrink-0",
+                                        isOverdue ? "text-red-400" : "text-teal-400"
+                                    )} />
+                                    <div className="text-left">
+                                        <div className={cn(
+                                            "text-xs uppercase tracking-wider group-hover:text-white",
+                                            isOverdue ? "text-red-400" : "text-stone-300"
+                                        )}>
+                                            医疗账单
+                                        </div>
+                                        <div className={cn(
+                                            "text-[10px] mt-0.5",
+                                            isOverdue ? "text-red-500" : "text-stone-500"
+                                        )}>
+                                            {isOverdue ? '立即处理' : daysUntilBill > 0 ? `${daysUntilBill} 天后到期` : '查看详情'}
+                                        </div>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => dispatch({ type: 'TOGGLE_VISIT' })}
+                                    disabled={stats.visitedToday}
+                                    className={cn(
+                                        "flex-1 py-4 px-4 flex items-center justify-center gap-3 transition-colors group",
+                                        stats.visitedToday ? "opacity-40 cursor-not-allowed" : "hover:bg-rose-950/30"
+                                    )}
+                                >
+                                    <Heart className={cn(
+                                        "w-6 h-6 transition-transform shrink-0",
+                                        stats.visitedToday ? "text-stone-600" : "text-rose-400 group-hover:scale-110"
+                                    )} />
+                                    <div className="text-left">
+                                        <div className={cn(
+                                            "text-xs uppercase tracking-wider",
+                                            stats.visitedToday ? "text-stone-600" : "text-stone-300 group-hover:text-rose-300"
+                                        )}>
+                                            {stats.visitedToday ? '已探望' : '探望母亲'}
+                                        </div>
+                                        <div className="text-[10px] text-stone-500 mt-0.5">
+                                            {stats.visitedToday ? '明天再来' : '去看看她'}
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Admin Actions */}
@@ -160,34 +241,6 @@ export const NightDashboard: React.FC = () => {
                             <span className="text-xs uppercase tracking-widest group-hover:text-white">
                                 Vault ({activeItems})
                             </span>
-                        </button>
-
-                        {/* Medical Terminal Button */}
-                        <button
-                            onClick={() => dispatch({ type: 'TOGGLE_MEDICAL' })}
-                            className={cn(
-                                "h-32 border bg-stone-900/50 hover:bg-stone-800 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
-                                isOverdue ? "border-red-500 animate-pulse bg-red-950/20" : (bill.status === 'PENDING' ? "border-teal-800" : "border-stone-800")
-                            )}
-                        >
-                            <div className="absolute top-2 right-2 flex items-center gap-1">
-                                {isOverdue && <AlertCircle className="w-4 h-4 text-red-500" />}
-                                <span className={cn("text-[9px] font-bold uppercase", stats.motherStatus.health < 50 ? "text-red-500" : "text-stone-500")}>
-                                    HP: {Math.round(stats.motherStatus.health)}%
-                                </span>
-                            </div>
-
-                            <Activity className={cn("w-8 h-8 transition-transform group-hover:scale-110", bill.status === 'PENDING' ? "text-teal-500" : "text-stone-500")} />
-                            <div className="flex flex-col items-center">
-                                <span className="text-xs uppercase tracking-widest group-hover:text-white">
-                                    Medical Admin
-                                </span>
-                                {isOverdue && (
-                                    <span className="text-[9px] text-red-500 font-bold mt-1">
-                                        ! CRITICAL !
-                                    </span>
-                                )}
-                            </div>
                         </button>
 
                         {/* Insight / 格物 Button */}
@@ -426,39 +479,20 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </button>
 
-                        {/* Visit Hospital Button */}
-                        <button
-                            onClick={() => dispatch({ type: 'TOGGLE_VISIT' })}
-                            disabled={stats.visitedToday}
-                            className={cn(
-                                "h-32 border bg-stone-900/50 hover:bg-stone-800 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden col-span-2",
-                                stats.visitedToday ? "border-stone-800 opacity-50 grayscale" : "border-blue-900 hover:border-blue-700"
-                            )}
-                        >
-                            <Heart className={cn("w-8 h-8 transition-transform group-hover:scale-110", stats.visitedToday ? "text-stone-600" : "text-blue-500")} />
-                            <div className="flex flex-col items-center">
-                                <span className={cn("text-xs uppercase tracking-widest font-bold", stats.visitedToday ? "text-stone-500" : "text-blue-200")}>
-                                    {stats.visitedToday ? "Visit Complete" : "Visit Hospital"}
-                                </span>
-                                {!stats.visitedToday && (
-                                    <span className="text-[9px] text-blue-500/70 mt-1">
-                                        Humanity +2 / Risk -1%
-                                    </span>
-                                )}
-                            </div>
-                        </button>
                     </div>
                 </div>
 
-                {/* Right: End Day Action */}
+                {/* Right: Status Panel */}
                 <div className="w-1/3 flex flex-col items-center justify-center border-l border-stone-800 pl-8">
-                    <div className="text-center mb-8">
+
+                    {/* Cash Position */}
+                    <div className="text-center mb-6">
                         <div className="text-[10px] uppercase text-stone-600 mb-2 tracking-[0.2em]">Net Cash Position</div>
                         <div className="text-3xl font-mono text-stone-200">${stats.cash}</div>
                     </div>
 
                     {/* Reputation Bars */}
-                    <div className="flex flex-col gap-3 mb-8 w-full max-w-[200px]">
+                    <div className="flex flex-col gap-3 mb-6 w-full max-w-[200px]">
                         <div className="text-[10px] uppercase text-stone-600 tracking-[0.2em] text-center">Reputation</div>
 
                         <Tooltip content={<div className="text-xs"><span className="font-bold">Humanity:</span> {reputation[ReputationType.HUMANITY]}%</div>}>
