@@ -203,8 +203,11 @@ export function createItemTemplate(ast: ItemBlock, chainId: string): {
         };
     }
 
-    // Fallback: No CSV template found - use DSL data (legacy support)
-    console.warn(`[itemTransform] Item template not found in CSV: ${ast.id}. Using DSL data as fallback.`);
+    // Fallback: No CSV template found - use DSL data
+    // Virtual items (isVirtual: true) are expected to use DSL data only
+    if (!ast.isVirtual) {
+        console.warn(`[itemTransform] Item template not found in CSV: ${ast.id}. Using DSL data as fallback.`);
+    }
 
     return {
         base: {
