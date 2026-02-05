@@ -125,33 +125,6 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-20 pointer-events-none" />
 
                     {isAngry && <div className="absolute inset-0 border-2 border-red-500 rounded-full animate-pulse z-30"></div>}
-
-                    {/* Insight Button - positioned at bottom-right of portrait */}
-                    {!hasUsedInsight && (
-                        <button
-                            onClick={onInsightClick}
-                            disabled={!canUseInsight}
-                            title={canUseInsight ? "洞察客户 (消耗 1 AP)" : insightBlockReason}
-                            className={cn(
-                                "absolute bottom-0 right-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-200 z-40",
-                                canUseInsight
-                                    ? "bg-amber-600 border-amber-500 text-black hover:bg-amber-500 hover:scale-110 cursor-pointer shadow-lg"
-                                    : "bg-noir-400 border-noir-500 text-noir-txt-muted cursor-not-allowed opacity-60"
-                            )}
-                        >
-                            <Eye className="w-4 h-4" />
-                        </button>
-                    )}
-
-                    {/* Already used indicator */}
-                    {hasUsedInsight && (
-                        <div
-                            className="absolute bottom-0 right-0 w-8 h-8 rounded-full border-2 flex items-center justify-center bg-noir-300 border-noir-400 text-pawn-green z-40"
-                            title="已洞察"
-                        >
-                            <EyeOff className="w-4 h-4" />
-                        </div>
-                    )}
                 </div>
 
                 {/* Customer Name & ID - Below Portrait */}
@@ -165,14 +138,37 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
 
             {/* Info Bar - Compact Bottom Section */}
             <div className="px-4 pb-3 flex justify-between items-center">
-                {/* Tags */}
-                <div className="flex gap-2">
+                {/* Tags + Insight Button */}
+                <div className="flex gap-2 items-center">
                     <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 py-0.5 rounded border border-noir-300">
                         {customer.behaviorTags.join(', ')}
                     </span>
                     <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 py-0.5 rounded border border-noir-300">
                         Resolve: {customer.redemptionResolve}
                     </span>
+
+                    {/* Insight Button - Badge Style */}
+                    {!hasUsedInsight ? (
+                        <button
+                            onClick={onInsightClick}
+                            disabled={!canUseInsight}
+                            title={canUseInsight ? "洞察客户 (消耗 1 AP)" : insightBlockReason}
+                            className={cn(
+                                "flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded border transition-all duration-200",
+                                canUseInsight
+                                    ? "bg-amber-900/40 border-amber-600/60 text-amber-400 hover:bg-amber-900/60 hover:border-amber-500 cursor-pointer"
+                                    : "bg-noir-100 border-noir-300 text-noir-txt-muted cursor-not-allowed opacity-60"
+                            )}
+                        >
+                            <Eye className="w-3 h-3" />
+                            <span>洞察</span>
+                        </button>
+                    ) : (
+                        <span className="flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded border bg-pawn-green/20 border-pawn-green/40 text-pawn-green">
+                            <EyeOff className="w-3 h-3" />
+                            <span>已洞察</span>
+                        </span>
+                    )}
                 </div>
 
                 {/* Patience Bar */}
@@ -906,33 +902,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                         </button>
                     )}
                  </div>
-
-                 {/* Customer Insight Button - Prominent Action */}
-                 {!insightResult && (
-                     <button
-                         onClick={handleInsightClick}
-                         disabled={!canUseInsight() || !canInteract}
-                         title={canUseInsight() ? "洞察客户心理 (消耗 1 AP)" : insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
-                         className={cn(
-                             "w-full p-3 rounded border-2 transition-all duration-300 flex items-center justify-center gap-3",
-                             canUseInsight() && canInteract
-                                 ? "bg-amber-900/30 border-amber-600/60 text-amber-400 hover:bg-amber-900/50 hover:border-amber-500 hover:shadow-[0_0_15px_rgba(217,119,6,0.3)] cursor-pointer"
-                                 : "bg-noir-300 border-noir-400 text-noir-txt-muted cursor-not-allowed opacity-60"
-                         )}
-                     >
-                         <Eye className="w-5 h-5" />
-                         <span className="font-bold tracking-wider">洞察客户</span>
-                         <span className="text-xs opacity-70">(1 AP)</span>
-                     </button>
-                 )}
-
-                 {/* Insight Already Used Indicator */}
-                 {insightResult && (
-                     <div className="w-full p-2 rounded border border-pawn-green/30 bg-pawn-green/10 flex items-center justify-center gap-2 text-pawn-green text-sm">
-                         <EyeOff className="w-4 h-4" />
-                         <span className="font-medium">已洞察客户</span>
-                     </div>
-                 )}
 
                  {/* Main Action */}
                  <div className="flex gap-3">
