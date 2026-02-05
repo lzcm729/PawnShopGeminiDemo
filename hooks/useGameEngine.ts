@@ -629,20 +629,16 @@ export const useGameEngine = () => {
 
     const repDelta: any = { [ReputationType.HUMANITY]: 0, [ReputationType.CREDIBILITY]: 0, [ReputationType.INNOCENCE]: 0 };
 
-    if (offer >= desiredAmount) {
-      repDelta[ReputationType.HUMANITY] += 3;
-      repDelta[ReputationType.CREDIBILITY] -= 1;
-    } else {
-      repDelta[ReputationType.CREDIBILITY] += 1;
-    }
-
-    // Contract tier effects (from design doc):
+    // Contract tier effects (from design doc - 行为影响矩阵):
     // 0% Charity: +1 Humanity
-    // 10% Standard: +1 Credibility (handled above)
+    // 5%-10% Standard: +1 Credibility
     // >=20% Shark: -1 Humanity
-    if (rate === 0) repDelta[ReputationType.HUMANITY] += 1;  // Changed from +5 to +1 per design doc
-    else if (rate >= 0.20) {
-        repDelta[ReputationType.HUMANITY] -= 1;  // Shark rate: -1 Humanity
+    if (rate === 0) {
+        repDelta[ReputationType.HUMANITY] += 1;  // 慈善档位
+    } else if (rate > 0 && rate < 0.20) {
+        repDelta[ReputationType.CREDIBILITY] += 1;  // 标准档位 (5% 或 10%)
+    } else if (rate >= 0.20) {
+        repDelta[ReputationType.HUMANITY] -= 1;  // 高利贷档位
     }
 
     const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
