@@ -226,25 +226,10 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                     </div>
                 </div>
 
-                {/* Right: Stress Bar + Insight Button (vertical layout) */}
+                {/* Right: Insight Button + Stress Bar (vertical layout) */}
                 <div className="shrink-0 flex flex-col items-center gap-1.5 px-3 min-w-[64px]">
-                    {/* Stress indicator */}
-                    <div className="flex flex-col items-center gap-1">
-                        <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest flex items-center gap-1">
-                            <Activity className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="text-[9px] font-bold text-noir-txt-muted uppercase tracking-wider">STRESS</span>
-                        <div className="w-3.5 h-16 bg-noir-400 rounded-sm overflow-hidden border border-noir-500 relative">
-                            <div
-                                className={cn("absolute bottom-0 left-0 right-0 transition-all duration-500", patienceColor)}
-                                style={{ height: `${patiencePercent}%` }}
-                            />
-                        </div>
-                        <span className="text-xs font-mono text-noir-txt-muted">{patience}/{maxPatience}</span>
-                    </div>
-
-                    {/* Insight Button - Below Stress */}
-                    <div className="mt-auto">
+                    {/* Insight Button - Above Stress */}
+                    <div>
                         {!hasUsedInsight ? (
                             <button
                                 onClick={onInsightClick}
@@ -267,6 +252,21 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                                 <span>已洞察</span>
                             </div>
                         )}
+                    </div>
+
+                    {/* Stress indicator */}
+                    <div className="flex flex-col items-center gap-1 mt-auto">
+                        <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest flex items-center gap-1">
+                            <Activity className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="text-[9px] font-bold text-noir-txt-muted uppercase tracking-wider">STRESS</span>
+                        <div className="w-3.5 h-16 bg-noir-400 rounded-sm overflow-hidden border border-noir-500 relative">
+                            <div
+                                className={cn("absolute bottom-0 left-0 right-0 transition-all duration-500", patienceColor)}
+                                style={{ height: `${patiencePercent}%` }}
+                            />
+                        </div>
+                        <span className="text-xs font-mono text-noir-txt-muted">{patience}/{maxPatience}</span>
                     </div>
                 </div>
             </div>
