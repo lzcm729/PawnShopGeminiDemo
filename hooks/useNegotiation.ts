@@ -265,7 +265,8 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         costPatience = 1;
         nextMood = 'Annoyed';
         message = "这点钱不够应急啊，再加点吧。";
-        setRevealedMinimum(true);
+        // TODO: 底价揭示功能暂时禁用，之后可能通过其他机制（如洞察技能）解锁
+        // setRevealedMinimum(true);
     }
     else if (selectedRate > 0 && totalRepayment > maxRepayment) {
         status = 'INTEREST_TOO_HIGH';
