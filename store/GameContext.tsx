@@ -109,7 +109,9 @@ const initialState: GameState = {
     showWorkshop: false,
     showInsight: false,
     // === PENDING ITEM SELECTION ===
-    pendingSelectedItemId: null
+    pendingSelectedItemId: null,
+    // === CUSTOMER INSIGHT ===
+    currentCustomerInsight: null
 };
 
 // === Context ===

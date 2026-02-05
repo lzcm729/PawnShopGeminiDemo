@@ -4,10 +4,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
+import { useCustomerInsight } from '../hooks/useCustomerInsight';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
-import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
@@ -16,6 +17,7 @@ import { playSfx } from '../systems/game/audio';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { RollingNumber } from './ui/RollingNumber';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
+import { InsightModal } from './InsightModal';
 
 // ... existing interfaces ...
 interface NegotiationStateProps {
@@ -55,13 +57,31 @@ export interface AppraisalFeedback {
     isBonus?: boolean;  // True if discovered via LUCKY_FIND
 }
 
-const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: string }> = ({ customer, patience, mood }) => {
+interface CustomerHeaderProps {
+    customer: Customer;
+    patience: number;
+    mood: string;
+    onInsightClick?: () => void;
+    canUseInsight?: boolean;
+    hasUsedInsight?: boolean;
+    insightBlockReason?: string;
+}
+
+const CustomerHeader: React.FC<CustomerHeaderProps> = ({
+    customer,
+    patience,
+    mood,
+    onInsightClick,
+    canUseInsight = false,
+    hasUsedInsight = false,
+    insightBlockReason
+}) => {
     const isAngry = mood === 'Angry';
-    
+
     // Calculate patience percentage for the bar
-    const maxPatience = 5; 
+    const maxPatience = 5;
     const patiencePercent = (patience / maxPatience) * 100;
-    
+
     let patienceColor = "bg-emerald-500";
     if (patiencePercent <= 40) patienceColor = "bg-amber-500";
     if (patiencePercent <= 20) patienceColor = "bg-red-600";
@@ -89,6 +109,33 @@ const CustomerHeader: React.FC<{ customer: Customer, patience: number, mood: str
                     }}
                  />
                  {isAngry && <div className="absolute inset-0 border-2 border-red-500 animate-pulse"></div>}
+
+                 {/* Insight Button - positioned at bottom-right of portrait */}
+                 {!hasUsedInsight && (
+                     <button
+                         onClick={onInsightClick}
+                         disabled={!canUseInsight}
+                         title={canUseInsight ? "洞察客户 (消耗 1 AP)" : insightBlockReason}
+                         className={cn(
+                             "absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200",
+                             canUseInsight
+                                 ? "bg-amber-600 border-amber-500 text-black hover:bg-amber-500 hover:scale-110 cursor-pointer shadow-lg"
+                                 : "bg-noir-400 border-noir-500 text-noir-txt-muted cursor-not-allowed opacity-60"
+                         )}
+                     >
+                         <Eye className="w-3.5 h-3.5" />
+                     </button>
+                 )}
+
+                 {/* Already used indicator */}
+                 {hasUsedInsight && (
+                     <div
+                         className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-2 flex items-center justify-center bg-noir-300 border-noir-400 text-pawn-green"
+                         title="已洞察"
+                     >
+                         <EyeOff className="w-3.5 h-3.5" />
+                     </div>
+                 )}
              </div>
              
              <div className="flex-1 min-w-0 flex flex-col justify-between">
@@ -139,14 +186,23 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
 
+  // Customer Insight hook
+  const {
+    insightResult,
+    status: insightStatus,
+    canUseInsight,
+    useInsight,
+    getBlockReasonText
+  } = useCustomerInsight();
+
   // ... (destructure negotiation) ...
-  const { 
+  const {
     offerPrincipal,
     setOfferPrincipal,
     selectedRate,
     setSelectedRate,
-    submitOffer, 
-    isWalkedAway, 
+    submitOffer,
+    isWalkedAway,
     lastAction,
     mood,
     patience,
@@ -159,6 +215,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const scrollRef = useRef<HTMLDivElement>(null);
   const [rejectionState, setRejectionState] = useState<{show: boolean, text: string}>({show: false, text: ''});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showInsightModal, setShowInsightModal] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -356,6 +413,16 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
   if (!currentCustomer || !item) return null;
 
+  // Handle insight button click
+  const handleInsightClick = () => {
+    if (!canUseInsight()) return;
+    playSfx('CLICK');
+    const result = useInsight();
+    if (result) {
+      setShowInsightModal(true);
+    }
+  };
+
   const handleOffer = () => {
     if (isWalkedAway || isSubmitting) return;
 
@@ -507,18 +574,34 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
   return (
     <div className="flex flex-col h-full relative bg-noir-100 border-l border-noir-400">
-      <CustomerHeader customer={currentCustomer} patience={patience} mood={mood} />
+      <CustomerHeader
+          customer={currentCustomer}
+          patience={patience}
+          mood={mood}
+          onInsightClick={handleInsightClick}
+          canUseInsight={canUseInsight()}
+          hasUsedInsight={insightResult !== null}
+          insightBlockReason={insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
+        />
+
+      {/* Insight Modal */}
+      {showInsightModal && insightResult && (
+          <InsightModal
+              result={insightResult}
+              onClose={() => setShowInsightModal(false)}
+          />
+      )}
 
       {/* Rejection Overlay */}
       {rejectionState.show && (
             <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-300">
                 <div className="bg-noir-200 border-2 border-red-900/50 p-8 max-w-md w-full shadow-2xl relative flex flex-col items-center">
-                    <div className="text-6xl font-serif text-noir-txt-muted opacity-20 absolute top-4 left-4">“</div>
+                    <div className="text-6xl font-serif text-noir-txt-muted opacity-20 absolute top-4 left-4">"</div>
                     <p className="font-serif text-xl text-center text-noir-txt-primary italic leading-relaxed z-10 my-6">
                         {rejectionState.text}
                     </p>
-                    <Button 
-                        variant="danger" 
+                    <Button
+                        variant="danger"
                         onClick={completeRejection}
                         className="w-full h-14 text-lg tracking-widest mt-4"
                     >

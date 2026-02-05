@@ -10,6 +10,7 @@ import { EssenceBalance } from '../economy/essence';
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
 import { GameNode } from '../../types/node';
 import { BlackmarketState } from '../blackmarket/types';
+import { CustomerInsightResult } from '../customerInsight';
 
 // === NIGHT PHASE TYPES ===
 export interface NightState {
@@ -102,4 +103,7 @@ export interface GameState {
 
   // === PENDING ITEM SELECTION (待选中物品) ===
   pendingSelectedItemId: string | null;    // 从库存跳转时预选的物品ID
+
+  // === CUSTOMER INSIGHT (洞察客户) ===
+  currentCustomerInsight: CustomerInsightResult | null;  // 当前客户的洞察结果
 }

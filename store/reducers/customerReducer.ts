@@ -16,7 +16,7 @@ import { createPawnNode, PawnNode } from '../../types/node';
 export function customerReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
         case 'SET_CUSTOMER': {
-            if (!action.payload) return { ...state, currentCustomer: null, currentNode: null };
+            if (!action.payload) return { ...state, currentCustomer: null, currentNode: null, currentCustomerInsight: null };
             // Apply patience bonus from Tea Set upgrade (only for non-seller customers)
             const patienceBonus = getPatienceBonus(state.shopUpgrades);
             const basePatience = action.payload.patience;
@@ -43,12 +43,13 @@ export function customerReducer(state: GameState, action: Action): GameState {
                 currentCustomer: customerInit,
                 currentNode: pawnNode,
                 // phase transition removed - handled by state machine
-                lastSatisfaction: null
+                lastSatisfaction: null,
+                currentCustomerInsight: null  // Clear insight for new customer
             };
         }
 
         case 'CLEAR_CUSTOMER':
-            return { ...state, currentCustomer: null, currentNode: null, lastDealSummary: null };
+            return { ...state, currentCustomer: null, currentNode: null, lastDealSummary: null, currentCustomerInsight: null };
 
         case 'UPDATE_CUSTOMER_STATUS':
             if (!state.currentCustomer) return state;
@@ -222,6 +223,13 @@ export function customerReducer(state: GameState, action: Action): GameState {
 
         case 'SET_SATISFACTION':
             return { ...state, lastSatisfaction: action.payload };
+
+        // === CUSTOMER INSIGHT ===
+        case 'USE_CUSTOMER_INSIGHT':
+            return { ...state, currentCustomerInsight: action.payload };
+
+        case 'CLEAR_CUSTOMER_INSIGHT':
+            return { ...state, currentCustomerInsight: null };
 
         default:
             return state;

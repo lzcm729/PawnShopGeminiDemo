@@ -13,6 +13,7 @@ import { ItemLogEntry } from '../../types';
 import { GameNode } from '../../types/node';
 import { BlackmarketState, RiskEvent } from '../../systems/blackmarket/types';
 import { PhaseEvent } from '../../systems/core/phases';
+import { CustomerInsightResult } from '../../systems/customerInsight';
 
 // === Action Type Union ===
 
@@ -39,6 +40,10 @@ export type Action =
     | { type: 'MARK_NO_MORE_CUSTOMERS' }
     | { type: 'INCREMENT_NARRATIVE_CUSTOMER' }  // Track narrative customer served (no limit)
     | { type: 'SET_SATISFACTION'; payload: SatisfactionLevel }
+
+    // Customer Insight (洞察客户)
+    | { type: 'USE_CUSTOMER_INSIGHT'; payload: CustomerInsightResult }
+    | { type: 'CLEAR_CUSTOMER_INSIGHT' }
 
     // Node management (new unified interface)
     | { type: 'SET_NODE'; payload: GameNode | null }
