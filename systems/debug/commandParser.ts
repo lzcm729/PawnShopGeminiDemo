@@ -6,6 +6,7 @@ import type { Item, PawnInfo, WorkState } from '../items/types';
 import type { ItemTag } from '../items/tags';
 import { STATE_TAGS, ATTRIBUTE_TAGS, ESSENCE_TAGS } from '../items/tags';
 import { createItemFromTemplate, getAllItemTemplates } from '../items/csvLoader';
+import { generateFillerCustomer, ForcedJumpTrait } from '../npc/fillerGenerator';
 import { AVAILABLE_UPGRADES, getUpgradeConfig } from '../upgrades/config';
 import type { OwnedUpgrade } from '../upgrades/types';
 
@@ -113,7 +114,10 @@ export function executeCommand(
   add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2] - Add test pawn item
   add forfeit <name> [--tags TAG1,TAG2] - Add forfeit item for blackmarket testing
   add template <id> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|REFORGED] - Add item from CSV template
-  spawn customer        - Force spawn a customer (business phase only)
+  spawn customer        - Force spawn a customer via game engine (business phase only)
+  spawn filler          - Spawn a normal filler customer (business phase only)
+  spawn filler mistake  - Spawn filler with FAKE trait for 打眼 testing
+  spawn filler bargain  - Spawn filler with JACKPOT trait for 捡漏 testing
   blackmarket lock <n>  - Lock blackmarket for N days
   blackmarket unlock    - Unlock blackmarket
   blackmarket refresh   - Force refresh daily purchase requests
@@ -147,16 +151,7 @@ export function executeCommand(
       return handleAddCommand(args, dispatch, getState);
 
     case 'spawn':
-      if (args[0]?.toLowerCase() === 'customer') {
-        const state = getState();
-        if (!PhaseIs.business(state.phase)) {
-          return { success: false, message: 'Error: Can only spawn customers in BUSINESS phase' };
-        }
-        // Trigger loading state - the game engine will pick up and generate customer
-        dispatch({ type: 'SET_LOADING', payload: true });
-        return { success: true, message: 'Triggering customer spawn...' };
-      }
-      return { success: false, message: `Unknown spawn target: ${args[0]}` };
+      return handleSpawnCommand(args, dispatch, getState);
 
     case 'skip':
       if (args[0]?.toLowerCase() === 'day') {
@@ -1209,6 +1204,88 @@ ${nameVariants}
 }
 
 /**
+ * Handle 'spawn' command - spawn customers with optional forced traits
+ */
+function handleSpawnCommand(
+  args: string[],
+  dispatch: (action: any) => void,
+  getState: () => any
+): CommandResult {
+  if (args.length < 1) {
+    return { success: false, message: 'Usage: spawn <customer|filler> [mistake|bargain]' };
+  }
+
+  const target = args[0].toLowerCase();
+  const state = getState();
+
+  // Check phase for all spawn commands
+  if (!PhaseIs.business(state.phase)) {
+    return { success: false, message: 'Error: Can only spawn customers in BUSINESS phase' };
+  }
+
+  switch (target) {
+    case 'customer':
+      // Original behavior: trigger loading state for game engine to generate customer
+      dispatch({ type: 'SET_LOADING', payload: true });
+      return { success: true, message: 'Triggering customer spawn...' };
+
+    case 'filler': {
+      // Generate filler customer with optional forced jump trait
+      const subType = args[1]?.toLowerCase();
+      let forceJumpTrait: ForcedJumpTrait = null;
+      let description = 'normal';
+
+      if (subType === 'mistake') {
+        forceJumpTrait = 'MISTAKE';
+        description = 'FAKE trait (打眼)';
+      } else if (subType === 'bargain') {
+        forceJumpTrait = 'BARGAIN';
+        description = 'JACKPOT trait (捡漏)';
+      } else if (subType && subType !== '') {
+        return {
+          success: false,
+          message: `Unknown filler type: ${subType}. Use 'mistake' or 'bargain', or omit for normal filler.`
+        };
+      }
+
+      // Collect template IDs from inventory to avoid duplicates
+      const excludeTemplateIds = new Set<string>(
+        state.inventory
+          .filter((item: Item) => item.status === ItemStatus.ACTIVE && item.templateId)
+          .map((item: Item) => item.templateId!)
+      );
+
+      const customer = generateFillerCustomer(
+        state.stats.day,
+        undefined, // Random profile
+        excludeTemplateIds,
+        forceJumpTrait
+      );
+
+      if (!customer) {
+        return { success: false, message: 'Failed to generate filler customer' };
+      }
+
+      // Set customer directly and transition to SERVING state
+      dispatch({ type: 'SET_CUSTOMER', payload: customer });
+      dispatch({ type: 'PHASE_TRANSITION', payload: { type: 'CUSTOMER_GENERATED', hasCustomer: true } });
+
+      const itemInfo = customer.item
+        ? `\n  Item: ${customer.item.name} (${customer.item.category})\n  Hidden traits: ${customer.item.hiddenTraits.length}`
+        : '';
+
+      return {
+        success: true,
+        message: `Spawned filler customer with ${description}${itemInfo}`
+      };
+    }
+
+    default:
+      return { success: false, message: `Unknown spawn target: ${target}. Use 'customer' or 'filler [mistake|bargain]'` };
+  }
+}
+
+/**
  * Command definition for documentation
  */
 export interface CommandDef {
@@ -1369,9 +1446,27 @@ export function getAvailableCommands(): CommandDef[] {
     },
     {
       command: 'spawn customer',
-      description: 'Force spawn a customer (business phase only)',
+      description: 'Force spawn a customer via game engine (business phase only)',
       usage: 'spawn customer',
       examples: [`spawn customer`]
+    },
+    {
+      command: 'spawn filler',
+      description: 'Spawn a normal filler customer directly (business phase only)',
+      usage: 'spawn filler [mistake|bargain]',
+      examples: [`spawn filler`, `spawn filler mistake`, `spawn filler bargain`]
+    },
+    {
+      command: 'spawn filler mistake',
+      description: 'Spawn filler customer with hidden FAKE trait for testing value collapse (打眼)',
+      usage: 'spawn filler mistake',
+      examples: [`spawn filler mistake`]
+    },
+    {
+      command: 'spawn filler bargain',
+      description: 'Spawn filler customer with hidden JACKPOT trait for testing value surge (捡漏)',
+      usage: 'spawn filler bargain',
+      examples: [`spawn filler bargain`]
     },
     {
       command: 'test dsl',

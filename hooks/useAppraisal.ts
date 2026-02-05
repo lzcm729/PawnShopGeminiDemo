@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
 import { ItemTrait } from '../types';
-import { rollAppraisalEvent, AppraisalEvent } from '../systems/items/utils';
+import { rollAppraisalEvent, AppraisalEvent, generateValuationRange } from '../systems/items/utils';
 import { generateAppraisalLog } from '../systems/game/utils/logGenerator';
 
 interface AppraisalResult {
@@ -12,6 +12,7 @@ interface AppraisalResult {
     bonusTraitIds: string[];  // Traits discovered via LUCKY_FIND
     newRange: [number, number];
     event?: AppraisalEvent;
+    valueJump?: 'FAKE' | 'JACKPOT';  // Indicates value changed dramatically
 }
 
 export const useAppraisal = () => {
@@ -151,6 +152,23 @@ export const useAppraisal = () => {
             newRange = [nextMin, nextMax];
         }
 
+        // =========================================================================
+        // FAKE/JACKPOT value jump: trigger immediately when discovered
+        // =========================================================================
+        const discoveredFakeOrJackpot = uniqueNewTraits.find(t => t.type === 'FAKE' || t.type === 'JACKPOT');
+        let finalRange = newRange;
+        let finalPerceived: number | undefined = item.perceivedValue;
+        let finalInitialRange: [number, number] | undefined = undefined;
+
+        if (discoveredFakeOrJackpot) {
+            // Value jump: recalculate range based on real value
+            const newUncertaintyForJump = 0.1; // Low uncertainty after discovery
+            finalRange = generateValuationRange(item.realValue, undefined, newUncertaintyForJump);
+            finalInitialRange = generateValuationRange(item.realValue, undefined, 0.4);
+            finalPerceived = undefined; // Mark that truth is now known
+            newUncertainty = newUncertaintyForJump;
+        }
+
         let log = undefined;
         if (uniqueNewTraits.length > 0) {
             const traitNames = uniqueNewTraits.map(t => t.name).join(", ");
@@ -161,19 +179,21 @@ export const useAppraisal = () => {
         }
 
         const hasNegative = event.type === 'MISHAP' || event.type === 'IMPATIENT';
-        
+
         dispatch({
             type: 'UPDATE_ITEM_KNOWLEDGE',
             payload: {
                 itemId: item.id,
-                newRange: newRange,
+                newRange: finalRange,
                 revealedTraits: updatedRevealed,
                 hiddenTraits: updatedHidden,
                 newUncertainty,
-                newPerceived: item.perceivedValue,
+                newPerceived: finalPerceived,
                 incrementAppraisalCount: true,
                 hasNegativeEvent: hasNegative ? true : undefined,
-                log
+                log,
+                // Pass initialRange when FAKE/JACKPOT discovered
+                ...(finalInitialRange && { initialRange: finalInitialRange })
             }
         });
 
@@ -181,8 +201,9 @@ export const useAppraisal = () => {
             success: true,
             newTraitsFound: uniqueNewTraits,
             bonusTraitIds: bonusTraits.map(t => t.id),
-            newRange,
-            event
+            newRange: finalRange,
+            event,
+            valueJump: discoveredFakeOrJackpot?.type as 'FAKE' | 'JACKPOT' | undefined
         };
 
     }, [customer, state.stats.actionPoints, dispatch]);

@@ -290,11 +290,13 @@ export function performInsight(
   let traitDiscovered: ItemTrait | undefined;
   let updatedHiddenTraits = [...(workingItem.hiddenTraits || [])];
   let updatedRevealedTraits = [...(workingItem.revealedTraits || [])];
+  let allNewlyDiscoveredTraits: ItemTrait[] = [];
 
   if (isEpiphany) {
     // 顿悟兜底：强制全开所有隐藏特征
     if (updatedHiddenTraits.length > 0) {
       // 将所有隐藏特征移动到已发现
+      allNewlyDiscoveredTraits = [...updatedHiddenTraits];
       updatedRevealedTraits = [...updatedRevealedTraits, ...updatedHiddenTraits];
       // 如果只有一个特征，记录为"发现的特征"用于 UI 显示
       if (updatedHiddenTraits.length === 1) {
@@ -307,11 +309,28 @@ export function performInsight(
     const discovered = tryDiscoverTrait(workingItem);
     if (discovered) {
       traitDiscovered = discovered;
+      allNewlyDiscoveredTraits = [discovered];
       // 从隐藏特征中移除
       updatedHiddenTraits = updatedHiddenTraits.filter(t => t.id !== discovered.id);
       // 添加到已发现特征
       updatedRevealedTraits = [...updatedRevealedTraits, discovered];
     }
+  }
+
+  // =========================================================================
+  // FAKE/JACKPOT 价值跳变：发现时立即触发
+  // =========================================================================
+  const discoveredFakeOrJackpot = allNewlyDiscoveredTraits.find(
+    t => t.type === 'FAKE' || t.type === 'JACKPOT'
+  );
+
+  if (discoveredFakeOrJackpot && !wasValueLocked) {
+    // 发现 FAKE 或 JACKPOT 特征时，立即将估价跳变到真实值
+    rangeNarrowed = true;
+    valueLocked = true;
+    newRange = [workingItem.realValue, workingItem.realValue];
+    updatedCurrentRange = newRange;
+    updatedPerceivedValue = undefined; // 真值已知
   }
 
   // =========================================================================

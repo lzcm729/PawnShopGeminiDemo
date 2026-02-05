@@ -643,6 +643,9 @@ export interface FillerItemResult {
     attrTags: string[];
 }
 
+/** Forced jump trait type for debug/testing */
+export type ForcedJumpTrait = 'MISTAKE' | 'BARGAIN' | null;
+
 /**
  * Attach a jump trait to an item and adjust realValue accordingly.
  *
@@ -651,18 +654,22 @@ export interface FillerItemResult {
  * - Mistake (打眼): realValue becomes much LOWER than perceivedValue
  *
  * @param item The item to potentially modify
+ * @param forceType Optional: Force a specific jump trait type (for testing)
  * @returns The modified item (or original if no jump trait attached)
  */
-function attachJumpTrait(item: Item): Item {
+function attachJumpTrait(item: Item, forceType: ForcedJumpTrait = null): Item {
     const config = JUMP_TRAIT_CONFIG[item.category] || DEFAULT_JUMP_CONFIG;
 
-    // Most items have no jump trait (normal transaction)
-    if (Math.random() > config.jumpProbability) {
-        return item;
+    // If not forcing a specific type, use normal probability
+    if (forceType === null) {
+        // Most items have no jump trait (normal transaction)
+        if (Math.random() > config.jumpProbability) {
+            return item;
+        }
     }
 
     // Decide between bargain (捡漏) and mistake (打眼)
-    const isMistake = Math.random() < config.mistakeRatio;
+    const isMistake = forceType === 'MISTAKE' ? true : (forceType === 'BARGAIN' ? false : Math.random() < config.mistakeRatio);
     const traitId = isMistake ? config.mistakeTraitId : config.bargainTraitId;
 
     // Load the trait definition
@@ -711,11 +718,13 @@ function attachJumpTrait(item: Item): Item {
  * @param day Current game day
  * @param profile Customer profile
  * @param excludeTemplateIds Template IDs to exclude (items already in inventory)
+ * @param forceJumpTrait Optional: Force a specific jump trait type (for testing)
  */
 function createFillerItem(
     day: number,
     profile: FillerCustomerProfile,
-    excludeTemplateIds: Set<string> = new Set()
+    excludeTemplateIds: Set<string> = new Set(),
+    forceJumpTrait: ForcedJumpTrait = null
 ): FillerItemResult {
     // Ensure reasons are loaded
     if (!isReasonsLoaded()) {
@@ -739,7 +748,7 @@ function createFillerItem(
 
         // Potentially attach a jump trait (捡漏/打眼)
         if (item) {
-            item = attachJumpTrait(item);
+            item = attachJumpTrait(item, forceJumpTrait);
         }
     }
 
@@ -807,12 +816,14 @@ function getGenericPortraitId(profile: FillerCustomerProfile): string {
  * @param profile Optional specific profile (random if not provided)
  * @param excludeTemplateIds Template IDs to exclude (items already in inventory).
  *                           Pass this to avoid generating duplicate items.
+ * @param forceJumpTrait Optional: Force a specific jump trait type (for testing)
  * @returns Customer with inferred behavior tags and redemption resolve
  */
 export function generateFillerCustomer(
     day: number,
     profile?: FillerCustomerProfile,
-    excludeTemplateIds?: Set<string>
+    excludeTemplateIds?: Set<string>,
+    forceJumpTrait: ForcedJumpTrait = null
 ): Customer {
     const customerProfile = profile || generateRandomProfile();
     const behaviorTags = inferBehaviorTags(customerProfile);
@@ -823,7 +834,7 @@ export function generateFillerCustomer(
     const dialogue = generateFillerDialogue(customerProfile);
 
     // Create item with profile-based selection, excluding items already in inventory
-    const { item, isUnexpected, attrTags } = createFillerItem(day, customerProfile, excludeTemplateIds);
+    const { item, isUnexpected, attrTags } = createFillerItem(day, customerProfile, excludeTemplateIds, forceJumpTrait);
 
     // If this is an unexpected combination, get a narrative reason
     if (isUnexpected) {

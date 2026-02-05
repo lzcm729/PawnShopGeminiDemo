@@ -79,7 +79,9 @@ export function customerReducer(state: GameState, action: Action): GameState {
                 appraised: true,
                 appraisalCount: action.payload.incrementAppraisalCount ? prevCount + 1 : prevCount,
                 hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : prevNegative,
-                logs: newLogs
+                logs: newLogs,
+                // Update initialRange if provided (for FAKE/JACKPOT value jumps)
+                ...(action.payload.initialRange && { initialRange: action.payload.initialRange })
             };
 
             // Also update currentNode if it's a PawnNode
@@ -98,7 +100,9 @@ export function customerReducer(state: GameState, action: Action): GameState {
                         appraised: true,
                         appraisalCount: action.payload.incrementAppraisalCount ? (pawnNode.item.appraisalCount || 0) + 1 : pawnNode.item.appraisalCount,
                         hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : pawnNode.item.hasNegativeAppraisalEvent,
-                        logs: action.payload.log ? [...pawnNode.item.logs, action.payload.log] : pawnNode.item.logs
+                        logs: action.payload.log ? [...pawnNode.item.logs, action.payload.log] : pawnNode.item.logs,
+                        // Update initialRange if provided (for FAKE/JACKPOT value jumps)
+                        ...(action.payload.initialRange && { initialRange: action.payload.initialRange })
                     }
                 };
             }

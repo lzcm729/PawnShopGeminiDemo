@@ -203,7 +203,14 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
 
               // Send feedback for each discovered trait
               if (result.newTraitsFound.length > 0) {
-                  setFeedbackMsg({ type: 'success', text: `发现了 ${result.newTraitsFound.length} 个新特征!` });
+                  // Special feedback for value jump discoveries
+                  if (result.valueJump === 'FAKE') {
+                      setFeedbackMsg({ type: 'error', text: "价值崩塌！(VALUE CRASH)" });
+                  } else if (result.valueJump === 'JACKPOT') {
+                      setFeedbackMsg({ type: 'success', text: "价值发现！(JACKPOT)" });
+                  } else {
+                      setFeedbackMsg({ type: 'success', text: `发现了 ${result.newTraitsFound.length} 个新特征!` });
+                  }
                   for (const trait of result.newTraitsFound) {
                       // Use the player's inner monologue from the trait data
                       const monologueText = trait.dialogueTrigger?.playerLine || trait.description;
@@ -231,22 +238,15 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
 
       const power = Math.abs(trait.valueImpact);
 
-      // Handle value-changing traits (打眼/捡漏)
-      if (trait.type === 'FAKE') {
-          // Mistake (打眼): Value crashes down
-          dispatch({ type: 'REALIZE_ITEM_TRUTH', payload: { itemId: item.id } });
-          setFeedbackMsg({ type: 'error', text: "价值崩塌 (VALUE CRASH)" });
-      } else if (trait.type === 'JACKPOT') {
-          // Jackpot (捡漏): Value jumps up significantly
-          dispatch({ type: 'REALIZE_ITEM_TRUTH', payload: { itemId: item.id } });
-          setFeedbackMsg({ type: 'success', text: "价值发现 (VALUE DISCOVERY)" });
-      }
+      // NOTE: FAKE/JACKPOT value changes now happen at discovery time (in useAppraisal)
+      // Using the trait here only triggers customer reaction (dialogue/leverage)
+      // The value jump already occurred when the trait was discovered
 
       // 1. Dispatch global usage state (Locks trait)
       dispatch({ type: 'MARK_TRAIT_USED', payload: { traitId: trait.id } });
 
-      // 2. Dispatch negotiation impact
-      // JACKPOT traits: player discovered hidden value, no price leverage
+      // 2. Dispatch negotiation impact (customer reaction)
+      // JACKPOT traits: player discovered hidden value, triggers dialogue but no price leverage
       // STORY traits: dialogue/rapport building only, no price leverage
       // FLAW/FAKE traits: player points out issues, can leverage for lower price
       const negotiationPower = (trait.type === 'JACKPOT' || trait.type === 'STORY') ? 0 : power;
