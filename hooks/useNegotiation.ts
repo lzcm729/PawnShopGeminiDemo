@@ -252,6 +252,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     let costPatience = 0;
     let message = "";
     let nextMood: NegotiationMood = mood;
+    let isPushPullZone = false;
 
     // --- LOGIC GATES (hit-and-return priority) ---
     // 1. INSULT — offer far below floor
@@ -301,9 +302,10 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     }
     else {
         // Offer is between effectiveFloor and currentAskPrice — enter push-pull phase
-        // Status remains unset here; it will be determined by push-pull logic below
+        // Patience cost is probabilistic, determined by push-pull result below
+        isPushPullZone = true;
         status = 'PRINCIPAL_TOO_LOW'; // Fallback status for push-pull rejection
-        costPatience = 0; // Push-pull doesn't cost patience by itself
+        costPatience = 0; // Will be set by push-pull result below
         nextMood = mood; // Mood unchanged until push-pull resolves
         message = "再考虑考虑吧...";
     }
@@ -334,6 +336,13 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         if (pushPullResult.conceded) {
             setCurrentAskPrice(pushPullResult.newAskPrice);
             setNpcConcessionCount(prev => prev + 1);
+        }
+
+        // Apply probabilistic patience cost only in push-pull zone
+        // Hard rejections (INSULT, below-floor PRINCIPAL_TOO_LOW, TOTAL_REPAYMENT_EXCEEDED)
+        // keep their fixed costPatience values
+        if (isPushPullZone && pushPullResult.patienceLost) {
+            costPatience = 1;
         }
 
         setLastPushPullResult(pushPullResult);

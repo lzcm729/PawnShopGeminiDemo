@@ -12,28 +12,33 @@ export interface PushPullConfig {
     baseConcessionChance: number;   // 基础让步概率 (0-1)
     concessionRatio: number;        // 让步幅度 (占剩余空间的比例)
     maxConcessions: number;         // 最大让步次数
+    basePatienceLossChance: number; // 推拉区耐心消耗基础概率 (0-1)
 }
 
 export const PUSH_PULL_CONFIG: Record<NpcPushPullStyle, PushPullConfig> = {
     SOFT: {
         baseConcessionChance: 0.50,   // 50% 基础概率
         concessionRatio: 0.15,        // 让步15%剩余空间
-        maxConcessions: 3
+        maxConcessions: 3,
+        basePatienceLossChance: 0.45
     },
     HARD: {
         baseConcessionChance: 0.15,   // 15% 基础概率
         concessionRatio: 0.05,        // 让步5%剩余空间
-        maxConcessions: 1
+        maxConcessions: 1,
+        basePatienceLossChance: 0.85
     },
     SLY: {
         baseConcessionChance: 0.30,   // 30% 基础概率
         concessionRatio: 0.10,        // 让步10%剩余空间
-        maxConcessions: 2
+        maxConcessions: 2,
+        basePatienceLossChance: 0.65
     },
     CALM: {
         baseConcessionChance: 0.25,   // 25% 基础概率
         concessionRatio: 0.10,        // 让步10%剩余空间
-        maxConcessions: 2
+        maxConcessions: 2,
+        basePatienceLossChance: 0.60
     }
 };
 
@@ -130,6 +135,41 @@ export const calculateConcessionAmount = (
 };
 
 /**
+ * 计算推拉区耐心消耗概率
+ * @param style NPC 推拉风格
+ * @param playerMove 玩家行为类型
+ * @param currentOffer 当前出价
+ * @param currentAsk 当前 NPC Ask 价格
+ * @returns 耐心消耗概率 (0.20 - 0.95)
+ */
+export const calculatePatienceLossChance = (
+    style: NpcPushPullStyle,
+    playerMove: PlayerMoveType,
+    currentOffer: number,
+    currentAsk: number
+): number => {
+    const config = PUSH_PULL_CONFIG[style];
+    let chance = config.basePatienceLossChance;
+
+    // 玩家行为修正
+    switch (playerMove) {
+        case 'FIRST_OFFER': break; // +0%
+        case 'YIELD': chance -= 0.15; break;
+        case 'PERSIST': chance += 0.10; break;
+    }
+
+    // 出价接近度修正
+    if (currentAsk > 0) {
+        const ratio = currentOffer / currentAsk;
+        if (ratio >= 0.9) chance -= 0.10;
+        else if (ratio >= 0.8) chance -= 0.05;
+    }
+
+    // Clamp to [0.20, 0.95]
+    return Math.max(0.20, Math.min(0.95, chance));
+};
+
+/**
  * 执行推拉判定，返回让步结果
  */
 export interface PushPullResult {
@@ -138,6 +178,8 @@ export interface PushPullResult {
     concessionAmount: number;       // 让步金额
     atLimit: boolean;               // 是否已到底限（不会再让步）
     playerMove: PlayerMoveType;     // 玩家行为类型
+    patienceLost: boolean;          // 本轮是否消耗耐心
+    patienceLossChance: number;     // 本轮耐心消耗概率（供 UI 显示/调试）
 }
 
 export const executePushPull = (
@@ -153,6 +195,10 @@ export const executePushPull = (
     const playerMove = determinePlayerMove(currentOffer, lastOffer);
     const config = PUSH_PULL_CONFIG[style];
 
+    // 耐心骰（与让步骰完全独立）
+    const patienceLossChance = calculatePatienceLossChance(style, playerMove, currentOffer, currentAsk);
+    const patienceLost = Math.random() < patienceLossChance;
+
     // 检查是否已到底限
     const atLimit = concessionCount >= config.maxConcessions || currentAsk <= minimumAmount;
 
@@ -162,7 +208,9 @@ export const executePushPull = (
             newAskPrice: currentAsk,
             concessionAmount: 0,
             atLimit: true,
-            playerMove
+            playerMove,
+            patienceLost,
+            patienceLossChance
         };
     }
 
@@ -182,7 +230,9 @@ export const executePushPull = (
             newAskPrice,
             concessionAmount,
             atLimit: newAskPrice <= minimumAmount,
-            playerMove
+            playerMove,
+            patienceLost,
+            patienceLossChance
         };
     }
 
@@ -191,6 +241,8 @@ export const executePushPull = (
         newAskPrice: currentAsk,
         concessionAmount: 0,
         atLimit: false,
-        playerMove
+        playerMove,
+        patienceLost,
+        patienceLossChance
     };
 };
