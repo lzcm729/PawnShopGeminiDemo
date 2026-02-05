@@ -103,13 +103,13 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
 
     return (
         <div className="bg-gradient-to-b from-noir-300 to-noir-200 border-b border-noir-400 shrink-0 shadow-lg relative overflow-hidden">
-            {/* Main Row: Portrait Left + Info Right */}
-            <div className="flex items-start gap-4 p-4">
+            {/* Main Row: Portrait Left + Info Center + Stress Right */}
+            <div className="flex items-stretch gap-3 p-3">
                 {/* Left: Portrait + Name */}
-                <div className="flex flex-col items-center shrink-0">
+                <div className="flex flex-col items-center shrink-0 justify-center">
                     {/* Portrait Container with Enhanced Visual Treatment */}
                     <div className={cn(
-                        "relative w-20 h-20 rounded-full overflow-hidden border-2 transition-all duration-300",
+                        "relative w-16 h-16 rounded-full overflow-hidden border-2 transition-all duration-300",
                         "shadow-[0_0_20px_rgba(0,0,0,0.5)]",
                         isAngry
                             ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-[pulse_1s_ease-in-out_infinite]"
@@ -145,100 +145,115 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                     </div>
 
                     {/* Customer Name - Below Portrait */}
-                    <div className="mt-2 text-center">
-                        <h2 className="text-base font-serif font-bold text-noir-txt-primary leading-none tracking-wide">{customer.name}</h2>
+                    <div className="mt-1.5 text-center">
+                        <h2 className="text-sm font-serif font-bold text-noir-txt-primary leading-none tracking-wide">{customer.name}</h2>
                     </div>
                 </div>
 
-                {/* Right: Insight Result or Observation + Controls */}
-                <div className="flex-1 min-w-0 flex flex-col gap-2">
-                    {/* Top Row: Insight Button + Stress Bar */}
-                    <div className="flex items-center justify-between gap-3">
-                        {/* Insight Button */}
-                        {!hasUsedInsight ? (
-                            <button
-                                onClick={onInsightClick}
-                                disabled={!canUseInsight}
-                                title={canUseInsight ? "洞察客户心理 (消耗 1 AP)" : insightBlockReason}
-                                className={cn(
-                                    "flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded border-2 transition-all duration-200 shadow-lg",
-                                    canUseInsight
-                                        ? "bg-pawn-accent text-black border-white hover:scale-[1.02]"
-                                        : "bg-stone-800 text-stone-500 border-stone-600 cursor-not-allowed"
-                                )}
-                            >
-                                <Eye className="w-4 h-4" />
-                                <span>洞察 1AP</span>
-                            </button>
+                {/* Center: Observation + Insight Area */}
+                <div className="flex-1 min-w-0 flex flex-col border border-noir-400/50 rounded bg-noir-100/30">
+                    {/* Top: Customer Observation */}
+                    <div className="px-3 py-1.5 border-b border-noir-400/30 min-h-[28px] flex items-center">
+                        {customer.observation ? (
+                            <p className="text-[11px] text-amber-500/90 font-serif italic leading-snug line-clamp-1" title={customer.observation}>
+                                {customer.observation}
+                            </p>
                         ) : (
-                            <div className="flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded border-2 bg-pawn-green text-black border-white shadow-lg">
-                                <EyeOff className="w-4 h-4" />
-                                <span>已洞察</span>
+                            <p className="text-[11px] text-noir-txt-muted font-serif italic opacity-50">
+                                (观察客户行为...)
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Bottom: Insight Result Area + Button */}
+                    <div className="flex-1 flex items-stretch relative min-h-[60px]">
+                        {insightResult ? (
+                            /* Insight Result - Unlocked state */
+                            <div className="flex-1 p-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="flex items-start gap-2 h-full">
+                                    {/* Disposition Icon + Label */}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <span className="text-xl">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
+                                        <div>
+                                            <div className="text-[8px] text-noir-txt-muted uppercase tracking-wider">心理</div>
+                                            <div className={cn("text-xs font-bold", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
+                                                {DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.label || insightResult.disposition}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Text Content */}
+                                    <div className="min-w-0 flex-1 space-y-0.5">
+                                        <p className="font-serif text-[11px] text-noir-txt-secondary leading-snug italic line-clamp-1" title={insightResult.dispositionText}>
+                                            "{insightResult.dispositionText}"
+                                        </p>
+                                        <p className="font-serif text-[11px] text-amber-500/90 leading-snug line-clamp-1" title={insightResult.floorHint}>
+                                            {insightResult.floorHint}
+                                        </p>
+                                        {insightResult.moralContext && (
+                                            <p className="font-serif text-[10px] text-red-300/80 leading-snug italic flex items-center gap-1">
+                                                <Heart className="w-3 h-3 text-red-400 shrink-0" />
+                                                <span className="line-clamp-1">{insightResult.moralContext}</span>
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            /* Locked state - Placeholder with visual hint */
+                            <div className="flex-1 flex items-center justify-center p-2">
+                                <div className="flex flex-col items-center gap-1 opacity-40">
+                                    <div className="flex items-center gap-2">
+                                        <EyeOff className="w-5 h-5 text-noir-txt-muted" />
+                                        <span className="text-xs text-noir-txt-muted font-mono">???</span>
+                                    </div>
+                                    <span className="text-[10px] text-noir-txt-muted font-serif italic">
+                                        点击洞察了解客户心理
+                                    </span>
+                                </div>
                             </div>
                         )}
 
-                        {/* Patience/Stress Bar */}
-                        <div className="text-right shrink-0">
-                            <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
-                                <Activity className="w-3 h-3" /> Stress
-                            </div>
-                            <div className="w-20 h-2 bg-noir-400 rounded-sm overflow-hidden border border-noir-500">
-                                <div
-                                    className={cn("h-full transition-all duration-500", patienceColor)}
-                                    style={{ width: `${patiencePercent}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Content Area: Insight Result or Observation */}
-                    {insightResult ? (
-                        /* Insight Result - Compact display with max width */
-                        <div className="bg-noir-100/50 border border-amber-600/30 rounded p-2 animate-in fade-in slide-in-from-right-2 duration-300 max-w-md">
-                            <div className="flex items-start gap-2">
-                                {/* Disposition Icon + Label */}
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <span className="text-lg">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
-                                    <div>
-                                        <div className="text-[8px] text-noir-txt-muted uppercase tracking-wider">心理</div>
-                                        <div className={cn("text-xs font-bold", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
-                                            {DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.label || insightResult.disposition}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Text Content - Stacked vertically for compactness */}
-                                <div className="min-w-0 space-y-0.5">
-                                    <p className="font-serif text-[11px] text-noir-txt-secondary leading-snug italic truncate" title={insightResult.dispositionText}>
-                                        "{insightResult.dispositionText}"
-                                    </p>
-                                    <p className="font-serif text-[11px] text-amber-500/90 leading-snug truncate" title={insightResult.floorHint}>
-                                        {insightResult.floorHint}
-                                    </p>
-                                    {/* Moral Context inline if available */}
-                                    {insightResult.moralContext && (
-                                        <p className="font-serif text-[10px] text-red-300/80 leading-snug italic flex items-center gap-1">
-                                            <Heart className="w-3 h-3 text-red-400 shrink-0" />
-                                            <span className="truncate">{insightResult.moralContext}</span>
-                                        </p>
+                        {/* Insight Button - Positioned at bottom-right */}
+                        <div className="absolute bottom-2 right-2">
+                            {!hasUsedInsight ? (
+                                <button
+                                    onClick={onInsightClick}
+                                    disabled={!canUseInsight}
+                                    title={canUseInsight ? "洞察客户心理 (消耗 1 AP)" : insightBlockReason}
+                                    className={cn(
+                                        "flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-1 rounded border transition-all duration-200 shadow-md",
+                                        canUseInsight
+                                            ? "bg-pawn-accent text-black border-amber-400 hover:scale-105 hover:shadow-lg"
+                                            : "bg-stone-800/80 text-stone-500 border-stone-600 cursor-not-allowed"
                                     )}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        /* Observation - When no insight yet */
-                        <div className="flex-1">
-                            {customer.observation ? (
-                                <div className="text-[11px] text-amber-500/80 font-serif italic leading-snug animate-in fade-in">
-                                    {customer.observation}
-                                </div>
+                                >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>洞察 1AP</span>
+                                </button>
                             ) : (
-                                <div className="text-[11px] text-noir-txt-muted font-serif italic opacity-50">
-                                    (观察客户行为...)
+                                <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded border bg-pawn-green/20 text-pawn-green border-pawn-green/50">
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>已洞察</span>
                                 </div>
                             )}
                         </div>
-                    )}
+                    </div>
+                </div>
+
+                {/* Right: Stress Bar (vertical layout) */}
+                <div className="shrink-0 flex flex-col items-center justify-center gap-1 px-2 min-w-[50px]">
+                    <div className="text-[9px] font-bold text-noir-txt-muted uppercase tracking-widest flex items-center gap-1">
+                        <Activity className="w-3 h-3" />
+                    </div>
+                    <span className="text-[8px] font-bold text-noir-txt-muted uppercase tracking-wider">STRESS</span>
+                    <div className="w-3 h-16 bg-noir-400 rounded-sm overflow-hidden border border-noir-500 relative">
+                        <div
+                            className={cn("absolute bottom-0 left-0 right-0 transition-all duration-500", patienceColor)}
+                            style={{ height: `${patiencePercent}%` }}
+                        />
+                    </div>
+                    <span className="text-[10px] font-mono text-noir-txt-muted">{patience}/{maxPatience}</span>
                 </div>
             </div>
         </div>
