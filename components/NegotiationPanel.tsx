@@ -63,6 +63,13 @@ export interface AppraisalFeedback {
     isBonus?: boolean;  // True if discovered via LUCKY_FIND
 }
 
+interface InsightResultData {
+    disposition: string;
+    dispositionText: string;
+    floorHint: string;
+    moralContext?: string;
+}
+
 interface CustomerHeaderProps {
     customer: Customer;
     patience: number;
@@ -71,6 +78,7 @@ interface CustomerHeaderProps {
     canUseInsight?: boolean;
     hasUsedInsight?: boolean;
     insightBlockReason?: string;
+    insightResult?: InsightResultData | null;
 }
 
 const CustomerHeader: React.FC<CustomerHeaderProps> = ({
@@ -80,7 +88,8 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
     onInsightClick,
     canUseInsight = false,
     hasUsedInsight = false,
-    insightBlockReason
+    insightBlockReason,
+    insightResult
 }) => {
     const isAngry = mood === 'Angry';
 
@@ -94,106 +103,146 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
 
     return (
         <div className="bg-gradient-to-b from-noir-300 to-noir-200 border-b border-noir-400 shrink-0 shadow-lg relative overflow-hidden">
-            {/* Large Portrait Section - Main Visual Focus */}
-            <div className="relative flex flex-col items-center pt-4 pb-3">
-                {/* Portrait Container with Enhanced Visual Treatment */}
-                <div className={cn(
-                    "relative w-24 h-24 rounded-full overflow-hidden border-2 transition-all duration-300",
-                    "shadow-[0_0_20px_rgba(0,0,0,0.5)]",
-                    isAngry
-                        ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-[pulse_1s_ease-in-out_infinite]"
-                        : "border-amber-600/60 shadow-[0_0_20px_rgba(217,119,6,0.2)]"
-                )}>
-                    {/* Outer Glow Ring */}
+            {/* Main Row: Portrait Left + Info Right */}
+            <div className="flex items-start gap-4 p-4">
+                {/* Left: Portrait + Name */}
+                <div className="flex flex-col items-center shrink-0">
+                    {/* Portrait Container with Enhanced Visual Treatment */}
                     <div className={cn(
-                        "absolute -inset-1 rounded-full opacity-50 blur-sm",
-                        isAngry ? "bg-red-500" : "bg-amber-600/30"
-                    )} />
+                        "relative w-20 h-20 rounded-full overflow-hidden border-2 transition-all duration-300",
+                        "shadow-[0_0_20px_rgba(0,0,0,0.5)]",
+                        isAngry
+                            ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-[pulse_1s_ease-in-out_infinite]"
+                            : "border-amber-600/60 shadow-[0_0_20px_rgba(217,119,6,0.2)]"
+                    )}>
+                        {/* Outer Glow Ring */}
+                        <div className={cn(
+                            "absolute -inset-1 rounded-full opacity-50 blur-sm",
+                            isAngry ? "bg-red-500" : "bg-amber-600/30"
+                        )} />
 
-                    <img
-                        src={(() => {
-                          const emotion = 'neutral' as const;
-                          if (customer.portraits?.[emotion]) return customer.portraits[emotion];
-                          if (customer.chainId) {
-                            const charId = customer.chainId.replace(/^chain_/, '');
-                            return getCharacterPortraitPath(charId, emotion);
-                          }
-                          return PORTRAIT_PLACEHOLDER;
-                        })()}
-                        alt="Subject"
-                        className="w-full h-full object-cover relative z-10"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = PORTRAIT_PLACEHOLDER;
-                        }}
-                    />
+                        <img
+                            src={(() => {
+                              const emotion = 'neutral' as const;
+                              if (customer.portraits?.[emotion]) return customer.portraits[emotion];
+                              if (customer.chainId) {
+                                const charId = customer.chainId.replace(/^chain_/, '');
+                                return getCharacterPortraitPath(charId, emotion);
+                              }
+                              return PORTRAIT_PLACEHOLDER;
+                            })()}
+                            alt="Subject"
+                            className="w-full h-full object-cover relative z-10"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = PORTRAIT_PLACEHOLDER;
+                            }}
+                        />
 
-                    {/* Vignette Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-20 pointer-events-none" />
+                        {/* Vignette Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-20 pointer-events-none" />
 
-                    {isAngry && <div className="absolute inset-0 border-2 border-red-500 rounded-full animate-pulse z-30"></div>}
-                </div>
+                        {isAngry && <div className="absolute inset-0 border-2 border-red-500 rounded-full animate-pulse z-30"></div>}
+                    </div>
 
-                {/* Customer Name & ID - Below Portrait */}
-                <div className="mt-3 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                        <h2 className="text-xl font-serif font-bold text-noir-txt-primary leading-none tracking-wide">{customer.name}</h2>
-                        <Badge variant="outline" className="text-[9px] py-0 h-4">ID: {customer.id.slice(0,4)}</Badge>
+                    {/* Customer Name & ID - Below Portrait */}
+                    <div className="mt-2 text-center">
+                        <h2 className="text-base font-serif font-bold text-noir-txt-primary leading-none tracking-wide">{customer.name}</h2>
+                        <Badge variant="outline" className="text-[8px] py-0 h-3.5 mt-1">ID: {customer.id.slice(0,4)}</Badge>
                     </div>
                 </div>
-            </div>
 
-            {/* Info Bar - Left: Observation, Right: Insight + Stress */}
-            <div className="px-4 pb-3 flex justify-between items-center gap-3 border-t border-noir-400/50 pt-2">
-                {/* Left: Narrative Observation */}
-                <div className="flex-1 min-w-0">
-                    {customer.observation ? (
-                        <div className="text-[11px] text-amber-500/80 font-serif italic leading-snug animate-in fade-in truncate">
-                            {customer.observation}
+                {/* Right: Insight Result or Observation + Controls */}
+                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                    {/* Top Row: Insight Button + Stress Bar */}
+                    <div className="flex items-center justify-between gap-3">
+                        {/* Insight Button */}
+                        {!hasUsedInsight ? (
+                            <button
+                                onClick={onInsightClick}
+                                disabled={!canUseInsight}
+                                title={canUseInsight ? "洞察客户心理 (消耗 1 AP)" : insightBlockReason}
+                                className={cn(
+                                    "flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded border-2 transition-all duration-200 shadow-lg",
+                                    canUseInsight
+                                        ? "bg-pawn-accent text-black border-white hover:scale-[1.02]"
+                                        : "bg-stone-800 text-stone-500 border-stone-600 cursor-not-allowed"
+                                )}
+                            >
+                                <Eye className="w-4 h-4" />
+                                <span>洞察 1AP</span>
+                            </button>
+                        ) : (
+                            <div className="flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded border-2 bg-pawn-green text-black border-white shadow-lg">
+                                <EyeOff className="w-4 h-4" />
+                                <span>已洞察</span>
+                            </div>
+                        )}
+
+                        {/* Patience/Stress Bar */}
+                        <div className="text-right shrink-0">
+                            <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
+                                <Activity className="w-3 h-3" /> Stress
+                            </div>
+                            <div className="w-20 h-2 bg-noir-400 rounded-sm overflow-hidden border border-noir-500">
+                                <div
+                                    className={cn("h-full transition-all duration-500", patienceColor)}
+                                    style={{ width: `${patiencePercent}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Content Area: Insight Result or Observation */}
+                    {insightResult ? (
+                        /* Insight Result - Displayed inline */
+                        <div className="bg-noir-100/50 border border-amber-600/30 rounded p-2 animate-in fade-in slide-in-from-right-2 duration-300">
+                            <div className="flex items-start gap-3">
+                                {/* Disposition Icon + Label */}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="text-lg">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
+                                    <div>
+                                        <div className="text-[8px] text-noir-txt-muted uppercase tracking-wider">心理</div>
+                                        <div className={cn("text-xs font-bold", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
+                                            {DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.label || insightResult.disposition}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Text Content */}
+                                <div className="flex-1 min-w-0 space-y-1">
+                                    <p className="font-serif text-[11px] text-noir-txt-secondary leading-snug italic truncate" title={insightResult.dispositionText}>
+                                        "{insightResult.dispositionText}"
+                                    </p>
+                                    <p className="font-serif text-[11px] text-amber-500/90 leading-snug truncate" title={insightResult.floorHint}>
+                                        {insightResult.floorHint}
+                                    </p>
+                                </div>
+
+                                {/* Moral Context (if available) */}
+                                {insightResult.moralContext && (
+                                    <div className="shrink-0 flex items-center gap-1 bg-red-950/30 border border-red-900/40 rounded px-1.5 py-1 max-w-[140px]">
+                                        <Heart className="w-3 h-3 text-red-400 shrink-0" />
+                                        <p className="font-serif text-[9px] text-red-300/90 leading-snug italic line-clamp-2">
+                                            {insightResult.moralContext}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     ) : (
-                        <div className="text-[11px] text-noir-txt-muted font-serif italic opacity-50">
-                            (观察客户行为...)
-                        </div>
-                    )}
-                </div>
-
-                {/* Right: Insight Button + Stress Bar */}
-                <div className="flex items-center gap-3 shrink-0">
-                    {/* Insight Button - Style matches Appraisal Button */}
-                    {!hasUsedInsight ? (
-                        <button
-                            onClick={onInsightClick}
-                            disabled={!canUseInsight}
-                            title={canUseInsight ? "洞察客户心理 (消耗 1 AP)" : insightBlockReason}
-                            className={cn(
-                                "flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded border-2 transition-all duration-200 shadow-lg",
-                                canUseInsight
-                                    ? "bg-pawn-accent text-black border-white hover:scale-[1.02]"
-                                    : "bg-stone-800 text-stone-500 border-stone-600 cursor-not-allowed"
+                        /* Observation - When no insight yet */
+                        <div className="flex-1">
+                            {customer.observation ? (
+                                <div className="text-[11px] text-amber-500/80 font-serif italic leading-snug animate-in fade-in">
+                                    {customer.observation}
+                                </div>
+                            ) : (
+                                <div className="text-[11px] text-noir-txt-muted font-serif italic opacity-50">
+                                    (观察客户行为...)
+                                </div>
                             )}
-                        >
-                            <Eye className="w-4 h-4" />
-                            <span>洞察 1AP</span>
-                        </button>
-                    ) : (
-                        <div className="flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded border-2 bg-pawn-green text-black border-white shadow-lg">
-                            <EyeOff className="w-4 h-4" />
-                            <span>已洞察</span>
                         </div>
                     )}
-
-                    {/* Patience/Stress Bar */}
-                    <div className="text-right">
-                        <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
-                            <Activity className="w-3 h-3" /> Stress
-                        </div>
-                        <div className="w-20 h-2 bg-noir-400 rounded-sm overflow-hidden border border-noir-500">
-                            <div
-                                className={cn("h-full transition-all duration-500", patienceColor)}
-                                style={{ width: `${patiencePercent}%` }}
-                            />
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -636,54 +685,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           canUseInsight={canUseInsight()}
           hasUsedInsight={insightResult !== null}
           insightBlockReason={insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
+          insightResult={insightResult}
         />
-
-      {/* Insight Result Panel - Displayed below header when available */}
-      {insightResult && (
-        <div className="shrink-0 bg-noir-200 border-b border-amber-600/30 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="px-4 py-3">
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-2">
-              <Eye className="w-4 h-4 text-amber-500" />
-              <span className="font-serif font-bold text-amber-500 text-sm">洞察结果</span>
-            </div>
-
-            {/* Content - Compact horizontal layout */}
-            <div className="flex items-start gap-4">
-              {/* Disposition */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xl">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
-                <div>
-                  <div className="text-[9px] text-noir-txt-muted uppercase tracking-wider">心理倾向</div>
-                  <div className={cn("text-sm font-bold", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
-                    {DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.label || insightResult.disposition}
-                  </div>
-                </div>
-              </div>
-
-              {/* Disposition Text + Floor Hint */}
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <p className="font-serif text-xs text-noir-txt-secondary leading-snug italic truncate" title={insightResult.dispositionText}>
-                  "{insightResult.dispositionText}"
-                </p>
-                <p className="font-serif text-xs text-amber-500/90 leading-snug truncate" title={insightResult.floorHint}>
-                  {insightResult.floorHint}
-                </p>
-              </div>
-
-              {/* Moral Context (if available) */}
-              {insightResult.moralContext && (
-                <div className="shrink-0 flex items-center gap-1.5 bg-red-950/30 border border-red-900/40 rounded px-2 py-1.5 max-w-[200px]">
-                  <Heart className="w-3 h-3 text-red-400 shrink-0" />
-                  <p className="font-serif text-[10px] text-red-300/90 leading-snug italic line-clamp-2">
-                    {insightResult.moralContext}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Rejection Overlay */}
       {rejectionState.show && (
