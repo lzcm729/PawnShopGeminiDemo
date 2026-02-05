@@ -310,6 +310,7 @@ export function generateCustomerFromCandidate(
     item,
     desiredAmount,
     minimumAmount,
+    survivalMinimum: Math.floor(minimumAmount * 0.7),
     maxRepayment,
     interactionType: 'PAWN',
     observation: candidate.emotionDesc || undefined

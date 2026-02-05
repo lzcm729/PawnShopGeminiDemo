@@ -53,6 +53,7 @@ const FALLBACK_PRESETS: FallbackCustomerPreset[] = [
       identityTags: ["HighRisk", "Gambler"],
       desiredAmount: 500,
       minimumAmount: 300,
+      survivalMinimum: 210,
       maxRepayment: 600,
     }
   },
@@ -89,6 +90,7 @@ const FALLBACK_PRESETS: FallbackCustomerPreset[] = [
       identityTags: ["Student"],
       desiredAmount: 1200,
       minimumAmount: 800,
+      survivalMinimum: 560,
       maxRepayment: 1500,
     }
   },
@@ -125,6 +127,7 @@ const FALLBACK_PRESETS: FallbackCustomerPreset[] = [
       identityTags: ["Suspicious"],
       desiredAmount: 2000,
       minimumAmount: 1000,
+      survivalMinimum: 700,
       maxRepayment: 0,
     }
   }

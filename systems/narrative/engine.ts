@@ -397,6 +397,7 @@ export const instantiateStoryCustomer = (
         item: { ...deepItem, id: deepItem.id || crypto.randomUUID() },
         desiredAmount: template.desiredAmount || 0,
         minimumAmount: template.minimumAmount || 0,
+        survivalMinimum: Math.floor((template.minimumAmount || 0) * 0.7),
         maxRepayment: template.maxRepayment || ((template.minimumAmount || 0) * 1.5),
         interactionType: interactionType,
         redemptionIntent: intent,

@@ -885,6 +885,7 @@ export function generateFillerCustomer(
         item,
         desiredAmount: baseDesired,
         minimumAmount: Math.floor(floor),
+        survivalMinimum: Math.floor(floor * 0.7),
         maxRepayment: Math.floor(item.realValue * 1.5),
         interactionType: 'PAWN',
         // Skewed distribution: take min of two rolls → biased toward shorter terms

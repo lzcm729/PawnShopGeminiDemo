@@ -42,6 +42,7 @@ export interface Customer {
 
   desiredAmount: number;
   minimumAmount: number;
+  survivalMinimum?: number;    // Lowest amount NPC accepts at 0% charity rate (below floor)
   maxRepayment: number;
 
   interactionType: 'PAWN' | 'REDEEM' | 'NEGOTIATION' | 'RENEWAL' | 'POST_FORFEIT'; // Added POST_FORFEIT

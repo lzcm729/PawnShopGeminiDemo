@@ -5,7 +5,7 @@ import { executePushPull, PushPullResult, PlayerMoveType } from '../systems/nego
 
 export type NegotiationMood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
 
-export type NegotiationStatus = 'ACCEPTED' | 'PRINCIPAL_TOO_LOW' | 'INSULT' | 'INTEREST_TOO_HIGH' | 'RATE_MISMATCH' | 'WALK_AWAY' | 'LEVERAGE';
+export type NegotiationStatus = 'ACCEPTED' | 'PRINCIPAL_TOO_LOW' | 'INSULT' | 'TOTAL_REPAYMENT_EXCEEDED' | 'WALK_AWAY' | 'LEVERAGE';
 
 export interface NegotiationResult {
   status: NegotiationStatus;
@@ -253,7 +253,17 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     let message = "";
     let nextMood: NegotiationMood = mood;
 
-    // --- LOGIC GATES ---
+    // --- LOGIC GATES (hit-and-return priority) ---
+    // 1. INSULT — offer far below floor
+    // 2. PRINCIPAL_TOO_LOW — offer below floor (with survivalMinimum for 0% charity)
+    // 3. TOTAL_REPAYMENT_EXCEEDED — total repayment too high for customer
+    // 4. ACCEPTED — offer >= currentAskPrice (NPC's current asking price)
+    // 5. Otherwise — triggers push-pull negotiation
+
+    // For 0% charity rate, use survivalMinimum as the effective floor (lower than minimumAmount)
+    const effectiveFloor = selectedRate === 0
+        ? (customer.survivalMinimum ?? minPrincipal)
+        : minPrincipal;
 
     if (offerPrincipal < insultThreshold) {
         status = 'INSULT';
@@ -261,27 +271,23 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         nextMood = 'Angry';
         message = "你这是在打发叫花子吗？太离谱了！";
     }
-    else if (offerPrincipal < minPrincipal) {
+    else if (offerPrincipal < effectiveFloor) {
         status = 'PRINCIPAL_TOO_LOW';
         costPatience = 1;
         nextMood = 'Annoyed';
-        message = "这点钱不够应急啊，再加点吧。";
+        message = selectedRate === 0
+            ? "这点钱...真的不够我活命的..."
+            : "这点钱不够应急啊，再加点吧。";
         // TODO: 底价揭示功能暂时禁用，之后可能通过其他机制（如洞察技能）解锁
         // setRevealedMinimum(true);
     }
     else if (selectedRate > 0 && totalRepayment > maxRepayment) {
-        status = 'INTEREST_TOO_HIGH';
+        status = 'TOTAL_REPAYMENT_EXCEEDED';
         costPatience = 1;
         nextMood = 'Annoyed';
         message = "连本带利要还这么多？我以后哪还得起！";
     }
-    else if (selectedRate >= 0.10 && offerPrincipal < minPrincipal * 1.1) {
-        status = 'RATE_MISMATCH';
-        costPatience = 1;
-        nextMood = 'Annoyed';
-        message = "你要收这么高的利息，那这点本金可不够。";
-    }
-    else {
+    else if (offerPrincipal >= currentAskPrice) {
         status = 'ACCEPTED';
         costPatience = 0;
         nextMood = 'Happy';
@@ -292,6 +298,14 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         else if (ratio > 1.05) acceptMsg = customer.dialogue.accepted.premium;
 
         message = acceptMsg;
+    }
+    else {
+        // Offer is between effectiveFloor and currentAskPrice — enter push-pull phase
+        // Status remains unset here; it will be determined by push-pull logic below
+        status = 'PRINCIPAL_TOO_LOW'; // Fallback status for push-pull rejection
+        costPatience = 0; // Push-pull doesn't cost patience by itself
+        nextMood = mood; // Mood unchanged until push-pull resolves
+        message = "再考虑考虑吧...";
     }
 
     // --- PUSH-PULL LOGIC (after non-accepted, non-insult offers) ---

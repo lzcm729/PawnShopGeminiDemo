@@ -556,8 +556,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     let penaltyLabel = "";
     if (result.status === 'PRINCIPAL_TOO_LOW') penaltyLabel = "LOWBALL";
     if (result.status === 'INSULT') penaltyLabel = "INSULT";
-    if (result.status === 'INTEREST_TOO_HIGH') penaltyLabel = "USURY";
-    if (result.status === 'RATE_MISMATCH') penaltyLabel = "RISK MISMATCH";
+    if (result.status === 'TOTAL_REPAYMENT_EXCEEDED') penaltyLabel = "USURY";
 
     const playerLog: LogEntry = {
         id: `offer-${Date.now()}`,

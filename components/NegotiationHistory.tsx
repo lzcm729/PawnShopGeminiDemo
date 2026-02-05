@@ -13,8 +13,7 @@ const getStatusColor = (status: NegotiationStatus) => {
         case 'ACCEPTED': return 'text-green-500';
         case 'INSULT': return 'text-red-500';
         case 'PRINCIPAL_TOO_LOW': return 'text-amber-500';
-        case 'INTEREST_TOO_HIGH': return 'text-purple-400';
-        case 'RATE_MISMATCH': return 'text-yellow-500';
+        case 'TOTAL_REPAYMENT_EXCEEDED': return 'text-purple-400';
         default: return 'text-stone-500';
     }
 };
@@ -24,8 +23,7 @@ const getStatusText = (status: NegotiationStatus) => {
         case 'ACCEPTED': return 'ACCEPTED';
         case 'INSULT': return 'INSULT';
         case 'PRINCIPAL_TOO_LOW': return 'LOWBALL';
-        case 'INTEREST_TOO_HIGH': return 'USURY';
-        case 'RATE_MISMATCH': return 'MISMATCH';
+        case 'TOTAL_REPAYMENT_EXCEEDED': return 'REPAYMENT';
         default: return 'FAILED';
     }
 };
