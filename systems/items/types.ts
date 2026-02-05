@@ -44,6 +44,8 @@ export interface ItemLogEntry {
       reason?: string;
       // APPRAISAL related
       isNegative?: boolean;
+      valueJump?: 'FAKE' | 'JACKPOT';
+      newRange?: [number, number];
   };
 }
 

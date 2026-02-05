@@ -173,7 +173,16 @@ export const useAppraisal = () => {
         if (uniqueNewTraits.length > 0) {
             const traitNames = uniqueNewTraits.map(t => t.name).join(", ");
             const hasFake = uniqueNewTraits.some(t => t.type === 'FAKE' || t.type === 'FLAW');
-            log = generateAppraisalLog(item, state.stats.day, `发现了特征: ${traitNames}`, hasFake);
+
+            // Pass value jump info if FAKE or JACKPOT was discovered
+            const valueJumpOptions = discoveredFakeOrJackpot
+                ? {
+                    valueJump: discoveredFakeOrJackpot.type as 'FAKE' | 'JACKPOT',
+                    newRange: finalRange
+                }
+                : undefined;
+
+            log = generateAppraisalLog(item, state.stats.day, traitNames, hasFake, valueJumpOptions);
         } else if (event.type === 'MISHAP') {
             log = generateAppraisalLog(item, state.stats.day, "鉴定失误，判断受到干扰。", true);
         }

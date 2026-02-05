@@ -53,7 +53,47 @@ export const generateSoldLog = (item: Item, day: number, amount: number): ItemLo
     return { id: crypto.randomUUID(), day, content: `${item.name}以$${amount}的价格售出。这段故事结束了。`, type: 'SOLD', metadata: { amount } };
 };
 
-export const generateAppraisalLog = (item: Item, day: number, discovery: string, isNegative: boolean): ItemLogEntry => {
-    const prefix = isNegative ? "⚠️ 发现: " : "✓ 确认: ";
-    return { id: crypto.randomUUID(), day, content: `${prefix}${discovery}`, type: 'APPRAISAL', metadata: { isNegative } };
+interface AppraisalLogOptions {
+    valueJump?: 'FAKE' | 'JACKPOT';
+    newRange?: [number, number];
+}
+
+export const generateAppraisalLog = (
+    item: Item,
+    day: number,
+    discovery: string,
+    isNegative: boolean,
+    options?: AppraisalLogOptions
+): ItemLogEntry => {
+    let content: string;
+
+    if (options?.valueJump === 'FAKE') {
+        // FAKE discovery - value collapse
+        const rangeText = options.newRange
+            ? ` 估值修正: $${options.newRange[0]} - $${options.newRange[1]}`
+            : '';
+        content = `⚠️ 价值崩塌！发现: ${discovery}。${rangeText}`;
+    } else if (options?.valueJump === 'JACKPOT') {
+        // JACKPOT discovery - value surge
+        const rangeText = options.newRange
+            ? ` 估值修正: $${options.newRange[0]} - $${options.newRange[1]}`
+            : '';
+        content = `✨ 价值发现！发现: ${discovery}。${rangeText}`;
+    } else {
+        // Standard discovery
+        const prefix = isNegative ? "⚠️ 发现: " : "✓ 确认: ";
+        content = `${prefix}${discovery}`;
+    }
+
+    return {
+        id: crypto.randomUUID(),
+        day,
+        content,
+        type: 'APPRAISAL',
+        metadata: {
+            isNegative,
+            valueJump: options?.valueJump,
+            newRange: options?.newRange
+        }
+    };
 };
