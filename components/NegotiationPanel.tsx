@@ -109,7 +109,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                 <div className="flex flex-col items-center shrink-0 justify-center">
                     {/* Portrait Container with Enhanced Visual Treatment */}
                     <div className={cn(
-                        "relative w-20 h-20 rounded-full overflow-hidden border-2 transition-all duration-300",
+                        "relative w-24 h-24 rounded-full overflow-hidden border-2 transition-all duration-300",
                         "shadow-[0_0_20px_rgba(0,0,0,0.5)]",
                         isAngry
                             ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-[pulse_1s_ease-in-out_infinite]"
@@ -151,7 +151,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                 </div>
 
                 {/* Center: Observation + Insight Area */}
-                <div className="flex-1 min-w-0 flex flex-col border border-noir-400/50 rounded bg-noir-100/30">
+                <div className="flex-1 min-w-0 max-w-[280px] flex flex-col border border-noir-400/50 rounded bg-noir-100/30">
                     {/* Top: Customer Observation + Insight Button */}
                     <div className="px-3 py-2 border-b border-noir-400/30 min-h-[32px] flex items-center gap-2">
                         <div className="flex-1 min-w-0">
