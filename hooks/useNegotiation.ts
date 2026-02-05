@@ -139,7 +139,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
       setLastAction(null);
       setOfferHistory([]);
       setRevealedMinimum(false);
-      setOfferPrincipal(Math.floor(customer.desiredAmount * 0.8));
+      setOfferPrincipal(customer.currentAskPrice ?? customer.desiredAmount);
       setSelectedRate(0.05);
       setCurrentAskPrice(customer.currentAskPrice ?? customer.desiredAmount);
       // Reset push-pull state
@@ -158,7 +158,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
       setLastAction(null);
       setOfferHistory([]);
       setRevealedMinimum(false);
-      setOfferPrincipal(Math.floor(customer.desiredAmount * 0.8));
+      setOfferPrincipal(customer.currentAskPrice ?? customer.desiredAmount);
       setSelectedRate(0.05);
       setCurrentAskPrice(customer.currentAskPrice ?? customer.desiredAmount);
       // Reset push-pull state
