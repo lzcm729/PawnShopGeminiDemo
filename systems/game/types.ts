@@ -4,7 +4,7 @@ import { GamePhase } from '../core/phases';
 import { Item } from '../items/types';
 import { Customer } from '../npc/types';
 import { TransactionRecord } from '../economy/types';
-import { EventChainState, MailInstance, SatisfactionLevel, ExpiryEvent } from '../narrative/types';
+import { EventChainState, MailInstance, SatisfactionLevel, ExpiryEvent, PoliceInvestigationEvent } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
@@ -106,4 +106,7 @@ export interface GameState {
 
   // === CUSTOMER INSIGHT (洞察客户) ===
   currentCustomerInsight: CustomerInsightResult | null;  // 当前客户的洞察结果
+
+  // === POLICE INVESTIGATION (警方调查) ===
+  currentPoliceInvestigation: PoliceInvestigationEvent | null;  // 当前警方调查事件
 }

@@ -111,7 +111,9 @@ const initialState: GameState = {
     // === PENDING ITEM SELECTION ===
     pendingSelectedItemId: null,
     // === CUSTOMER INSIGHT ===
-    currentCustomerInsight: null
+    currentCustomerInsight: null,
+    // === POLICE INVESTIGATION ===
+    currentPoliceInvestigation: null
 };
 
 // === Context ===

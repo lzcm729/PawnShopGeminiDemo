@@ -4,6 +4,12 @@ import { Mood } from '../core/types';
 
 export type SatisfactionLevel = 'GRATEFUL' | 'NEUTRAL' | 'RESENTFUL' | 'DESPERATE';
 
+// === POLICE INVESTIGATION TYPES ===
+export interface PoliceInvestigationEvent {
+    itemId: string;
+    itemName: string;
+}
+
 // === EXPIRY SYSTEM TYPES ===
 export type ExpiryBehavior = 'REDEEM' | 'RENEW' | 'NO_SHOW' | 'BREACH_DISCOVERED';
 

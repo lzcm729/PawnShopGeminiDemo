@@ -3,7 +3,7 @@
  * Centralized action types for the game state reducer
  */
 
-import { GameState, Customer, Mood, ReputationProfile, Item, EventChainState, SatisfactionLevel, MotherCondition, ExpiryEvent } from '../../types';
+import { GameState, Customer, Mood, ReputationProfile, Item, EventChainState, SatisfactionLevel, MotherCondition, ExpiryEvent, PoliceInvestigationEvent } from '../../types';
 import { GamePhase } from '../../systems/core/phases';
 import { EssenceType, EssenceBalance } from '../../systems/economy/essence';
 import { KnowledgePool } from '../../systems/items/tags';
@@ -168,4 +168,10 @@ export type Action =
     | { type: 'BLACKMARKET_ACCEPT_LOCKDOWN'; payload: { lockDays: number } }
     | { type: 'BLACKMARKET_PROCESS_DAY_END'; payload: { riskEvent: RiskEvent | null } }
     | { type: 'BLACKMARKET_REFRESH_DAILY' }
-    | { type: 'SET_BLACKMARKET_STATE'; payload: BlackmarketState };
+    | { type: 'SET_BLACKMARKET_STATE'; payload: BlackmarketState }
+
+    // Stolen goods & Police investigation (赃物收购 & 警方调查)
+    | { type: 'STOLEN_ITEM_DECISION'; payload: { accept: boolean } }
+    | { type: 'TRIGGER_POLICE_INVESTIGATION'; payload: { itemId: string; itemName: string } }
+    | { type: 'POLICE_INVESTIGATION_DECISION'; payload: { surrender: boolean; itemId: string } }
+    | { type: 'CLEAR_POLICE_INVESTIGATION' };

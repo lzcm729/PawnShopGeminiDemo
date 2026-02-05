@@ -15,6 +15,7 @@ import { generateCustomerFromCandidate } from '../systems/appointment/customerGe
 import { createTransientChain, getContractTypeFromRate, generateFillerCustomer } from '../systems/npc/fillerGenerator';
 import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
 import { PhaseEvent } from '../systems/core/phases/types';
+import { checkForPoliceInvestigation } from '../systems/police';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -315,6 +316,24 @@ export const useGameEngine = () => {
 
     // 1. Process daily mail
     dispatch({ type: 'PROCESS_DAILY_MAIL' });
+
+    // 1.5. Check for police investigation (if stolen items in inventory)
+    const stolenItemToInvestigate = checkForPoliceInvestigation(
+        state.inventory,
+        state.reputation[ReputationType.INNOCENCE]
+    );
+    if (stolenItemToInvestigate) {
+        dispatch({
+            type: 'TRIGGER_POLICE_INVESTIGATION',
+            payload: {
+                itemId: stolenItemToInvestigate.id,
+                itemName: stolenItemToInvestigate.name
+            }
+        });
+        // Note: The UI will display the investigation prompt
+        // The game flow continues after player makes a decision
+        // Police investigation doesn't block expiry events - they can happen same day
+    }
 
     // 2. Check for expiry events (REDEEM/RENEW only, NO_SHOW auto-forfeits)
     const { expiryEvents, noShowForfeits } = checkDailyExpirations();
@@ -643,18 +662,23 @@ export const useGameEngine = () => {
 
     const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
 
-    // Illicit goods: reduce INNOCENCE (法律清白度) instead of increasing UNDERWORLD
-    if (item.isStolen || (item.category === '违禁品' && !item.isSuspicious)) {
-      repDelta[ReputationType.INNOCENCE] -= 3;  // Accepting stolen/contraband: -3 Innocence
-      repDelta[ReputationType.CREDIBILITY] -= 2;
+    // Stolen goods: +1 Credibility (profitable deal), -2 Innocence (illegal activity)
+    if (item.isStolen) {
+      repDelta[ReputationType.CREDIBILITY] += 1;  // Good business deal
+      repDelta[ReputationType.INNOCENCE] -= 2;    // Accepting stolen goods: -2 Innocence
+    }
 
-      // Removed automatic violation flagging from here.
-      // Now handled in Reducer to ensure it only applies if deal is committed.
-      if (currentRisk > 0) {
-          // Additional immediate rep penalty for risk taking during crackdown
-          repDelta[ReputationType.CREDIBILITY] -= 20;
-          repDelta[ReputationType.INNOCENCE] -= 5;  // Additional innocence loss during crackdown
-      }
+    // Other illicit goods (contraband but not stolen): reduce INNOCENCE
+    if (!item.isStolen && item.category === '违禁品' && !item.isSuspicious) {
+      repDelta[ReputationType.INNOCENCE] -= 3;  // Accepting contraband: -3 Innocence
+      repDelta[ReputationType.CREDIBILITY] -= 2;
+    }
+
+    // During crackdown, additional penalties for any illicit goods
+    if ((item.isStolen || (item.category === '违禁品' && !item.isSuspicious)) && currentRisk > 0) {
+        // Additional immediate rep penalty for risk taking during crackdown
+        repDelta[ReputationType.CREDIBILITY] -= 20;
+        repDelta[ReputationType.INNOCENCE] -= 5;  // Additional innocence loss during crackdown
     }
     
     if (item.isFake) repDelta[ReputationType.CREDIBILITY] -= 5; 
@@ -919,5 +943,41 @@ export const useGameEngine = () => {
       dispatch({ type: 'LIQUIDATE_ITEM', payload: { itemId: item.id, amount, name: item.name } });
   };
 
-  return { startNewDay, performNightCycle, generateDailyEvent, evaluateTransaction, commitTransaction, rejectCustomer, liquidateItem, applyChainEffects, processNextExpiryEvent };
+  // Helper to check if current customer's item is stolen (for UI decision prompt)
+  const isCurrentItemStolen = (): boolean => {
+      return state.currentCustomer?.item?.isStolen === true;
+  };
+
+  // Helper to handle stolen item decision
+  const handleStolenItemDecision = (accept: boolean) => {
+      dispatch({ type: 'STOLEN_ITEM_DECISION', payload: { accept } });
+  };
+
+  // Helper to handle police investigation decision
+  const handlePoliceInvestigationDecision = (surrender: boolean) => {
+      if (!state.currentPoliceInvestigation) return;
+      dispatch({
+          type: 'POLICE_INVESTIGATION_DECISION',
+          payload: {
+              surrender,
+              itemId: state.currentPoliceInvestigation.itemId
+          }
+      });
+  };
+
+  return {
+      startNewDay,
+      performNightCycle,
+      generateDailyEvent,
+      evaluateTransaction,
+      commitTransaction,
+      rejectCustomer,
+      liquidateItem,
+      applyChainEffects,
+      processNextExpiryEvent,
+      // New stolen goods helpers
+      isCurrentItemStolen,
+      handleStolenItemDecision,
+      handlePoliceInvestigationDecision
+  };
 };

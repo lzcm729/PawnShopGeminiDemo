@@ -111,13 +111,15 @@ export function executeCommand(
   skip day              - Skip to next day's morning brief
   add cash <n>          - Add cash (can be negative)
   add essence <n>       - Add essence to all types
-  add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2] - Add test pawn item
+  add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2] [--stolen] - Add test pawn item
   add forfeit <name> [--tags TAG1,TAG2] - Add forfeit item for blackmarket testing
   add template <id> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|REFORGED] - Add item from CSV template
   spawn customer        - Force spawn a customer via game engine (business phase only)
   spawn filler          - Spawn a normal filler customer (business phase only)
   spawn filler mistake  - Spawn filler with FAKE trait for 打眼 testing
   spawn filler bargain  - Spawn filler with JACKPOT trait for 捡漏 testing
+  spawn filler stolen   - Spawn filler with stolen item for 赃物 testing
+  trigger police [itemId] - Trigger police investigation on a stolen item
   blackmarket lock <n>  - Lock blackmarket for N days
   blackmarket unlock    - Unlock blackmarket
   blackmarket refresh   - Force refresh daily purchase requests
@@ -152,6 +154,9 @@ export function executeCommand(
 
     case 'spawn':
       return handleSpawnCommand(args, dispatch, getState);
+
+    case 'trigger':
+      return handleTriggerCommand(args, dispatch, getState);
 
     case 'skip':
       if (args[0]?.toLowerCase() === 'day') {
@@ -798,11 +803,11 @@ function handleAddCommand(
 const ALL_VALID_TAGS: string[] = [...STATE_TAGS, ...ATTRIBUTE_TAGS, ...ESSENCE_TAGS];
 
 /**
- * Parse args like: 测试钟表 --dueDate 3 --chainId emma_chain --tags DIRTY,RUSTED
- * Returns: { name: "测试钟表", dueDate: 3, chainId: "emma_chain", tags: ["DIRTY", "RUSTED"] }
+ * Parse args like: 测试钟表 --dueDate 3 --chainId emma_chain --tags DIRTY,RUSTED --stolen
+ * Returns: { name: "测试钟表", dueDate: 3, chainId: "emma_chain", tags: ["DIRTY", "RUSTED"], isStolen: true }
  */
-function parseItemArgs(args: string[]): { name: string; dueDate?: number; chainId?: string; tags?: ItemTag[] } | null {
-  const result: { name: string; dueDate?: number; chainId?: string; tags?: ItemTag[] } = { name: '' };
+function parseItemArgs(args: string[]): { name: string; dueDate?: number; chainId?: string; tags?: ItemTag[]; isStolen?: boolean } | null {
+  const result: { name: string; dueDate?: number; chainId?: string; tags?: ItemTag[]; isStolen?: boolean } = { name: '' };
   const nameParts: string[] = [];
 
   let i = 0;
@@ -838,6 +843,9 @@ function parseItemArgs(args: string[]): { name: string; dueDate?: number; chainI
         result.tags = validTags;
       }
       i += 2;
+    } else if (arg === '--stolen') {
+      result.isStolen = true;
+      i++;
     } else if (!arg.startsWith('--')) {
       nameParts.push(arg);
       i++;
@@ -859,7 +867,7 @@ function handleAddItemCommand(
   const parsed = parseItemArgs(args);
 
   if (!parsed || !parsed.name) {
-    return { success: false, message: 'Usage: add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2]\nExample: add item 测试钟表 --dueDate 3 --chainId emma_chain\nExample: add item 测试物品 --dueDate 5 --tags DIRTY,RUSTED' };
+    return { success: false, message: 'Usage: add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2] [--stolen]\nExample: add item 测试钟表 --dueDate 3 --chainId emma_chain\nExample: add item 测试物品 --dueDate 5 --tags DIRTY,RUSTED\nExample: add item 赃物手表 --dueDate 7 --stolen' };
   }
 
   if (parsed.dueDate === undefined) {
@@ -896,7 +904,7 @@ function handleAddItemCommand(
     historySnippet: '测试用途。',
     appraisalNote: '测试物品，用于验证续当机制。',
     archiveSummary: '测试物品。',
-    isStolen: false,
+    isStolen: parsed.isStolen || false,
     isFake: false,
     sentimentalValue: false,
     appraised: true,
@@ -915,7 +923,7 @@ function handleAddItemCommand(
     logs: [{
       id: `log-${Date.now()}`,
       day: currentDay,
-      content: `[测试] 通过 DevConsole 创建的测试物品`,
+      content: `[测试] 通过 DevConsole 创建的测试物品${parsed.isStolen ? ' (赃物)' : ''}`,
       type: 'ENTRY'
     }],
     // Link to chain if provided
@@ -933,9 +941,10 @@ function handleAddItemCommand(
 
   const chainInfo = parsed.chainId ? ` (链: ${parsed.chainId})` : '';
   const tagsInfo = parsed.tags && parsed.tags.length > 0 ? `\n  Tags: ${parsed.tags.join(', ')}` : '';
+  const stolenInfo = parsed.isStolen ? '\n  [STOLEN] 赃物' : '';
   return {
     success: true,
-    message: `Added item "${parsed.name}" to inventory\n  ID: ${itemId}\n  Due: Day ${dueDate}${chainInfo}\n  Term: ${termDays} days\n  Value: $${testValue}${tagsInfo}`
+    message: `Added item "${parsed.name}" to inventory\n  ID: ${itemId}\n  Due: Day ${dueDate}${chainInfo}\n  Term: ${termDays} days\n  Value: $${testValue}${tagsInfo}${stolenInfo}`
   };
 }
 
@@ -1212,7 +1221,7 @@ function handleSpawnCommand(
   getState: () => any
 ): CommandResult {
   if (args.length < 1) {
-    return { success: false, message: 'Usage: spawn <customer|filler> [mistake|bargain]' };
+    return { success: false, message: 'Usage: spawn <customer|filler> [mistake|bargain|stolen]' };
   }
 
   const target = args[0].toLowerCase();
@@ -1235,16 +1244,20 @@ function handleSpawnCommand(
       let forceJumpTrait: ForcedJumpTrait = null;
       let description = 'normal';
 
+      let forceStolen = false;
       if (subType === 'mistake') {
         forceJumpTrait = 'MISTAKE';
         description = 'FAKE trait (打眼)';
       } else if (subType === 'bargain') {
         forceJumpTrait = 'BARGAIN';
         description = 'JACKPOT trait (捡漏)';
+      } else if (subType === 'stolen') {
+        forceStolen = true;
+        description = 'stolen item (赃物)';
       } else if (subType && subType !== '') {
         return {
           success: false,
-          message: `Unknown filler type: ${subType}. Use 'mistake' or 'bargain', or omit for normal filler.`
+          message: `Unknown filler type: ${subType}. Use 'mistake', 'bargain', 'stolen', or omit for normal filler.`
         };
       }
 
@@ -1266,12 +1279,18 @@ function handleSpawnCommand(
         return { success: false, message: 'Failed to generate filler customer' };
       }
 
+      // If forcing stolen, mark the item as stolen
+      if (forceStolen && customer.item) {
+        customer.item.isStolen = true;
+      }
+
       // Set customer directly and transition to SERVING state
       dispatch({ type: 'SET_CUSTOMER', payload: customer });
       dispatch({ type: 'PHASE_TRANSITION', payload: { type: 'CUSTOMER_GENERATED', hasCustomer: true } });
 
+      const stolenInfo = customer.item?.isStolen ? ' [STOLEN]' : '';
       const itemInfo = customer.item
-        ? `\n  Item: ${customer.item.name} (${customer.item.category})\n  Hidden traits: ${customer.item.hiddenTraits.length}`
+        ? `\n  Item: ${customer.item.name} (${customer.item.category})${stolenInfo}\n  Hidden traits: ${customer.item.hiddenTraits.length}`
         : '';
 
       return {
@@ -1281,7 +1300,68 @@ function handleSpawnCommand(
     }
 
     default:
-      return { success: false, message: `Unknown spawn target: ${target}. Use 'customer' or 'filler [mistake|bargain]'` };
+      return { success: false, message: `Unknown spawn target: ${target}. Use 'customer' or 'filler [mistake|bargain|stolen]'` };
+  }
+}
+
+/**
+ * Handle 'trigger' command - manually trigger events for testing
+ */
+function handleTriggerCommand(
+  args: string[],
+  dispatch: (action: any) => void,
+  getState: () => any
+): CommandResult {
+  if (args.length < 1) {
+    return { success: false, message: 'Usage: trigger <event> [args]\n  trigger police [itemId] - Trigger police investigation on a stolen item' };
+  }
+
+  const eventType = args[0].toLowerCase();
+  const state = getState();
+
+  switch (eventType) {
+    case 'police': {
+      // Get itemId from args or find first stolen item in inventory
+      let itemId = args[1];
+      let itemName = '';
+
+      if (itemId) {
+        // Verify the item exists
+        const item = state.inventory.find((i: Item) => i.id === itemId);
+        if (!item) {
+          return { success: false, message: `Item not found: ${itemId}` };
+        }
+        if (!item.isStolen) {
+          return { success: false, message: `Item is not marked as stolen: ${item.name} (${itemId})` };
+        }
+        itemName = item.name;
+      } else {
+        // Find first stolen item in inventory
+        const stolenItem = state.inventory.find((i: Item) => i.isStolen && i.status === ItemStatus.ACTIVE);
+        if (!stolenItem) {
+          return {
+            success: false,
+            message: 'No stolen items in inventory. Use "spawn filler stolen" to add one first, then complete the deal.'
+          };
+        }
+        itemId = stolenItem.id;
+        itemName = stolenItem.name;
+      }
+
+      // Dispatch the police investigation trigger
+      dispatch({
+        type: 'TRIGGER_POLICE_INVESTIGATION',
+        payload: { itemId, itemName }
+      });
+
+      return {
+        success: true,
+        message: `Triggered police investigation for: ${itemName} (${itemId})`
+      };
+    }
+
+    default:
+      return { success: false, message: `Unknown event type: ${eventType}. Available: police` };
   }
 }
 
@@ -1405,9 +1485,9 @@ export function getAvailableCommands(): CommandDef[] {
     },
     {
       command: 'add item',
-      description: 'Add a test pawn item to inventory with specified due date and optional tags',
-      usage: 'add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2]',
-      examples: [`add item 测试钟表 --dueDate 3`, `add item 测试戒指 --dueDate 5 --chainId emma_chain`, `add item 测试物品 --dueDate 3 --tags DIRTY,RUSTED`]
+      description: 'Add a test pawn item to inventory with specified due date, optional tags, and stolen flag',
+      usage: 'add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2] [--stolen]',
+      examples: [`add item 测试钟表 --dueDate 3`, `add item 测试戒指 --dueDate 5 --chainId emma_chain`, `add item 测试物品 --dueDate 3 --tags DIRTY,RUSTED`, `add item 赃物手表 --dueDate 7 --stolen`]
     },
     {
       command: 'add forfeit',
@@ -1453,7 +1533,7 @@ export function getAvailableCommands(): CommandDef[] {
     {
       command: 'spawn filler',
       description: 'Spawn a normal filler customer directly (business phase only)',
-      usage: 'spawn filler [mistake|bargain]',
+      usage: 'spawn filler [mistake|bargain|stolen]',
       examples: [`spawn filler`, `spawn filler mistake`, `spawn filler bargain`]
     },
     {
@@ -1467,6 +1547,18 @@ export function getAvailableCommands(): CommandDef[] {
       description: 'Spawn filler customer with hidden JACKPOT trait for testing value surge (捡漏)',
       usage: 'spawn filler bargain',
       examples: [`spawn filler bargain`]
+    },
+    {
+      command: 'spawn filler stolen',
+      description: 'Spawn filler customer with a stolen item for testing police investigation (赃物)',
+      usage: 'spawn filler stolen',
+      examples: [`spawn filler stolen`]
+    },
+    {
+      command: 'trigger police',
+      description: 'Trigger police investigation on a stolen item in inventory',
+      usage: 'trigger police [itemId]',
+      examples: [`trigger police`, `trigger police item-12345`]
     },
     {
       command: 'test dsl',

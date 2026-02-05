@@ -8,7 +8,7 @@ import { useCustomerInsight } from '../hooks/useCustomerInsight';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
-import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff, Heart, TrendingDown } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff, Heart, TrendingDown, AlertTriangle, ShieldAlert, ShieldCheck, ShieldX } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
@@ -165,39 +165,43 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                         )}
                     </div>
 
-                    {/* Bottom: Insight Result Area + Button */}
-                    <div className="flex-1 flex items-stretch relative min-h-[72px]">
+                    {/* Bottom: Insight Result Area */}
+                    <div className="flex-1 flex items-stretch min-h-[72px]">
                         {insightResult ? (
-                            /* Insight Result - Unlocked state */
-                            <div className="flex-1 p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex items-start gap-3 h-full">
-                                    {/* Disposition Icon + Label */}
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <span className="text-2xl">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
-                                        <div>
-                                            <div className="text-[9px] text-noir-txt-muted uppercase tracking-wider">心理</div>
-                                            <div className={cn("text-sm font-bold", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
-                                                {DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.label || insightResult.disposition}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Text Content */}
-                                    <div className="min-w-0 flex-1 space-y-1">
-                                        <p className="font-serif text-sm text-noir-txt-secondary leading-snug italic line-clamp-1" title={insightResult.dispositionText}>
-                                            "{insightResult.dispositionText}"
-                                        </p>
-                                        <p className="font-serif text-sm text-amber-500/90 leading-snug line-clamp-1" title={insightResult.floorHint}>
-                                            {insightResult.floorHint}
-                                        </p>
-                                        {insightResult.moralContext && (
-                                            <p className="font-serif text-xs text-red-300/80 leading-snug italic flex items-center gap-1">
-                                                <Heart className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                                                <span className="line-clamp-1">{insightResult.moralContext}</span>
-                                            </p>
-                                        )}
-                                    </div>
+                            /* Insight Result - Unlocked state with sectioned layout */
+                            <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                {/* Row 1: Disposition Icon + Label (主标题，大字) */}
+                                <div className="flex items-center gap-2 px-3 py-1.5 border-b border-noir-400/20">
+                                    <span className="text-xl">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
+                                    <span className="text-[10px] text-noir-txt-muted uppercase tracking-wider">心理:</span>
+                                    <span className={cn("text-sm font-bold", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
+                                        {DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.label || insightResult.disposition}
+                                    </span>
                                 </div>
+
+                                {/* Row 2: Disposition description (描述，中等字) */}
+                                <div className="px-3 py-1.5 border-b border-noir-400/20">
+                                    <p className="font-serif text-xs text-noir-txt-secondary leading-snug italic line-clamp-1" title={insightResult.dispositionText}>
+                                        "{insightResult.dispositionText}"
+                                    </p>
+                                </div>
+
+                                {/* Row 3: Floor hint (提示，小字/不同颜色) */}
+                                <div className="px-3 py-1.5 border-b border-noir-400/20">
+                                    <p className="font-serif text-[11px] text-amber-500/90 leading-snug line-clamp-1" title={insightResult.floorHint}>
+                                        {insightResult.floorHint}
+                                    </p>
+                                </div>
+
+                                {/* Row 4: Moral context (独立一行，红色) */}
+                                {insightResult.moralContext && (
+                                    <div className="px-3 py-1.5 flex items-center gap-1.5">
+                                        <Heart className="w-3 h-3 text-red-400 shrink-0" />
+                                        <p className="font-serif text-[10px] text-red-300/80 leading-snug italic line-clamp-1" title={insightResult.moralContext}>
+                                            {insightResult.moralContext}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             /* Locked state - Placeholder with visual hint */
@@ -213,47 +217,51 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                                 </div>
                             </div>
                         )}
-
-                        {/* Insight Button - Positioned at bottom-right */}
-                        <div className="absolute bottom-3 right-3">
-                            {!hasUsedInsight ? (
-                                <button
-                                    onClick={onInsightClick}
-                                    disabled={!canUseInsight}
-                                    title={canUseInsight ? "洞察客户心理 (消耗 1 AP)" : insightBlockReason}
-                                    className={cn(
-                                        "flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1.5 rounded border transition-all duration-200 shadow-md",
-                                        canUseInsight
-                                            ? "bg-pawn-accent text-black border-amber-400 hover:scale-105 hover:shadow-lg"
-                                            : "bg-stone-800/80 text-stone-500 border-stone-600 cursor-not-allowed"
-                                    )}
-                                >
-                                    <Eye className="w-4 h-4" />
-                                    <span>洞察 1AP</span>
-                                </button>
-                            ) : (
-                                <div className="flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1.5 rounded border bg-pawn-green/20 text-pawn-green border-pawn-green/50">
-                                    <Eye className="w-4 h-4" />
-                                    <span>已洞察</span>
-                                </div>
-                            )}
-                        </div>
                     </div>
                 </div>
 
-                {/* Right: Stress Bar (vertical layout) */}
-                <div className="shrink-0 flex flex-col items-center justify-center gap-1.5 px-3 min-w-[56px]">
-                    <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest flex items-center gap-1">
-                        <Activity className="w-3.5 h-3.5" />
+                {/* Right: Stress Bar + Insight Button (vertical layout) */}
+                <div className="shrink-0 flex flex-col items-center gap-1.5 px-3 min-w-[64px]">
+                    {/* Stress indicator */}
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest flex items-center gap-1">
+                            <Activity className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="text-[9px] font-bold text-noir-txt-muted uppercase tracking-wider">STRESS</span>
+                        <div className="w-3.5 h-16 bg-noir-400 rounded-sm overflow-hidden border border-noir-500 relative">
+                            <div
+                                className={cn("absolute bottom-0 left-0 right-0 transition-all duration-500", patienceColor)}
+                                style={{ height: `${patiencePercent}%` }}
+                            />
+                        </div>
+                        <span className="text-xs font-mono text-noir-txt-muted">{patience}/{maxPatience}</span>
                     </div>
-                    <span className="text-[9px] font-bold text-noir-txt-muted uppercase tracking-wider">STRESS</span>
-                    <div className="w-3.5 h-20 bg-noir-400 rounded-sm overflow-hidden border border-noir-500 relative">
-                        <div
-                            className={cn("absolute bottom-0 left-0 right-0 transition-all duration-500", patienceColor)}
-                            style={{ height: `${patiencePercent}%` }}
-                        />
+
+                    {/* Insight Button - Below Stress */}
+                    <div className="mt-auto">
+                        {!hasUsedInsight ? (
+                            <button
+                                onClick={onInsightClick}
+                                disabled={!canUseInsight}
+                                title={canUseInsight ? "洞察客户心理 (消耗 1 AP)" : insightBlockReason}
+                                className={cn(
+                                    "flex flex-col items-center gap-0.5 text-[10px] font-mono font-bold px-2 py-1.5 rounded border transition-all duration-200 shadow-md",
+                                    canUseInsight
+                                        ? "bg-pawn-accent text-black border-amber-400 hover:scale-105 hover:shadow-lg"
+                                        : "bg-stone-800/80 text-stone-500 border-stone-600 cursor-not-allowed"
+                                )}
+                            >
+                                <Eye className="w-4 h-4" />
+                                <span>洞察</span>
+                                <span className="text-[8px] opacity-80">1 AP</span>
+                            </button>
+                        ) : (
+                            <div className="flex flex-col items-center gap-0.5 text-[10px] font-mono font-bold px-2 py-1.5 rounded border bg-pawn-green/20 text-pawn-green border-pawn-green/50">
+                                <Eye className="w-4 h-4" />
+                                <span>已洞察</span>
+                            </div>
+                        )}
                     </div>
-                    <span className="text-xs font-mono text-noir-txt-muted">{patience}/{maxPatience}</span>
                 </div>
             </div>
         </div>
@@ -262,10 +270,14 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
 
 export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation, appraisalFeedbacks = [] }) => {
   const { state } = useGame();
-  const { evaluateTransaction, commitTransaction, rejectCustomer } = useGameEngine();
+  const { evaluateTransaction, commitTransaction, rejectCustomer, isCurrentItemStolen, handleStolenItemDecision } = useGameEngine();
   const { send } = useGameMachine();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
+
+  // Stolen goods decision UI state
+  const [showStolenWarning, setShowStolenWarning] = useState(false);
+  const [stolenDecisionMade, setStolenDecisionMade] = useState(false);
 
   // Customer Insight hook
   const {
@@ -498,6 +510,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   useEffect(() => {
       discoveredTraitIdsRef.current.clear();
       processedCountRef.current = 0;
+      // Reset stolen decision state for new customer
+      setShowStolenWarning(false);
+      setStolenDecisionMade(false);
   }, [currentCustomer?.id]);
 
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
@@ -561,6 +576,13 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     setChatLog(prev => [...prev, playerLog, customerLog]);
 
     if (result.status === 'ACCEPTED') {
+        // Check if item is stolen and decision hasn't been made yet
+        if (isCurrentItemStolen() && !stolenDecisionMade) {
+            // Show stolen goods warning before completing transaction
+            setShowStolenWarning(true);
+            return;
+        }
+
         // Prevent double-click by setting submitting flag immediately
         setIsSubmitting(true);
         const txResult = evaluateTransaction(offerPrincipal, selectedRate);
@@ -571,6 +593,30 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
             commitTransaction(txResult);
         }, 800);
     }
+  };
+
+  // Handle stolen item decision
+  const handleStolenAccept = () => {
+      playSfx('CLICK');
+      setStolenDecisionMade(true);
+      setShowStolenWarning(false);
+      handleStolenItemDecision(true);
+
+      // Now complete the transaction
+      setIsSubmitting(true);
+      const txResult = evaluateTransaction(offerPrincipal, selectedRate);
+      setTimeout(() => {
+          send({ type: 'TRANSACTION_COMPLETE' });
+          commitTransaction(txResult);
+      }, 800);
+  };
+
+  const handleStolenReject = () => {
+      playSfx('FAIL');
+      setStolenDecisionMade(true);
+      setShowStolenWarning(false);
+      handleStolenItemDecision(false);
+      // The reducer will handle transitioning to departure
   };
 
   const handleBinaryAccept = () => {
@@ -715,6 +761,86 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                         <XCircle className="w-5 h-5 mr-2" />
                         DISMISS
                     </Button>
+                </div>
+            </div>
+      )}
+
+      {/* Stolen Goods Warning Overlay */}
+      {showStolenWarning && (
+            <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-6 animate-in fade-in duration-300">
+                <div className="bg-noir-200 border-2 border-amber-700/70 p-6 max-w-md w-full shadow-2xl relative flex flex-col items-center">
+                    {/* Warning Icon */}
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 h-16 bg-amber-900/80 rounded-full flex items-center justify-center border-4 border-amber-600 shadow-[0_0_30px_rgba(217,119,6,0.5)]">
+                        <AlertTriangle className="w-8 h-8 text-amber-400 animate-pulse" />
+                    </div>
+
+                    {/* Title */}
+                    <div className="mt-8 mb-4 text-center">
+                        <h3 className="text-lg font-bold text-amber-500 uppercase tracking-widest mb-1">
+                            SUSPICIOUS ITEM
+                        </h3>
+                        <p className="text-xs text-noir-txt-muted font-mono">
+                            ORIGIN VERIFICATION FAILED
+                        </p>
+                    </div>
+
+                    {/* Warning Message */}
+                    <div className="bg-black/40 border border-amber-900/50 rounded p-4 mb-6 w-full">
+                        <p className="font-serif text-base text-center text-noir-txt-primary leading-relaxed">
+                            这件物品来路不明，<span className="text-amber-400 font-bold">可能是赃物</span>。
+                        </p>
+                        <p className="font-serif text-sm text-center text-noir-txt-secondary mt-2 italic">
+                            收下它可能会引来警方的注意...
+                        </p>
+                    </div>
+
+                    {/* Consequences Preview */}
+                    <div className="grid grid-cols-2 gap-3 w-full mb-6 text-xs">
+                        <div className="bg-red-950/30 border border-red-900/50 rounded p-3">
+                            <div className="flex items-center gap-2 text-red-400 font-bold mb-1">
+                                <ShieldX className="w-4 h-4" />
+                                <span>收下</span>
+                            </div>
+                            <p className="text-red-300/70 text-[10px]">
+                                Innocence -2
+                            </p>
+                            <p className="text-red-300/70 text-[10px]">
+                                可能触发警方调查
+                            </p>
+                        </div>
+                        <div className="bg-teal-950/30 border border-teal-900/50 rounded p-3">
+                            <div className="flex items-center gap-2 text-teal-400 font-bold mb-1">
+                                <ShieldCheck className="w-4 h-4" />
+                                <span>拒绝</span>
+                            </div>
+                            <p className="text-teal-300/70 text-[10px]">
+                                Innocence +1
+                            </p>
+                            <p className="text-teal-300/70 text-[10px]">
+                                客户将离开
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 w-full">
+                        <Button
+                            variant="outline"
+                            onClick={handleStolenReject}
+                            className="flex-1 h-12 border-teal-700 text-teal-400 hover:bg-teal-900/30 hover:border-teal-500"
+                        >
+                            <ShieldCheck className="w-4 h-4 mr-2" />
+                            REFUSE
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={handleStolenAccept}
+                            className="flex-1 h-12 bg-red-900/50 hover:bg-red-800/60 border-red-700"
+                        >
+                            <ShieldAlert className="w-4 h-4 mr-2" />
+                            ACCEPT
+                        </Button>
+                    </div>
                 </div>
             </div>
       )}

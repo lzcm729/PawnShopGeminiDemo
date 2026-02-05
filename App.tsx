@@ -18,6 +18,7 @@ import { MailModal } from './components/MailModal';
 import { FinancialCalendar } from './components/FinancialCalendar';
 import { MedicalModal } from './components/MedicalModal';
 import { HospitalVisitModal } from './components/HospitalVisitModal';
+import { PoliceInvestigationModal } from './components/PoliceInvestigationModal';
 import { DebugPanel } from './components/DebugPanel';
 import { DevConsole } from './components/DevConsole';
 import { DepartureView } from './components/ShopClosedView';
@@ -298,6 +299,7 @@ const GameContent: React.FC = () => {
             <FinancialCalendar />
             <MedicalModal />
             <HospitalVisitModal />
+            <PoliceInvestigationModal />
 
             <main className="flex-1 overflow-hidden relative">
                 {isDeparture && (
