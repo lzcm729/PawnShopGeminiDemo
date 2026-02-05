@@ -144,10 +144,9 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                         {isAngry && <div className="absolute inset-0 border-2 border-red-500 rounded-full animate-pulse z-30"></div>}
                     </div>
 
-                    {/* Customer Name & ID - Below Portrait */}
+                    {/* Customer Name - Below Portrait */}
                     <div className="mt-2 text-center">
                         <h2 className="text-base font-serif font-bold text-noir-txt-primary leading-none tracking-wide">{customer.name}</h2>
-                        <Badge variant="outline" className="text-[8px] py-0 h-3.5 mt-1">ID: {customer.id.slice(0,4)}</Badge>
                     </div>
                 </div>
 
@@ -194,9 +193,9 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
 
                     {/* Content Area: Insight Result or Observation */}
                     {insightResult ? (
-                        /* Insight Result - Displayed inline */
-                        <div className="bg-noir-100/50 border border-amber-600/30 rounded p-2 animate-in fade-in slide-in-from-right-2 duration-300">
-                            <div className="flex items-start gap-3">
+                        /* Insight Result - Compact display with max width */
+                        <div className="bg-noir-100/50 border border-amber-600/30 rounded p-2 animate-in fade-in slide-in-from-right-2 duration-300 max-w-md">
+                            <div className="flex items-start gap-2">
                                 {/* Disposition Icon + Label */}
                                 <div className="flex items-center gap-1.5 shrink-0">
                                     <span className="text-lg">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
@@ -208,25 +207,22 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Text Content */}
-                                <div className="flex-1 min-w-0 space-y-1">
+                                {/* Text Content - Stacked vertically for compactness */}
+                                <div className="min-w-0 space-y-0.5">
                                     <p className="font-serif text-[11px] text-noir-txt-secondary leading-snug italic truncate" title={insightResult.dispositionText}>
                                         "{insightResult.dispositionText}"
                                     </p>
                                     <p className="font-serif text-[11px] text-amber-500/90 leading-snug truncate" title={insightResult.floorHint}>
                                         {insightResult.floorHint}
                                     </p>
-                                </div>
-
-                                {/* Moral Context (if available) */}
-                                {insightResult.moralContext && (
-                                    <div className="shrink-0 flex items-center gap-1 bg-red-950/30 border border-red-900/40 rounded px-1.5 py-1 max-w-[140px]">
-                                        <Heart className="w-3 h-3 text-red-400 shrink-0" />
-                                        <p className="font-serif text-[9px] text-red-300/90 leading-snug italic line-clamp-2">
-                                            {insightResult.moralContext}
+                                    {/* Moral Context inline if available */}
+                                    {insightResult.moralContext && (
+                                        <p className="font-serif text-[10px] text-red-300/80 leading-snug italic flex items-center gap-1">
+                                            <Heart className="w-3 h-3 text-red-400 shrink-0" />
+                                            <span className="truncate">{insightResult.moralContext}</span>
                                         </p>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ) : (
