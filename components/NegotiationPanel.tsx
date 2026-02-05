@@ -109,7 +109,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                 <div className="flex flex-col items-center shrink-0 justify-center">
                     {/* Portrait Container with Enhanced Visual Treatment */}
                     <div className={cn(
-                        "relative w-24 h-24 rounded-full overflow-hidden border-2 transition-all duration-300",
+                        "relative w-[120px] h-[120px] rounded-full overflow-hidden border-2 transition-all duration-300",
                         "shadow-[0_0_20px_rgba(0,0,0,0.5)]",
                         isAngry
                             ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-[pulse_1s_ease-in-out_infinite]"
