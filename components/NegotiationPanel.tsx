@@ -1,6 +1,6 @@
 
 // ... existing imports ...
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
@@ -8,7 +8,7 @@ import { useCustomerInsight } from '../hooks/useCustomerInsight';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
-import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff, Heart } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff, Heart, TrendingDown } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
@@ -18,6 +18,7 @@ import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { RollingNumber } from './ui/RollingNumber';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 import { DISPOSITION_INFO } from '../systems/customerInsight';
+import { PushPullResult } from '../systems/negotiation/pushPull';
 
 // ... existing interfaces ...
 interface NegotiationStateProps {
@@ -34,6 +35,11 @@ interface NegotiationStateProps {
         currentAskPrice: number;
         offerHistory: OfferRecord[];
         revealedMinimum: boolean;
+        // Push-Pull fields
+        lastOfferAmount: number | null;
+        persistCount: number;
+        npcConcessionCount: number;
+        lastPushPullResult: PushPullResult | null;
     };
     appraisalFeedbacks?: AppraisalFeedback[];
 }
@@ -223,13 +229,23 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     patience,
     currentAskPrice,
     offerHistory,
-    revealedMinimum
+    revealedMinimum,
+    // Push-Pull fields
+    lastOfferAmount,
+    persistCount,
+    npcConcessionCount,
+    lastPushPullResult
   } = negotiation;
 
   const [chatLog, setChatLog] = useState<LogEntry[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [rejectionState, setRejectionState] = useState<{show: boolean, text: string}>({show: false, text: ''});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Push-Pull: Track previous ask price for animation
+  const [prevAskPrice, setPrevAskPrice] = useState<number>(currentAskPrice);
+  const [askPriceChanged, setAskPriceChanged] = useState(false);
+  const askChangeAmount = prevAskPrice - currentAskPrice;
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -242,6 +258,22 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       }
     };
   }, []);
+
+  // Track Ask price changes for animation
+  useEffect(() => {
+    if (currentAskPrice !== prevAskPrice && currentAskPrice < prevAskPrice) {
+      // NPC conceded - trigger animation
+      setAskPriceChanged(true);
+      const timer = setTimeout(() => {
+        setPrevAskPrice(currentAskPrice);
+        setAskPriceChanged(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    } else if (currentAskPrice !== prevAskPrice) {
+      // Just update without animation (e.g., new customer)
+      setPrevAskPrice(currentAskPrice);
+    }
+  }, [currentAskPrice, prevAskPrice]);
 
   const isBinaryChoice = currentCustomer?.interactionType === 'NEGOTIATION';
 
@@ -557,6 +589,15 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const repaymentAmount = Math.floor(offerPrincipal * (1 + selectedRate));
   const profit = repaymentAmount - offerPrincipal;
 
+  // Determine submit button text based on player's move
+  const getSubmitButtonText = useMemo(() => {
+    if (offerHistory.length === 0) return 'SUBMIT';
+    if (lastOfferAmount === null) return 'SUBMIT';
+    if (offerPrincipal === lastOfferAmount) return 'PERSIST';
+    if (offerPrincipal > lastOfferAmount) return 'YIELD';
+    return 'SUBMIT';
+  }, [offerHistory.length, lastOfferAmount, offerPrincipal]);
+
   const handleMatchAsk = () => {
       if (!canInteract) return;
       playSfx('CLICK');
@@ -793,15 +834,25 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
              <div className="space-y-4">
                  {/* Financials Row */}
                  <div className="flex justify-between items-center text-xs font-mono bg-black/20 p-2 rounded border border-noir-300">
-                      <div className="flex items-center gap-2 text-noir-txt-muted">
+                      <div className="flex items-center gap-2 text-noir-txt-muted relative">
                           <DollarSign className="w-3 h-3" />
-                          <span>ASK:
+                          <span className="flex items-center gap-1">ASK:
                               {currentAskPrice < currentCustomer.desiredAmount && (
-                                  <span className="text-stone-500 line-through mr-1">${currentCustomer.desiredAmount}</span>
+                                  <span className="text-stone-500 line-through">${currentCustomer.desiredAmount}</span>
                               )}
-                              <span className={currentAskPrice < currentCustomer.desiredAmount ? "text-pawn-green font-bold" : "text-noir-txt-primary font-bold"}>
+                              <span className={cn(
+                                  "font-bold transition-all duration-300",
+                                  askPriceChanged ? "text-pawn-green scale-110" : (currentAskPrice < currentCustomer.desiredAmount ? "text-pawn-green" : "text-noir-txt-primary")
+                              )}>
                                   ${currentAskPrice}
                               </span>
+                              {/* Concession indicator */}
+                              {askPriceChanged && askChangeAmount > 0 && (
+                                  <span className="flex items-center gap-0.5 text-pawn-green animate-in fade-in slide-in-from-left-2 duration-300">
+                                      <TrendingDown className="w-3 h-3" />
+                                      <span className="font-bold">-${askChangeAmount}</span>
+                                  </span>
+                              )}
                           </span>
                       </div>
                       <div className="flex items-center gap-2 text-amber-500/80">
@@ -914,15 +965,19 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                       <XCircle className="w-6 h-6"/>
                     </Button>
 
-                    <Button 
-                      variant="primary" 
-                      onClick={handleOffer} 
+                    <Button
+                      variant="primary"
+                      onClick={handleOffer}
                       disabled={!canInteract || !canAfford}
-                      className="flex-1 h-16 relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center gap-0.5"
+                      className={cn(
+                        "flex-1 h-16 relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center gap-0.5",
+                        getSubmitButtonText === 'PERSIST' && "bg-amber-700 hover:bg-amber-600",
+                        getSubmitButtonText === 'YIELD' && "bg-emerald-700 hover:bg-emerald-600"
+                      )}
                     >
                        <div className="flex items-center gap-2">
                            <Stamp className="w-4 h-4" />
-                           <span className="text-sm font-bold tracking-[0.2em]">SUBMIT</span>
+                           <span className="text-sm font-bold tracking-[0.2em]">{getSubmitButtonText}</span>
                        </div>
                        {instinct.text && (
                            <span className="text-[10px] font-serif italic text-black/80 font-bold max-w-[95%] truncate px-2">

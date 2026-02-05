@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Customer, InterestRate, BehaviorTag } from '../types';
+import { executePushPull, PushPullResult, PlayerMoveType } from '../systems/negotiation/pushPull';
 
 export type NegotiationMood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
 
@@ -35,18 +36,24 @@ interface UseNegotiationReturn {
   setOfferPrincipal: React.Dispatch<React.SetStateAction<number>>;
   selectedRate: InterestRate;
   setSelectedRate: React.Dispatch<React.SetStateAction<InterestRate>>;
-  
+
   isWalkedAway: boolean;
   submitOffer: () => NegotiationResult;
   applyLeverage: (power: number, description: string) => void;
   triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void;
   resetNegotiation: () => void;
-  lastAction: ActionLog | null; 
+  lastAction: ActionLog | null;
   currentAskPrice: number;
-  
+
   // New Fields
   offerHistory: OfferRecord[];
   revealedMinimum: boolean;
+
+  // Push-Pull Fields
+  lastOfferAmount: number | null;
+  persistCount: number;
+  npcConcessionCount: number;
+  lastPushPullResult: PushPullResult | null;
 }
 
 /**
@@ -92,7 +99,13 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
   // History & Intel
   const [offerHistory, setOfferHistory] = useState<OfferRecord[]>([]);
   const [revealedMinimum, setRevealedMinimum] = useState(false);
-  
+
+  // Push-Pull State
+  const [lastOfferAmount, setLastOfferAmount] = useState<number | null>(null);
+  const [persistCount, setPersistCount] = useState<number>(0);
+  const [npcConcessionCount, setNpcConcessionCount] = useState<number>(0);
+  const [lastPushPullResult, setLastPushPullResult] = useState<PushPullResult | null>(null);
+
   const lastCustomerId = useRef<string | undefined>(undefined);
 
   // Initialize
@@ -103,12 +116,17 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         setMood('Neutral');
         setOfferHistory([]);
         setRevealedMinimum(false);
+        // Reset push-pull state
+        setLastOfferAmount(null);
+        setPersistCount(0);
+        setNpcConcessionCount(0);
+        setLastPushPullResult(null);
         return;
     }
 
     if (customer.id !== lastCustomerId.current) {
       lastCustomerId.current = customer.id;
-      
+
       setPatience(customer.patience);
       setMood('Neutral');
       setIsWalkedAway(false);
@@ -118,6 +136,11 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
       setOfferPrincipal(Math.floor(customer.desiredAmount * 0.8));
       setSelectedRate(0.05);
       setCurrentAskPrice(customer.currentAskPrice ?? customer.desiredAmount);
+      // Reset push-pull state
+      setLastOfferAmount(null);
+      setPersistCount(0);
+      setNpcConcessionCount(0);
+      setLastPushPullResult(null);
     }
   }, [customer]);
 
@@ -132,6 +155,11 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
       setOfferPrincipal(Math.floor(customer.desiredAmount * 0.8));
       setSelectedRate(0.05);
       setCurrentAskPrice(customer.currentAskPrice ?? customer.desiredAmount);
+      // Reset push-pull state
+      setLastOfferAmount(null);
+      setPersistCount(0);
+      setNpcConcessionCount(0);
+      setLastPushPullResult(null);
     }
   }, [customer]);
 
@@ -182,10 +210,10 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     }
 
     const minPrincipal = customer.minimumAmount;
-    const maxRepayment = customer.maxRepayment || (minPrincipal * 1.2); 
+    const maxRepayment = customer.maxRepayment || (minPrincipal * 1.2);
     const totalRepayment = offerPrincipal * (1 + selectedRate);
     const insultThreshold = getInsultThreshold(customer.behaviorTags, minPrincipal);
-    
+
     let status: NegotiationStatus;
     let costPatience = 0;
     let message = "";
@@ -195,7 +223,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
 
     if (offerPrincipal < insultThreshold) {
         status = 'INSULT';
-        costPatience = 2; // Dynamic penalty could be added here later
+        costPatience = 2;
         nextMood = 'Angry';
         message = "你这是在打发叫花子吗？太离谱了！";
     }
@@ -204,7 +232,6 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         costPatience = 1;
         nextMood = 'Annoyed';
         message = "这点钱不够应急啊，再加点吧。";
-        // Reveal Minimum Logic
         setRevealedMinimum(true);
     }
     else if (selectedRate > 0 && totalRepayment > maxRepayment) {
@@ -223,23 +250,61 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         status = 'ACCEPTED';
         costPatience = 0;
         nextMood = 'Happy';
-        
+
         let acceptMsg = customer.dialogue.accepted.fair;
         const ratio = offerPrincipal / customer.desiredAmount;
         if (ratio < 0.85) acceptMsg = customer.dialogue.accepted.fleeced;
         else if (ratio > 1.05) acceptMsg = customer.dialogue.accepted.premium;
-        
+
         message = acceptMsg;
     }
+
+    // --- PUSH-PULL LOGIC (after non-accepted, non-insult offers) ---
+    let pushPullResult: PushPullResult | null = null;
+
+    if (status !== 'ACCEPTED' && status !== 'INSULT') {
+        // Execute push-pull judgment
+        pushPullResult = executePushPull(
+            customer.behaviorTags,
+            offerPrincipal,
+            lastOfferAmount,
+            currentAskPrice,
+            minPrincipal,
+            persistCount,
+            npcConcessionCount
+        );
+
+        // Update persist count based on player move
+        if (pushPullResult.playerMove === 'PERSIST') {
+            setPersistCount(prev => prev + 1);
+        } else {
+            setPersistCount(0);
+        }
+
+        // If NPC conceded, update ask price and concession count
+        if (pushPullResult.conceded) {
+            setCurrentAskPrice(pushPullResult.newAskPrice);
+            setNpcConcessionCount(prev => prev + 1);
+        }
+
+        setLastPushPullResult(pushPullResult);
+    } else {
+        // Reset persist count on accept or insult
+        setPersistCount(0);
+        setLastPushPullResult(null);
+    }
+
+    // Update last offer amount
+    setLastOfferAmount(offerPrincipal);
 
     const remaining = Math.max(0, patience - costPatience);
     setPatience(remaining);
     setMood(nextMood);
-    
+
     // Add to History
     setOfferHistory(prev => [
         { amount: offerPrincipal, rate: selectedRate, status, patienceCost: costPatience, timestamp: Date.now() },
-        ...prev.slice(0, 2) // Keep last 3 (current + 2 old)
+        ...prev.slice(0, 2)
     ]);
 
     if (status !== 'ACCEPTED' && remaining <= 0) {
@@ -256,7 +321,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         patienceRemaining: remaining
     };
 
-  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway]);
+  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount]);
 
   return {
     patience,
@@ -273,6 +338,11 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     lastAction,
     currentAskPrice,
     offerHistory,
-    revealedMinimum
+    revealedMinimum,
+    // Push-Pull exports
+    lastOfferAmount,
+    persistCount,
+    npcConcessionCount,
+    lastPushPullResult
   };
 };
