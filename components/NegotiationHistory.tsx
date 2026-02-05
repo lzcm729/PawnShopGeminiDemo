@@ -14,6 +14,7 @@ const getStatusColor = (status: NegotiationStatus) => {
         case 'INSULT': return 'text-red-500';
         case 'PRINCIPAL_TOO_LOW': return 'text-amber-500';
         case 'TOTAL_REPAYMENT_EXCEEDED': return 'text-purple-400';
+        case 'COUNTER': return 'text-blue-400';
         default: return 'text-stone-500';
     }
 };
@@ -24,6 +25,7 @@ const getStatusText = (status: NegotiationStatus) => {
         case 'INSULT': return 'INSULT';
         case 'PRINCIPAL_TOO_LOW': return 'LOWBALL';
         case 'TOTAL_REPAYMENT_EXCEEDED': return 'REPAYMENT';
+        case 'COUNTER': return 'COUNTER';
         default: return 'FAILED';
     }
 };

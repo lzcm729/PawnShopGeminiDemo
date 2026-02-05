@@ -5,7 +5,7 @@ import { executePushPull, PushPullResult, PlayerMoveType } from '../systems/nego
 
 export type NegotiationMood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
 
-export type NegotiationStatus = 'ACCEPTED' | 'PRINCIPAL_TOO_LOW' | 'INSULT' | 'TOTAL_REPAYMENT_EXCEEDED' | 'WALK_AWAY' | 'LEVERAGE';
+export type NegotiationStatus = 'ACCEPTED' | 'PRINCIPAL_TOO_LOW' | 'INSULT' | 'TOTAL_REPAYMENT_EXCEEDED' | 'WALK_AWAY' | 'LEVERAGE' | 'COUNTER';
 
 export interface NegotiationResult {
   status: NegotiationStatus;
@@ -304,7 +304,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         // Offer is between effectiveFloor and currentAskPrice — enter push-pull phase
         // Patience cost is probabilistic, determined by push-pull result below
         isPushPullZone = true;
-        status = 'PRINCIPAL_TOO_LOW'; // Fallback status for push-pull rejection
+        status = 'COUNTER'; // NPC countering, negotiation in progress
         costPatience = 0; // Will be set by push-pull result below
         nextMood = mood; // Mood unchanged until push-pull resolves
         message = "再考虑考虑吧...";
