@@ -69,7 +69,6 @@
         deal_charity:
             add_funds_deal
             deactivate_chain
-            modify_rep: -5
 
         deal_aid:
             add_funds_deal
@@ -82,7 +81,6 @@
         deal_shark:
             add_funds_deal
             deactivate_chain
-            modify_rep: 2
 
     @on_reject
         deactivate_chain
