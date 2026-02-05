@@ -152,17 +152,44 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
 
                 {/* Center: Observation + Insight Area */}
                 <div className="flex-1 min-w-0 flex flex-col border border-noir-400/50 rounded bg-noir-100/30">
-                    {/* Top: Customer Observation */}
-                    <div className="px-3 py-2 border-b border-noir-400/30 min-h-[32px] flex items-center">
-                        {customer.observation ? (
-                            <p className="text-xs text-amber-500/90 font-serif italic leading-snug line-clamp-1" title={customer.observation}>
-                                {customer.observation}
-                            </p>
-                        ) : (
-                            <p className="text-xs text-noir-txt-muted font-serif italic opacity-50">
-                                (观察客户行为...)
-                            </p>
-                        )}
+                    {/* Top: Customer Observation + Insight Button */}
+                    <div className="px-3 py-2 border-b border-noir-400/30 min-h-[32px] flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                            {customer.observation ? (
+                                <p className="text-xs text-amber-500/90 font-serif italic leading-snug line-clamp-1" title={customer.observation}>
+                                    {customer.observation}
+                                </p>
+                            ) : (
+                                <p className="text-xs text-noir-txt-muted font-serif italic opacity-50">
+                                    (观察客户行为...)
+                                </p>
+                            )}
+                        </div>
+                        {/* Insight Button - Inline with observation */}
+                        <div className="shrink-0">
+                            {!hasUsedInsight ? (
+                                <button
+                                    onClick={onInsightClick}
+                                    disabled={!canUseInsight}
+                                    title={canUseInsight ? "洞察客户心理 (消耗 1 AP)" : insightBlockReason}
+                                    className={cn(
+                                        "flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded border transition-all duration-200 shadow-sm",
+                                        canUseInsight
+                                            ? "bg-pawn-accent text-black border-amber-400 hover:scale-105 hover:shadow-md"
+                                            : "bg-stone-800/80 text-stone-500 border-stone-600 cursor-not-allowed"
+                                    )}
+                                >
+                                    <Eye className="w-3 h-3" />
+                                    <span>洞察</span>
+                                    <span className="text-[8px] opacity-80">1AP</span>
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded border bg-pawn-green/20 text-pawn-green border-pawn-green/50">
+                                    <Eye className="w-3 h-3" />
+                                    <span>已洞察</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Bottom: Insight Result Area */}
@@ -226,48 +253,19 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                     </div>
                 </div>
 
-                {/* Right: Insight Button + Stress Bar (vertical layout) */}
-                <div className="shrink-0 flex flex-col items-center gap-1.5 px-3 min-w-[64px]">
-                    {/* Insight Button - Above Stress */}
-                    <div>
-                        {!hasUsedInsight ? (
-                            <button
-                                onClick={onInsightClick}
-                                disabled={!canUseInsight}
-                                title={canUseInsight ? "洞察客户心理 (消耗 1 AP)" : insightBlockReason}
-                                className={cn(
-                                    "flex flex-col items-center gap-0.5 text-[10px] font-mono font-bold px-2 py-1.5 rounded border transition-all duration-200 shadow-md",
-                                    canUseInsight
-                                        ? "bg-pawn-accent text-black border-amber-400 hover:scale-105 hover:shadow-lg"
-                                        : "bg-stone-800/80 text-stone-500 border-stone-600 cursor-not-allowed"
-                                )}
-                            >
-                                <Eye className="w-4 h-4" />
-                                <span>洞察</span>
-                                <span className="text-[8px] opacity-80">1 AP</span>
-                            </button>
-                        ) : (
-                            <div className="flex flex-col items-center gap-0.5 text-[10px] font-mono font-bold px-2 py-1.5 rounded border bg-pawn-green/20 text-pawn-green border-pawn-green/50">
-                                <Eye className="w-4 h-4" />
-                                <span>已洞察</span>
-                            </div>
-                        )}
+                {/* Right: Stress Bar */}
+                <div className="shrink-0 flex flex-col items-center justify-center gap-1 px-3 min-w-[48px]">
+                    <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest flex items-center gap-1">
+                        <Activity className="w-3.5 h-3.5" />
                     </div>
-
-                    {/* Stress indicator */}
-                    <div className="flex flex-col items-center gap-1 mt-auto">
-                        <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest flex items-center gap-1">
-                            <Activity className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="text-[9px] font-bold text-noir-txt-muted uppercase tracking-wider">STRESS</span>
-                        <div className="w-3.5 h-16 bg-noir-400 rounded-sm overflow-hidden border border-noir-500 relative">
-                            <div
-                                className={cn("absolute bottom-0 left-0 right-0 transition-all duration-500", patienceColor)}
-                                style={{ height: `${patiencePercent}%` }}
-                            />
-                        </div>
-                        <span className="text-xs font-mono text-noir-txt-muted">{patience}/{maxPatience}</span>
+                    <span className="text-[9px] font-bold text-noir-txt-muted uppercase tracking-wider">STRESS</span>
+                    <div className="w-3.5 h-16 bg-noir-400 rounded-sm overflow-hidden border border-noir-500 relative">
+                        <div
+                            className={cn("absolute bottom-0 left-0 right-0 transition-all duration-500", patienceColor)}
+                            style={{ height: `${patiencePercent}%` }}
+                        />
                     </div>
+                    <span className="text-xs font-mono text-noir-txt-muted">{patience}/{maxPatience}</span>
                 </div>
             </div>
         </div>
