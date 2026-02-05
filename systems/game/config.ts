@@ -1,51 +1,109 @@
-
 import { EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT } from '../narrative/storyRegistry';
+import configToml from '@/config/game.toml';
+
+// ------------------------------------------------------------
+// TOML Configuration Types
+// ------------------------------------------------------------
+
+interface TomlEconomy {
+  initial_funds: number;
+  goal_amount: number;
+  weekly_medical_cost: number;
+  bill_cycle: number;
+  daily_expenses: number;
+  weekly_rent: number;
+  rent_cycle: number;
+}
+
+interface TomlNight {
+  base_energy: number;
+  insight_energy_cost: number;
+  default_knowledge_capacity: number;
+  insight_extraction_rate: number;
+  epiphany_bonus_ratio: number;
+  insight_range_shrink_rate: number;
+  insight_trait_discovery_chance: number;
+  value_lock_threshold: number;
+}
+
+interface TomlMother {
+  health: number;
+  status: string;
+  risk: number;
+  care_level: string;
+}
+
+interface TomlGameplay {
+  initial_action_points: number;
+  max_customers_per_day: number;
+}
+
+interface TomlReputation {
+  humanity: number;
+  credibility: number;
+  underworld: number;
+}
+
+interface GameConfigToml {
+  economy: TomlEconomy;
+  night: TomlNight;
+  mother: TomlMother;
+  gameplay: TomlGameplay;
+  reputation: TomlReputation;
+}
+
+// Cast TOML import to typed interface
+const tomlConfig = configToml as unknown as GameConfigToml;
+
+// ------------------------------------------------------------
+// Exported Game Configuration
+// ------------------------------------------------------------
 
 export const GAME_CONFIG = {
   // --- ECONOMY STARTING STATE ---
-  INITIAL_FUNDS: 10000,
+  INITIAL_FUNDS: tomlConfig.economy.initial_funds,
 
   // --- SURVIVAL MECHANICS ---
-  GOAL_AMOUNT: 100000,       // 终极目标 (Surgery Cost)
-  WEEKLY_MEDICAL_COST: 1000, // 每周医药费
-  BILL_CYCLE: 7,             // 医药费缴纳周期 (Days)
-  WEEKLY_RENT: 0,            // 店铺周租 (DISABLED: Game focus is on Medical Bill)
-  RENT_CYCLE: 7,             // 租金缴纳周期 (Days)
-  DAILY_EXPENSES: 50,        // 每日运营/生活成本 (Burn Rate)
+  GOAL_AMOUNT: tomlConfig.economy.goal_amount,
+  WEEKLY_MEDICAL_COST: tomlConfig.economy.weekly_medical_cost,
+  BILL_CYCLE: tomlConfig.economy.bill_cycle,
+  WEEKLY_RENT: tomlConfig.economy.weekly_rent,
+  RENT_CYCLE: tomlConfig.economy.rent_cycle,
+  DAILY_EXPENSES: tomlConfig.economy.daily_expenses,
 
   // --- NIGHT PHASE (夜间玩法) ---
   NIGHT: {
-    BASE_ENERGY: 3,                    // 每晚基础精力
-    INSIGHT_ENERGY_COST: 1,            // 格物消耗精力
-    DEFAULT_KNOWLEDGE_CAPACITY: 100,   // 默认知识池容量 (D3: 确保需多夜才能顿悟)
-    INSIGHT_EXTRACTION_RATE: 20,       // 每次格物提取量
-    EPIPHANY_BONUS_RATIO: 0.2,         // 顿悟额外奖励比例
-    // --- 夜间鉴定参数 (Night Appraisal) ---
-    INSIGHT_RANGE_SHRINK_RATE: 0.20,   // 格物时估价收窄比例 (~20%)
-    INSIGHT_TRAIT_DISCOVERY_CHANCE: 0.25, // 格物时特征发现概率 (25%)
-    VALUE_LOCK_THRESHOLD: 0.05,        // 估价锁定阈值（区间宽度/真值 < 5%）
+    BASE_ENERGY: tomlConfig.night.base_energy,
+    INSIGHT_ENERGY_COST: tomlConfig.night.insight_energy_cost,
+    DEFAULT_KNOWLEDGE_CAPACITY: tomlConfig.night.default_knowledge_capacity,
+    INSIGHT_EXTRACTION_RATE: tomlConfig.night.insight_extraction_rate,
+    EPIPHANY_BONUS_RATIO: tomlConfig.night.epiphany_bonus_ratio,
+    INSIGHT_RANGE_SHRINK_RATE: tomlConfig.night.insight_range_shrink_rate,
+    INSIGHT_TRAIT_DISCOVERY_CHANCE: tomlConfig.night.insight_trait_discovery_chance,
+    VALUE_LOCK_THRESHOLD: tomlConfig.night.value_lock_threshold,
   },
-  
+
   INITIAL_MOTHER_STATUS: {
-      health: 80,
-      status: 'Stable',
-      risk: 10,
-      careLevel: 'Basic'
+    health: tomlConfig.mother.health,
+    status: tomlConfig.mother.status as 'Stable' | 'Declining' | 'Critical',
+    risk: tomlConfig.mother.risk,
+    careLevel: tomlConfig.mother.care_level as 'Basic' | 'Standard' | 'Premium'
   } as const,
-  
+
   // --- GAMEPLAY SETTINGS ---
-  INITIAL_ACTION_POINTS: 10, // 每日行动点上限 (用于鉴定)
-  MAX_CUSTOMERS_PER_DAY: 4,  // 每日营业接待顾客数量上限 (设计配比: 1叙事 : 3填充)
+  INITIAL_ACTION_POINTS: tomlConfig.gameplay.initial_action_points,
+  MAX_CUSTOMERS_PER_DAY: tomlConfig.gameplay.max_customers_per_day,
 
   // --- INITIAL REPUTATION ---
   INITIAL_REPUTATION: {
-    HUMANITY: 30,    // 人性 (Heart)
-    CREDIBILITY: 20, // 信誉 (Business)
-    UNDERWORLD: 5    // 地下 (Shadow)
+    HUMANITY: tomlConfig.reputation.humanity,
+    CREDIBILITY: tomlConfig.reputation.credibility,
+    UNDERWORLD: tomlConfig.reputation.underworld
   },
 
   // --- NARRATIVE CONFIG ---
   // 在此处配置游戏开始时激活的故事线
+  // (保留在代码中，因为需要导入 TypeScript 模块)
   STARTING_CHAINS: [
     EMMA_CHAIN_INIT,      // 艾玛 (失业/求职线)
     SUSAN_CHAIN_INIT,     // 苏珊 (富太/赌博线)

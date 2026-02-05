@@ -7,3 +7,9 @@ declare module '*.story' {
     const content: string;
     export default content;
 }
+
+// .toml configuration files
+declare module '*.toml' {
+    const content: Record<string, unknown>;
+    export default content;
+}
