@@ -459,22 +459,13 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
   if (!currentCustomer || !item) return null;
 
-  // Handle insight button click - insert result into chat log instead of modal
+  // Handle insight button click - result is displayed in the dedicated panel above chat
   const handleInsightClick = () => {
     if (!canUseInsight()) return;
     playSfx('CLICK');
-    const result = useInsight();
-    if (result) {
-      // Add insight result as a special log entry in the chat flow
-      const insightLogEntry: LogEntry = {
-        id: `insight-${Date.now()}`,
-        sender: 'system',
-        text: '',  // Not used for INSIGHT_RESULT type
-        type: 'INSIGHT_RESULT',
-        data: result,
-      };
-      setChatLog(prev => [...prev, insightLogEntry]);
-    }
+    useInsight();
+    // Result is now displayed in the dedicated InsightResult panel above the chat log
+    // No longer added to chatLog since it has its own UI area
   };
 
   const handleOffer = () => {
@@ -647,6 +638,53 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           insightBlockReason={insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
         />
 
+      {/* Insight Result Panel - Displayed below header when available */}
+      {insightResult && (
+        <div className="shrink-0 bg-noir-200 border-b border-amber-600/30 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="px-4 py-3">
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-2">
+              <Eye className="w-4 h-4 text-amber-500" />
+              <span className="font-serif font-bold text-amber-500 text-sm">洞察结果</span>
+            </div>
+
+            {/* Content - Compact horizontal layout */}
+            <div className="flex items-start gap-4">
+              {/* Disposition */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xl">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
+                <div>
+                  <div className="text-[9px] text-noir-txt-muted uppercase tracking-wider">心理倾向</div>
+                  <div className={cn("text-sm font-bold", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
+                    {DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.label || insightResult.disposition}
+                  </div>
+                </div>
+              </div>
+
+              {/* Disposition Text + Floor Hint */}
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <p className="font-serif text-xs text-noir-txt-secondary leading-snug italic truncate" title={insightResult.dispositionText}>
+                  "{insightResult.dispositionText}"
+                </p>
+                <p className="font-serif text-xs text-amber-500/90 leading-snug truncate" title={insightResult.floorHint}>
+                  {insightResult.floorHint}
+                </p>
+              </div>
+
+              {/* Moral Context (if available) */}
+              {insightResult.moralContext && (
+                <div className="shrink-0 flex items-center gap-1.5 bg-red-950/30 border border-red-900/40 rounded px-2 py-1.5 max-w-[200px]">
+                  <Heart className="w-3 h-3 text-red-400 shrink-0" />
+                  <p className="font-serif text-[10px] text-red-300/90 leading-snug italic line-clamp-2">
+                    {insightResult.moralContext}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Rejection Overlay */}
       {rejectionState.show && (
             <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-300">
@@ -674,65 +712,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           {chatLog.map((log, idx) => {
               const isPlayer = log.sender === 'player';
               const isSystem = log.sender === 'system';
-
-              // Insight Result Card - special rendering for customer insight
-              if (log.type === 'INSIGHT_RESULT' && log.data) {
-                  const result = log.data;
-                  const dispositionInfo = DISPOSITION_INFO[result.disposition as keyof typeof DISPOSITION_INFO];
-
-                  return (
-                      <div key={log.id} className="w-full animate-in fade-in slide-in-from-bottom-3 duration-500">
-                          <div className="bg-noir-200 border border-amber-600/40 rounded-lg overflow-hidden shadow-lg">
-                              {/* Header */}
-                              <div className="bg-amber-900/20 border-b border-amber-600/30 px-4 py-2 flex items-center gap-2">
-                                  <Eye className="w-4 h-4 text-amber-500" />
-                                  <span className="font-serif font-bold text-amber-500 text-sm">洞察结果</span>
-                              </div>
-
-                              {/* Content */}
-                              <div className="p-4 space-y-3">
-                                  {/* Disposition */}
-                                  <div className="flex items-center gap-3">
-                                      <span className="text-xl">{dispositionInfo?.icon || '?'}</span>
-                                      <div>
-                                          <div className="text-[10px] text-noir-txt-muted uppercase tracking-wider">心理倾向</div>
-                                          <div className={cn("text-base font-bold", dispositionInfo?.color || 'text-amber-400')}>
-                                              {dispositionInfo?.label || result.disposition}
-                                          </div>
-                                      </div>
-                                  </div>
-
-                                  {/* Disposition Text */}
-                                  <div className="bg-noir-100/50 border-l-2 border-noir-400 p-3">
-                                      <p className="font-serif text-xs text-noir-txt-secondary leading-relaxed italic">
-                                          "{result.dispositionText}"
-                                      </p>
-                                  </div>
-
-                                  {/* Floor Hint */}
-                                  <div className="pt-2 border-t border-noir-400/50">
-                                      <div className="text-[10px] text-noir-txt-muted uppercase tracking-wider mb-1">底线暗示</div>
-                                      <p className="font-serif text-xs text-amber-500/90 leading-relaxed">
-                                          {result.floorHint}
-                                      </p>
-                                  </div>
-
-                                  {/* Moral Context (if available) */}
-                                  {result.moralContext && (
-                                      <div className="bg-red-950/20 border border-red-900/30 rounded p-3 mt-2">
-                                          <div className="flex items-start gap-2">
-                                              <Heart className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
-                                              <p className="font-serif text-xs text-red-300/90 leading-relaxed italic">
-                                                  {result.moralContext}
-                                              </p>
-                                          </div>
-                                      </div>
-                                  )}
-                              </div>
-                          </div>
-                      </div>
-                  );
-              }
 
               // Regular system message (divider style)
               if (isSystem) {
