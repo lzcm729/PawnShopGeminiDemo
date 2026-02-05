@@ -8,7 +8,7 @@ import { useCustomerInsight } from '../hooks/useCustomerInsight';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
-import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff, Heart, TrendingDown, AlertTriangle, ShieldAlert, ShieldCheck, ShieldX } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff, Heart, TrendingDown, AlertTriangle, ShieldAlert, ShieldCheck, ShieldX, Lock } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
@@ -1064,16 +1064,24 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                         <span className="font-mono font-bold text-sm group-hover:text-blue-400 transition-colors">${estimatedValue}</span>
                     </button>
 
-                    {revealedMinimum && (
-                        <button
-                            onClick={handleQuickFloor}
-                            disabled={!canInteract}
-                            className="flex-1 bg-red-950/20 border border-red-900/50 hover:bg-red-900/40 hover:border-red-500 text-red-500 transition-all p-2 rounded flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group animate-in fade-in"
-                        >
-                            <span className="text-[10px] uppercase font-bold tracking-wider mb-0.5">Floor</span>
-                            <span className="font-mono font-bold text-sm">${currentCustomer.minimumAmount}</span>
-                        </button>
-                    )}
+                    <button
+                        onClick={revealedMinimum ? handleQuickFloor : undefined}
+                        disabled={!revealedMinimum || !canInteract}
+                        className={cn(
+                            "flex-1 border transition-all p-2 rounded flex flex-col items-center justify-center disabled:cursor-not-allowed group",
+                            revealedMinimum
+                                ? "bg-red-950/20 border-red-900/50 hover:bg-red-900/40 hover:border-red-500 text-red-500 disabled:opacity-50 animate-in fade-in"
+                                : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-60"
+                        )}
+                    >
+                        <div className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                            {!revealedMinimum && <Lock className="w-3 h-3" />}
+                            <span>Floor</span>
+                        </div>
+                        <span className="font-mono font-bold text-sm">
+                            {revealedMinimum ? `$${currentCustomer.minimumAmount}` : '???'}
+                        </span>
+                    </button>
                  </div>
 
                  {/* Main Action */}
