@@ -45,7 +45,7 @@ interface UseNegotiationReturn {
   isWalkedAway: boolean;
   submitOffer: () => NegotiationResult;
   applyLeverage: (power: number, description: string) => void;
-  applyStolenLeverage: (power: number, description: string) => StolenLeverageResult;
+  applyStolenLeverage: (power: number, description: string, label?: string) => StolenLeverageResult;
   triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void;
   resetNegotiation: () => void;
   lastAction: ActionLog | null;
@@ -196,9 +196,10 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     });
   }, [customer, isWalkedAway, reducePrice]);
 
-  // STOLEN trait leverage: reduces both ask price AND minimum amount
+  // Deep leverage: reduces both ask price AND minimum amount (floor)
+  // Used for "handle-level" discoveries like STOLEN and FAKE traits
   // This is stronger than regular leverage because it also lowers the floor
-  const applyStolenLeverage = useCallback((power: number, description: string): StolenLeverageResult => {
+  const applyStolenLeverage = useCallback((power: number, description: string, label: string = '赃物压价'): StolenLeverageResult => {
     if (!customer || isWalkedAway) return { askReduction: 0, minReduction: 0 };
 
     // Calculate reductions before applying (for display purposes)
@@ -215,7 +216,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     setMood('Angry'); // Stronger emotional reaction than regular leverage
     setLastAction({
         type: 'LEVERAGE',
-        text: `赃物压价: ${description}`,
+        text: `${label}: ${description}`,
         subtext: `报价降低 $${askReduction}，底价降低 $${minReduction}`,
         id: Date.now()
     });

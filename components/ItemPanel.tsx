@@ -30,7 +30,7 @@ const getIcon = (category: string) => {
 
 interface ItemPanelProps {
   applyLeverage: (power: number, description: string) => void;
-  applyStolenLeverage: (power: number, description: string) => { askReduction: number; minReduction: number };
+  applyStolenLeverage: (power: number, description: string, label?: string) => { askReduction: number; minReduction: number };
   triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void;
   canInteract: boolean;
   currentAskPrice: number;
@@ -271,11 +271,23 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
               const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
               triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, 0);
           }
+      } else if (trait.type === 'FAKE') {
+          // FAKE is a "handle-level" discovery (like STOLEN) — reduces BOTH ask price AND floor
+          // Use fixed 25% reduction (same as STOLEN) to avoid valueImpact (0.8~0.92) causing price to hit zero
+          const fakePower = 0.25;
+
+          applyStolenLeverage(fakePower, trait.name, '赝品压价');
+          dispatch({ type: 'APPLY_STOLEN_LEVERAGE', payload: { reductionPercent: fakePower } });
+
+          if (trait.dialogueTrigger) {
+              const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
+              triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, 0);
+          }
       } else if (trait.dialogueTrigger) {
           // Use playerUseLine (正式对话) when available, fallback to playerLine (内心独白)
           const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
           triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, negotiationPower);
-      } else if (trait.type === 'FLAW' || trait.type === 'FAKE') {
+      } else if (trait.type === 'FLAW') {
           applyLeverage(power, trait.name);
       } else if (trait.type === 'STORY' || trait.type === 'JACKPOT') {
           applyLeverage(0, `话题: ${trait.name}`);
