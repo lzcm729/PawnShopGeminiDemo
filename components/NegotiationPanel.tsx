@@ -168,40 +168,46 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                     {/* Bottom: Insight Result Area */}
                     <div className="flex-1 flex items-stretch min-h-[72px]">
                         {insightResult ? (
-                            /* Insight Result - Unlocked state with sectioned layout */
-                            <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                {/* Row 1: Disposition Icon + Label (主标题，大字) */}
-                                <div className="flex items-center gap-2 px-3 py-1.5 border-b border-noir-400/20">
-                                    <span className="text-xl">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
-                                    <span className="text-[10px] text-noir-txt-muted uppercase tracking-wider">心理:</span>
-                                    <span className={cn("text-sm font-bold", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
+                            /* Insight Result - Two-column layout: Left=Type, Right=Details */
+                            <div className="flex-1 flex animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                {/* Left Column: Disposition Type (Icon + Label, vertically centered) */}
+                                <div className="flex flex-col items-center justify-center px-4 py-2 border-r border-noir-400/30 min-w-[80px]">
+                                    <span className="text-2xl mb-1">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
+                                    <span className={cn("text-xs font-bold text-center", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
                                         {DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.label || insightResult.disposition}
                                     </span>
                                 </div>
 
-                                {/* Row 2: Disposition description (描述，中等字) */}
-                                <div className="px-3 py-1.5 border-b border-noir-400/20">
-                                    <p className="font-serif text-xs text-noir-txt-secondary leading-snug italic line-clamp-1" title={insightResult.dispositionText}>
-                                        "{insightResult.dispositionText}"
-                                    </p>
-                                </div>
-
-                                {/* Row 3: Floor hint (提示，小字/不同颜色) */}
-                                <div className="px-3 py-1.5 border-b border-noir-400/20">
-                                    <p className="font-serif text-[11px] text-amber-500/90 leading-snug line-clamp-1" title={insightResult.floorHint}>
-                                        {insightResult.floorHint}
-                                    </p>
-                                </div>
-
-                                {/* Row 4: Moral context (独立一行，红色) */}
-                                {insightResult.moralContext && (
-                                    <div className="px-3 py-1.5 flex items-center gap-1.5">
-                                        <Heart className="w-3 h-3 text-red-400 shrink-0" />
-                                        <p className="font-serif text-[10px] text-red-300/80 leading-snug italic line-clamp-1" title={insightResult.moralContext}>
-                                            {insightResult.moralContext}
+                                {/* Right Column: Three rows of content */}
+                                <div className="flex-1 flex flex-col">
+                                    {/* Row 1: Description (dispositionText) */}
+                                    <div className="flex-1 px-3 py-1.5 border-b border-noir-400/20 flex items-center">
+                                        <p className="font-serif text-xs text-noir-txt-secondary leading-snug italic line-clamp-1" title={insightResult.dispositionText}>
+                                            "{insightResult.dispositionText}"
                                         </p>
                                     </div>
-                                )}
+
+                                    {/* Row 2: Floor hint */}
+                                    <div className="flex-1 px-3 py-1.5 border-b border-noir-400/20 flex items-center">
+                                        <p className="font-serif text-[11px] text-amber-500/90 leading-snug line-clamp-1" title={insightResult.floorHint}>
+                                            {insightResult.floorHint}
+                                        </p>
+                                    </div>
+
+                                    {/* Row 3: Moral context (or empty placeholder) */}
+                                    <div className="flex-1 px-3 py-1.5 flex items-center">
+                                        {insightResult.moralContext ? (
+                                            <div className="flex items-center gap-1.5">
+                                                <Heart className="w-3 h-3 text-red-400 shrink-0" />
+                                                <p className="font-serif text-[10px] text-red-300/80 leading-snug italic line-clamp-1" title={insightResult.moralContext}>
+                                                    {insightResult.moralContext}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <span className="text-[10px] text-noir-txt-muted/30 font-mono">---</span>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             /* Locked state - Placeholder with visual hint */
