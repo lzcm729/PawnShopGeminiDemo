@@ -800,27 +800,27 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
                     {/* Consequences Preview */}
                     <div className="grid grid-cols-2 gap-3 w-full mb-6 text-xs">
-                        <div className="bg-red-950/30 border border-red-900/50 rounded p-3">
-                            <div className="flex items-center gap-2 text-red-400 font-bold mb-1">
+                        <div className="bg-amber-950/30 border border-amber-900/50 rounded p-3">
+                            <div className="flex items-center gap-2 text-amber-400 font-bold mb-1">
                                 <ShieldX className="w-4 h-4" />
                                 <span>收下</span>
                             </div>
-                            <p className="text-red-300/70 text-[10px]">
-                                Innocence -2
+                            <p className="text-amber-300/70 text-[10px]">
+                                Credibility +1
                             </p>
-                            <p className="text-red-300/70 text-[10px]">
+                            <p className="text-amber-300/70 text-[10px]">
                                 可能触发警方调查
                             </p>
                         </div>
-                        <div className="bg-teal-950/30 border border-teal-900/50 rounded p-3">
-                            <div className="flex items-center gap-2 text-teal-400 font-bold mb-1">
+                        <div className="bg-slate-950/30 border border-slate-700/50 rounded p-3">
+                            <div className="flex items-center gap-2 text-slate-400 font-bold mb-1">
                                 <ShieldCheck className="w-4 h-4" />
                                 <span>拒绝</span>
                             </div>
-                            <p className="text-teal-300/70 text-[10px]">
-                                Innocence +1
+                            <p className="text-slate-300/70 text-[10px]">
+                                无声誉影响
                             </p>
-                            <p className="text-teal-300/70 text-[10px]">
+                            <p className="text-slate-300/70 text-[10px]">
                                 客户将离开
                             </p>
                         </div>

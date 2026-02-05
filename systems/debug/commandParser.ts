@@ -5,7 +5,7 @@ import { testAllFullStoryFiles, testFullStoryByName, formatFullTestResults } fro
 import type { Item, PawnInfo, WorkState } from '../items/types';
 import type { ItemTag } from '../items/tags';
 import { STATE_TAGS, ATTRIBUTE_TAGS, ESSENCE_TAGS } from '../items/tags';
-import { createItemFromTemplate, getAllItemTemplates } from '../items/csvLoader';
+import { createItemFromTemplate, getAllItemTemplates, getTraitDefinition, createTraitFromDefinition } from '../items/csvLoader';
 import { generateFillerCustomer, ForcedJumpTrait } from '../npc/fillerGenerator';
 import { AVAILABLE_UPGRADES, getUpgradeConfig } from '../upgrades/config';
 import type { OwnedUpgrade } from '../upgrades/types';
@@ -1279,9 +1279,15 @@ function handleSpawnCommand(
         return { success: false, message: 'Failed to generate filler customer' };
       }
 
-      // If forcing stolen, mark the item as stolen
+      // If forcing stolen, mark the item as stolen and add STOLEN trait
       if (forceStolen && customer.item) {
         customer.item.isStolen = true;
+        // Add STOLEN trait to hiddenTraits
+        const stolenTraitDef = getTraitDefinition('trait_stolen_goods');
+        if (stolenTraitDef) {
+          const stolenTrait = createTraitFromDefinition(stolenTraitDef);
+          customer.item.hiddenTraits.push(stolenTrait);
+        }
       }
 
       // Set customer directly and transition to SERVING state

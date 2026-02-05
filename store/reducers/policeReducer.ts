@@ -22,29 +22,25 @@ export function policeReducer(state: GameState, action: Action): GameState {
             if (accept) {
                 // Player accepts stolen goods
                 // The actual transaction will be committed by the normal transaction flow
-                // Here we just apply the reputation changes specific to accepting stolen goods
-                // Note: The reputation change happens when RESOLVE_TRANSACTION is called
-                // This action is for UI confirmation only - the actual changes
-                // are handled in evaluateTransaction and commitTransaction
+                // Note: Credibility +1 is applied in evaluateTransaction
+                // Innocence is NOT affected here - only police investigation affects innocence
                 playSfx('CLICK');
                 return state;
             } else {
                 // Player rejects stolen goods - cancel transaction, customer leaves
+                // Note: Innocence is NOT affected here - only police investigation affects innocence
                 playSfx('CLICK');
-                const newRep = { ...state.reputation };
-                newRep[ReputationType.INNOCENCE] = Math.min(100, newRep[ReputationType.INNOCENCE] + 1);
 
                 const servedCount = state.customersServedToday + 1;
 
                 return {
                     ...state,
-                    reputation: newRep,
                     customersServedToday: servedCount,
                     phase: { type: 'DEPARTURE' },
                     lastSatisfaction: 'RESENTFUL',
                     dayEvents: [
                         ...state.dayEvents,
-                        `拒绝收购疑似赃物: ${item.name}。(Innocence +1)`
+                        `拒绝收购疑似赃物: ${item.name}。`
                     ]
                 };
             }

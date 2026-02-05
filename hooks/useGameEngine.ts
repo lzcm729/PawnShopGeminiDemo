@@ -662,10 +662,10 @@ export const useGameEngine = () => {
 
     const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
 
-    // Stolen goods: +1 Credibility (profitable deal), -2 Innocence (illegal activity)
+    // Stolen goods: +1 Credibility (profitable deal)
+    // Note: Innocence is only affected during police investigation, not at transaction time
     if (item.isStolen) {
       repDelta[ReputationType.CREDIBILITY] += 1;  // Good business deal
-      repDelta[ReputationType.INNOCENCE] -= 2;    // Accepting stolen goods: -2 Innocence
     }
 
     // Other illicit goods (contraband but not stolen): reduce INNOCENCE
@@ -943,9 +943,12 @@ export const useGameEngine = () => {
       dispatch({ type: 'LIQUIDATE_ITEM', payload: { itemId: item.id, amount, name: item.name } });
   };
 
-  // Helper to check if current customer's item is stolen (for UI decision prompt)
+  // Helper to check if current customer's item has a revealed STOLEN trait (for UI decision prompt)
+  // Only triggers stolen goods warning if the player has discovered the STOLEN trait through appraisal
   const isCurrentItemStolen = (): boolean => {
-      return state.currentCustomer?.item?.isStolen === true;
+      const item = state.currentCustomer?.item;
+      if (!item) return false;
+      return item.revealedTraits?.some(trait => trait.type === 'STOLEN') ?? false;
   };
 
   // Helper to handle stolen item decision

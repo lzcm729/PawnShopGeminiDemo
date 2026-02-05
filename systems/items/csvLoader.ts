@@ -32,7 +32,7 @@ export function onCSVDataReload(callback: () => void): void {
 // ============================================================================
 
 /** Valid TraitType values */
-const VALID_TRAIT_TYPES: TraitType[] = ['FLAW', 'STORY', 'FAKE', 'JACKPOT'];
+const VALID_TRAIT_TYPES: TraitType[] = ['FLAW', 'STORY', 'FAKE', 'JACKPOT', 'STOLEN'];
 
 /** All valid ItemTag values */
 const ALL_VALID_TAGS: ItemTag[] = [...STATE_TAGS, ...ATTRIBUTE_TAGS, ...ESSENCE_TAGS];
