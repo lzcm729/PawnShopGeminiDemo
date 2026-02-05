@@ -754,7 +754,16 @@ export const useGameEngine = () => {
                              }
                              break;
                          case 'MODIFY_REP':
-                             if (effect.value) dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: { [ReputationType.CREDIBILITY]: effect.value }, item: null, log: "声誉发生变化", customerName: customer?.name || "Event" } });
+                             if (effect.value) {
+                                 // Map axis string to ReputationType enum
+                                 const axisMap: Record<string, ReputationType> = {
+                                     'humanity': ReputationType.HUMANITY,
+                                     'credibility': ReputationType.CREDIBILITY,
+                                     'innocence': ReputationType.INNOCENCE
+                                 };
+                                 const repType = axisMap[effect.axis || 'humanity'] || ReputationType.HUMANITY;
+                                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: { [repType]: effect.value }, item: null, log: "声誉发生变化", customerName: customer?.name || "Event" } });
+                             }
                              break;
                          case 'REDEEM_ALL':
                              state.inventory.forEach(i => { if (i.relatedChainId === chain.id && i.status !== ItemStatus.REDEEMED && i.status !== ItemStatus.SOLD) itemsToRedeem.push(i.id); });

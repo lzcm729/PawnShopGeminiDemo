@@ -636,8 +636,8 @@ export function createDeactivateChainAction(location: SourceLocation): ActionNod
     return { type: 'DeactivateChainAction', location };
 }
 
-export function createModifyRepAction(value: number, location: SourceLocation): ActionNode {
-    return { type: 'ModifyRepAction', value, location };
+export function createModifyRepAction(value: number, location: SourceLocation, axis?: 'humanity' | 'credibility' | 'innocence'): ActionNode {
+    return { type: 'ModifyRepAction', value, location, axis };
 }
 
 export function createRedeemAllAction(location: SourceLocation): ActionNode {

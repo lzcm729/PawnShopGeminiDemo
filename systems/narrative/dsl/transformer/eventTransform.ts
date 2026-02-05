@@ -333,7 +333,7 @@ export function transformAction(action: ActionNode): ChainUpdateEffect {
             return { type: 'DEACTIVATE_CHAIN' };
 
         case 'ModifyRepAction':
-            return { type: 'MODIFY_REP', value: action.value };
+            return { type: 'MODIFY_REP', value: action.value, axis: action.axis || 'humanity' };
 
         case 'RedeemAllAction':
             return { type: 'REDEEM_ALL' };

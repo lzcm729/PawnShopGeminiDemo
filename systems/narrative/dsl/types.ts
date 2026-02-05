@@ -191,9 +191,12 @@ export interface DeactivateChainAction extends ASTNode {
     type: 'DeactivateChainAction';
 }
 
+export type ReputationAxis = 'humanity' | 'credibility' | 'innocence';
+
 export interface ModifyRepAction extends ASTNode {
     type: 'ModifyRepAction';
     value: number;
+    axis?: ReputationAxis; // Optional for backward compatibility; defaults to 'humanity'
 }
 
 export interface RedeemAllAction extends ASTNode {

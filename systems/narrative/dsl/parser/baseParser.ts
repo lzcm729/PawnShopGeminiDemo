@@ -321,7 +321,19 @@ export class BaseParser {
 
                 case 'modify_rep':
                     this.consume('COLON', ':');
-                    return AST.createModifyRepAction(this.parseNumberValue(), location);
+                    return AST.createModifyRepAction(this.parseNumberValue(), location, 'humanity');
+
+                case 'modify_rep_humanity':
+                    this.consume('COLON', ':');
+                    return AST.createModifyRepAction(this.parseNumberValue(), location, 'humanity');
+
+                case 'modify_rep_credibility':
+                    this.consume('COLON', ':');
+                    return AST.createModifyRepAction(this.parseNumberValue(), location, 'credibility');
+
+                case 'modify_rep_innocence':
+                    this.consume('COLON', ':');
+                    return AST.createModifyRepAction(this.parseNumberValue(), location, 'innocence');
 
                 case 'deactivate':
                     return AST.createDeactivateAction(location);

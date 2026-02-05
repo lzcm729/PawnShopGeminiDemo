@@ -260,6 +260,8 @@ export type EffectType =
   | 'KEEP_FORFEIT'        // 保留绝当物品
   | 'MARK_CORE_LOST';     // 标记核心物品丢失 
 
+export type ReputationAxis = 'humanity' | 'credibility' | 'innocence';
+
 export interface ChainUpdateEffect {
   type: EffectType;
   variable?: string;
@@ -272,6 +274,8 @@ export interface ChainUpdateEffect {
   // === EXPIRY EFFECT PARAMS ===
   days?: number;           // 续当延期天数
   extraFee?: number;       // 额外费用百分比 (0.2 = 20%)
+  // === REPUTATION EFFECT PARAMS ===
+  axis?: ReputationAxis;   // 声誉轴（humanity/credibility/innocence），默认 humanity
 }
 
 // NEW: Explicit item condition for dynamicFlows
