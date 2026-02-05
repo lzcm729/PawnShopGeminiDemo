@@ -8,13 +8,13 @@ interface NegotiationHistoryProps {
     history: OfferRecord[];
 }
 
-const getStatusColor = (status: NegotiationStatus) => {
+const getStatusColor = (status: NegotiationStatus, patienceCost: number = 0) => {
     switch (status) {
         case 'ACCEPTED': return 'text-green-500';
         case 'INSULT': return 'text-red-500';
         case 'PRINCIPAL_TOO_LOW': return 'text-amber-500';
         case 'TOTAL_REPAYMENT_EXCEEDED': return 'text-purple-400';
-        case 'COUNTER': return 'text-blue-400';
+        case 'COUNTER': return patienceCost > 0 ? 'text-amber-400' : 'text-blue-400';
         default: return 'text-stone-500';
     }
 };
@@ -51,11 +51,16 @@ export const NegotiationHistory: React.FC<NegotiationHistoryProps> = ({ history 
                         
                         <div className="flex items-center gap-2">
                              <ArrowRight className="w-3 h-3 text-noir-500" />
-                             <span className={cn("font-bold uppercase text-[10px]", getStatusColor(record.status))}>
+                             <span className={cn("font-bold uppercase text-[10px]", getStatusColor(record.status, record.patienceCost))}>
                                 {getStatusText(record.status)}
                              </span>
                              {record.patienceCost > 0 && (
-                                 <span className="text-red-600 font-bold text-[10px]">[-{record.patienceCost} HP]</span>
+                                 <span className={cn(
+                                     "font-bold text-[10px]",
+                                     record.status === 'COUNTER' ? "text-amber-500" : "text-red-600"
+                                 )}>
+                                     {record.status === 'COUNTER' ? `[-${record.patienceCost} STRESS]` : `[-${record.patienceCost} HP]`}
+                                 </span>
                              )}
                         </div>
                     </div>

@@ -547,16 +547,54 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     // No longer added to chatLog since it has its own UI area
   };
 
+  // Track whether the latest offer was a COUNTER (push-pull zone)
+  const lastOfferWasCounterRef = useRef<boolean>(false);
+
+  // Generate push-pull feedback in chat when lastPushPullResult changes (COUNTER status only)
+  useEffect(() => {
+      if (!lastPushPullResult || !lastOfferWasCounterRef.current) return;
+
+      // Reset the flag so this only fires once per COUNTER offer
+      lastOfferWasCounterRef.current = false;
+
+      const { conceded, patienceLost, concessionAmount } = lastPushPullResult;
+
+      let counterMessage: string;
+      let counterSentiment: 'neutral' | 'negative' | 'positive';
+      let counterSubtext: string | undefined;
+
+      if (conceded && !patienceLost) {
+          counterMessage = "...好吧，我可以少要点。";
+          counterSentiment = 'positive';
+          counterSubtext = `让步 -$${concessionAmount}`;
+      } else if (conceded && patienceLost) {
+          counterMessage = "行，就这样吧...别再磨了。";
+          counterSentiment = 'neutral';
+          counterSubtext = `让步 -$${concessionAmount} | Patience -1`;
+      } else if (!conceded && !patienceLost) {
+          counterMessage = "这个价我接受不了，但咱们可以再谈谈。";
+          counterSentiment = 'neutral';
+          counterSubtext = undefined;
+      } else {
+          counterMessage = "不行，而且我没多少耐心了。";
+          counterSentiment = 'negative';
+          counterSubtext = `Patience -1`;
+      }
+
+      setChatLog(prev => [...prev, {
+          id: `counter-${Date.now()}`,
+          sender: 'customer' as const,
+          text: counterMessage,
+          subtext: counterSubtext,
+          sentiment: counterSentiment
+      }]);
+  }, [lastPushPullResult]);
+
   const handleOffer = () => {
     if (isWalkedAway || isSubmitting) return;
 
     const prevPatience = patience;
     const result = submitOffer();
-
-    let penaltyLabel = "";
-    if (result.status === 'PRINCIPAL_TOO_LOW') penaltyLabel = "LOWBALL";
-    if (result.status === 'INSULT') penaltyLabel = "INSULT";
-    if (result.status === 'TOTAL_REPAYMENT_EXCEEDED') penaltyLabel = "USURY";
 
     const playerLog: LogEntry = {
         id: `offer-${Date.now()}`,
@@ -566,17 +604,30 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     };
 
     const patienceLoss = prevPatience - result.patienceRemaining;
-    const subtext = patienceLoss > 0 ? `Patience -${patienceLoss} [${penaltyLabel}]` : undefined;
 
-    const customerLog: LogEntry = {
-        id: `resp-${Date.now()}`,
-        sender: 'customer',
-        text: result.message,
-        subtext: subtext,
-        sentiment: patienceLoss > 0 ? 'negative' : 'neutral'
-    };
+    if (result.status === 'COUNTER') {
+        // Push-pull zone: player log only; NPC response added by useEffect on lastPushPullResult
+        lastOfferWasCounterRef.current = true;
+        setChatLog(prev => [...prev, playerLog]);
+    } else {
+        // Hard rejection or acceptance: use penalty labels
+        let penaltyLabel = "";
+        if (result.status === 'PRINCIPAL_TOO_LOW') penaltyLabel = "LOWBALL";
+        if (result.status === 'INSULT') penaltyLabel = "INSULT";
+        if (result.status === 'TOTAL_REPAYMENT_EXCEEDED') penaltyLabel = "USURY";
 
-    setChatLog(prev => [...prev, playerLog, customerLog]);
+        const subtext = patienceLoss > 0 ? `Patience -${patienceLoss} [${penaltyLabel}]` : undefined;
+
+        const customerLog: LogEntry = {
+            id: `resp-${Date.now()}`,
+            sender: 'customer',
+            text: result.message,
+            subtext: subtext,
+            sentiment: patienceLoss > 0 ? 'negative' : 'neutral'
+        };
+
+        setChatLog(prev => [...prev, playerLog, customerLog]);
+    }
 
     if (result.status === 'ACCEPTED') {
         // Check if item is stolen and decision hasn't been made yet
@@ -915,14 +966,20 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                           "px-4 py-3 rounded-lg relative shadow-sm text-sm border",
                           isPlayer
                               ? "bg-noir-300 border-noir-400 text-noir-txt-primary font-mono text-right rounded-br-none border-l-[3px] border-l-amber-600"
-                              : "bg-noir-200 border-noir-400 text-stone-300 font-serif leading-relaxed rounded-bl-none"
+                              : cn(
+                                  "bg-noir-200 border-noir-400 text-stone-300 font-serif leading-relaxed rounded-bl-none",
+                                  log.sentiment === 'positive' && "border-l-[3px] border-l-pawn-green/60",
+                                  log.sentiment === 'negative' && "border-l-[3px] border-l-red-500/60"
+                              )
                       )}>
                           {log.text}
                       </div>
                       {log.subtext && (
                           <span className={cn(
                               "text-[9px] font-mono font-bold mt-1 px-1 uppercase tracking-wider",
-                              log.sentiment === 'negative' ? "text-red-500" : "text-noir-txt-muted"
+                              log.sentiment === 'negative' ? "text-red-500"
+                              : log.sentiment === 'positive' ? "text-pawn-green"
+                              : "text-noir-txt-muted"
                           )}>
                               {log.subtext}
                           </span>
