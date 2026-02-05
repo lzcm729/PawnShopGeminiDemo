@@ -136,51 +136,60 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                 </div>
             </div>
 
-            {/* Info Bar - Right-aligned Insight + Stress */}
-            <div className="px-4 pb-3 flex justify-end items-center gap-3">
-                {/* Insight Button - Prominent Interactive Style */}
-                {!hasUsedInsight ? (
-                    <button
-                        onClick={onInsightClick}
-                        disabled={!canUseInsight}
-                        title={canUseInsight ? "洞察客户 (消耗 1 AP)" : insightBlockReason}
-                        className={cn(
-                            "flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-md border-2 transition-all duration-200 shadow-md",
-                            canUseInsight
-                                ? "bg-amber-900/50 border-amber-500 text-amber-300 hover:bg-amber-800/70 hover:border-amber-400 hover:scale-105 hover:shadow-lg hover:shadow-amber-500/20 cursor-pointer active:scale-95"
-                                : "bg-noir-200 border-noir-400 text-noir-txt-muted cursor-not-allowed opacity-50"
-                        )}
-                    >
-                        <Eye className="w-4 h-4" />
-                        <span>洞察</span>
-                    </button>
-                ) : (
-                    <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-md border-2 bg-pawn-green/20 border-pawn-green/50 text-pawn-green shadow-md">
-                        <EyeOff className="w-4 h-4" />
-                        <span>已洞察</span>
-                    </div>
-                )}
+            {/* Info Bar - Left: Observation, Right: Insight + Stress */}
+            <div className="px-4 pb-3 flex justify-between items-center gap-3 border-t border-noir-400/50 pt-2">
+                {/* Left: Narrative Observation */}
+                <div className="flex-1 min-w-0">
+                    {customer.observation ? (
+                        <div className="text-[11px] text-amber-500/80 font-serif italic leading-snug animate-in fade-in truncate">
+                            {customer.observation}
+                        </div>
+                    ) : (
+                        <div className="text-[11px] text-noir-txt-muted font-serif italic opacity-50">
+                            (观察客户行为...)
+                        </div>
+                    )}
+                </div>
 
-                {/* Patience Bar */}
-                <div className="text-right">
-                    <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
-                        <Activity className="w-3 h-3" /> Stress
-                    </div>
-                    <div className="w-20 h-2 bg-noir-400 rounded-sm overflow-hidden border border-noir-500">
-                        <div
-                            className={cn("h-full transition-all duration-500", patienceColor)}
-                            style={{ width: `${patiencePercent}%` }}
-                        />
+                {/* Right: Insight Button + Stress Bar */}
+                <div className="flex items-center gap-3 shrink-0">
+                    {/* Insight Button - Style matches Appraisal Button */}
+                    {!hasUsedInsight ? (
+                        <button
+                            onClick={onInsightClick}
+                            disabled={!canUseInsight}
+                            title={canUseInsight ? "洞察客户心理 (消耗 1 AP)" : insightBlockReason}
+                            className={cn(
+                                "flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded border-2 transition-all duration-200 shadow-lg",
+                                canUseInsight
+                                    ? "bg-pawn-accent text-black border-white hover:scale-[1.02]"
+                                    : "bg-stone-800 text-stone-500 border-stone-600 cursor-not-allowed"
+                            )}
+                        >
+                            <Eye className="w-4 h-4" />
+                            <span>洞察 1AP</span>
+                        </button>
+                    ) : (
+                        <div className="flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded border-2 bg-pawn-green text-black border-white shadow-lg">
+                            <EyeOff className="w-4 h-4" />
+                            <span>已洞察</span>
+                        </div>
+                    )}
+
+                    {/* Patience/Stress Bar */}
+                    <div className="text-right">
+                        <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
+                            <Activity className="w-3 h-3" /> Stress
+                        </div>
+                        <div className="w-20 h-2 bg-noir-400 rounded-sm overflow-hidden border border-noir-500">
+                            <div
+                                className={cn("h-full transition-all duration-500", patienceColor)}
+                                style={{ width: `${patiencePercent}%` }}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
-
-            {/* Narrative Observation - Full Width */}
-            {customer.observation && (
-                <div className="px-4 pb-3 text-[11px] text-amber-500/80 font-serif italic border-t border-noir-400/50 pt-2 leading-snug animate-in fade-in">
-                    {customer.observation}
-                </div>
-            )}
         </div>
     )
 }
