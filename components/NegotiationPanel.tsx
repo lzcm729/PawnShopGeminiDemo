@@ -193,7 +193,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                     </div>
 
                     {/* Bottom: Insight Result Area */}
-                    <div className="flex-1 flex items-stretch min-h-[72px]">
+                    <div className="flex-1 flex items-stretch min-h-[94px]">
                         {insightResult ? (
                             /* Insight Result - Two-column layout: Left=Type, Right=Details */
                             <div className="flex-1 flex animate-in fade-in slide-in-from-bottom-2 duration-300">
