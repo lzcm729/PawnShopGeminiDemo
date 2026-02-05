@@ -28,19 +28,22 @@ export function policeReducer(state: GameState, action: Action): GameState {
                 return state;
             } else {
                 // Player rejects stolen goods - cancel transaction, customer leaves
-                // Note: Innocence is NOT affected here - only police investigation affects innocence
+                // Per design doc: Rejecting stolen goods grants +1 Innocence
                 playSfx('CLICK');
 
                 const servedCount = state.customersServedToday + 1;
+                const newRep = { ...state.reputation };
+                newRep[ReputationType.INNOCENCE] = Math.min(100, newRep[ReputationType.INNOCENCE] + 1);
 
                 return {
                     ...state,
                     customersServedToday: servedCount,
+                    reputation: newRep,
                     phase: { type: 'DEPARTURE' },
                     lastSatisfaction: 'RESENTFUL',
                     dayEvents: [
                         ...state.dayEvents,
-                        `拒绝收购疑似赃物: ${item.name}。`
+                        `拒绝收购疑似赃物: ${item.name}。(清白 +1)`
                     ]
                 };
             }

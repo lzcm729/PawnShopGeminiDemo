@@ -662,10 +662,29 @@ export const useGameEngine = () => {
 
     const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
 
-    // Stolen goods: +1 Credibility (profitable deal)
-    // Note: Innocence is only affected during police investigation, not at transaction time
+    // Stolen goods: "Knowledge Theory" (知情论) from design doc
+    // - Innocence penalty depends on whether player KNEW it was stolen (via appraisal)
+    // - Leveraging STOLEN trait for price reduction adds extra penalty
     if (item.isStolen) {
-      repDelta[ReputationType.CREDIBILITY] += 1;  // Good business deal
+      repDelta[ReputationType.CREDIBILITY] += 1;  // Good business deal regardless of knowledge
+
+      // Check if player discovered STOLEN trait (知情判定)
+      const knewStolen = item.revealedTraits?.some(t => t.type === 'STOLEN') ?? false;
+
+      if (knewStolen) {
+        // Player knew it was stolen - check if they leveraged it for price reduction
+        const stolenTrait = item.revealedTraits?.find(t => t.type === 'STOLEN');
+        const usedStolenLeverage = stolenTrait && (item.usedTraitIds?.includes(stolenTrait.id) ?? false);
+
+        if (usedStolenLeverage) {
+          // 知情收赃 + 压价: -3 Innocence (明知 + 趁火打劫)
+          repDelta[ReputationType.INNOCENCE] -= 3;
+        } else {
+          // 知情收赃 (未压价): -2 Innocence (明知故犯)
+          repDelta[ReputationType.INNOCENCE] -= 2;
+        }
+      }
+      // 不知情收赃: 0 Innocence (but item is still stolen - risk deferred to police investigation)
     }
 
     // Other illicit goods (contraband but not stolen): reduce INNOCENCE
