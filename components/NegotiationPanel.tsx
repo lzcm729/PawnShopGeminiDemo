@@ -151,7 +151,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                 </div>
 
                 {/* Center: Observation + Insight Area */}
-                <div className="flex-1 min-w-0 max-w-[280px] flex flex-col border border-noir-400/50 rounded bg-noir-100/30">
+                <div className="flex-1 min-w-0 flex flex-col border border-noir-400/50 rounded bg-noir-100/30">
                     {/* Top: Customer Observation + Insight Button */}
                     <div className="px-3 py-2 border-b border-noir-400/30 min-h-[32px] flex items-center gap-2">
                         <div className="flex-1 min-w-0">
