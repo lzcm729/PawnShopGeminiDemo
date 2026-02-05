@@ -136,40 +136,30 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                 </div>
             </div>
 
-            {/* Info Bar - Compact Bottom Section */}
-            <div className="px-4 pb-3 flex justify-between items-center">
-                {/* Tags + Insight Button */}
-                <div className="flex gap-2 items-center">
-                    <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 py-0.5 rounded border border-noir-300">
-                        {customer.behaviorTags.join(', ')}
-                    </span>
-                    <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 py-0.5 rounded border border-noir-300">
-                        Resolve: {customer.redemptionResolve}
-                    </span>
-
-                    {/* Insight Button - Badge Style */}
-                    {!hasUsedInsight ? (
-                        <button
-                            onClick={onInsightClick}
-                            disabled={!canUseInsight}
-                            title={canUseInsight ? "洞察客户 (消耗 1 AP)" : insightBlockReason}
-                            className={cn(
-                                "flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded border transition-all duration-200",
-                                canUseInsight
-                                    ? "bg-amber-900/40 border-amber-600/60 text-amber-400 hover:bg-amber-900/60 hover:border-amber-500 cursor-pointer"
-                                    : "bg-noir-100 border-noir-300 text-noir-txt-muted cursor-not-allowed opacity-60"
-                            )}
-                        >
-                            <Eye className="w-3 h-3" />
-                            <span>洞察</span>
-                        </button>
-                    ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded border bg-pawn-green/20 border-pawn-green/40 text-pawn-green">
-                            <EyeOff className="w-3 h-3" />
-                            <span>已洞察</span>
-                        </span>
-                    )}
-                </div>
+            {/* Info Bar - Right-aligned Insight + Stress */}
+            <div className="px-4 pb-3 flex justify-end items-center gap-3">
+                {/* Insight Button - Prominent Interactive Style */}
+                {!hasUsedInsight ? (
+                    <button
+                        onClick={onInsightClick}
+                        disabled={!canUseInsight}
+                        title={canUseInsight ? "洞察客户 (消耗 1 AP)" : insightBlockReason}
+                        className={cn(
+                            "flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-md border-2 transition-all duration-200 shadow-md",
+                            canUseInsight
+                                ? "bg-amber-900/50 border-amber-500 text-amber-300 hover:bg-amber-800/70 hover:border-amber-400 hover:scale-105 hover:shadow-lg hover:shadow-amber-500/20 cursor-pointer active:scale-95"
+                                : "bg-noir-200 border-noir-400 text-noir-txt-muted cursor-not-allowed opacity-50"
+                        )}
+                    >
+                        <Eye className="w-4 h-4" />
+                        <span>洞察</span>
+                    </button>
+                ) : (
+                    <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-md border-2 bg-pawn-green/20 border-pawn-green/50 text-pawn-green shadow-md">
+                        <EyeOff className="w-4 h-4" />
+                        <span>已洞察</span>
+                    </div>
+                )}
 
                 {/* Patience Bar */}
                 <div className="text-right">
