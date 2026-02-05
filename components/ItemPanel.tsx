@@ -30,13 +30,14 @@ const getIcon = (category: string) => {
 
 interface ItemPanelProps {
   applyLeverage: (power: number, description: string) => void;
+  applyStolenLeverage: (power: number, description: string) => { askReduction: number; minReduction: number };
   triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void;
   canInteract: boolean;
   currentAskPrice: number;
   onAppraisalFeedback?: (feedback: AppraisalFeedback) => void;
 }
 
-export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarrative, canInteract, currentAskPrice, onAppraisalFeedback }) => {
+export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolenLeverage, triggerNarrative, canInteract, currentAskPrice, onAppraisalFeedback }) => {
   const { state, dispatch } = useGame();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
@@ -249,9 +250,28 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
       // JACKPOT traits: player discovered hidden value, triggers dialogue but no price leverage
       // STORY traits: dialogue/rapport building only, no price leverage
       // FLAW/FAKE traits: player points out issues, can leverage for lower price
+      // STOLEN traits: stronger leverage - reduces BOTH ask price AND minimum amount
       const negotiationPower = (trait.type === 'JACKPOT' || trait.type === 'STORY') ? 0 : power;
 
-      if (trait.dialogueTrigger) {
+      // STOLEN trait: special handling - reduces both ask price and minimum
+      // This gives player significant leverage when discovering stolen goods
+      if (trait.type === 'STOLEN') {
+          // Use 25% reduction (stronger than the trait's valueImpact which may be -50%)
+          // to balance gameplay - discovering stolen goods is risky but gives real leverage
+          const stolenPower = 0.25;
+
+          // Apply the leverage (updates ask price in negotiation hook)
+          applyStolenLeverage(stolenPower, trait.name);
+
+          // Dispatch action to also reduce minimum amount in customer state
+          dispatch({ type: 'APPLY_STOLEN_LEVERAGE', payload: { reductionPercent: stolenPower } });
+
+          // If there's dialogue, show it via narrative trigger (no additional price impact)
+          if (trait.dialogueTrigger) {
+              const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
+              triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, 0);
+          }
+      } else if (trait.dialogueTrigger) {
           // Use playerUseLine (正式对话) when available, fallback to playerLine (内心独白)
           const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
           triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, negotiationPower);
@@ -527,8 +547,16 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                              impactText = `+${Math.abs(trait.valueImpact * 100)}%`;
                              impactColor = "text-amber-600";
                              label = "捡漏发现";
+                         } else if (trait.type === 'STOLEN') {
+                             // STOLEN: distinctive orange/warning color - this is risky but powerful leverage
+                             borderColor = "border-orange-600";
+                             bgColor = isUsed ? "bg-stone-200" : "bg-orange-50";
+                             icon = <AlertTriangle className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-orange-600'}`}/>;
+                             impactText = "-25%";  // Fixed 25% for both ask and minimum
+                             impactColor = "text-orange-600";
+                             label = "点击压价";
                          }
-                         
+
                          if (isUsed) {
                              borderColor = "border-stone-300";
                              impactColor = "text-stone-400";
@@ -564,6 +592,14 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, triggerNarr
                                         <div className="flex items-center gap-1">
                                             <Sparkles className="w-3 h-3 text-amber-500" />
                                             <span>价值发现 ({impactText})</span>
+                                        </div>
+                                    </div>
+                                 )}
+                                 {hoveredTrait?.id === trait.id && !isUsed && canInteract && trait.type === 'STOLEN' && (
+                                    <div className="absolute -top-8 right-0 bg-black/90 text-white text-[10px] px-2 py-1 rounded shadow-xl z-50 whitespace-nowrap border border-orange-600 animate-in fade-in slide-in-from-bottom-1">
+                                        <div className="flex items-center gap-1">
+                                            <AlertTriangle className="w-3 h-3 text-orange-500" />
+                                            <span>赃物压价 (报价和底价均 {impactText})</span>
                                         </div>
                                     </div>
                                  )}

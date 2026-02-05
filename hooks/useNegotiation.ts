@@ -29,6 +29,11 @@ export interface OfferRecord {
   timestamp: number;
 }
 
+export interface StolenLeverageResult {
+  askReduction: number;
+  minReduction: number;
+}
+
 interface UseNegotiationReturn {
   patience: number;
   mood: NegotiationMood;
@@ -40,6 +45,7 @@ interface UseNegotiationReturn {
   isWalkedAway: boolean;
   submitOffer: () => NegotiationResult;
   applyLeverage: (power: number, description: string) => void;
+  applyStolenLeverage: (power: number, description: string) => StolenLeverageResult;
   triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void;
   resetNegotiation: () => void;
   lastAction: ActionLog | null;
@@ -190,6 +196,33 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     });
   }, [customer, isWalkedAway, reducePrice]);
 
+  // STOLEN trait leverage: reduces both ask price AND minimum amount
+  // This is stronger than regular leverage because it also lowers the floor
+  const applyStolenLeverage = useCallback((power: number, description: string): StolenLeverageResult => {
+    if (!customer || isWalkedAway) return { askReduction: 0, minReduction: 0 };
+
+    // Calculate reductions before applying (for display purposes)
+    const askReduction = Math.floor(currentAskPrice * power);
+    const minReduction = Math.floor(customer.minimumAmount * power);
+
+    // Apply the leverage to ask price (local state)
+    reducePrice(power);
+
+    // Note: The minimum amount reduction must be handled by the component
+    // via dispatch({ type: 'APPLY_STOLEN_LEVERAGE', payload: { reductionPercent: power } })
+    // This function returns the calculated values for display
+
+    setMood('Angry'); // Stronger emotional reaction than regular leverage
+    setLastAction({
+        type: 'LEVERAGE',
+        text: `赃物压价: ${description}`,
+        subtext: `报价降低 $${askReduction}，底价降低 $${minReduction}`,
+        id: Date.now()
+    });
+
+    return { askReduction, minReduction };
+  }, [customer, isWalkedAway, reducePrice, currentAskPrice]);
+
   const triggerNarrative = useCallback((playerLine: string, customerLine: string, impact: number = 0) => {
       if (!customer || isWalkedAway) return;
 
@@ -333,6 +366,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     isWalkedAway,
     submitOffer,
     applyLeverage,
+    applyStolenLeverage,
     triggerNarrative,
     resetNegotiation,
     lastAction,

@@ -63,6 +63,35 @@ export function customerReducer(state: GameState, action: Action): GameState {
                 }
             };
 
+        case 'APPLY_STOLEN_LEVERAGE': {
+            // STOLEN trait usage: reduce both ask price and minimum amount
+            // This is stronger than regular FLAW leverage which only affects ask price
+            if (!state.currentCustomer) return state;
+
+            const { reductionPercent } = action.payload;
+            const currentAsk = state.currentCustomer.currentAskPrice ?? state.currentCustomer.desiredAmount;
+            const currentMin = state.currentCustomer.minimumAmount;
+
+            // Calculate reductions (25% default for STOLEN - stronger than FLAW)
+            const askReduction = Math.floor(currentAsk * reductionPercent);
+            const minReduction = Math.floor(currentMin * reductionPercent);
+
+            // New values - minimum cannot go below 10% of original to prevent exploitation
+            const originalMin = state.currentCustomer.minimumAmount;
+            const minFloor = Math.floor(originalMin * 0.1);
+            const newAskPrice = Math.max(minFloor, currentAsk - askReduction);
+            const newMinimum = Math.max(minFloor, currentMin - minReduction);
+
+            return {
+                ...state,
+                currentCustomer: {
+                    ...state.currentCustomer,
+                    currentAskPrice: newAskPrice,
+                    minimumAmount: newMinimum
+                }
+            };
+        }
+
         case 'UPDATE_ITEM_KNOWLEDGE': {
             if (!state.currentCustomer || state.currentCustomer.item.id !== action.payload.itemId) return state;
             const prevCount = state.currentCustomer.item.appraisalCount || 0;

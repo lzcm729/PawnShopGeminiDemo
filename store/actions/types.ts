@@ -36,6 +36,7 @@ export type Action =
     | { type: 'SET_CUSTOMER'; payload: Customer | null }
     | { type: 'CLEAR_CUSTOMER' }
     | { type: 'UPDATE_CUSTOMER_STATUS'; payload: { patience: number; mood: Mood; currentAskPrice: number } }
+    | { type: 'APPLY_STOLEN_LEVERAGE'; payload: { reductionPercent: number } }  // Reduce both ask price and minimum
     | { type: 'MANUAL_CLOSE_SHOP' }
     | { type: 'MARK_NO_MORE_CUSTOMERS' }
     | { type: 'INCREMENT_NARRATIVE_CUSTOMER' }  // Track narrative customer served (no limit)
