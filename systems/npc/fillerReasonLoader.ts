@@ -5,12 +5,13 @@
  * These reasons explain unexpected item-profile combinations (e.g., young person with antique).
  *
  * CSV Format:
- * context_tag,item_tags,npc_appearance,npc_age,npc_mood,weight,reason_text
+ * context_tag,item_tags,npc_appearance,npc_age,npc_mood,weight,reason_text,exclude_categories
  *
  * Matching logic:
  * - item_tags: Pipe-separated list (any match) or * for wildcard
  * - npc_appearance, npc_age, npc_mood: Pipe-separated list (any match) or * for wildcard
  * - weight: Higher weight = more likely to be selected
+ * - exclude_categories: Pipe-separated list of categories to exclude (e.g., "酒类|文房")
  */
 
 import {
@@ -29,6 +30,7 @@ export interface ReasonEntry {
   npcMood: string[];       // Empty array means wildcard (*)
   weight: number;
   reasonText: string;
+  excludeCategories: string[];  // Empty array means no exclusion
 }
 
 // ============================================================================
@@ -142,6 +144,7 @@ export function loadReasonsFromCSV(csvContent: string): void {
       npcMood: parsePipeList(get('npc_mood')),
       weight: parseFloat(get('weight')) || 1,
       reasonText: get('reason_text'),
+      excludeCategories: parsePipeList(get('exclude_categories')),
     };
 
     if (entry.reasonText) {
@@ -179,7 +182,8 @@ function matchesItemTags(itemTags: string[], filterList: string[]): boolean {
 function calculateMatchScore(
   entry: ReasonEntry,
   profile: FillerCustomerProfile,
-  itemAttrTags: string[]
+  itemAttrTags: string[],
+  itemCategory: string
 ): number {
   // Must match item tags (if specified)
   if (!matchesItemTags(itemAttrTags, entry.itemTags)) {
@@ -198,6 +202,11 @@ function calculateMatchScore(
 
   // Must match NPC mood (if specified)
   if (!matchesList(profile.mood, entry.npcMood)) {
+    return 0;
+  }
+
+  // Exclude if item category is in exclude list
+  if (entry.excludeCategories.length > 0 && entry.excludeCategories.includes(itemCategory)) {
     return 0;
   }
 
@@ -220,11 +229,13 @@ function calculateMatchScore(
  * Get a matching reason for an unexpected item-profile combination
  *
  * @param itemAttrTags Item's attribute tags (from Attr_Tags column)
+ * @param itemCategory Item's category (e.g., "酒类", "文房")
  * @param profile Customer profile
  * @returns Reason text or undefined if no match found
  */
 export function getMatchingReason(
   itemAttrTags: string[],
+  itemCategory: string,
   profile: FillerCustomerProfile
 ): string | undefined {
   if (reasonRegistry.length === 0) {
@@ -235,7 +246,7 @@ export function getMatchingReason(
   const matches: { entry: ReasonEntry; score: number }[] = [];
 
   for (const entry of reasonRegistry) {
-    const score = calculateMatchScore(entry, profile, itemAttrTags);
+    const score = calculateMatchScore(entry, profile, itemAttrTags, itemCategory);
     if (score > 0) {
       // Check if this reason was recently used
       if (!recentReasons.includes(entry.reasonText)) {
@@ -248,7 +259,7 @@ export function getMatchingReason(
     // Fallback: if all matches are recent, clear recent list and try again
     if (recentReasons.length > 0) {
       recentReasons.length = 0;
-      return getMatchingReason(itemAttrTags, profile);
+      return getMatchingReason(itemAttrTags, itemCategory, profile);
     }
     return undefined;
   }
@@ -305,23 +316,23 @@ export function getReasonCount(): number {
 // ============================================================================
 
 // Default embedded reasons as fallback
-const DEFAULT_REASONS_CSV = `context_tag,item_tags,npc_appearance,npc_age,npc_mood,weight,reason_text
-INHERITANCE,VINTAGE_REAL|SENTIMENTAL,shabby|plain,*,reluctant,1,"这是家里老人留下的，但现在实在没办法了。"
-INHERITANCE,VINTAGE_REAL|SENTIMENTAL,*,young,*,1,"祖母留下的遗物，不得已才拿来。"
-INHERITANCE,VINTAGE_REAL|SENTIMENTAL,decent,*,calm,1,"祖上传下来的，放着也是放着。"
-GIFT_RECEIVED,SENTIMENTAL,*,*,reluctant,1,"朋友送的，但现在顾不上念旧了。"
-GIFT_RECEIVED,TRENDY,*,*,eager,1,"别人送的，我用不上，换点钱更实在。"
-SUDDEN_NEED,*,shabby|plain,*,anxious,2,"这东西放了好久了，现在急需周转。"
-SUDDEN_NEED,*,*,*,anxious,1,"最近手头紧，先当着应急。"
-UNEXPECTED_FIND,VINTAGE_REAL,plain,*,calm,1,"收拾老房子翻出来的，听说是古董？"
-UNEXPECTED_FIND,*,plain,*,calm,1,"搬家翻出来的旧东西。"
-DEBT_HELP,*,shabby|plain,*,anxious,1,"帮朋友救急的，他现在还不上了。"
-BREAKUP,SENTIMENTAL,*,young|middle,reluctant,1,"前任的东西，不想看到了。"
-BREAKUP,TRENDY,*,young,eager,1,"前任的，留着膈应。"
-HOBBY_QUIT,MECHANICAL|ARTISTIC,*,middle|elderly,calm,1,"以前的爱好，现在没时间玩了。"
-UPGRADE,TRENDY|MECHANICAL,decent|fancy,*,calm,1,"换新的了，旧的处理掉。"
-GENERIC,*,*,*,*,0.5,"就是想换点钱。"
-GENERIC,*,*,*,*,0.5,"放着也没用，不如换点现金。"`;
+const DEFAULT_REASONS_CSV = `context_tag,item_tags,npc_appearance,npc_age,npc_mood,weight,reason_text,exclude_categories
+INHERITANCE,VINTAGE_REAL|SENTIMENTAL,shabby|plain,*,reluctant,1,"这是家里老人留下的，但现在实在没办法了。",
+INHERITANCE,VINTAGE_REAL|SENTIMENTAL,*,young,*,1,"祖母留下的遗物，不得已才拿来。",
+INHERITANCE,VINTAGE_REAL|SENTIMENTAL,decent,*,calm,1,"祖上传下来的，放着也是放着。",
+GIFT_RECEIVED,SENTIMENTAL,*,*,reluctant,1,"朋友送的，但现在顾不上念旧了。",
+GIFT_RECEIVED,TRENDY,*,*,eager,1,"别人送的，我用不上，换点钱更实在。",
+SUDDEN_NEED,*,shabby|plain,*,anxious,2,"这东西放了好久了，现在急需周转。",
+SUDDEN_NEED,*,*,*,anxious,1,"最近手头紧，先当着应急。",
+UNEXPECTED_FIND,VINTAGE_REAL,plain,*,calm,1,"收拾老房子翻出来的，听说是古董？",
+UNEXPECTED_FIND,*,plain,*,calm,1,"搬家翻出来的旧东西。",
+DEBT_HELP,*,shabby|plain,*,anxious,1,"帮朋友救急的，他现在还不上了。",
+BREAKUP,SENTIMENTAL,*,young|middle,reluctant,1,"前任的东西，不想看到了。",酒类|文房
+BREAKUP,TRENDY,*,young,eager,1,"前任的，留着膈应。",酒类|文房
+HOBBY_QUIT,MECHANICAL|ARTISTIC,*,middle|elderly,calm,1,"以前的爱好，现在没时间玩了。",
+UPGRADE,TRENDY|MECHANICAL,decent|fancy,*,calm,1,"换新的了，旧的处理掉。",
+GENERIC,*,*,*,*,0.5,"就是想换点钱。",
+GENERIC,*,*,*,*,0.5,"放着也没用，不如换点现金。",`;
 
 let initialized = false;
 

@@ -838,7 +838,8 @@ export function generateFillerCustomer(
 
     // If this is an unexpected combination, get a narrative reason
     if (isUnexpected) {
-        const reason = getMatchingReason(attrTags, customerProfile);
+        const category = item.category;
+        const reason = getMatchingReason(attrTags, category, customerProfile);
         if (reason) {
             dialogue.pawnReason = reason;
         }
