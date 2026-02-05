@@ -87,94 +87,114 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
     if (patiencePercent <= 20) patienceColor = "bg-red-600";
 
     return (
-        <div className="bg-noir-200 border-b border-noir-400 p-4 flex gap-4 shrink-0 shadow-lg relative overflow-hidden">
-             {/* Surveillance Photo Effect */}
-             <div className="relative w-16 h-16 shrink-0 border border-noir-400 p-0.5 bg-noir-300">
-                 <img
-                    src={(() => {
-                      // During negotiation, always use neutral expression
-                      // Emotional changes are shown only in departure view
-                      const emotion = 'neutral' as const;
-                      if (customer.portraits?.[emotion]) return customer.portraits[emotion];
-                      if (customer.chainId) {
-                        const charId = customer.chainId.replace(/^chain_/, '');
-                        return getCharacterPortraitPath(charId, emotion);
-                      }
-                      return PORTRAIT_PLACEHOLDER;
-                    })()}
-                    alt="Subject"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = PORTRAIT_PLACEHOLDER;
-                    }}
-                 />
-                 {isAngry && <div className="absolute inset-0 border-2 border-red-500 animate-pulse"></div>}
+        <div className="bg-gradient-to-b from-noir-300 to-noir-200 border-b border-noir-400 shrink-0 shadow-lg relative overflow-hidden">
+            {/* Large Portrait Section - Main Visual Focus */}
+            <div className="relative flex flex-col items-center pt-4 pb-3">
+                {/* Portrait Container with Enhanced Visual Treatment */}
+                <div className={cn(
+                    "relative w-24 h-24 rounded-full overflow-hidden border-2 transition-all duration-300",
+                    "shadow-[0_0_20px_rgba(0,0,0,0.5)]",
+                    isAngry
+                        ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-[pulse_1s_ease-in-out_infinite]"
+                        : "border-amber-600/60 shadow-[0_0_20px_rgba(217,119,6,0.2)]"
+                )}>
+                    {/* Outer Glow Ring */}
+                    <div className={cn(
+                        "absolute -inset-1 rounded-full opacity-50 blur-sm",
+                        isAngry ? "bg-red-500" : "bg-amber-600/30"
+                    )} />
 
-                 {/* Insight Button - positioned at bottom-right of portrait */}
-                 {!hasUsedInsight && (
-                     <button
-                         onClick={onInsightClick}
-                         disabled={!canUseInsight}
-                         title={canUseInsight ? "洞察客户 (消耗 1 AP)" : insightBlockReason}
-                         className={cn(
-                             "absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200",
-                             canUseInsight
-                                 ? "bg-amber-600 border-amber-500 text-black hover:bg-amber-500 hover:scale-110 cursor-pointer shadow-lg"
-                                 : "bg-noir-400 border-noir-500 text-noir-txt-muted cursor-not-allowed opacity-60"
-                         )}
-                     >
-                         <Eye className="w-3.5 h-3.5" />
-                     </button>
-                 )}
+                    <img
+                        src={(() => {
+                          const emotion = 'neutral' as const;
+                          if (customer.portraits?.[emotion]) return customer.portraits[emotion];
+                          if (customer.chainId) {
+                            const charId = customer.chainId.replace(/^chain_/, '');
+                            return getCharacterPortraitPath(charId, emotion);
+                          }
+                          return PORTRAIT_PLACEHOLDER;
+                        })()}
+                        alt="Subject"
+                        className="w-full h-full object-cover relative z-10"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = PORTRAIT_PLACEHOLDER;
+                        }}
+                    />
 
-                 {/* Already used indicator */}
-                 {hasUsedInsight && (
-                     <div
-                         className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-2 flex items-center justify-center bg-noir-300 border-noir-400 text-pawn-green"
-                         title="已洞察"
-                     >
-                         <EyeOff className="w-3.5 h-3.5" />
-                     </div>
-                 )}
-             </div>
-             
-             <div className="flex-1 min-w-0 flex flex-col justify-between">
-                  <div className="flex justify-between items-start">
-                      <div>
-                          <div className="flex items-center gap-2">
-                              <h2 className="text-lg font-serif font-bold text-noir-txt-primary leading-none tracking-wide">{customer.name}</h2>
-                              <Badge variant="outline" className="text-[9px] py-0 h-4">ID: {customer.id.slice(0,4)}</Badge>
-                          </div>
-                          <div className="flex gap-2 mt-1">
-                              <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 rounded border border-noir-300">
-                                  {customer.behaviorTags.join(', ')}
-                              </span>
-                              <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 rounded border border-noir-300">
-                                  Resolve: {customer.redemptionResolve}
-                              </span>
-                          </div>
-                      </div>
-                      
-                      <div className="text-right">
-                          <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
-                              <Activity className="w-3 h-3" /> Stress Limit
-                          </div>
-                          <div className="w-24 h-2 bg-noir-400 rounded-sm overflow-hidden border border-noir-500">
-                              <div 
-                                  className={cn("h-full transition-all duration-500", patienceColor)} 
-                                  style={{ width: `${patiencePercent}%` }}
-                              />
-                          </div>
-                      </div>
-                  </div>
+                    {/* Vignette Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-20 pointer-events-none" />
 
-                  {/* Narrative Observation */}
-                  {customer.observation && (
-                      <div className="mt-2 text-[11px] text-amber-500/80 font-serif italic border-t border-noir-400/50 pt-1 leading-snug animate-in fade-in">
-                          {customer.observation}
-                      </div>
-                  )}
-             </div>
+                    {isAngry && <div className="absolute inset-0 border-2 border-red-500 rounded-full animate-pulse z-30"></div>}
+
+                    {/* Insight Button - positioned at bottom-right of portrait */}
+                    {!hasUsedInsight && (
+                        <button
+                            onClick={onInsightClick}
+                            disabled={!canUseInsight}
+                            title={canUseInsight ? "洞察客户 (消耗 1 AP)" : insightBlockReason}
+                            className={cn(
+                                "absolute bottom-0 right-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-200 z-40",
+                                canUseInsight
+                                    ? "bg-amber-600 border-amber-500 text-black hover:bg-amber-500 hover:scale-110 cursor-pointer shadow-lg"
+                                    : "bg-noir-400 border-noir-500 text-noir-txt-muted cursor-not-allowed opacity-60"
+                            )}
+                        >
+                            <Eye className="w-4 h-4" />
+                        </button>
+                    )}
+
+                    {/* Already used indicator */}
+                    {hasUsedInsight && (
+                        <div
+                            className="absolute bottom-0 right-0 w-8 h-8 rounded-full border-2 flex items-center justify-center bg-noir-300 border-noir-400 text-pawn-green z-40"
+                            title="已洞察"
+                        >
+                            <EyeOff className="w-4 h-4" />
+                        </div>
+                    )}
+                </div>
+
+                {/* Customer Name & ID - Below Portrait */}
+                <div className="mt-3 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                        <h2 className="text-xl font-serif font-bold text-noir-txt-primary leading-none tracking-wide">{customer.name}</h2>
+                        <Badge variant="outline" className="text-[9px] py-0 h-4">ID: {customer.id.slice(0,4)}</Badge>
+                    </div>
+                </div>
+            </div>
+
+            {/* Info Bar - Compact Bottom Section */}
+            <div className="px-4 pb-3 flex justify-between items-center">
+                {/* Tags */}
+                <div className="flex gap-2">
+                    <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 py-0.5 rounded border border-noir-300">
+                        {customer.behaviorTags.join(', ')}
+                    </span>
+                    <span className="text-[10px] font-mono text-noir-txt-muted uppercase bg-noir-100 px-1.5 py-0.5 rounded border border-noir-300">
+                        Resolve: {customer.redemptionResolve}
+                    </span>
+                </div>
+
+                {/* Patience Bar */}
+                <div className="text-right">
+                    <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest mb-1 flex items-center justify-end gap-1">
+                        <Activity className="w-3 h-3" /> Stress
+                    </div>
+                    <div className="w-20 h-2 bg-noir-400 rounded-sm overflow-hidden border border-noir-500">
+                        <div
+                            className={cn("h-full transition-all duration-500", patienceColor)}
+                            style={{ width: `${patiencePercent}%` }}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Narrative Observation - Full Width */}
+            {customer.observation && (
+                <div className="px-4 pb-3 text-[11px] text-amber-500/80 font-serif italic border-t border-noir-400/50 pt-2 leading-snug animate-in fade-in">
+                    {customer.observation}
+                </div>
+            )}
         </div>
     )
 }
