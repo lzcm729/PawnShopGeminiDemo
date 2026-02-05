@@ -40,7 +40,7 @@ const PHASE_MAP: Record<string, GamePhase> = {
 const REPUTATION_MAP: Record<string, ReputationType> = {
   'humanity': ReputationType.HUMANITY,
   'credibility': ReputationType.CREDIBILITY,
-  'underworld': ReputationType.UNDERWORLD
+  'innocence': ReputationType.INNOCENCE
 };
 
 // Panel toggle action map
@@ -97,7 +97,7 @@ export function executeCommand(
   set phase <phase>     - Set game phase (morning|business|night|negotiation|departure|start|gameover|victory)
   set day <n>           - Set current day
   set cash <n>          - Set cash amount
-  set reputation <type> <n> - Set reputation (humanity|credibility|underworld)
+  set reputation <type> <n> - Set reputation (humanity|credibility|innocence)
   set ap <n>            - Set action points
   set energy <n>        - Set night energy
   set heat <n>          - Set blackmarket heat (0-10)

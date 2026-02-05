@@ -20,13 +20,13 @@ export type { GamePhase } from './phases';
 export enum ReputationType {
   HUMANITY = 'Humanity', // Heart - Empathy
   CREDIBILITY = 'Credibility', // Business - Professionalism
-  UNDERWORLD = 'Underworld' // Shadow - Illicit
+  INNOCENCE = 'Innocence' // Law - Legal cleanliness (replaces Underworld)
 }
 
 export interface ReputationProfile {
   [ReputationType.HUMANITY]: number;
   [ReputationType.CREDIBILITY]: number;
-  [ReputationType.UNDERWORLD]: number;
+  [ReputationType.INNOCENCE]: number;
 }
 
 export interface MedicalBill {

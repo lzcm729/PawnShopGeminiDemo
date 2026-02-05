@@ -2,7 +2,7 @@
 import React from 'react';
 import { Customer, TransactionResult, ReputationType } from '../types';
 import { Button } from './ui/Button';
-import { PackageCheck, DollarSign, Heart, Briefcase, Skull, Stamp, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive } from 'lucide-react';
+import { PackageCheck, DollarSign, Heart, Briefcase, Shield, Stamp, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
 import { getDisplayName } from '../systems/items/tagUtils';
 import { getCharacterPortraitPath, getItemIcon, PORTRAIT_PLACEHOLDER } from '../systems/assets';
@@ -86,8 +86,8 @@ export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, re
                      let color = "text-blue-400";
                      let label = "信誉";
                      
-                     if (key === ReputationType.HUMANITY) { icon = <Heart className="w-3 h-3"/>; color = "text-rose-500"; label = "人性"; }
-                     if (key === ReputationType.UNDERWORLD) { icon = <Skull className="w-3 h-3"/>; color = "text-purple-500"; label = "地下"; }
+                     if (key === ReputationType.HUMANITY) { icon = <Heart className="w-3 h-3"/>; color = "text-rose-500"; label = "人情"; }
+                     if (key === ReputationType.INNOCENCE) { icon = <Shield className="w-3 h-3"/>; color = "text-blue-500"; label = "清白"; }
                      
                      return (
                          <div key={key} className={`flex justify-between items-center text-xs font-mono font-bold ${color}`}>

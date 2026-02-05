@@ -43,23 +43,23 @@ export const REPUTATION_MILESTONES: ReputationMilestone[] = [
         effectDescription: "正常顾客会避开你的店"
     },
 
-    // --- UNDERWORLD ---
+    // --- INNOCENCE ---
     {
-        id: 'und_fixer',
-        label: "中间人 (The Fixer)",
-        description: "地下世界把你视为可靠的销赃渠道。",
-        trigger: { type: ReputationType.UNDERWORLD, value: 40, operator: '>=' },
-        icon: 'Ghost',
-        color: 'text-purple-500',
-        effectDescription: "夜间遭遇抢劫/破坏的风险降低"
+        id: 'inn_lawful',
+        label: "守法公民 (Law Abiding)",
+        description: "警方将你视为合作伙伴，可能提供情报。",
+        trigger: { type: ReputationType.INNOCENCE, value: 70, operator: '>=' },
+        icon: 'Shield',
+        color: 'text-blue-500',
+        effectDescription: "警方友好，可能提供情报"
     },
     {
-        id: 'und_target',
-        label: "肥羊 (Soft Target)",
-        description: "你在道上毫无根基，好欺负。",
-        trigger: { type: ReputationType.UNDERWORLD, value: 0, operator: '<=' },
-        icon: 'Target',
-        color: 'text-stone-500',
-        effectDescription: "夜间安全风险增加"
+        id: 'inn_suspect',
+        label: "嫌疑人 (Suspect)",
+        description: "警方已经注意到你的店铺。",
+        trigger: { type: ReputationType.INNOCENCE, value: 20, operator: '<=' },
+        icon: 'AlertTriangle',
+        color: 'text-orange-500',
+        effectDescription: "可能触发突击检查事件"
     }
 ];

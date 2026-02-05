@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
-import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Skull, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package } from 'lucide-react';
+import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull } from 'lucide-react';
 import { SatisfactionLevel } from '../systems/narrative/types';
 import { ReputationType } from '../types';
 import { TypewriterText } from './ui/TextEffects';
@@ -209,7 +209,7 @@ export const DepartureView: React.FC = () => {
                               let icon = <Briefcase className="w-3 h-3" />;
                               let color = "text-blue-400";
                               if (key === ReputationType.HUMANITY) { icon = <Heart className="w-3 h-3" />; color = "text-rose-500"; }
-                              if (key === ReputationType.UNDERWORLD) { icon = <Skull className="w-3 h-3" />; color = "text-purple-500"; }
+                              if (key === ReputationType.INNOCENCE) { icon = <Shield className="w-3 h-3" />; color = "text-blue-500"; }
                               return (
                                   <span key={key} className={`flex items-center gap-1 text-xs font-mono font-bold ${color}`}>
                                       {icon} {value > 0 ? '+' : ''}{value}

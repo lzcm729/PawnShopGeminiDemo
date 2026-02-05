@@ -47,7 +47,7 @@ export const HospitalVisitModal: React.FC = () => {
     const getDynamicDialogue = (topic: Topic) => {
         const { reputation, stats, activeChains } = state;
         const { cash, targetSavings } = stats;
-        const underworld = reputation[ReputationType.UNDERWORLD];
+        const innocence = reputation[ReputationType.INNOCENCE];
         const humanity = reputation[ReputationType.HUMANITY];
 
         // --- NARRATIVE CHECKS (Priority High) ---
@@ -72,7 +72,7 @@ export const HospitalVisitModal: React.FC = () => {
             }
 
             // 2. Stat Reactions
-            if (underworld > 30) return "昨晚我做了个噩梦... 梦见店里有些黑影，还有血腥味。孩子，你没在做什么危险的生意吧？";
+            if (innocence < 30) return "昨晚我做了个噩梦... 梦见店里有些黑影，还有血腥味。孩子，你没在做什么危险的生意吧？";
             if (cash < 200) return "看你的脸色不太好，衣服也旧了... 是不是钱又不够了？如果太勉强，就把店盘出去吧，别为了我硬撑。";
             if (cash > 3000 && humanity < 20) return "我想吃苹果了... 以前你总会记得买。现在你赚钱了，可我觉得我们离得更远了。";
             

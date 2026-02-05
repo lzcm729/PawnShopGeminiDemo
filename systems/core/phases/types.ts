@@ -58,7 +58,10 @@ export type EvaluationOutcome =
     | 'continue'
     | 'bankrupt'
     | 'mother_died'
-    | 'victory';
+    | 'victory'
+    | 'reputation_zero_humanity'
+    | 'reputation_zero_credibility'
+    | 'reputation_zero_innocence';
 
 // ============================================
 // Phase Event Types

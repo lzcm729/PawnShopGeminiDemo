@@ -41,7 +41,7 @@ interface TomlGameplay {
 interface TomlReputation {
   humanity: number;
   credibility: number;
-  underworld: number;
+  innocence: number;
 }
 
 interface GameConfigToml {
@@ -98,7 +98,7 @@ export const GAME_CONFIG = {
   INITIAL_REPUTATION: {
     HUMANITY: tomlConfig.reputation.humanity,
     CREDIBILITY: tomlConfig.reputation.credibility,
-    UNDERWORLD: tomlConfig.reputation.underworld
+    INNOCENCE: tomlConfig.reputation.innocence
   },
 
   // --- NARRATIVE CONFIG ---

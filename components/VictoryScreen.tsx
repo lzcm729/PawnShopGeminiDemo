@@ -26,13 +26,13 @@ export const VictoryScreen: React.FC<VictoryScreenProps> = ({ onRestart }) => {
     let colorTheme = "text-stone-600";
 
     const humanity = reputation[ReputationType.HUMANITY];
-    const underworld = reputation[ReputationType.UNDERWORLD];
+    const innocence = reputation[ReputationType.INNOCENCE];
 
     if (humanity > 60) {
         endingTitle = "The Saint of Sector 12";
         endingDesc = "手术非常成功。你证明了即使在最黑暗的角落，良心依然是有价值的。街坊邻里会永远记住你的善意。";
         colorTheme = "text-rose-600";
-    } else if (underworld > 40) {
+    } else if (innocence < 30) {
         endingTitle = "A Deal with the Devil";
         endingDesc = "手术成功了，母亲活了下来。但你看着镜子里的自己，眼神已经变得陌生。为了这笔钱，你弄脏了手，也失去了回头的路。";
         colorTheme = "text-purple-600";

@@ -171,8 +171,8 @@ export const EndOfDaySummary: React.FC = () => {
            <div className="grid grid-cols-3 gap-4">
                {[
                    { label: 'Humanity', value: reputation[ReputationType.HUMANITY], color: 'text-rose-500', bar: 'bg-rose-600' },
-                   { label: 'Credibility', value: reputation[ReputationType.CREDIBILITY], color: 'text-blue-500', bar: 'bg-blue-600' },
-                   { label: 'Underworld', value: reputation[ReputationType.UNDERWORLD], color: 'text-purple-500', bar: 'bg-purple-600' },
+                   { label: 'Credibility', value: reputation[ReputationType.CREDIBILITY], color: 'text-amber-500', bar: 'bg-amber-600' },
+                   { label: 'Innocence', value: reputation[ReputationType.INNOCENCE], color: 'text-blue-500', bar: 'bg-blue-600' },
                ].map(rep => (
                    <div key={rep.label} className="bg-noir-200 border border-noir-400 p-4 rounded flex flex-col items-center justify-center">
                        <div className="text-2xl font-black text-white mb-1">{rep.value}</div>

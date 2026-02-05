@@ -32,6 +32,7 @@ import { Button } from './components/ui/Button';
 import { Moon } from 'lucide-react';
 import { DayToNightTransition } from './components/transitions/DayToNightTransition';
 import { NightToDayTransition } from './components/transitions/NightToDayTransition';
+import { ReputationType } from './types';
 
 const GameContent: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -90,7 +91,9 @@ const GameContent: React.FC = () => {
   useEffect(() => {
       if (PhaseMatch.nightEvaluating(state.phase)) {
           // Determine outcome based on current game state
-          let outcome: 'continue' | 'bankrupt' | 'mother_died' | 'victory';
+          type OutcomeType = 'continue' | 'bankrupt' | 'mother_died' | 'victory'
+              | 'reputation_zero_humanity' | 'reputation_zero_credibility' | 'reputation_zero_innocence';
+          let outcome: OutcomeType;
 
           if (state.stats.cash >= GAME_CONFIG.GOAL_AMOUNT) {
               outcome = 'victory';
@@ -98,13 +101,19 @@ const GameContent: React.FC = () => {
               outcome = 'bankrupt';
           } else if (state.stats.motherStatus.health <= 0) {
               outcome = 'mother_died';
+          } else if (state.reputation[ReputationType.HUMANITY] <= 0) {
+              outcome = 'reputation_zero_humanity';
+          } else if (state.reputation[ReputationType.CREDIBILITY] <= 0) {
+              outcome = 'reputation_zero_credibility';
+          } else if (state.reputation[ReputationType.INNOCENCE] <= 0) {
+              outcome = 'reputation_zero_innocence';
           } else {
               outcome = 'continue';
           }
 
           send({ type: 'EVALUATION_DONE', outcome });
       }
-  }, [state.phase, state.stats.cash, state.stats.motherStatus.health, send]);
+  }, [state.phase, state.stats.cash, state.stats.motherStatus.health, state.reputation, send]);
 
   // Phase: BUSINESS -> Automatically trigger event if no customer
   // Note: canServe is always true now - the generateDailyEvent handles the logic internally

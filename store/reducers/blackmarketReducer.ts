@@ -67,11 +67,11 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         fulfilled: true
       };
 
-      // Blackmarket sales always grant Underworld reputation (+2)
+      // Blackmarket sales reduce Innocence (法律清白度) by 1
       // Breach penalty (Humanity -3, Credibility -1) is deferred until customer returns to redeem
       const newReputation = {
         ...state.reputation,
-        [ReputationType.UNDERWORLD]: Math.min(100, state.reputation[ReputationType.UNDERWORLD] + 2)
+        [ReputationType.INNOCENCE]: Math.max(0, state.reputation[ReputationType.INNOCENCE] - 1)
       };
 
       const breachNote = isBreach ? ' (违约出售，待结算时扣减声誉)' : '';
@@ -95,7 +95,7 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         },
         dayEvents: [
           ...state.dayEvents,
-          `[黑市] 以收购价 $${amount} 出售了 ${itemName} (${tag})，黑道 +2${breachNote}`
+          `[黑市] 以收购价 $${amount} 出售了 ${itemName} (${tag})，清白 -1${breachNote}`
         ]
       };
     }
@@ -131,11 +131,11 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         { itemId, itemName, amount, type: 'SALE' as const }
       ];
 
-      // Blackmarket sales always grant Underworld reputation (+2)
+      // Blackmarket sales reduce Innocence (法律清白度) by 1
       // Breach penalty (Humanity -3, Credibility -1) is deferred until customer returns to redeem
       const newReputation = {
         ...state.reputation,
-        [ReputationType.UNDERWORLD]: Math.min(100, state.reputation[ReputationType.UNDERWORLD] + 2)
+        [ReputationType.INNOCENCE]: Math.max(0, state.reputation[ReputationType.INNOCENCE] - 1)
       };
 
       const breachNote = isBreach ? ' (违约出售，待结算时扣减声誉)' : '';
@@ -155,7 +155,7 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         },
         dayEvents: [
           ...state.dayEvents,
-          `[黑市] 以出售价 $${amount} 出售了 ${itemName}，黑道 +2${breachNote}`
+          `[黑市] 以出售价 $${amount} 出售了 ${itemName}，清白 -1${breachNote}`
         ]
       };
     }

@@ -92,11 +92,11 @@ max_customers_per_day = 4
 # 声誉系统初始值 (Reputation)
 # ------------------------------------------------------------
 [reputation]
-# 人性/善心（高 = 慈善形象）
-humanity = 30
+# 人情（高 = 慈善形象）
+humanity = 50
 
-# 信誉/商誉（高 = 可靠商人）
-credibility = 20
+# 商誉（高 = 可靠商人）
+credibility = 50
 
-# 地下/黑道（高 = 黑市关系）
-underworld = 5
+# 清白（高 = 法律干净，做坏事会减少）
+innocence = 50

@@ -194,4 +194,23 @@ export const TRANSITIONS: TransitionRule[] = [
         guard: (_, e) => (e as { outcome: string }).outcome === 'victory',
         to: () => ({ type: 'VICTORY' })
     },
+    // ========== REPUTATION ZERO FAILURES ==========
+    {
+        from: (p) => p.type === 'NIGHT' && p.subphase === 'EVALUATING',
+        event: 'EVALUATION_DONE',
+        guard: (_, e) => (e as { outcome: string }).outcome === 'reputation_zero_humanity',
+        to: () => ({ type: 'GAME_OVER', reason: '店铺门可罗雀，再无客户愿意踏入这扇门。' })
+    },
+    {
+        from: (p) => p.type === 'NIGHT' && p.subphase === 'EVALUATING',
+        event: 'EVALUATION_DONE',
+        guard: (_, e) => (e as { outcome: string }).outcome === 'reputation_zero_credibility',
+        to: () => ({ type: 'GAME_OVER', reason: '你的名声在业内已经臭了，没有人愿意和你做生意。' })
+    },
+    {
+        from: (p) => p.type === 'NIGHT' && p.subphase === 'EVALUATING',
+        event: 'EVALUATION_DONE',
+        guard: (_, e) => (e as { outcome: string }).outcome === 'reputation_zero_innocence',
+        to: () => ({ type: 'GAME_OVER', reason: '警笛声响起，你的典当生涯到此结束。' })
+    },
 ];

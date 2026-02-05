@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { TypewriterText } from './ui/TextEffects';
-import { ArrowRight, Moon, Users, TrendingUp, TrendingDown, Heart, Shield, Skull } from 'lucide-react';
+import { ArrowRight, Moon, Users, TrendingUp, TrendingDown, Heart, Shield, Scale } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
 import { useGame } from '../store/GameContext';
 import { ReputationType } from '../types';
@@ -92,9 +92,9 @@ export const InnerVoiceDisplay: React.FC<InnerVoiceDisplayProps> = ({ text, onCo
                                 <Shield className="w-3 h-3 text-blue-600" />
                                 <span className="font-mono text-stone-500 text-xs">{reputation[ReputationType.CREDIBILITY]}</span>
                             </div>
-                            <div className="flex items-center gap-1" title="Underworld">
-                                <Skull className="w-3 h-3 text-purple-600" />
-                                <span className="font-mono text-stone-500 text-xs">{reputation[ReputationType.UNDERWORLD]}</span>
+                            <div className="flex items-center gap-1" title="Innocence">
+                                <Scale className="w-3 h-3 text-blue-500" />
+                                <span className="font-mono text-stone-500 text-xs">{reputation[ReputationType.INNOCENCE]}</span>
                             </div>
                         </div>
                     </div>

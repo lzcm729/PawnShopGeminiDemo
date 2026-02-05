@@ -207,7 +207,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
             const newRep = { ...state.reputation };
             if (reputationDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += reputationDelta[ReputationType.HUMANITY]!;
             if (reputationDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += reputationDelta[ReputationType.CREDIBILITY]!;
-            if (reputationDelta[ReputationType.UNDERWORLD]) newRep[ReputationType.UNDERWORLD] += reputationDelta[ReputationType.UNDERWORLD]!;
+            if (reputationDelta[ReputationType.INNOCENCE]) newRep[ReputationType.INNOCENCE] += reputationDelta[ReputationType.INNOCENCE]!;
             Object.keys(newRep).forEach(key => { newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType])); });
 
             const newInventory = item ? [...state.inventory, item] : state.inventory;

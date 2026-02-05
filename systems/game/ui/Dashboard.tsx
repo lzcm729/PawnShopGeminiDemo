@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { DollarSign, Calendar, Heart, Briefcase, Skull, Package, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2, TrendingDown, TrendingUp, Info } from 'lucide-react';
+import { DollarSign, Calendar, Heart, Briefcase, Shield, Package, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2, TrendingDown, TrendingUp, Info } from 'lucide-react';
 import { ReputationType } from '../../core/types';
 import { PhaseIs } from '../../core/phases';
 import { Button } from '../../../components/ui/Button';
@@ -203,11 +203,11 @@ export const Dashboard: React.FC = () => {
                     </div>
                 </Tooltip>
 
-                <Tooltip content={<RepTooltip label="Underworld" value={reputation[ReputationType.UNDERWORLD]} />}>
+                <Tooltip content={<RepTooltip label="Innocence" value={reputation[ReputationType.INNOCENCE]} />}>
                     <div className="flex items-center gap-2">
-                        <Skull className="w-3 h-3 text-noir-underworld" />
+                        <Shield className="w-3 h-3 text-blue-400" />
                         <div className="w-8 h-1.5 bg-noir-300 rounded-full overflow-hidden">
-                            <div className="h-full bg-noir-underworld" style={{ width: `${reputation[ReputationType.UNDERWORLD]}%` }}></div>
+                            <div className="h-full bg-blue-400" style={{ width: `${reputation[ReputationType.INNOCENCE]}%` }}></div>
                         </div>
                     </div>
                 </Tooltip>

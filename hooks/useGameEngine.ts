@@ -627,34 +627,37 @@ export const useGameEngine = () => {
        };
     }
 
-    const repDelta: any = { [ReputationType.HUMANITY]: 0, [ReputationType.CREDIBILITY]: 0, [ReputationType.UNDERWORLD]: 0 };
+    const repDelta: any = { [ReputationType.HUMANITY]: 0, [ReputationType.CREDIBILITY]: 0, [ReputationType.INNOCENCE]: 0 };
 
     if (offer >= desiredAmount) {
       repDelta[ReputationType.HUMANITY] += 3;
-      repDelta[ReputationType.CREDIBILITY] -= 1; 
+      repDelta[ReputationType.CREDIBILITY] -= 1;
     } else {
       repDelta[ReputationType.CREDIBILITY] += 1;
     }
-    
-    if (rate === 0) repDelta[ReputationType.HUMANITY] += 5;
+
+    // Contract tier effects (from design doc):
+    // 0% Charity: +1 Humanity
+    // 10% Standard: +1 Credibility (handled above)
+    // >=20% Shark: -1 Humanity
+    if (rate === 0) repDelta[ReputationType.HUMANITY] += 1;  // Changed from +5 to +1 per design doc
     else if (rate >= 0.20) {
-        repDelta[ReputationType.HUMANITY] -= 3;
-        repDelta[ReputationType.UNDERWORLD] += 2;
-        repDelta[ReputationType.CREDIBILITY] -= 2;
+        repDelta[ReputationType.HUMANITY] -= 1;  // Shark rate: -1 Humanity
     }
 
     const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
-    
+
+    // Illicit goods: reduce INNOCENCE (法律清白度) instead of increasing UNDERWORLD
     if (item.isStolen || (item.category === '违禁品' && !item.isSuspicious)) {
-      repDelta[ReputationType.UNDERWORLD] += 5;
-      repDelta[ReputationType.CREDIBILITY] -= 2; 
-      
+      repDelta[ReputationType.INNOCENCE] -= 3;  // Accepting stolen/contraband: -3 Innocence
+      repDelta[ReputationType.CREDIBILITY] -= 2;
+
       // Removed automatic violation flagging from here.
       // Now handled in Reducer to ensure it only applies if deal is committed.
       if (currentRisk > 0) {
-          // Additional immediate rep penalty for risk taking
-          repDelta[ReputationType.CREDIBILITY] -= 20; 
-          repDelta[ReputationType.UNDERWORLD] += 5;
+          // Additional immediate rep penalty for risk taking during crackdown
+          repDelta[ReputationType.CREDIBILITY] -= 20;
+          repDelta[ReputationType.INNOCENCE] -= 5;  // Additional innocence loss during crackdown
       }
     }
     
@@ -887,7 +890,7 @@ export const useGameEngine = () => {
     const projectedRep = {
         [ReputationType.HUMANITY]: currentRep[ReputationType.HUMANITY] + (result.reputationDelta[ReputationType.HUMANITY] || 0),
         [ReputationType.CREDIBILITY]: currentRep[ReputationType.CREDIBILITY] + (result.reputationDelta[ReputationType.CREDIBILITY] || 0),
-        [ReputationType.UNDERWORLD]: currentRep[ReputationType.UNDERWORLD] + (result.reputationDelta[ReputationType.UNDERWORLD] || 0)
+        [ReputationType.INNOCENCE]: currentRep[ReputationType.INNOCENCE] + (result.reputationDelta[ReputationType.INNOCENCE] || 0)
     };
     checkMilestones(projectedRep);
   };

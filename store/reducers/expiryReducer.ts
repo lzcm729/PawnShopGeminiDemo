@@ -59,7 +59,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                         repDelta = {
                             [ReputationType.HUMANITY]: -30,
                             [ReputationType.CREDIBILITY]: -20,
-                            [ReputationType.UNDERWORLD]: 10
+                            [ReputationType.INNOCENCE]: -10  // Breaking contract reduces legal standing
                         };
                         log = `拒绝赎回: ${item.name}，支付违约赔偿金 $${compensation}`;
                         satisfaction = 'DESPERATE';
@@ -153,7 +153,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
             const newRep = { ...state.reputation };
             if (repDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += repDelta[ReputationType.HUMANITY]!;
             if (repDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += repDelta[ReputationType.CREDIBILITY]!;
-            if (repDelta[ReputationType.UNDERWORLD]) newRep[ReputationType.UNDERWORLD] += repDelta[ReputationType.UNDERWORLD]!;
+            if (repDelta[ReputationType.INNOCENCE]) newRep[ReputationType.INNOCENCE] += repDelta[ReputationType.INNOCENCE]!;
             Object.keys(newRep).forEach(key => {
                 newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType]));
             });

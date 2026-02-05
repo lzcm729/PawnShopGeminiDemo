@@ -46,7 +46,7 @@ export function resetGameState(_state: GameState, _event: PhaseEvent): Partial<G
         reputation: {
             [ReputationType.HUMANITY]: GAME_CONFIG.INITIAL_REPUTATION.HUMANITY,
             [ReputationType.CREDIBILITY]: GAME_CONFIG.INITIAL_REPUTATION.CREDIBILITY,
-            [ReputationType.UNDERWORLD]: GAME_CONFIG.INITIAL_REPUTATION.UNDERWORLD
+            [ReputationType.INNOCENCE]: GAME_CONFIG.INITIAL_REPUTATION.INNOCENCE
         },
         inventory: [],
         currentCustomer: null,

@@ -35,7 +35,9 @@ import { getBlackMarketContactLevel, getActiveBlackMarketConfig } from '../syste
 export const useBlackmarket = () => {
   const { state, dispatch } = useGame();
   const { blackmarket, inventory, reputation, shopUpgrades } = state;
-  const underworldRep = reputation[ReputationType.UNDERWORLD];
+  // Black market trust is inversely proportional to innocence
+  // Lower innocence = more trusted in the black market = better commission rates
+  const blackMarketTrust = 100 - reputation[ReputationType.INNOCENCE];
   const blackMarketLevel = getBlackMarketContactLevel(shopUpgrades);
   const blackMarketConfig = getActiveBlackMarketConfig(shopUpgrades);
 
@@ -63,12 +65,12 @@ export const useBlackmarket = () => {
    * Higher reputation = lower commission = player keeps more money
    */
   const commissionInfo = useMemo(() => {
-    const base = getUnderworldCommission(underworldRep);
+    const base = getUnderworldCommission(blackMarketTrust);
     return {
       ...base,
-      currentRep: underworldRep
+      currentRep: blackMarketTrust
     };
-  }, [underworldRep]);
+  }, [blackMarketTrust]);
 
   /**
    * Whether the market is currently accessible
@@ -203,8 +205,8 @@ export const useBlackmarket = () => {
    * Includes upgrade-based price bonus
    */
   const getPurchasePrice = useCallback((item: Item, request: MarketPurchaseRequest): number => {
-    return calculatePurchasePrice(item, request, underworldRep, blackMarketLevel);
-  }, [underworldRep, blackMarketLevel]);
+    return calculatePurchasePrice(item, request, blackMarketTrust, blackMarketLevel);
+  }, [blackMarketTrust, blackMarketLevel]);
 
   /**
    * Get price for player-initiated sale
@@ -212,21 +214,21 @@ export const useBlackmarket = () => {
    */
   const getSalePrice = useCallback((item: Item): number => {
     const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
-    return calculateSalePrice(item, multiplier, underworldRep);
-  }, [blackmarket.daily, underworldRep, state.stats.day]);
+    return calculateSalePrice(item, multiplier, blackMarketTrust);
+  }, [blackmarket.daily, blackMarketTrust, state.stats.day]);
 
   /**
    * Get estimated sale price range
    */
   const getSalePriceRange = useCallback((item: Item): { min: number; max: number } => {
     const { saleMultiplierMin, saleMultiplierMax } = blackmarket.daily;
-    const { commission } = getUnderworldCommission(underworldRep);
+    const { commission } = getUnderworldCommission(blackMarketTrust);
 
     return {
       min: Math.floor(item.realValue * saleMultiplierMin * (1 - commission)),
       max: Math.floor(item.realValue * saleMultiplierMax * (1 - commission))
     };
-  }, [blackmarket.daily, underworldRep]);
+  }, [blackmarket.daily, blackMarketTrust]);
 
   // ========================================================================
   // Transactions
@@ -240,7 +242,7 @@ export const useBlackmarket = () => {
     if (request.fulfilled) return; // This specific request is already fulfilled
     if (!isEligibleForPurchase(item, request)) return;
 
-    const price = calculatePurchasePrice(item, request, underworldRep, blackMarketLevel);
+    const price = calculatePurchasePrice(item, request, blackMarketTrust, blackMarketLevel);
     const heatGain = getHeatGain(true);
 
     dispatch({
@@ -253,7 +255,7 @@ export const useBlackmarket = () => {
         heatGain
       }
     });
-  }, [isMarketOpen, underworldRep, blackMarketLevel, dispatch]);
+  }, [isMarketOpen, blackMarketTrust, blackMarketLevel, dispatch]);
 
   /**
    * Sell item via player sale track (low price track)
@@ -264,7 +266,7 @@ export const useBlackmarket = () => {
     if (!isEligibleForSale(item)) return;
 
     const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
-    const price = calculateSalePrice(item, multiplier, underworldRep);
+    const price = calculateSalePrice(item, multiplier, blackMarketTrust);
     const heatGain = getHeatGain(false);
 
     dispatch({
@@ -276,7 +278,7 @@ export const useBlackmarket = () => {
         heatGain
       }
     });
-  }, [isMarketOpen, blackmarket.daily, underworldRep, state.stats.day, dispatch]);
+  }, [isMarketOpen, blackmarket.daily, blackMarketTrust, state.stats.day, dispatch]);
 
   /**
    * Pay fine to avoid market lockdown

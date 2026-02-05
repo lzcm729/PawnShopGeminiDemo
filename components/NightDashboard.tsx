@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
-import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock, Skull, Briefcase } from 'lucide-react';
+import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock, Shield, Briefcase, Skull } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
@@ -593,13 +593,13 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </Tooltip>
 
-                        <Tooltip content={<div className="text-xs"><span className="font-bold">Underworld:</span> {reputation[ReputationType.UNDERWORLD]}%</div>}>
+                        <Tooltip content={<div className="text-xs"><span className="font-bold">Innocence:</span> {reputation[ReputationType.INNOCENCE]}%</div>}>
                             <div className="flex items-center gap-3">
-                                <Skull className="w-4 h-4 text-purple-400 shrink-0" />
+                                <Shield className="w-4 h-4 text-blue-400 shrink-0" />
                                 <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-purple-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.UNDERWORLD]}%` }}></div>
+                                    <div className="h-full bg-blue-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.INNOCENCE]}%` }}></div>
                                 </div>
-                                <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.UNDERWORLD]}%</span>
+                                <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.INNOCENCE]}%</span>
                             </div>
                         </Tooltip>
                     </div>
