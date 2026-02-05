@@ -1227,9 +1227,9 @@ function handleSpawnCommand(
   const target = args[0].toLowerCase();
   const state = getState();
 
-  // Check phase for all spawn commands
-  if (!PhaseIs.business(state.phase)) {
-    return { success: false, message: 'Error: Can only spawn customers in BUSINESS phase' };
+  // Check phase for all spawn commands - allow BUSINESS or NEGOTIATION (replace current customer)
+  if (!PhaseIs.business(state.phase) && !PhaseIs.negotiation(state.phase)) {
+    return { success: false, message: 'Error: Can only spawn customers in BUSINESS or NEGOTIATION phase' };
   }
 
   switch (target) {
