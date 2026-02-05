@@ -8,7 +8,7 @@ import { useCustomerInsight } from '../hooks/useCustomerInsight';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
-import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff, Heart } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
@@ -17,7 +17,7 @@ import { playSfx } from '../systems/game/audio';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { RollingNumber } from './ui/RollingNumber';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
-import { InsightModal } from './InsightModal';
+import { DISPOSITION_INFO } from '../systems/customerInsight';
 
 // ... existing interfaces ...
 interface NegotiationStateProps {
@@ -44,7 +44,7 @@ interface LogEntry {
     text: string;
     subtext?: string;
     sentiment?: 'neutral' | 'negative' | 'positive';
-    type?: 'INTEL' | 'INNER_MONOLOGUE';
+    type?: 'INTEL' | 'INNER_MONOLOGUE' | 'INSIGHT_RESULT';
     data?: any;
 }
 
@@ -235,7 +235,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const scrollRef = useRef<HTMLDivElement>(null);
   const [rejectionState, setRejectionState] = useState<{show: boolean, text: string}>({show: false, text: ''});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showInsightModal, setShowInsightModal] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -433,13 +432,21 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
   if (!currentCustomer || !item) return null;
 
-  // Handle insight button click
+  // Handle insight button click - insert result into chat log instead of modal
   const handleInsightClick = () => {
     if (!canUseInsight()) return;
     playSfx('CLICK');
     const result = useInsight();
     if (result) {
-      setShowInsightModal(true);
+      // Add insight result as a special log entry in the chat flow
+      const insightLogEntry: LogEntry = {
+        id: `insight-${Date.now()}`,
+        sender: 'system',
+        text: '',  // Not used for INSIGHT_RESULT type
+        type: 'INSIGHT_RESULT',
+        data: result,
+      };
+      setChatLog(prev => [...prev, insightLogEntry]);
     }
   };
 
@@ -604,14 +611,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           insightBlockReason={insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
         />
 
-      {/* Insight Modal */}
-      {showInsightModal && insightResult && (
-          <InsightModal
-              result={insightResult}
-              onClose={() => setShowInsightModal(false)}
-          />
-      )}
-
       {/* Rejection Overlay */}
       {rejectionState.show && (
             <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-300">
@@ -640,6 +639,66 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               const isPlayer = log.sender === 'player';
               const isSystem = log.sender === 'system';
 
+              // Insight Result Card - special rendering for customer insight
+              if (log.type === 'INSIGHT_RESULT' && log.data) {
+                  const result = log.data;
+                  const dispositionInfo = DISPOSITION_INFO[result.disposition as keyof typeof DISPOSITION_INFO];
+
+                  return (
+                      <div key={log.id} className="w-full animate-in fade-in slide-in-from-bottom-3 duration-500">
+                          <div className="bg-noir-200 border border-amber-600/40 rounded-lg overflow-hidden shadow-lg">
+                              {/* Header */}
+                              <div className="bg-amber-900/20 border-b border-amber-600/30 px-4 py-2 flex items-center gap-2">
+                                  <Eye className="w-4 h-4 text-amber-500" />
+                                  <span className="font-serif font-bold text-amber-500 text-sm">洞察结果</span>
+                              </div>
+
+                              {/* Content */}
+                              <div className="p-4 space-y-3">
+                                  {/* Disposition */}
+                                  <div className="flex items-center gap-3">
+                                      <span className="text-xl">{dispositionInfo?.icon || '?'}</span>
+                                      <div>
+                                          <div className="text-[10px] text-noir-txt-muted uppercase tracking-wider">心理倾向</div>
+                                          <div className={cn("text-base font-bold", dispositionInfo?.color || 'text-amber-400')}>
+                                              {dispositionInfo?.label || result.disposition}
+                                          </div>
+                                      </div>
+                                  </div>
+
+                                  {/* Disposition Text */}
+                                  <div className="bg-noir-100/50 border-l-2 border-noir-400 p-3">
+                                      <p className="font-serif text-xs text-noir-txt-secondary leading-relaxed italic">
+                                          "{result.dispositionText}"
+                                      </p>
+                                  </div>
+
+                                  {/* Floor Hint */}
+                                  <div className="pt-2 border-t border-noir-400/50">
+                                      <div className="text-[10px] text-noir-txt-muted uppercase tracking-wider mb-1">底线暗示</div>
+                                      <p className="font-serif text-xs text-amber-500/90 leading-relaxed">
+                                          {result.floorHint}
+                                      </p>
+                                  </div>
+
+                                  {/* Moral Context (if available) */}
+                                  {result.moralContext && (
+                                      <div className="bg-red-950/20 border border-red-900/30 rounded p-3 mt-2">
+                                          <div className="flex items-start gap-2">
+                                              <Heart className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                                              <p className="font-serif text-xs text-red-300/90 leading-relaxed italic">
+                                                  {result.moralContext}
+                                              </p>
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+                      </div>
+                  );
+              }
+
+              // Regular system message (divider style)
               if (isSystem) {
                   return (
                     <div key={log.id} className="flex items-center justify-center my-3 gap-3 opacity-0 animate-[fadeIn_0.2s_ease-out_forwards]">
@@ -847,6 +906,33 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                         </button>
                     )}
                  </div>
+
+                 {/* Customer Insight Button - Prominent Action */}
+                 {!insightResult && (
+                     <button
+                         onClick={handleInsightClick}
+                         disabled={!canUseInsight() || !canInteract}
+                         title={canUseInsight() ? "洞察客户心理 (消耗 1 AP)" : insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
+                         className={cn(
+                             "w-full p-3 rounded border-2 transition-all duration-300 flex items-center justify-center gap-3",
+                             canUseInsight() && canInteract
+                                 ? "bg-amber-900/30 border-amber-600/60 text-amber-400 hover:bg-amber-900/50 hover:border-amber-500 hover:shadow-[0_0_15px_rgba(217,119,6,0.3)] cursor-pointer"
+                                 : "bg-noir-300 border-noir-400 text-noir-txt-muted cursor-not-allowed opacity-60"
+                         )}
+                     >
+                         <Eye className="w-5 h-5" />
+                         <span className="font-bold tracking-wider">洞察客户</span>
+                         <span className="text-xs opacity-70">(1 AP)</span>
+                     </button>
+                 )}
+
+                 {/* Insight Already Used Indicator */}
+                 {insightResult && (
+                     <div className="w-full p-2 rounded border border-pawn-green/30 bg-pawn-green/10 flex items-center justify-center gap-2 text-pawn-green text-sm">
+                         <EyeOff className="w-4 h-4" />
+                         <span className="font-medium">已洞察客户</span>
+                     </div>
+                 )}
 
                  {/* Main Action */}
                  <div className="flex gap-3">
