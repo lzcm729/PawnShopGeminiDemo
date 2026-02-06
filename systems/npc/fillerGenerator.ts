@@ -845,9 +845,12 @@ export function generateFillerCustomer(
         }
     }
 
-    // Calculate negotiation parameters based on item value and tags
-    const baseDesired = Math.floor(item.realValue * 0.70);
-    const baseMinimum = Math.floor(item.realValue * 0.50);
+    // Customer prices based on perceived (surface) value, not hidden real value.
+    // This makes jump-trait items work as intended: bargains are underpriced by the customer,
+    // and mistakes are overpriced -- the player discovers the truth through appraisal.
+    const customerPerceivedValue = item.perceivedValue ?? item.realValue;
+    const baseDesired = Math.floor(customerPerceivedValue * 0.70);
+    const baseMinimum = Math.floor(customerPerceivedValue * 0.50);
     const basePatience = 3;
     const baseInsultThreshold = baseMinimum * 0.70;
 
@@ -886,7 +889,7 @@ export function generateFillerCustomer(
         desiredAmount: baseDesired,
         minimumAmount: Math.floor(floor),
         survivalMinimum: Math.floor(floor * 0.7),
-        maxRepayment: Math.floor(item.realValue * 1.5),
+        maxRepayment: Math.floor(customerPerceivedValue * 1.5),
         interactionType: 'PAWN',
         // Skewed distribution: take min of two rolls → biased toward shorter terms
         // Distribution: 1-3 days ~51%, 4-6 days ~33%, 7-10 days ~16%
