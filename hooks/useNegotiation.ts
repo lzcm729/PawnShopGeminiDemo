@@ -366,6 +366,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     ]);
 
     if (status !== 'ACCEPTED' && remaining <= 0) {
+        setIsWalkedAway(true);
         return {
             status: 'WALK_AWAY',
             message: customer.dialogue.rejected || "我不卖了！再见！",
