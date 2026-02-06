@@ -145,7 +145,7 @@ export const DISPOSITION_INFO: Record<Disposition, DispositionInfo> = {
  */
 export const FLOOR_HINT_THRESHOLDS = {
   VERY_LOW: 0.5,    // < 50%: "底线比表面价格低得多"
-  LOW: 0.7,         // 50-70%: "有一定的谈判空间"
-  MEDIUM: 0.9,      // 70-90%: "底线接近开口价"
+  LOW: 0.75,        // 50-75%: "有一定的谈判空间"
+  MEDIUM: 0.9,      // 75-90%: "底线接近开口价"
   // > 90%: "几乎没有让步余地"
 };
