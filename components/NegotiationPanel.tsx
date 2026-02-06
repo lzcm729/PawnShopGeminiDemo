@@ -525,12 +525,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       return lines.standard || rejectedText;
   };
 
-  useEffect(() => {
-      if (isWalkedAway && !rejectionState.show && currentCustomer) {
-          const text = getRejectionText(currentCustomer, mood === 'Angry');
-          setRejectionState({ show: true, text });
-      }
-  }, [isWalkedAway, mood, currentCustomer, rejectionState.show]);
+  // NOTE: isWalkedAway (patience zero) now handled directly in handleOffer
+  // Manual reject button uses handleManualReject which sets rejectionState directly
 
   if (!currentCustomer || !item) return null;
 
@@ -600,6 +596,14 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     };
 
     const patienceLoss = prevPatience - result.patienceRemaining;
+
+    // Patience exhausted: skip rejection overlay, go directly to departure
+    if (result.status === 'WALK_AWAY') {
+        setChatLog(prev => [...prev, playerLog]);
+        send({ type: 'CUSTOMER_REJECTED' });
+        rejectCustomer();
+        return;
+    }
 
     if (result.status === 'COUNTER') {
         // Push-pull zone: player log only; NPC response added by useEffect on lastPushPullResult
