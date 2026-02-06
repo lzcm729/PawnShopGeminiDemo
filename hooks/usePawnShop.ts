@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
 import { Item, ItemStatus, ExpiryEvent, ExpiryBehavior, EventChainState, StoryEvent } from '../types';
 import { isTransientChain, determineTransientExpiryBehavior } from '../systems/npc/fillerGenerator';
+import { calculateInterest } from '../systems/economy/interest';
 
 export const usePawnShop = () => {
     const { state, dispatch } = useGame();
@@ -19,7 +20,7 @@ export const usePawnShop = () => {
         // Logic: Full interest for termDays even if early; actual days if late.
         const effectiveDays = Math.max(daysPassed, termDays); 
         
-        const interest = Math.ceil(principal * interestRate * (effectiveDays / 7));
+        const interest = calculateInterest(principal, interestRate, effectiveDays);
         
         return {
             principal,

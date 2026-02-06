@@ -1,6 +1,7 @@
 
 import { EventChainState, StoryEvent, TriggerCondition, Dialogue, DialogueText, SimOperation, Customer, Item, ItemStatus, DynamicFlowOutcome, ItemCondition } from '../../types';
 import { GameState } from '../game/types';
+import { calculateInterest, calculateRedemptionTotal } from '../economy/interest';
 
 // Helper: Evaluate a single condition
 export const checkCondition = (condition: TriggerCondition, chain: EventChainState): boolean => {
@@ -369,10 +370,11 @@ export const instantiateStoryCustomer = (
     } else if (interactionType === 'REDEEM' && logicItem.pawnInfo) {
         const p = logicItem.pawnInfo.principal;
         const rate = logicItem.pawnInfo.interestRate;
-        const interest = Math.ceil(p * rate); 
-        const total = p + interest;
+        const termDays = logicItem.pawnInfo.termDays;
+        const total = calculateRedemptionTotal(p, rate, termDays);
+        const renewalInterest = calculateInterest(p, rate, 7);
         if (currentWallet >= total) intent = 'REDEEM';
-        else if (currentWallet >= interest) intent = 'EXTEND';
+        else if (currentWallet >= renewalInterest) intent = 'EXTEND';
         else intent = 'LEAVE';
     }
 

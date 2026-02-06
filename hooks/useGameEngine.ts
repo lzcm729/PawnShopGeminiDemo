@@ -16,6 +16,7 @@ import { createTransientChain, getContractTypeFromRate, generateFillerCustomer }
 import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
 import { PhaseEvent } from '../systems/core/phases/types';
 import { checkForPoliceInvestigation } from '../systems/police';
+import { calculateRedemptionTotal } from '../systems/economy/interest';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -840,8 +841,8 @@ export const useGameEngine = () => {
                      itemsToRedeem.forEach(id => {
                         const item = state.inventory.find(i => i.id === id);
                         if (item && item.pawnInfo) {
-                            const cost = item.pawnInfo.principal * (1 + item.pawnInfo.interestRate); 
-                            dispatch({ type: 'REDEEM_ITEM', payload: { itemId: id, paymentAmount: Math.floor(cost), name: item.name } });
+                            const cost = calculateRedemptionTotal(item.pawnInfo.principal, item.pawnInfo.interestRate, item.pawnInfo.termDays);
+                            dispatch({ type: 'REDEEM_ITEM', payload: { itemId: id, paymentAmount: cost, name: item.name } });
                         }
                      });
                  }

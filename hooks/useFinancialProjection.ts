@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { CalendarDayData, CalendarEvent } from '../systems/economy/types';
 import { ItemStatus } from '../systems/items/types';
+import { calculateInterest } from '../systems/economy/interest';
 
 export const useFinancialProjection = () => {
     const { state } = useGame();
@@ -91,7 +92,7 @@ export const useFinancialProjection = () => {
                 if (item.pawnInfo) {
                     const isSold = item.status === ItemStatus.SOLD;
                     const isReforged = item.wasReforged === true;
-                    const interest = Math.ceil(item.pawnInfo.principal * item.pawnInfo.interestRate);
+                    const interest = calculateInterest(item.pawnInfo.principal, item.pawnInfo.interestRate, item.pawnInfo.termDays);
                     const totalIncome = item.pawnInfo.principal + interest;
 
                     // For sold items or reforged items, we won't receive income

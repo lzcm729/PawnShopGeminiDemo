@@ -11,6 +11,7 @@ import { ItemDetailModal } from './ui/ItemDetailModal';
 import { playSfx } from '../systems/game/audio';
 import { cn } from '../lib/utils';
 import { getEffectiveInventoryCapacity, hasBlackMarketContact, hasPrecisionBench } from '../systems/upgrades';
+import { calculateInterest } from '../systems/economy/interest';
 
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -205,7 +206,7 @@ export const InventoryModal: React.FC = () => {
   // Stats
   const totalActiveValue = activeItems.reduce((acc, i) => acc + i.pawnAmount, 0);
   const potentialProfit = activeItems.reduce((acc, i) => {
-      const interest = i.pawnInfo ? Math.ceil(i.pawnInfo.principal * i.pawnInfo.interestRate) : 0;
+      const interest = i.pawnInfo ? calculateInterest(i.pawnInfo.principal, i.pawnInfo.interestRate, i.pawnInfo.termDays) : 0;
       return acc + interest;
   }, 0);
 
