@@ -742,11 +742,11 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
   // Determine submit button text based on player's move
   const getSubmitButtonText = useMemo(() => {
-    if (offerHistory.length === 0) return 'SUBMIT';
-    if (lastOfferAmount === null) return 'SUBMIT';
-    if (offerPrincipal === lastOfferAmount) return 'PERSIST';
-    if (offerPrincipal > lastOfferAmount) return 'YIELD';
-    return 'SUBMIT';
+    if (offerHistory.length === 0) return '报价';
+    if (lastOfferAmount === null) return '报价';
+    if (offerPrincipal === lastOfferAmount) return '坚持';
+    if (offerPrincipal > lastOfferAmount) return '让步';
+    return '报价';
   }, [offerHistory.length, lastOfferAmount, offerPrincipal]);
 
   const handleMatchAsk = () => {
@@ -1163,8 +1163,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                       disabled={!canInteract || !canAfford}
                       className={cn(
                         "flex-1 h-16 relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center gap-0.5",
-                        getSubmitButtonText === 'PERSIST' && "bg-amber-700 hover:bg-amber-600",
-                        getSubmitButtonText === 'YIELD' && "bg-emerald-700 hover:bg-emerald-600"
+                        getSubmitButtonText === '坚持' && "bg-amber-700 hover:bg-amber-600",
+                        getSubmitButtonText === '让步' && "bg-emerald-700 hover:bg-emerald-600"
                       )}
                     >
                        <div className="flex items-center gap-2">
