@@ -107,7 +107,11 @@ function generateDispositionText(disposition: Disposition, customer: Customer): 
 }
 
 /**
- * Generate floor hint based on minimum/desired price ratio
+ * Generate floor hint based on minimum/desired price ratio AND disposition
+ *
+ * Uses a 2D matrix (ratio tier x disposition) to produce a single coherent sentence
+ * that reflects both the theoretical negotiation space and the NPC's personality.
+ * This avoids misleading hints like "有谈判空间" for STUBBORN customers who barely budge.
  */
 function generateFloorHint(
   minimumAmount: number,
@@ -116,27 +120,48 @@ function generateFloorHint(
 ): string {
   const ratio = minimumAmount / desiredAmount;
 
-  // Base hint based on ratio
-  let baseHint: string;
+  // Determine ratio tier
+  type RatioTier = 'veryLow' | 'low' | 'medium' | 'high';
+  let tier: RatioTier;
   if (ratio < FLOOR_HINT_THRESHOLDS.VERY_LOW) {
-    baseHint = '他的底线比开口价低得多。';
+    tier = 'veryLow';   // < 50%: huge space
   } else if (ratio < FLOOR_HINT_THRESHOLDS.LOW) {
-    baseHint = '他有一定的谈判空间。';
+    tier = 'low';        // 50-75%: some space
   } else if (ratio < FLOOR_HINT_THRESHOLDS.MEDIUM) {
-    baseHint = '他的底线接近开口价。';
+    tier = 'medium';     // 75-90%: close
   } else {
-    baseHint = '他几乎没有让步余地。';
+    tier = 'high';       // > 90%: almost none
   }
 
-  // Add disposition-specific suffix
-  const suffixes: Record<Disposition, string> = {
-    desperate: '但看她的样子，每少给一分钱，都是在她的伤口上撒盐。',
-    firm: '试探太多会激怒他，要小心。',
-    bluffing: '别被他的从容迷惑，试探几次值得。',
-    sincere: '这个价格对他来说已经是底线了。',
+  // 2D hint matrix: [ratioTier][disposition] -> complete hint sentence
+  const hintMatrix: Record<RatioTier, Record<Disposition, string>> = {
+    veryLow: {
+      desperate: '她急着出手，压价空间很大。',
+      firm:      '空间不小，但他很固执，别指望他主动让步。',
+      bluffing:  '他故作从容，但你可以试探底线。',
+      sincere:   '他开价留了不少余地。',
+    },
+    low: {
+      desperate: '她有些余地，但已经很焦虑了。',
+      firm:      '有一定空间，但他寸步不让的态度很明显。',
+      bluffing:  '他在试探你的底线，别急着出手。',
+      sincere:   '他有一定的谈判空间。',
+    },
+    medium: {
+      desperate: '她的底线已经快到了，别逼太紧。',
+      firm:      '底线接近开口价，而且他不会退让。',
+      bluffing:  '他装出没有余地的样子，但未必。',
+      sincere:   '他的底线接近开口价。',
+    },
+    high: {
+      desperate: '她已经退无可退了。',
+      firm:      '几乎没有让步余地，硬磨只会浪费时间。',
+      bluffing:  '看起来没什么余地了。',
+      sincere:   '他几乎没有让步余地。',
+    },
   };
 
-  return `${baseHint}${suffixes[disposition]}`;
+  return hintMatrix[tier][disposition];
 }
 
 /**
