@@ -13,7 +13,8 @@ import {
   PATIENCE_COST_TAGS,
   FLOOR_HINT_THRESHOLDS,
 } from './types';
-import insightHintsToml from '@/config/insight_hints.toml';
+import { parseCSVRaw } from '../utils/csvReader';
+import insightHintsCSV from '@/assets/data/InsightHints.csv?raw';
 
 // ============================================================================
 // Main Generator Function
@@ -107,8 +108,22 @@ function generateDispositionText(disposition: Disposition, customer: Customer): 
   return options[index];
 }
 
-// Cast TOML import to typed hint matrix
-const insightHints = insightHintsToml as unknown as Record<string, Record<string, string>>;
+// Parse CSV into lookup table at module load time
+const insightHints: Record<string, Record<string, string>> = {};
+(() => {
+  const rows = parseCSVRaw(insightHintsCSV);
+  if (rows.length < 2) return;
+  const headers = rows[0];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const tier = row[0];
+    if (!tier) continue;
+    insightHints[tier] = {};
+    for (let j = 1; j < headers.length; j++) {
+      insightHints[tier][headers[j]] = row[j] || '';
+    }
+  }
+})();
 
 /**
  * Generate floor hint based on minimum/desired price ratio AND disposition
@@ -117,7 +132,7 @@ const insightHints = insightHintsToml as unknown as Record<string, Record<string
  * that reflects both the theoretical negotiation space and the NPC's personality.
  * This avoids misleading hints like "有谈判空间" for STUBBORN customers who barely budge.
  *
- * Hint text is loaded from config/insight_hints.toml (data-driven).
+ * Hint text is loaded from assets/data/InsightHints.csv (data-driven).
  */
 function generateFloorHint(
   minimumAmount: number,
@@ -139,13 +154,13 @@ function generateFloorHint(
     tier = 'high';       // > 90%: almost none
   }
 
-  // Read from TOML with fallback
+  // Read from CSV with fallback
   const tierHints = insightHints[tier];
   if (tierHints && typeof tierHints[disposition] === 'string') {
     return tierHints[disposition];
   }
 
-  // Fallback in case TOML is missing a key
+  // Fallback in case CSV is missing a key
   return '你对他的底线没有明确判断。';
 }
 
