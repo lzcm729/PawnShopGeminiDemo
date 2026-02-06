@@ -24,9 +24,9 @@ export const PUSH_PULL_CONFIG: Record<NpcPushPullStyle, PushPullConfig> = {
     },
     HARD: {
         baseConcessionChance: 0.15,   // 15% 基础概率
-        concessionRatio: 0.05,        // 让步5%剩余空间
+        concessionRatio: 0.10,        // 让步10%剩余空间
         maxConcessions: 1,
-        basePatienceLossChance: 0.85
+        basePatienceLossChance: 0.75
     },
     SLY: {
         baseConcessionChance: 0.30,   // 30% 基础概率
