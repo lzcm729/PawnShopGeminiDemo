@@ -13,6 +13,7 @@ import {
   PATIENCE_COST_TAGS,
   FLOOR_HINT_THRESHOLDS,
 } from './types';
+import insightHintsToml from '@/config/insight_hints.toml';
 
 // ============================================================================
 // Main Generator Function
@@ -106,12 +107,17 @@ function generateDispositionText(disposition: Disposition, customer: Customer): 
   return options[index];
 }
 
+// Cast TOML import to typed hint matrix
+const insightHints = insightHintsToml as unknown as Record<string, Record<string, string>>;
+
 /**
  * Generate floor hint based on minimum/desired price ratio AND disposition
  *
  * Uses a 2D matrix (ratio tier x disposition) to produce a single coherent sentence
  * that reflects both the theoretical negotiation space and the NPC's personality.
  * This avoids misleading hints like "有谈判空间" for STUBBORN customers who barely budge.
+ *
+ * Hint text is loaded from config/insight_hints.toml (data-driven).
  */
 function generateFloorHint(
   minimumAmount: number,
@@ -133,35 +139,14 @@ function generateFloorHint(
     tier = 'high';       // > 90%: almost none
   }
 
-  // 2D hint matrix: [ratioTier][disposition] -> complete hint sentence
-  const hintMatrix: Record<RatioTier, Record<Disposition, string>> = {
-    veryLow: {
-      desperate: '她急着出手，压价空间很大。',
-      firm:      '空间不小，但他很固执，别指望他主动让步。',
-      bluffing:  '他故作从容，但你可以试探底线。',
-      sincere:   '他开价留了不少余地。',
-    },
-    low: {
-      desperate: '她有些余地，但已经很焦虑了。',
-      firm:      '有一定空间，但他寸步不让的态度很明显。',
-      bluffing:  '他在试探你的底线，别急着出手。',
-      sincere:   '他有一定的谈判空间。',
-    },
-    medium: {
-      desperate: '她的底线已经快到了，别逼太紧。',
-      firm:      '底线接近开口价，而且他不会退让。',
-      bluffing:  '他装出没有余地的样子，但未必。',
-      sincere:   '他的底线接近开口价。',
-    },
-    high: {
-      desperate: '她已经退无可退了。',
-      firm:      '几乎没有让步余地，硬磨只会浪费时间。',
-      bluffing:  '看起来没什么余地了。',
-      sincere:   '他几乎没有让步余地。',
-    },
-  };
+  // Read from TOML with fallback
+  const tierHints = insightHints[tier];
+  if (tierHints && typeof tierHints[disposition] === 'string') {
+    return tierHints[disposition];
+  }
 
-  return hintMatrix[tier][disposition];
+  // Fallback in case TOML is missing a key
+  return '你对他的底线没有明确判断。';
 }
 
 /**
