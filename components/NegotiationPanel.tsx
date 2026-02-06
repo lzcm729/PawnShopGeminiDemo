@@ -8,7 +8,7 @@ import { useCustomerInsight } from '../hooks/useCustomerInsight';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../lib/utils';
-import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Activity, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff, Heart, TrendingDown, AlertTriangle, ShieldAlert, ShieldCheck, ShieldX, Lock } from 'lucide-react';
+import { Minus, Plus, Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Target, BrainCircuit, ScanEye, User, DollarSign, Flame, Percent, Fingerprint, ArrowUpFromLine, Calculator, Calendar, Search, Eye, EyeOff, Heart, TrendingDown, AlertTriangle, ShieldAlert, ShieldCheck, ShieldX, Lock } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
@@ -93,13 +93,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
 }) => {
     const isAngry = mood === 'Angry';
 
-    // Calculate patience percentage for the bar
     const maxPatience = 5;
-    const patiencePercent = (patience / maxPatience) * 100;
-
-    let patienceColor = "bg-emerald-500";
-    if (patiencePercent <= 40) patienceColor = "bg-amber-500";
-    if (patiencePercent <= 20) patienceColor = "bg-red-600";
 
     return (
         <div className="bg-gradient-to-b from-noir-300 to-noir-200 border-b border-noir-400 shrink-0 shadow-lg relative overflow-hidden">
@@ -253,17 +247,19 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                     </div>
                 </div>
 
-                {/* Right: Stress Bar */}
+                {/* Right: Stress Flames */}
                 <div className="shrink-0 flex flex-col items-center justify-center gap-1 px-3 min-w-[48px]">
-                    <div className="text-[10px] font-bold text-noir-txt-muted uppercase tracking-widest flex items-center gap-1">
-                        <Activity className="w-3.5 h-3.5" />
-                    </div>
-                    <span className="text-[9px] font-bold text-noir-txt-muted uppercase tracking-wider">STRESS</span>
-                    <div className="w-3.5 h-16 bg-noir-400 rounded-sm overflow-hidden border border-noir-500 relative">
-                        <div
-                            className={cn("absolute bottom-0 left-0 right-0 transition-all duration-500", patienceColor)}
-                            style={{ height: `${patiencePercent}%` }}
-                        />
+                    <div className="flex flex-col-reverse items-center gap-0.5">
+                        {Array.from({length: 5}).map((_, i) => (
+                            <Flame
+                                key={i}
+                                className={`w-3.5 h-3.5 transition-all duration-300 ${
+                                    i < patience
+                                        ? (isAngry ? 'text-red-600 fill-red-600 animate-pulse' : 'text-orange-500 fill-orange-500')
+                                        : 'text-stone-800'
+                                }`}
+                            />
+                        ))}
                     </div>
                     <span className="text-xs font-mono text-noir-txt-muted">{patience}/{maxPatience}</span>
                 </div>
