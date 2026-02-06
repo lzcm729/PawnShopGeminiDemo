@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useAppraisal } from '../hooks/useAppraisal';
-import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert, CheckCircle2, Radio, Sparkles } from 'lucide-react';
+import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert, CheckCircle2, Radio, Sparkles, Zap } from 'lucide-react';
 import { APPRAISAL_TEMPLATES } from '../systems/game/templates/appraisalFeedback';
 import type { AppraisalFeedback } from './NegotiationPanel';
 import { Button } from './ui/Button';
@@ -13,6 +13,9 @@ import { playSfx } from '../systems/game/audio';
 import { getDisplayName } from '../systems/items/tagUtils';
 import { checkItemAnomaly, getAnomalyDetectionThreshold } from '../systems/upgrades';
 import { getItemIcon } from '../systems/assets';
+
+// Appraisal feedback visual effect types
+type AppraisalEffectType = 'none' | 'range_narrowed' | 'breakthrough' | 'fake' | 'jackpot' | 'mishap';
 
 const getIcon = (category: string) => {
     switch(category) {
@@ -44,21 +47,40 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
   const { performAppraisal } = useAppraisal();
   
   const [appraising, setAppraising] = useState(false);
-  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'warning' | 'error', text: string } | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'warning' | 'error' | 'breakthrough', text: string } | null>(null);
   const [hoveredTrait, setHoveredTrait] = useState<ItemTrait | null>(null);
+  const [appraisalEffect, setAppraisalEffect] = useState<AppraisalEffectType>('none');
+  const [newlyRevealedTraitIds, setNewlyRevealedTraitIds] = useState<Set<string>>(new Set());
+  const effectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setFeedbackMsg(null);
+    setAppraisalEffect('none');
+    setNewlyRevealedTraitIds(new Set());
   }, [currentCustomer?.id]);
 
   useEffect(() => {
     if (feedbackMsg) {
+        const duration = feedbackMsg.type === 'breakthrough' ? 2500 : 3000;
         const timer = setTimeout(() => {
             setFeedbackMsg(null);
-        }, 3000);
+        }, duration);
         return () => clearTimeout(timer);
     }
   }, [feedbackMsg]);
+
+  // Clear appraisal effect after animation completes
+  useEffect(() => {
+    if (appraisalEffect !== 'none') {
+        const duration = appraisalEffect === 'fake' || appraisalEffect === 'jackpot' ? 1000 : 800;
+        effectTimeoutRef.current = setTimeout(() => {
+            setAppraisalEffect('none');
+        }, duration);
+        return () => {
+            if (effectTimeoutRef.current) clearTimeout(effectTimeoutRef.current);
+        };
+    }
+  }, [appraisalEffect]);
 
   if (!item || !currentCustomer) return <div className="h-full bg-[#1c1917] border-x border-[#44403c]"></div>;
 
@@ -178,6 +200,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
   const handleAppraiseClick = () => {
       setAppraising(true);
       setFeedbackMsg(null);
+      setAppraisalEffect('none');
 
       setTimeout(() => {
           const result = performAppraisal();
@@ -195,22 +218,42 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
               if (result.event && (result.event.type === 'MISHAP' || result.event.type === 'IMPATIENT')) {
                    if (result.event.type === 'MISHAP') {
                        setFeedbackMsg({ type: 'error', text: result.event.message || "鉴定失误" });
+                       setAppraisalEffect('mishap');
+                       playSfx('FAIL');
                        onAppraisalFeedback?.({ type: 'MISHAP', text: APPRAISAL_TEMPLATES.MISHAP });
                    } else {
                        setFeedbackMsg({ type: 'error', text: result.event.message || "客户不耐烦" });
+                       playSfx('WARNING');
                        onAppraisalFeedback?.({ type: 'IMPATIENT', text: APPRAISAL_TEMPLATES.IMPATIENT });
                    }
               }
 
+              // Track newly revealed traits for entrance animation
+              if (result.newTraitsFound.length > 0) {
+                  setNewlyRevealedTraitIds(new Set(result.newTraitsFound.map(t => t.id)));
+                  // Clear the "new" marker after animation completes
+                  setTimeout(() => setNewlyRevealedTraitIds(new Set()), 1200);
+              }
+
               // Send feedback for each discovered trait
               if (result.newTraitsFound.length > 0) {
-                  // Special feedback for value jump discoveries
+                  // Special feedback for value jump discoveries (highest tier)
                   if (result.valueJump === 'FAKE') {
                       setFeedbackMsg({ type: 'error', text: "价值崩塌！(VALUE CRASH)" });
+                      setAppraisalEffect('fake');
+                      playSfx('FAIL');
+                      // Delayed second sfx for dramatic impact
+                      setTimeout(() => playSfx('WARNING'), 300);
                   } else if (result.valueJump === 'JACKPOT') {
-                      setFeedbackMsg({ type: 'success', text: "价值发现！(JACKPOT)" });
+                      setFeedbackMsg({ type: 'breakthrough', text: "价值发现！(JACKPOT)" });
+                      setAppraisalEffect('jackpot');
+                      playSfx('SUCCESS');
+                      setTimeout(() => playSfx('CASH'), 400);
                   } else {
+                      // Regular trait discovery
                       setFeedbackMsg({ type: 'success', text: `发现了 ${result.newTraitsFound.length} 个新特征!` });
+                      setAppraisalEffect('range_narrowed');
+                      playSfx('CLICK');
                   }
                   for (const trait of result.newTraitsFound) {
                       // Use the player's inner monologue from the trait data
@@ -226,7 +269,17 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
                   }
               } else if (!result.event || result.event.type === 'NORMAL') {
                   // Range narrowed without trait discovery
-                  setFeedbackMsg({ type: 'success', text: "估值范围已更新 (Range Narrowed)" });
+                  if (result.isBreakthrough) {
+                      // Breakthrough: much stronger range narrowing
+                      setFeedbackMsg({ type: 'breakthrough', text: "灵光一闪！估值大幅收窄" });
+                      setAppraisalEffect('breakthrough');
+                      playSfx('SUCCESS');
+                  } else {
+                      // Normal range narrowing
+                      setFeedbackMsg({ type: 'success', text: "估值范围已更新 (Range Narrowed)" });
+                      setAppraisalEffect('range_narrowed');
+                      playSfx('CLICK');
+                  }
                   onAppraisalFeedback?.({ type: 'RANGE_NARROWED', text: APPRAISAL_TEMPLATES.RANGE_NARROWED });
               }
           }
@@ -357,7 +410,24 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
   const hasAnomaly = checkItemAnomaly(item.perceivedValue, item.realValue, state.shopUpgrades);
 
   return (
-      <div className="h-full bg-[#1c1917] border-x border-[#44403c] flex flex-col overflow-hidden relative">
+      <div className={`h-full bg-[#1c1917] border-x border-[#44403c] flex flex-col overflow-hidden relative ${
+          appraisalEffect === 'mishap' ? 'animate-shake' : ''
+      }`}>
+
+        {/* Value Jump Flash Overlay (FAKE/JACKPOT) */}
+        {appraisalEffect === 'fake' && (
+            <div className="absolute inset-0 bg-red-600/30 z-50 pointer-events-none animate-value-jump-flash" />
+        )}
+        {appraisalEffect === 'jackpot' && (
+            <div className="absolute inset-0 bg-amber-500/30 z-50 pointer-events-none animate-value-jump-flash" />
+        )}
+        {/* Breakthrough subtle glow overlay */}
+        {appraisalEffect === 'breakthrough' && (
+            <div className="absolute inset-0 z-50 pointer-events-none" style={{
+                background: 'radial-gradient(ellipse at center, rgba(217,119,6,0.15) 0%, transparent 70%)',
+                animation: 'valueJumpFlash 1.2s ease-out forwards'
+            }} />
+        )}
 
         <div className="bg-[#0c0a09] relative flex flex-col border-b border-[#292524] min-h-[40%]">
 
@@ -380,12 +450,16 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
                         AP: {state.stats.actionPoints} / {state.stats.maxActionPoints}
                      </div>
                      {feedbackMsg && (
-                         <div className={`text-xs px-2 py-1 rounded animate-in fade-in slide-in-from-top-1 absolute top-12 right-2 z-50 ${
-                             feedbackMsg.type === 'error' ? 'text-red-500 bg-red-950/80 border border-red-800' :
+                         <div className={`text-xs px-2 py-1 rounded absolute top-12 right-2 z-50 ${
+                             feedbackMsg.type === 'error' ? 'text-red-500 bg-red-950/80 border border-red-800 animate-shake' :
                              feedbackMsg.type === 'warning' ? 'text-amber-500 bg-amber-950/80 border border-amber-800' :
+                             feedbackMsg.type === 'breakthrough' ? 'text-amber-300 bg-amber-950/90 border-2 border-amber-500 shadow-[0_0_15px_rgba(217,119,6,0.4)] font-bold animate-breakthrough-glow' :
                              'text-green-500 bg-green-950/80 border border-green-800'
-                         }`}>
-                             {feedbackMsg.text}
+                         }`} style={{ animation: feedbackMsg.type === 'breakthrough' ? 'breakthroughGlow 2s ease-out forwards' : undefined }}>
+                             <span className="flex items-center gap-1">
+                                 {feedbackMsg.type === 'breakthrough' && <Zap className="w-3 h-3 text-amber-400" />}
+                                 {feedbackMsg.text}
+                             </span>
                          </div>
                      )}
                  </div>
@@ -429,8 +503,15 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
                         ></div>
 
                         <div
-                            className={`absolute top-0 bottom-0 border-x-2 transition-all duration-700 ease-out z-10 ${rangeBarClass}`}
-                            style={barStyle}
+                            className={`absolute top-0 bottom-0 border-x-2 transition-all duration-700 ease-out z-10 ${rangeBarClass} ${
+                                appraisalEffect === 'range_narrowed' ? 'animate-range-glow' :
+                                appraisalEffect === 'breakthrough' ? 'animate-range-glow' :
+                                ''
+                            }`}
+                            style={{
+                                ...barStyle,
+                                ...(appraisalEffect === 'breakthrough' ? { boxShadow: '0 0 20px 4px rgba(217, 119, 6, 0.5)' } : {})
+                            }}
                         >
                             <div className={`transition-opacity duration-300 ${isAppraised ? 'opacity-100' : 'opacity-0'}`}>
                                 <div className={`absolute -top-5 left-0 -translate-x-1/2 text-[10px] font-bold transition-all duration-700 bg-black/50 px-1 rounded ${rangeTextClass}`}>
@@ -584,7 +665,8 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
                                 onMouseLeave={() => setHoveredTrait(null)}
                                 disabled={isUsed || !canInteract}
                                 className={`
-                                    w-full text-left p-2 rounded border-l-4 shadow-sm transition-all duration-500 group relative overflow-visible animate-in zoom-in-95
+                                    w-full text-left p-2 rounded border-l-4 shadow-sm transition-all duration-500 group relative overflow-visible
+                                    ${newlyRevealedTraitIds.has(trait.id) ? 'animate-trait-reveal' : 'animate-in zoom-in-95'}
                                     ${borderColor} ${bgColor}
                                     ${isUsed ? 'opacity-60 grayscale-[0.5] cursor-not-allowed' : 'hover:translate-x-1 hover:shadow-md cursor-pointer'}
                                 `}
