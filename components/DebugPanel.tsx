@@ -116,6 +116,16 @@ export const DebugPanel: React.FC = () => {
                     +精魄
                 </button>
                 <button
+                    onClick={() => dispatch({ type: 'DEBUG_TOGGLE_FLOOR' })}
+                    className={`col-span-3 px-2 py-1.5 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors border ${
+                        state.debugRevealFloor
+                            ? 'bg-emerald-900/30 border-emerald-600/60 text-emerald-400'
+                            : 'bg-emerald-900/20 border-emerald-700/50 hover:bg-emerald-900/40 text-emerald-400'
+                    }`}
+                >
+                    {state.debugRevealFloor ? '隐藏底价' : '显示底价'}
+                </button>
+                <button
                     onClick={handleClearSave}
                     className="col-span-3 bg-red-900/20 border border-red-700/50 hover:bg-red-900/40 text-red-400 px-2 py-1.5 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
                 >

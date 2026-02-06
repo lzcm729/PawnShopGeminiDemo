@@ -109,4 +109,7 @@ export interface GameState {
 
   // === POLICE INVESTIGATION (警方调查) ===
   currentPoliceInvestigation: PoliceInvestigationEvent | null;  // 当前警方调查事件
+
+  // === DEBUG FLAGS ===
+  debugRevealFloor: boolean;  // 调试：显示客户底价
 }

@@ -1120,24 +1120,29 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                         <span className="font-mono font-bold text-sm group-hover:text-blue-400 transition-colors">${estimatedValue}</span>
                     </button>
 
-                    <button
-                        onClick={revealedMinimum ? handleQuickFloor : undefined}
-                        disabled={!revealedMinimum || !canInteract}
-                        className={cn(
-                            "flex-1 border transition-all p-2 rounded flex flex-col items-center justify-center disabled:cursor-not-allowed group",
-                            revealedMinimum
-                                ? "bg-red-950/20 border-red-900/50 hover:bg-red-900/40 hover:border-red-500 text-red-500 disabled:opacity-50 animate-in fade-in"
-                                : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-60"
-                        )}
-                    >
-                        <div className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider mb-0.5">
-                            {!revealedMinimum && <Lock className="w-3 h-3" />}
-                            <span>Floor</span>
-                        </div>
-                        <span className="font-mono font-bold text-sm">
-                            {revealedMinimum ? `$${currentCustomer.minimumAmount}` : '???'}
-                        </span>
-                    </button>
+                    {(() => {
+                        const floorRevealed = revealedMinimum || state.debugRevealFloor;
+                        return (
+                            <button
+                                onClick={floorRevealed ? handleQuickFloor : undefined}
+                                disabled={!floorRevealed || !canInteract}
+                                className={cn(
+                                    "flex-1 border transition-all p-2 rounded flex flex-col items-center justify-center disabled:cursor-not-allowed group",
+                                    floorRevealed
+                                        ? "bg-red-950/20 border-red-900/50 hover:bg-red-900/40 hover:border-red-500 text-red-500 disabled:opacity-50 animate-in fade-in"
+                                        : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-60"
+                                )}
+                            >
+                                <div className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                                    {!floorRevealed && <Lock className="w-3 h-3" />}
+                                    <span>Floor</span>
+                                </div>
+                                <span className="font-mono font-bold text-sm">
+                                    {floorRevealed ? `$${currentCustomer.minimumAmount}` : '???'}
+                                </span>
+                            </button>
+                        );
+                    })()}
                  </div>
 
                  {/* Main Action */}

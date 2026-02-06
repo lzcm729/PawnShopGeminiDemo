@@ -113,7 +113,9 @@ const initialState: GameState = {
     // === CUSTOMER INSIGHT ===
     currentCustomerInsight: null,
     // === POLICE INVESTIGATION ===
-    currentPoliceInvestigation: null
+    currentPoliceInvestigation: null,
+    // === DEBUG FLAGS ===
+    debugRevealFloor: false
 };
 
 // === Context ===

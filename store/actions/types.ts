@@ -175,4 +175,7 @@ export type Action =
     | { type: 'STOLEN_ITEM_DECISION'; payload: { accept: boolean } }
     | { type: 'TRIGGER_POLICE_INVESTIGATION'; payload: { itemId: string; itemName: string } }
     | { type: 'POLICE_INVESTIGATION_DECISION'; payload: { surrender: boolean; itemId: string } }
-    | { type: 'CLEAR_POLICE_INVESTIGATION' };
+    | { type: 'CLEAR_POLICE_INVESTIGATION' }
+
+    // Debug flags
+    | { type: 'DEBUG_TOGGLE_FLOOR' };

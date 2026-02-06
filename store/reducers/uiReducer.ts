@@ -80,6 +80,9 @@ export function uiReducer(state: GameState, action: Action): GameState {
         case 'SET_PENDING_SELECTED_ITEM':
             return { ...state, pendingSelectedItemId: action.payload };
 
+        case 'DEBUG_TOGGLE_FLOOR':
+            return { ...state, debugRevealFloor: !state.debugRevealFloor };
+
         default:
             return state;
     }
