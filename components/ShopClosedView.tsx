@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
-import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull } from 'lucide-react';
+import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull, XCircle } from 'lucide-react';
 import { SatisfactionLevel } from '../systems/narrative/types';
 import { ReputationType } from '../types';
 import { TypewriterText } from './ui/TextEffects';
@@ -225,6 +225,25 @@ export const DepartureView: React.FC = () => {
                           <PackageCheck className="w-4 h-4 text-green-500" />
                       </div>
                   </div>
+              </div>
+          )}
+
+          {/* No Deal Feedback (if no deal was made) */}
+          {!lastDealSummary && (
+              <div className="w-full bg-stone-900/60 border border-red-900/50 rounded p-4 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="flex items-center justify-center gap-3">
+                      <XCircle className="w-5 h-5 text-red-800" />
+                      <span className="text-red-700 font-mono font-bold tracking-wider text-sm">
+                          交易未达成
+                      </span>
+                  </div>
+                  <p className="text-stone-500 text-xs text-center mt-2">
+                      {satisfaction === 'RESENTFUL'
+                          ? '顾客不满意你的报价，愤然离去。'
+                          : satisfaction === 'DESPERATE'
+                          ? '你拒绝了这笔交易。'
+                          : '双方未能达成一致。'}
+                  </p>
               </div>
           )}
 
