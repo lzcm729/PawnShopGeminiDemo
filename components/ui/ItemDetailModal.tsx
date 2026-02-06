@@ -26,6 +26,7 @@ import {
 import { cn } from '../../lib/utils';
 import { getDisplayName } from '../../systems/items/tagUtils';
 import { getItemIcon } from '../../systems/assets';
+import { RateValue } from './RateDisplayContext';
 
 interface ItemDetailModalProps {
     item: Item;
@@ -257,7 +258,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                             </div>
                             <div>
                                 <span className="text-noir-txt-muted block">Interest Rate</span>
-                                <span className="text-noir-txt-primary">{(item.pawnInfo.interestRate * 100).toFixed(0)}%</span>
+                                <RateValue weeklyRate={item.pawnInfo.interestRate} className="text-noir-txt-primary" />
                             </div>
                             <div>
                                 <span className="text-noir-txt-muted block">Extensions</span>

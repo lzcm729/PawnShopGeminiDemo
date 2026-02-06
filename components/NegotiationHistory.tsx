@@ -3,6 +3,7 @@ import React from 'react';
 import { OfferRecord, NegotiationStatus } from '../hooks/useNegotiation';
 import { Clock, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useRateDisplay } from './ui/RateDisplayContext';
 
 interface NegotiationHistoryProps {
     history: OfferRecord[];
@@ -31,6 +32,8 @@ const getStatusText = (status: NegotiationStatus) => {
 };
 
 export const NegotiationHistory: React.FC<NegotiationHistoryProps> = ({ history }) => {
+    const { formatRate, unitLabel } = useRateDisplay();
+
     if (history.length === 0) return null;
 
     return (
@@ -45,7 +48,7 @@ export const NegotiationHistory: React.FC<NegotiationHistoryProps> = ({ history 
                         <div className="flex items-center gap-2 text-noir-txt-secondary">
                             <span>${record.amount}</span>
                             <span className="text-[10px] bg-noir-300 px-1 rounded text-noir-txt-muted">
-                                {record.rate * 100}%
+                                {formatRate(record.rate)}{unitLabel}
                             </span>
                         </div>
                         

@@ -6,6 +6,7 @@ import { Customer, RenewalProposal } from '../systems/npc/types';
 import { Button } from './ui/Button';
 import { CalendarClock, ArrowRight, ShieldAlert, XCircle, CheckCircle2, Package, FileText, RefreshCw } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
+import { RateValue } from './ui/RateDisplayContext';
 
 interface RenewalRequestPanelProps {
     customer: Customer;
@@ -59,13 +60,13 @@ export const RenewalTicketPanel: React.FC<{ proposal: RenewalProposal }> = ({ pr
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-stone-500">Current Interest</span>
-                            <span className="font-bold">{(proposal.currentInterestRate * 100).toFixed(0)}%</span>
+                            <RateValue weeklyRate={proposal.currentInterestRate} className="font-bold" />
                         </div>
 
                         <div className="mt-2 pt-2 flex justify-between items-center border-t border-stone-400">
                             <span className="text-sm font-black text-stone-900 uppercase">Bonus Offer</span>
                             <span className="text-2xl font-black text-amber-600 bg-black px-2 py-0.5 rounded transform rotate-[-1deg] shadow-lg">
-                                +{(proposal.proposedInterestBonus * 100).toFixed(0)}%
+                                +<RateValue weeklyRate={proposal.proposedInterestBonus} showUnit={false} />
                             </span>
                         </div>
                     </div>
@@ -137,11 +138,11 @@ export const RenewalRequestPanel: React.FC<RenewalRequestPanelProps> = ({ custom
                         <div className="border-t border-stone-700 my-2"></div>
                         <div className="flex justify-between items-center text-xs font-mono">
                             <span className="text-stone-500 uppercase">Current Interest</span>
-                            <span>{(proposal.currentInterestRate * 100).toFixed(0)}%</span>
+                            <RateValue weeklyRate={proposal.currentInterestRate} />
                         </div>
                         <div className="flex justify-between items-center text-xs font-mono">
                             <span className="text-stone-500 uppercase">Penalty Interest Offer</span>
-                            <span className="text-amber-500 font-bold">+{(proposal.proposedInterestBonus * 100).toFixed(0)}%</span>
+                            <span className="text-amber-500 font-bold">+<RateValue weeklyRate={proposal.proposedInterestBonus} showUnit={false} /></span>
                         </div>
                     </div>
                     

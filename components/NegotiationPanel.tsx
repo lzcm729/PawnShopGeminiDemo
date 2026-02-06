@@ -19,6 +19,7 @@ import { RollingNumber } from './ui/RollingNumber';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 import { DISPOSITION_INFO } from '../systems/customerInsight';
 import { PushPullResult } from '../systems/negotiation/pushPull';
+import { useRateDisplay } from './ui/RateDisplayContext';
 
 // ... existing interfaces ...
 interface NegotiationStateProps {
@@ -272,6 +273,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const { state } = useGame();
   const { evaluateTransaction, commitTransaction, rejectCustomer, isCurrentItemStolen, handleStolenItemDecision } = useGameEngine();
   const { send } = useGameMachine();
+  const { formatRate, unitLabel } = useRateDisplay();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
 
@@ -591,7 +593,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     const playerLog: LogEntry = {
         id: `offer-${Date.now()}`,
         sender: 'player',
-        text: `OFFER: $${offerPrincipal} @ ${selectedRate * 100}%`,
+        text: `OFFER: $${offerPrincipal} @ ${formatRate(selectedRate)}${unitLabel}`,
         sentiment: 'neutral'
     };
 
@@ -779,7 +781,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                 : "bg-noir-300 border-noir-400 text-noir-txt-muted hover:bg-noir-200 hover:text-noir-txt-primary"
         )}
       >
-          <span className="text-xs font-black font-mono leading-none z-10">{rate * 100}%</span>
+          <span className="text-xs font-black font-mono leading-none z-10">{formatRate(rate)}{unitLabel}</span>
           <span className="text-[8px] uppercase font-bold tracking-wider opacity-80 z-10">{label}</span>
       </button>
   );

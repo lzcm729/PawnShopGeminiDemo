@@ -34,6 +34,7 @@ import { Moon } from 'lucide-react';
 import { DayToNightTransition } from './components/transitions/DayToNightTransition';
 import { NightToDayTransition } from './components/transitions/NightToDayTransition';
 import { ReputationType } from './types';
+import { RateDisplayProvider } from './components/ui/RateDisplayContext';
 
 const GameContent: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -418,9 +419,11 @@ const GameContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <GameProvider>
-      <GameContent />
-    </GameProvider>
+    <RateDisplayProvider>
+      <GameProvider>
+        <GameContent />
+      </GameProvider>
+    </RateDisplayProvider>
   );
 };
 
