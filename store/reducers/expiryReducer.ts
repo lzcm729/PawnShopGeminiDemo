@@ -54,7 +54,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 }
                 case 'redeem_refuse': {
                     if (event && item.pawnInfo) {
-                        const compensation = Math.ceil(item.pawnInfo.valuation * 2);
+                        const compensation = Math.ceil(item.pawnInfo.principal * 2);
                         cashDelta = -compensation;
                         repDelta = {
                             [ReputationType.HUMANITY]: -15,
