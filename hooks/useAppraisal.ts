@@ -13,6 +13,7 @@ interface AppraisalResult {
     newRange: [number, number];
     event?: AppraisalEvent;
     valueJump?: 'FAKE' | 'JACKPOT';  // Indicates value changed dramatically
+    isBreakthrough?: boolean;  // True when "灵光一闪" triggers (~15% chance, ×0.60 uncertainty)
 }
 
 export const useAppraisal = () => {
@@ -97,11 +98,15 @@ export const useAppraisal = () => {
         const updatedHidden = hiddenTraits.filter(t => !discoveredIds.has(t.id));
 
         let newUncertainty = item.uncertainty;
-        
+        let isBreakthrough = false;
+
         if (event.type === 'MISHAP') {
             newUncertainty = Math.min(0.5, newUncertainty + uncertaintyBoost);
         } else {
-             newUncertainty = Math.max(0.05, newUncertainty * 0.85);
+            // ~15% chance of "灵光一闪" (breakthrough): ×0.60 instead of ×0.85
+            isBreakthrough = Math.random() < 0.15;
+            const shrinkFactor = isBreakthrough ? 0.60 : 0.85;
+            newUncertainty = Math.max(0.05, newUncertainty * shrinkFactor);
         }
 
         const [currentMin, currentMax] = item.currentRange;
@@ -118,8 +123,8 @@ export const useAppraisal = () => {
             // Keep current range when normal traits are discovered
             newRange = [currentMin, currentMax];
         } else {
-            // Narrow or expand range
-            const CONVERGENCE_SPEED = 0.15;
+            // Narrow or expand range (breakthrough doubles convergence speed)
+            const CONVERGENCE_SPEED = isBreakthrough ? 0.30 : 0.15;
             const anchor = item.perceivedValue ?? item.realValue;
 
             let calcMin = currentMin + (anchor - currentMin) * CONVERGENCE_SPEED;
@@ -212,7 +217,8 @@ export const useAppraisal = () => {
             bonusTraitIds: bonusTraits.map(t => t.id),
             newRange: finalRange,
             event,
-            valueJump: discoveredFakeOrJackpot?.type as 'FAKE' | 'JACKPOT' | undefined
+            valueJump: discoveredFakeOrJackpot?.type as 'FAKE' | 'JACKPOT' | undefined,
+            isBreakthrough
         };
 
     }, [customer, state.stats.actionPoints, dispatch]);
