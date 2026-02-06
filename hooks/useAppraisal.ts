@@ -13,7 +13,7 @@ interface AppraisalResult {
     newRange: [number, number];
     event?: AppraisalEvent;
     valueJump?: 'FAKE' | 'JACKPOT';  // Indicates value changed dramatically
-    isBreakthrough?: boolean;  // True when "灵光一闪" triggers (~15% chance, ×0.60 uncertainty)
+    isBreakthrough?: boolean;  // True when "灵光一闪" triggers (~10% chance, ×0.60 uncertainty)
 }
 
 export const useAppraisal = () => {
@@ -103,8 +103,8 @@ export const useAppraisal = () => {
         if (event.type === 'MISHAP') {
             newUncertainty = Math.min(0.5, newUncertainty + uncertaintyBoost);
         } else {
-            // ~15% chance of "灵光一闪" (breakthrough): ×0.60 instead of ×0.85
-            isBreakthrough = Math.random() < 0.15;
+            // ~10% chance of "灵光一闪" (breakthrough): ×0.60 instead of ×0.85
+            isBreakthrough = Math.random() < 0.10;
             const shrinkFactor = isBreakthrough ? 0.60 : 0.85;
             newUncertainty = Math.max(0.05, newUncertainty * shrinkFactor);
         }
