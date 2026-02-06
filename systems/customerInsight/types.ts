@@ -102,8 +102,9 @@ export const BEHAVIOR_TO_DISPOSITION: Record<BehaviorTag, Disposition> = {
 
 /**
  * BehaviorTags that cause patience loss when insight is used
+ * DISABLED: All insight usage now has 0 patience cost
  */
-export const PATIENCE_COST_TAGS: BehaviorTag[] = ['STUBBORN', 'SUSPICIOUS', 'SAVVY'];
+export const PATIENCE_COST_TAGS: BehaviorTag[] = [];
 
 /**
  * Display information for each disposition

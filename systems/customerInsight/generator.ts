@@ -214,14 +214,9 @@ function generateMoralContextFromReason(reason: string, customer: Customer): str
 
 /**
  * Calculate patience cost based on behavior tags
- * STUBBORN, SUSPICIOUS, SAVVY customers lose 1 patience when insight is used
+ * DISABLED: All insight usage now has 0 patience cost regardless of customer type
  */
 function calculatePatienceCost(behaviorTags: BehaviorTag[]): number {
-  for (const tag of behaviorTags) {
-    if (PATIENCE_COST_TAGS.includes(tag)) {
-      return 1;
-    }
-  }
   return 0;
 }
 
