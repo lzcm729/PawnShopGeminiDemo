@@ -204,7 +204,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
             const { penalty, name } = action.payload;
             playSfx('FAIL');
             const newRep = { ...state.reputation };
-            newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 50);
+            newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 10);
             const record: TransactionRecord = {
                 id: crypto.randomUUID(),
                 description: `违约赔偿: ${name}`,
@@ -231,8 +231,9 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 return item;
             });
             const newRep = { ...state.reputation };
-            newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 50);
-            newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 20);
+            newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 15);
+            newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 10);
+            newRep[ReputationType.INNOCENCE] = Math.max(0, newRep[ReputationType.INNOCENCE] - 5);
             const record: TransactionRecord = {
                 id: crypto.randomUUID(),
                 description: `强制买断: ${name}`,

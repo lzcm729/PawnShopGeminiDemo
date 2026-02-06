@@ -57,9 +57,9 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                         const compensation = Math.ceil(item.pawnInfo.valuation * 2);
                         cashDelta = -compensation;
                         repDelta = {
-                            [ReputationType.HUMANITY]: -30,
-                            [ReputationType.CREDIBILITY]: -20,
-                            [ReputationType.INNOCENCE]: -10  // Breaking contract reduces legal standing
+                            [ReputationType.HUMANITY]: -15,
+                            [ReputationType.CREDIBILITY]: -10,
+                            [ReputationType.INNOCENCE]: -5  // Breaking contract reduces legal standing
                         };
                         log = `拒绝赎回: ${item.name}，支付违约赔偿金 $${compensation}`;
                         satisfaction = 'DESPERATE';

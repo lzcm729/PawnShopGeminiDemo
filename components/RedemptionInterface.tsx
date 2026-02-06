@@ -401,7 +401,7 @@ export const SettlementInterface: React.FC = () => {
                 success: true,
                 message: "支付赔偿金。",
                 cashDelta: -totalPenalty,
-                reputationDelta: { Credibility: -20 },
+                reputationDelta: { Humanity: -15, Credibility: -10, Innocence: -5 },
                 dealQuality: 'fair' as const
             };
             commitTransaction(res);
