@@ -29,7 +29,7 @@ import insightHintsCSV from '@/assets/data/InsightHints.csv?raw';
 export function generateCustomerInsight(customer: Customer): CustomerInsightResult {
   const disposition = determineDisposition(customer.behaviorTags);
   const dispositionText = generateDispositionText(disposition, customer);
-  const floorHint = generateFloorHint(customer.minimumAmount, customer.desiredAmount, disposition);
+  const floorHint = generateFloorHint(customer.minimumAmount, customer.desiredAmount, disposition, customer.id);
   const moralContext = generateMoralContext(customer);
   const patienceCost = calculatePatienceCost(customer.behaviorTags);
 
@@ -133,11 +133,13 @@ const insightHints: Record<string, Record<string, string>> = {};
  * This avoids misleading hints like "有谈判空间" for STUBBORN customers who barely budge.
  *
  * Hint text is loaded from assets/data/InsightHints.csv (data-driven).
+ * Supports multiple options separated by `|` in CSV cells, selecting one based on customer ID hash.
  */
 function generateFloorHint(
   minimumAmount: number,
   desiredAmount: number,
-  disposition: Disposition
+  disposition: Disposition,
+  customerId: string
 ): string {
   const ratio = minimumAmount / desiredAmount;
 
@@ -157,7 +159,13 @@ function generateFloorHint(
   // Read from CSV with fallback
   const tierHints = insightHints[tier];
   if (tierHints && typeof tierHints[disposition] === 'string') {
-    return tierHints[disposition];
+    const rawHint = tierHints[disposition];
+    // Support multiple options separated by `|`
+    const options = rawHint.split('|').map(s => s.trim()).filter(s => s.length > 0);
+    if (options.length > 0) {
+      const index = hashString(customerId) % options.length;
+      return options[index];
+    }
   }
 
   // Fallback in case CSV is missing a key
@@ -266,6 +274,7 @@ function hashString(str: string): number {
 // Exports for Testing
 // ============================================================================
 
+// Export internal functions for testing (with customerId parameter for generateFloorHint)
 export {
   determineDisposition,
   generateDispositionText,
