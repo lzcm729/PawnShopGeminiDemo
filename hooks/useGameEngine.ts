@@ -648,16 +648,25 @@ export const useGameEngine = () => {
 
     const repDelta: any = { [ReputationType.HUMANITY]: 0, [ReputationType.CREDIBILITY]: 0, [ReputationType.INNOCENCE]: 0 };
 
-    // Contract tier effects (from design doc - 行为影响矩阵):
-    // 0% Charity: +1 Humanity
-    // 5%-10% Standard: +1 Credibility
-    // >=20% Shark: -1 Humanity
+    // Contract tier × generosity matrix (design doc v2.2 - 声誉系统):
+    // Generous = offer exceeds customer's ask price (desiredAmount)
+    // Only ≤5% rates get humanity bonus for generous offers
+    const isGenerous = offer > desiredAmount;
     if (rate === 0) {
-        repDelta[ReputationType.HUMANITY] += 1;  // 慈善档位
-    } else if (rate > 0 && rate < 0.20) {
-        repDelta[ReputationType.CREDIBILITY] += 1;  // 标准档位 (5% 或 10%)
+        // 0% Charity: Humanity +1 (normal) or +2 (generous)
+        repDelta[ReputationType.HUMANITY] += isGenerous ? 2 : 1;
+    } else if (rate > 0 && rate < 0.10) {
+        // 5% Aid: Credibility +1 always; Humanity +1 if generous
+        repDelta[ReputationType.CREDIBILITY] += 1;
+        if (isGenerous) {
+            repDelta[ReputationType.HUMANITY] += 1;
+        }
+    } else if (rate >= 0.10 && rate < 0.20) {
+        // 10% Standard: Credibility +1 (no humanity bonus even if generous)
+        repDelta[ReputationType.CREDIBILITY] += 1;
     } else if (rate >= 0.20) {
-        repDelta[ReputationType.HUMANITY] -= 1;  // 高利贷档位
+        // ≥20% Shark: Humanity -1 (generous doesn't help)
+        repDelta[ReputationType.HUMANITY] -= 1;
     }
 
     const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
