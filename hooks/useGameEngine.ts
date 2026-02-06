@@ -10,7 +10,7 @@ import { usePawnShop } from './usePawnShop';
 import { GAME_CONFIG } from '../systems/game/config';
 import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
 import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
-import { Dialogue } from '../systems/narrative/types';
+import { Dialogue, SatisfactionLevel } from '../systems/narrative/types';
 import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
 import { createTransientChain, getContractTypeFromRate, generateFillerCustomer } from '../systems/npc/fillerGenerator';
 import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
@@ -943,11 +943,11 @@ export const useGameEngine = () => {
     checkMilestones(projectedRep);
   };
 
-  const rejectCustomer = () => {
+  const rejectCustomer = (satisfaction: SatisfactionLevel = 'DESPERATE') => {
      const currentCust = state.currentCustomer;
-     
-     // Set Satisfaction to DESPERATE
-     dispatch({ type: 'SET_SATISFACTION', payload: 'DESPERATE' });
+
+     // Set Satisfaction based on parameter (default DESPERATE for manual reject)
+     dispatch({ type: 'SET_SATISFACTION', payload: satisfaction });
 
      if (currentCust?.chainId && currentCust?.eventId) {
          const chainEvent = ALL_STORY_EVENTS.find(e => e.id === currentCust.eventId);

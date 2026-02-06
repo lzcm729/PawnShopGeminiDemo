@@ -601,7 +601,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     if (result.status === 'WALK_AWAY') {
         setChatLog(prev => [...prev, playerLog]);
         send({ type: 'CUSTOMER_REJECTED' });
-        rejectCustomer();
+        rejectCustomer('RESENTFUL');  // 耐心耗尽 → 愤怒离开
         return;
     }
 
