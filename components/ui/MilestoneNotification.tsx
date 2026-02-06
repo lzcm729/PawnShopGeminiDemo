@@ -43,13 +43,18 @@ export const MilestoneNotification: React.FC<MilestoneNotificationProps> = ({ ac
             setCurrentId(queue[0]);
             setQueue(prev => prev.slice(1));
             playSfx('SUCCESS');
-            
+        }
+    }, [queue, currentId]);
+
+    // Separate auto-dismiss timer so it doesn't get cancelled by the queue effect
+    useEffect(() => {
+        if (currentId) {
             const timer = setTimeout(() => {
                 setCurrentId(null);
             }, 4000);
             return () => clearTimeout(timer);
         }
-    }, [queue, currentId]);
+    }, [currentId]);
 
     if (!currentId) return null;
 
