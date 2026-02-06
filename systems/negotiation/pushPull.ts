@@ -222,7 +222,12 @@ export const executePushPull = (
     const conceded = roll < chance;
 
     if (conceded) {
-        const newAskPrice = calculateConcessionAmount(style, currentAsk, minimumAmount);
+        let newAskPrice = calculateConcessionAmount(style, currentAsk, minimumAmount);
+
+        // Never concede below the player's current offer — it's illogical
+        // for the customer to ask for less than what's already on the table
+        newAskPrice = Math.max(newAskPrice, currentOffer);
+
         const concessionAmount = currentAsk - newAskPrice;
 
         return {
