@@ -261,7 +261,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                             />
                         ))}
                     </div>
-                    <span className="text-xs font-mono text-noir-txt-muted">{patience}/{maxPatience}</span>
+                    <span className="text-[9px] font-mono text-noir-txt-muted tracking-wider">耐心</span>
                 </div>
             </div>
         </div>
