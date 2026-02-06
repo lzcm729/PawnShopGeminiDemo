@@ -321,7 +321,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
   );
 
   const revealedCount = revealedTraits.length + 1;
-  const totalCount = hiddenTraits.length + 1; 
+  const totalCount = hiddenTraits.length + revealedTraits.length + 1;
 
   const isAppraised = item.appraised;
   
