@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
-import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock, Shield, Briefcase, Skull } from 'lucide-react';
+import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, AlertTriangle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock, Shield, Briefcase, Skull } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
@@ -16,6 +16,7 @@ import { BlackmarketPanel } from './night/BlackmarketPanel';
 import { UpgradeShopModal } from './UpgradeShopModal';
 import { FacilityControlModal } from './FacilityControlModal';
 import { getHeatLevel } from '../systems/blackmarket/types';
+import { useSettlementCeremony } from '../hooks/useFinancialProjection';
 import { Tooltip } from './ui/Tooltip';
 import { ReputationType } from '../systems/core/types';
 import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost, hasBlackMarketContact, hasPrecisionBench, getUpgradeLevel, getEffectiveNightEnergy, getBlackMarketContactLevel } from '../systems/upgrades';
@@ -26,6 +27,7 @@ export const NightDashboard: React.FC = () => {
     const { performNightCycle } = useGameEngine();
     const { send, can } = useGameMachine();
     const { inbox, inventory, stats, reputation } = state;
+    const ceremony = useSettlementCeremony();
 
     const [showMonologue, setShowMonologue] = useState(false);
     const [monologueText, setMonologueText] = useState("");
@@ -217,6 +219,74 @@ export const NightDashboard: React.FC = () => {
                                 </button>
                             </div>
                         </div>
+
+                        {/* S2-I4: Settlement Eve Banner (Day before medical bill) */}
+                        {ceremony.isSettlementEve && (
+                            <div className="mt-4 border border-amber-700/60 bg-amber-950/20 rounded-lg p-4 flex items-start gap-3 animate-in fade-in duration-500">
+                                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <div className="text-xs uppercase tracking-wider text-amber-400 font-bold">
+                                        明日账单提醒
+                                    </div>
+                                    <div className="text-sm text-stone-300 mt-1">
+                                        明天需要支付 <span className="text-amber-400 font-mono font-bold">${ceremony.billAmount}</span> 的医疗费用。
+                                    </div>
+                                    {ceremony.canAfford ? (
+                                        <div className="text-[10px] text-stone-500 mt-1">
+                                            当前余额 ${stats.cash}，{stats.cash >= ceremony.billAmount * 1.5 ? '资金充裕' : '刚好够付'}。
+                                        </div>
+                                    ) : (
+                                        <div className="text-[10px] text-red-400 mt-1 font-bold">
+                                            当前余额 ${stats.cash}，缺口 ${ceremony.shortfall}！
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* S2-I4: Settlement Day Ceremony (Medical bill due day) */}
+                        {ceremony.isSettlementDay && ceremony.canAfford && (
+                            <div className={cn(
+                                "mt-4 border rounded-lg p-4 animate-in fade-in duration-700",
+                                ceremony.severityTier === 'COMFORTABLE'
+                                    ? 'border-emerald-800/60 bg-emerald-950/20'
+                                    : ceremony.severityTier === 'TIGHT'
+                                    ? 'border-amber-800/60 bg-amber-950/20'
+                                    : 'border-red-800/60 bg-red-950/20'
+                            )}>
+                                <div className="text-[10px] uppercase tracking-widest text-stone-600 mb-2 font-bold">
+                                    Settlement // Day {stats.day}
+                                </div>
+                                <div className={cn(
+                                    "text-sm italic leading-relaxed",
+                                    ceremony.severityTier === 'COMFORTABLE'
+                                        ? 'text-emerald-300/90'
+                                        : ceremony.severityTier === 'TIGHT'
+                                        ? 'text-amber-300/90'
+                                        : 'text-red-300/90'
+                                )}>
+                                    "{ceremony.narrativeLine}"
+                                </div>
+                                <div className="mt-2 flex justify-between text-[10px] font-mono text-stone-500">
+                                    <span>已付: -${ceremony.billAmount}</span>
+                                    <span>余额: ${ceremony.balanceAfterPayment}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {ceremony.isSettlementDay && !ceremony.canAfford && (
+                            <div className="mt-4 border border-red-600/80 bg-red-950/30 rounded-lg p-4 animate-pulse">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                                    <span className="text-xs uppercase tracking-wider text-red-400 font-bold">
+                                        无法支付医疗账单
+                                    </span>
+                                </div>
+                                <div className="text-sm text-red-300">
+                                    需要 <span className="font-mono font-bold">${ceremony.billAmount}</span>，缺口 <span className="font-mono font-bold">${ceremony.shortfall}</span>。
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Admin Actions */}
