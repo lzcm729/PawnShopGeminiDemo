@@ -78,9 +78,10 @@ export interface ConsequenceDispatchRequest {
  * Check channel timing rules for a mail being scheduled.
  * Returns the minimum delay in days to satisfy the protocol.
  *
- * Rules enforced:
+ * Rules enforced (S4-F4):
  * 1. NEWS_BEFORE_MAIL: If same-chain news exists today, mail must wait at least 1 day.
  * 2. Same event across two channels must be separated by at least 1 day.
+ * 3. MAX_TWO_CHANNELS_PER_DAY: Same event can activate at most 2 channels per day.
  */
 export function checkMailChannelTiming(
     state: { dailyNews: Array<{ relatedChainId?: string }>; inbox: Array<{ sourceChainId?: string; arrivalDay: number }> },
@@ -94,4 +95,45 @@ export function checkMailChannelTiming(
     if (hasNewsToday) return 1;
 
     return 0;
+}
+
+/**
+ * S4-F4: Check if a retrospective should be skipped because mail already
+ * covers the same information for this chain.
+ *
+ * Rule: MAIL_NO_DUPLICATE_RETRO - If mail was already delivered for this chain,
+ * the retrospective should focus on face-to-face emotion rather than restating facts.
+ */
+export function shouldSkipRetrospectiveFacts(
+    inbox: Array<{ sourceChainId?: string; isRead: boolean }>,
+    sourceChainId: string
+): boolean {
+    // If any mail from this chain has been delivered (exists in inbox),
+    // retrospective should not repeat factual content
+    return inbox.some(m => m.sourceChainId === sourceChainId);
+}
+
+/**
+ * S4-F4: Count how many channels have been activated today for a given event.
+ * Used to enforce MAX_TWO_CHANNELS_PER_DAY rule.
+ */
+export function countTodayChannelActivations(
+    dailyNews: Array<{ relatedChainId?: string }>,
+    inbox: Array<{ sourceChainId?: string; arrivalDay: number }>,
+    sourceChainId: string,
+    currentDay: number
+): number {
+    let count = 0;
+
+    // Check news channel
+    if (dailyNews.some(n => n.relatedChainId === sourceChainId)) {
+        count++;
+    }
+
+    // Check mail channel (arriving today)
+    if (inbox.some(m => m.sourceChainId === sourceChainId && m.arrivalDay === currentDay)) {
+        count++;
+    }
+
+    return count;
 }

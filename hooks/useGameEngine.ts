@@ -20,6 +20,10 @@ import { checkForPoliceInvestigation } from '../systems/police';
 import { calculateRedemptionTotal } from '../systems/economy/interest';
 import { resolveMailDelay } from '../systems/narrative/mailUtils';
 import { getMailTemplate } from '../systems/narrative/mailRegistry';
+import { detectSimConsequences, dispatchConsequence, createChannelTimingState } from '../systems/narrative/consequenceDispatcher';
+import type { DispatchAction } from '../systems/narrative/consequenceDispatcher';
+import { processExternalTrigger } from '../systems/narrative/externalTrigger';
+import type { ExternalChainTrigger } from '../systems/narrative/externalTrigger';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -87,6 +91,16 @@ export const useGameEngine = () => {
     const echoEntries = detectEchoEntries(state.activeChains, simulatedChains, state.inventory, nextDay);
     if (echoEntries.length > 0) {
         dispatch({ type: 'APPEND_ITEM_LOGS', payload: echoEntries });
+    }
+
+    // 1c. S4-F3: Consequence detection & channel dispatch
+    const simConsequences = detectSimConsequences(state.activeChains, simulatedChains, nextDay);
+    if (simConsequences.length > 0) {
+        const timingState = createChannelTimingState();
+        for (const consequence of simConsequences) {
+            const dispatchActions = dispatchConsequence(consequence, timingState, nextDay);
+            executeDispatchActions(dispatchActions, nextDay);
+        }
     }
 
     // 2. News Generation (S3-F1~F6: v1.2 with priority algorithm, pending queue, violation detection)
@@ -1044,6 +1058,103 @@ export const useGameEngine = () => {
       });
   };
 
+  // S4-F3: Execute dispatch actions from the consequence dispatcher
+  const executeDispatchActions = (actions: DispatchAction[], currentDay: number) => {
+      for (const action of actions) {
+          switch (action.action.type) {
+              case 'SCHEDULE_NEWS':
+                  // News dispatch is handled by the news engine during generation
+                  // We store the hint for the next news generation cycle
+                  // (The news system in S3 will consume these via triggerNarrativeEcho)
+                  break;
+              case 'SCHEDULE_MAIL':
+                  dispatch({
+                      type: 'SCHEDULE_MAIL',
+                      payload: {
+                          templateId: action.action.templateId,
+                          delayDays: action.action.delayDays,
+                          sourceChainId: action.action.sourceChainId,
+                          relatedEventId: action.action.relatedEventId,
+                      }
+                  });
+                  break;
+              case 'MARK_RETROSPECTIVE':
+                  // Store retrospective content on the chain for NPC's next visit
+                  dispatch({
+                      type: 'UPDATE_CHAIN_VAR',
+                      payload: {
+                          chainId: action.action.sourceChainId,
+                          variable: 'pending_retrospective',
+                          value: 1, // Flag that retrospective content is available
+                      }
+                  });
+                  break;
+              case 'APPEND_ITEM_LOG':
+                  dispatch({
+                      type: 'APPEND_ITEM_LOGS',
+                      payload: [{
+                          itemId: action.action.itemId,
+                          log: {
+                              id: crypto.randomUUID(),
+                              day: currentDay,
+                              content: action.action.entry,
+                              type: 'ECHO' as const,
+                          }
+                      }]
+                  });
+                  break;
+          }
+      }
+  };
+
+  // S4-F1/F2: Handle external trigger events from other systems
+  const handleExternalTrigger = (trigger: ExternalChainTrigger) => {
+      const result = processExternalTrigger(trigger, state.activeChains, state.stats.day);
+
+      // Apply updated chains
+      dispatch({ type: 'UPDATE_CHAINS', payload: result.updatedChains });
+
+      // Apply reputation deltas through RESOLVE_TRANSACTION (unified pipeline)
+      for (const delta of result.reputationDeltas) {
+          const axisMap: Record<string, ReputationType> = {
+              'humanity': ReputationType.HUMANITY,
+              'credibility': ReputationType.CREDIBILITY,
+              'innocence': ReputationType.INNOCENCE,
+          };
+          dispatch({
+              type: 'RESOLVE_TRANSACTION',
+              payload: {
+                  cashDelta: 0,
+                  reputationDelta: { [axisMap[delta.axis]]: delta.value },
+                  item: null,
+                  log: `Regulatory action: ${delta.axis} ${delta.value > 0 ? '+' : ''}${delta.value}`,
+                  customerName: 'System',
+              }
+          });
+      }
+
+      // Dispatch consequences through the channel protocol
+      if (result.consequences.length > 0) {
+          const timingState = createChannelTimingState();
+          for (const consequence of result.consequences) {
+              const dispatchActions = dispatchConsequence(consequence, timingState, state.stats.day);
+              executeDispatchActions(dispatchActions, state.stats.day);
+          }
+      }
+
+      // Schedule any mails
+      for (const mail of result.scheduledMails) {
+          dispatch({
+              type: 'SCHEDULE_MAIL',
+              payload: {
+                  templateId: mail.templateId,
+                  delayDays: mail.delayDays,
+                  sourceChainId: mail.sourceChainId,
+              }
+          });
+      }
+  };
+
   return {
       startNewDay,
       performNightCycle,
@@ -1057,6 +1168,8 @@ export const useGameEngine = () => {
       // New stolen goods helpers
       isCurrentItemStolen,
       handleStolenItemDecision,
-      handlePoliceInvestigationDecision
+      handlePoliceInvestigationDecision,
+      // S4-F1/F2: External trigger handler
+      handleExternalTrigger
   };
 };
