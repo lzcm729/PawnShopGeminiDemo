@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { Modal } from './ui/Modal';
 import { HelpTooltip } from './ui/Tooltip';
 import { Button } from './ui/Button';
-import { Package, Wrench, Check, Lock, DollarSign, Zap, Coffee, Scan, ClipboardList, Skull, Sparkles } from 'lucide-react';
+import { Package, Wrench, Check, Lock, DollarSign, Zap, Coffee, Scan, ClipboardList, Skull, Sparkles, Star } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getAvailableUpgradesWithStatus, getEffectiveInventoryCapacity, getEffectiveNightEnergy, BASE_INVENTORY_CAPACITY, getTotalMaintenanceCost, getPatienceBonus, getAnomalyDetectionThreshold } from '../systems/upgrades';
 import { GAME_CONFIG } from '../systems/game/config';
@@ -59,6 +59,28 @@ const PURCHASE_MONOLOGUES: Record<string, string[]> = {
         '"关系越深，门路越广。"',
         '"地下的规矩，我已经摸透了。"',
     ],
+};
+
+// Feature hints for upgrade levels - shows functional unlocks beyond numbers
+// Key: upgradeId, Value: Record<level, hint text> (only levels with functional changes)
+const UPGRADE_FEATURE_HINTS: Record<string, Record<number, string>> = {
+    storage_expansion: {
+        3: '解锁「分类摆放」：按类别自动整理库存',
+    },
+    precision_bench: {
+        3: '解锁新夜间活动类型',
+    },
+    appointment_board: {
+        2: '解锁：查看候选客户情绪状态',
+        3: '解锁：查看背景线索 + 新闻关联',
+        4: '可邀请人数增加为2人',
+        5: '解锁：客户筛选偏好设置',
+    },
+    black_market_contact: {
+        1: '解锁黑市交易渠道',
+        3: '解锁：情报网络，热度加速冷却',
+        5: '解锁：内部人士特权，最高收购价',
+    },
 };
 
 // PurchaseFlash overlay component
@@ -433,14 +455,25 @@ export const UpgradeShopModal: React.FC = () => {
                                                 {!isMaxLevel && nextLevelConfig ? (
                                                     <div className="border-t border-noir-400 bg-noir-100/50">
                                                         {/* Next Level Info */}
-                                                        <div className="px-4 py-3 flex items-center gap-2">
-                                                            <Zap className="w-4 h-4 text-amber-500 shrink-0" />
-                                                            <span className="text-xs text-noir-txt-muted">Next Level:</span>
-                                                            <span className="text-sm text-amber-400 font-medium">{nextLevelConfig.description}</span>
-                                                            {nextLevelConfig.maintenanceCost && (
-                                                                <span className="text-red-400 text-[10px] ml-1">
-                                                                    (维护费 ${nextLevelConfig.maintenanceCost}/天)
-                                                                </span>
+                                                        <div className="px-4 py-3 flex flex-col gap-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                                                                <span className="text-xs text-noir-txt-muted">Next Level:</span>
+                                                                <span className="text-sm text-amber-400 font-medium">{nextLevelConfig.description}</span>
+                                                                {nextLevelConfig.maintenanceCost && (
+                                                                    <span className="text-red-400 text-[10px] ml-1">
+                                                                        (维护费 ${nextLevelConfig.maintenanceCost}/天)
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {/* Feature Hint - functional unlock preview */}
+                                                            {UPGRADE_FEATURE_HINTS[config.id]?.[currentLevel + 1] && (
+                                                                <div className="flex items-center gap-2 ml-6">
+                                                                    <Star className="w-3 h-3 text-yellow-500 shrink-0" />
+                                                                    <span className="text-xs text-yellow-400/90 font-medium">
+                                                                        {UPGRADE_FEATURE_HINTS[config.id][currentLevel + 1]}
+                                                                    </span>
+                                                                </div>
                                                             )}
                                                         </div>
 

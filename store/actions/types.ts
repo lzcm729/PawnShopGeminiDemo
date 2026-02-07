@@ -14,6 +14,8 @@ import { GameNode } from '../../types/node';
 import { BlackmarketState, RiskEvent } from '../../systems/blackmarket/types';
 import { PhaseEvent } from '../../systems/core/phases';
 import { CustomerInsightResult } from '../../systems/customerInsight';
+import { DailyChallenge } from '../../systems/game/dailyChallenge';
+import { DailySchedule } from '../../systems/npc/customerScheduler';
 
 // === Action Type Union ===
 
@@ -179,6 +181,17 @@ export type Action =
 
     // Item Log System (S3-F1/F2)
     | { type: 'APPEND_ITEM_LOGS'; payload: { itemId: string; log: ItemLogEntry }[] }
+
+    // Daily Challenge (每日挑战 v2.1)
+    | { type: 'SET_DAILY_CHALLENGE'; payload: DailyChallenge | null }
+    | { type: 'COMPLETE_DAILY_CHALLENGE' }
+    | { type: 'TRACK_REJECTED_CUSTOMER' }
+    | { type: 'TRACK_MISTAKE' }
+    | { type: 'TRACK_HIGH_RISK_ITEM' }
+
+    // Customer Schedule (出场顺序 v2.1)
+    | { type: 'SET_DAILY_SCHEDULE'; payload: DailySchedule }
+    | { type: 'ADVANCE_SCHEDULE_SLOT' }
 
     // Debug flags
     | { type: 'DEBUG_TOGGLE_FLOOR' };

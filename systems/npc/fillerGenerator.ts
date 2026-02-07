@@ -53,30 +53,65 @@ export interface ExpiryProbabilities {
 }
 
 // ============================================================================
+// TRANSACTION FEEDBACK (v2.1 - 因果感知强化)
+// ============================================================================
+
+export interface TransactionFeedbackItem {
+    label: string;       // e.g. "合同类型：标准 (10%)"
+    effect: string;      // e.g. "赎回意愿 +/-0%"
+    modifier: number;    // numeric modifier value
+}
+
+export interface TransactionFeedback {
+    items: TransactionFeedbackItem[];
+    totalModifier: number;
+    summary: string;     // e.g. "综合影响：赎回意愿 +10%"
+}
+
+// ============================================================================
 // CONFIGURATION
 // ============================================================================
 
 /**
  * Base redemption probabilities by redemptionResolve level
- * From design doc Section 7.4
+ * From design doc Section 7.4 (v2.1: lowered renewal rates)
  */
 const BASE_EXPIRY_PROBABILITIES: Record<RedemptionResolve, ExpiryProbabilities> = {
-    'Strong': { redeem: 0.80, renew: 0.12, noShow: 0.08 },
-    'Medium': { redeem: 0.65, renew: 0.21, noShow: 0.14 },
-    'Weak': { redeem: 0.50, renew: 0.30, noShow: 0.20 },
-    'None': { redeem: 0.20, renew: 0.32, noShow: 0.48 }
+    'Strong': { redeem: 0.80, renew: 0.08, noShow: 0.12 },
+    'Medium': { redeem: 0.65, renew: 0.14, noShow: 0.21 },
+    'Weak': { redeem: 0.50, renew: 0.20, noShow: 0.30 },
+    'None': { redeem: 0.20, renew: 0.20, noShow: 0.60 }
 };
 
 /**
  * Contract type modifiers for expiry probabilities
- * From design doc Section 7.4
+ * From design doc Section 7.4 (v2.1)
  */
-const CONTRACT_MODIFIERS: Record<ContractType, { redeemMod: number; noShowMod: number }> = {
+export const CONTRACT_MODIFIERS: Record<ContractType, { redeemMod: number; noShowMod: number }> = {
     'CHARITY': { redeemMod: 0.15, noShowMod: -0.15 },
     'AID': { redeemMod: 0.05, noShowMod: -0.05 },
     'STANDARD': { redeemMod: 0, noShowMod: 0 },
-    'SHARK': { redeemMod: -0.20, noShowMod: 0.50 }  // noShowMod is multiplicative in design, but we use additive for simplicity
+    'SHARK': { redeemMod: -0.20, noShowMod: 0.50 }
 };
+
+/**
+ * Pawn ratio modifiers for expiry probabilities
+ * From design doc Section 4.3 (v2.1)
+ *
+ * Layer 2 of the two-layer redemption rate system:
+ * - High pawn ratio (>75%): customer feels better deal, more likely to redeem
+ * - Low pawn ratio (<60%): customer feels squeezed, less likely to redeem
+ */
+export const PAWN_RATIO_THRESHOLDS = {
+    HIGH: 0.75,
+    LOW: 0.60
+} as const;
+
+export const PAWN_RATIO_MODIFIERS = {
+    HIGH: { redeemMod: 0.10, noShowMod: -0.10 },
+    LOW: { redeemMod: -0.15, noShowMod: 0.15 },
+    NORMAL: { redeemMod: 0, noShowMod: 0 }
+} as const;
 
 /**
  * Behavior tag probabilities by appearance
@@ -247,22 +282,404 @@ const DEFAULT_JUMP_CONFIG: JumpTraitConfig = {
 // PROBABILITY CALCULATION
 // ============================================================================
 
+export type PawnRatioCategory = 'HIGH' | 'LOW' | 'NORMAL';
+
 /**
- * Calculate expiry probabilities based on redemptionResolve and contractType
+ * Get pawn ratio modifier category
+ */
+export function getPawnRatioCategory(pawnRatio: number): PawnRatioCategory {
+    if (pawnRatio > PAWN_RATIO_THRESHOLDS.HIGH) return 'HIGH';
+    if (pawnRatio < PAWN_RATIO_THRESHOLDS.LOW) return 'LOW';
+    return 'NORMAL';
+}
+
+/**
+ * Contract type display labels (Chinese)
+ */
+const CONTRACT_LABELS: Record<ContractType, string> = {
+    'CHARITY': '慈善 (0%)',
+    'AID': '援助 (5%)',
+    'STANDARD': '标准 (10%)',
+    'SHARK': '鲨鱼 (20%)'
+};
+
+/**
+ * Calculate transaction feedback for UI display
+ * Shows how contract type and pawn ratio affect redemption probability
+ *
+ * Design doc Section 4.3: 交易反馈设计
+ */
+export function calculateTransactionFeedback(
+    contractType: ContractType,
+    pawnAmount: number,
+    itemValue: number
+): TransactionFeedback {
+    const items: TransactionFeedbackItem[] = [];
+    let totalModifier = 0;
+
+    // Contract type modifier
+    const contractMod = CONTRACT_MODIFIERS[contractType];
+    const contractModPercent = Math.round(contractMod.redeemMod * 100);
+    items.push({
+        label: `合同类型：${CONTRACT_LABELS[contractType]}`,
+        effect: contractModPercent === 0
+            ? '赎回意愿 +/-0%'
+            : `赎回意愿 ${contractModPercent > 0 ? '+' : ''}${contractModPercent}%`,
+        modifier: contractMod.redeemMod
+    });
+    totalModifier += contractMod.redeemMod;
+
+    // Pawn ratio modifier
+    const pawnRatio = itemValue > 0 ? pawnAmount / itemValue : 0;
+    const ratioCategory = getPawnRatioCategory(pawnRatio);
+    const ratioMod = PAWN_RATIO_MODIFIERS[ratioCategory];
+    const ratioPercent = Math.round(pawnRatio * 100);
+    const ratioModPercent = Math.round(ratioMod.redeemMod * 100);
+
+    let ratioLabel: string;
+    if (ratioCategory === 'HIGH') {
+        ratioLabel = `当金比例：${ratioPercent}%（高）`;
+    } else if (ratioCategory === 'LOW') {
+        ratioLabel = `当金比例：${ratioPercent}%（低）`;
+    } else {
+        ratioLabel = `当金比例：${ratioPercent}%`;
+    }
+
+    items.push({
+        label: ratioLabel,
+        effect: ratioModPercent === 0
+            ? '赎回意愿 +/-0%'
+            : `赎回意愿 ${ratioModPercent > 0 ? '+' : ''}${ratioModPercent}%`,
+        modifier: ratioMod.redeemMod
+    });
+    totalModifier += ratioMod.redeemMod;
+
+    // Summary
+    const totalPercent = Math.round(totalModifier * 100);
+    const summary = totalPercent === 0
+        ? '综合影响：赎回意愿不变'
+        : `综合影响：赎回意愿 ${totalPercent > 0 ? '+' : ''}${totalPercent}%`;
+
+    return { items, totalModifier, summary };
+}
+
+// ============================================================================
+// v2.1 FILLER-SPECIFIC MERCHANT MONOLOGUES (Section 10)
+// ============================================================================
+
+/**
+ * Merchant inner monologues for filler customers
+ * Tone: professional, pragmatic, occasionally humorous
+ * Contrast with narrative customer monologues (heavy, moral, fate-laden)
+ *
+ * Design doc Section 10: 填充专属文案风格
+ */
+
+/** Monologues by contract tier - shopkeeper's reaction to the deal type */
+export const FILLER_MONOLOGUES_BY_CONTRACT: Record<ContractType, string[]> = {
+    'CHARITY': [
+        '算了，就当做个顺水人情。',
+        '不赚这点钱了，图个心安。',
+        '就当积德行善吧。',
+        '反正也不亏本，帮一把。',
+    ],
+    'AID': [
+        '合理的价格，大家都不亏。',
+        '中规中矩，公平交易。',
+        '这价钱，双方都能接受。',
+        '本分生意，求的就是个稳。',
+    ],
+    'STANDARD': [
+        '标准行情，公平交易。',
+        '这才是做生意该有的样子。',
+        '规矩价，赚个辛苦费。',
+        '利润合理，心里踏实。',
+    ],
+    'SHARK': [
+        '做生意嘛，不吃亏是本事。',
+        '嗯... 这笔不错。',
+        '低买高卖，天经地义。',
+        '这利润... 满意。',
+    ],
+};
+
+/** Monologues by pawn ratio - shopkeeper's assessment of the deal risk */
+export const FILLER_MONOLOGUES_BY_PAWN_RATIO: Record<PawnRatioCategory, string[]> = {
+    'HIGH': [
+        '出这么多... 最好能来赎。',
+        '价出高了，赌他回来赎。',
+        '万一不来赎，我可亏了。',
+        '给多了... 但愿不走眼。',
+    ],
+    'NORMAL': [
+        '价钱合适，赚多赚少看运气。',
+        '不高不低，稳妥。',
+        '差不多得了，稳稳当当。',
+        '这价位，我心里有数。',
+    ],
+    'LOW': [
+        '这东西到我手里，值得冒这个险。',
+        '低价收进来，不亏。',
+        '捡了个便宜... 嘿。',
+        '就算不来赎，也不亏本。',
+    ],
+};
+
+/** Monologues by redemption prediction - shopkeeper's gut feeling */
+export const FILLER_MONOLOGUES_BY_REDEMPTION: Record<RedemptionResolve, string[]> = {
+    'Strong': [
+        '利息到手，稳稳的。',
+        '这人一看就会回来赎。',
+        '铁定回来，安心。',
+        '有来有往，好生意。',
+    ],
+    'Medium': [
+        '赎不赎... 走着看吧。',
+        '五五开，看他造化。',
+        '来不来赎都无所谓。',
+        '看情况再说。',
+    ],
+    'Weak': [
+        '看这人的样子，八成不会来赎了。',
+        '悬... 可能得砸手里。',
+        '来赎的话算惊喜。',
+        '做好砸手里的准备了。',
+    ],
+    'None': [
+        '这十有八九是卖了。',
+        '不会来赎的... 好在东西不亏。',
+        '就当直接收了件货。',
+        '来赎我还奇怪呢。',
+    ],
+};
+
+// ============================================================================
+// v2.1 REDEMPTION VISIT DIALOGUE TEMPLATES (Section 7.5)
+// ============================================================================
+
+/**
+ * Redemption visit dialogue templates
+ * Template format: [customer description fragment] + [action/expression] + [item interaction]
+ *
+ * Design doc Section 7.5: 赎回回访台词
+ * - Based on original customer tags (appearance, mood, item), no new variables
+ * - 1-2 sentences, minimal, no complete stories
+ * - Hint at customer situation change, no definitive answers
+ * - Consistent with "minimum info, maximum imagination" philosophy
+ */
+
+/** Action/expression fragments by mood */
+const REDEMPTION_ACTIONS_BY_MOOD: Record<CustomerMood, string[]> = {
+    'anxious': [
+        '急匆匆地',
+        '松了口气地',
+        '手还在微微发抖地',
+        '长舒一口气地',
+    ],
+    'calm': [
+        '不慌不忙地',
+        '从容地',
+        '点了点头，',
+        '面带微笑地',
+    ],
+    'reluctant': [
+        '小心翼翼地',
+        '眼眶微红地',
+        '轻声地',
+        '小心地',
+    ],
+    'eager': [
+        '兴冲冲地',
+        '迫不及待地',
+        '满脸笑容地',
+        '大步走来，',
+    ],
+};
+
+/** Item interaction fragments by item category */
+const REDEMPTION_ITEM_INTERACTIONS: Record<string, string[]> = {
+    '珠宝首饰': [
+        '把{item}戴回了手上。',
+        '仔细检查了{item}，满意地收好了。',
+        '将{item}贴在胸口，转身离去。',
+    ],
+    '钟表': [
+        '把{item}重新戴上了手腕。',
+        '检查了一下{item}的时间，还是准的。',
+        '将{item}放进口袋，脚步轻快地离开了。',
+    ],
+    '电子产品': [
+        '接过{item}检查了一下，松了口气。',
+        '打开{item}确认一切正常后离开了。',
+        '抱着{item}走了，嘴里念叨着什么。',
+    ],
+    '古董': [
+        '用布仔细包好{item}，小心翼翼地抱走了。',
+        '端详了{item}一会儿，像是在重逢。',
+        '将{item}裹好，步履蹒跚地离去。',
+    ],
+    '乐器': [
+        '接过{item}拨了两下弦，笑了。',
+        '把{item}背在肩上，哼着曲子走了。',
+        '紧紧抱着{item}，像找回了老朋友。',
+    ],
+    '服饰': [
+        '将{item}叠好放进袋子里。',
+        '拿起{item}比划了一下，满意地笑了。',
+        '把{item}搭在臂弯里离开了。',
+    ],
+    '箱包': [
+        '检查了{item}一遍，然后提着走了。',
+        '把{item}擦了又擦，背上离开了。',
+        '接过{item}，看了看里面，点点头走了。',
+    ],
+    '数码相机': [
+        '接过{item}检查了一下镜头，点了点头就走了。',
+        '按了两下{item}的快门，确认没问题后离开。',
+        '将{item}挂在脖子上，脚步比来时轻快多了。',
+    ],
+    '游戏设备': [
+        '抱着{item}两眼放光地走了。',
+        '接过{item}后摁了两下按键，露出笑容。',
+        '把{item}塞进背包，头也不回地走了。',
+    ],
+};
+
+/** Generic item interactions (fallback for unmatched categories) */
+const GENERIC_ITEM_INTERACTIONS: string[] = [
+    '拿走了{item}，头也不回地离开了。',
+    '接过{item}检查了一遍，放心地走了。',
+    '收好{item}后，道了声谢便离开了。',
+    '将{item}仔细收好，转身离去。',
+    '拿起{item}看了看，满意地点点头。',
+];
+
+/** Appearance hints for customer description reconstruction */
+const APPEARANCE_HINTS: Record<CustomerAppearance, string[]> = {
+    'shabby': ['穿着破旧的人', '衣衫褴褛的来客', '那个穿得寒酸的人'],
+    'plain': ['穿着朴素的人', '那个普通打扮的人', '衣着平常的来客'],
+    'decent': ['穿着体面的人', '那个衣着整洁的人', '打扮得体的来客'],
+    'fancy': ['穿着讲究的人', '那个衣着光鲜的人', '打扮精致的来客'],
+};
+
+/** Age hints for customer description */
+const AGE_HINTS: Record<CustomerAge, string[]> = {
+    'young': ['年轻人', '小伙子', '姑娘'],
+    'middle': ['中年人', '那位先生', '那位女士'],
+    'elderly': ['老人', '大爷', '大妈'],
+};
+
+/**
+ * Generate a redemption visit dialogue line for a filler customer
+ *
+ * Uses customer metadata stored in chain variables during pawn transaction.
+ * Template: [customer desc] + [action/expression] + [item interaction]
+ *
+ * @param appearance - Customer appearance tag
+ * @param mood - Customer mood tag (from original pawn visit)
+ * @param age - Customer age tag
+ * @param gender - Customer gender tag
+ * @param itemName - Name of the item being redeemed
+ * @param itemCategory - Category of the item
+ * @returns A 1-2 sentence redemption visit dialogue
+ */
+export function generateRedemptionVisitDialogue(
+    appearance: CustomerAppearance,
+    mood: CustomerMood,
+    age: CustomerAge,
+    gender: CustomerGender,
+    itemName: string,
+    itemCategory: string
+): string {
+    // Pick customer description
+    const descPool = APPEARANCE_HINTS[appearance] || APPEARANCE_HINTS['plain'];
+    // Use gendered age hints for young/elderly
+    let agePool = AGE_HINTS[age] || AGE_HINTS['middle'];
+    if (age === 'young') {
+        agePool = gender === 'female' ? ['姑娘', '年轻女子'] : ['小伙子', '年轻人'];
+    } else if (age === 'elderly') {
+        agePool = gender === 'female' ? ['老太太', '大妈'] : ['老人', '大爷'];
+    }
+
+    // 50% chance to use appearance-based or age-based description
+    const useAppearance = Math.random() < 0.5;
+    const customerDesc = useAppearance
+        ? descPool[Math.floor(Math.random() * descPool.length)]
+        : agePool[Math.floor(Math.random() * agePool.length)];
+
+    // Pick action/expression
+    const actionPool = REDEMPTION_ACTIONS_BY_MOOD[mood] || REDEMPTION_ACTIONS_BY_MOOD['calm'];
+    const action = actionPool[Math.floor(Math.random() * actionPool.length)];
+
+    // Pick item interaction
+    const categoryPool = REDEMPTION_ITEM_INTERACTIONS[itemCategory] || GENERIC_ITEM_INTERACTIONS;
+    const itemInteraction = categoryPool[Math.floor(Math.random() * categoryPool.length)]
+        .replace('{item}', itemName);
+
+    return `${customerDesc}${action}${itemInteraction}`;
+}
+
+/**
+ * Get a random filler merchant monologue based on transaction context
+ * Returns a monologue string from the appropriate pool
+ */
+export function getFillerMerchantMonologue(
+    dimension: 'contract' | 'pawnRatio' | 'redemption',
+    contractType?: ContractType,
+    pawnRatioCategory?: PawnRatioCategory,
+    redemptionResolve?: RedemptionResolve
+): string {
+    let pool: string[] = [];
+    switch (dimension) {
+        case 'contract':
+            pool = FILLER_MONOLOGUES_BY_CONTRACT[contractType || 'STANDARD'];
+            break;
+        case 'pawnRatio':
+            pool = FILLER_MONOLOGUES_BY_PAWN_RATIO[pawnRatioCategory || 'NORMAL'];
+            break;
+        case 'redemption':
+            pool = FILLER_MONOLOGUES_BY_REDEMPTION[redemptionResolve || 'Medium'];
+            break;
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/**
+ * Calculate expiry probabilities based on redemptionResolve, contractType, and pawnRatio
+ *
+ * v2.1 two-layer system:
+ *   Final rate = redemptionResolve base + transaction modifiers (contract + pawnRatio)
  */
 export function calculateExpiryProbabilities(
     redemptionResolve: RedemptionResolve,
-    contractType?: ContractType
+    contractType?: ContractType,
+    pawnRatio?: number
 ): ExpiryProbabilities {
     const base = { ...BASE_EXPIRY_PROBABILITIES[redemptionResolve] };
 
+    // Apply contract type modifier
     if (contractType) {
         const mod = CONTRACT_MODIFIERS[contractType];
-        base.redeem = Math.max(0, Math.min(1, base.redeem + mod.redeemMod));
-        base.noShow = Math.max(0, Math.min(1, base.noShow + mod.noShowMod));
+        base.redeem += mod.redeemMod;
+        base.noShow += mod.noShowMod;
+    }
 
-        // Normalize to ensure sum = 1
-        const total = base.redeem + base.renew + base.noShow;
+    // Apply pawn ratio modifier
+    if (pawnRatio !== undefined) {
+        const category = getPawnRatioCategory(pawnRatio);
+        const mod = PAWN_RATIO_MODIFIERS[category];
+        base.redeem += mod.redeemMod;
+        base.noShow += mod.noShowMod;
+    }
+
+    // Clamp individual values
+    base.redeem = Math.max(0, Math.min(1, base.redeem));
+    base.noShow = Math.max(0, Math.min(1, base.noShow));
+    base.renew = Math.max(0, base.renew);
+
+    // Normalize to ensure sum = 1
+    const total = base.redeem + base.renew + base.noShow;
+    if (total > 0) {
         base.redeem /= total;
         base.renew /= total;
         base.noShow /= total;
@@ -280,8 +697,9 @@ export function determineTransientExpiryBehavior(
 ): 'REDEEM' | 'RENEW' | 'NO_SHOW' {
     const redemptionResolve = chain.redemptionResolve || 'Medium';
     const contractType = chain.contractType;
+    const pawnRatio = chain.variables?.pawnRatio as number | undefined;
 
-    const probs = calculateExpiryProbabilities(redemptionResolve, contractType);
+    const probs = calculateExpiryProbabilities(redemptionResolve, contractType, pawnRatio);
     const roll = Math.random();
 
     if (roll < probs.redeem) {
@@ -420,6 +838,29 @@ export function inferRedemptionResolve(profile: FillerCustomerProfile, tags: Beh
 
 /**
  * Generate a random filler customer profile
+ *
+ * v2.1 Emergence Calibration (涌现组合数校准):
+ *
+ * Variables are split into two layers:
+ *
+ * **Atmosphere Variables** (affect narrative presentation only):
+ *   - age: 3 values (young/middle/elderly) -- uniform
+ *   - gender: 2 values (male/female) -- uniform
+ *   - appearance: 4 values (shabby/plain/decent/fancy) -- weighted
+ *   - mood: 4 values (anxious/calm/reluctant/eager) -- uniform
+ *
+ * **Mechanic Variables** (affect gameplay decisions):
+ *   - riskLevel: derived from item template, not profile
+ *   - redemptionResolve: inferred from appearance + mood + tags
+ *   - behaviorTags: 0-2 tags, inferred from appearance + mood
+ *
+ * Effective distinguishable combinations depend on whether atmosphere
+ * variables produce perceivably different narrative/visual outcomes.
+ * Focus should be on high-recognition combos (see design doc 2.4).
+ *
+ * Note: skewType is NOT stored as an explicit field. It is derived
+ * at runtime from the relationship between realValue and appraisalRange
+ * (see design doc Section 6.3 adjustment).
  */
 export function generateRandomProfile(): FillerCustomerProfile {
     const ages: CustomerAge[] = ['young', 'middle', 'elderly'];
@@ -809,6 +1250,72 @@ function getGenericPortraitId(profile: FillerCustomerProfile): string {
     return `generic_${genderPart}_${agePart}`;
 }
 
+// ============================================================================
+// RARE ENCOUNTER (v2.1 - 稀有遭遇)
+// Design doc Section 11.2
+// ============================================================================
+
+/** Rare encounter probability: 5-10% per filler customer */
+const RARE_ENCOUNTER_PROBABILITY = 0.075; // 7.5% average
+
+export type RareEncounterType = 'HIDDEN_VALUE' | 'CONTRADICTORY_BEHAVIOR' | 'UNUSUAL_ITEM';
+
+/**
+ * Roll for a rare encounter and apply modifications to the profile/generation
+ *
+ * Rare encounters are NOT labeled as rare -- player discovers through observation.
+ * Three types:
+ * - HIDDEN_VALUE: Item has undiscovered high value (jump trait BARGAIN forced)
+ * - CONTRADICTORY_BEHAVIOR: Profile-tag mismatch (decent + DESPERATE + None resolve)
+ * - UNUSUAL_ITEM: Young person with antique, etc. (inverted item selection)
+ */
+function rollRareEncounter(): RareEncounterType | null {
+    if (Math.random() > RARE_ENCOUNTER_PROBABILITY) return null;
+
+    const types: RareEncounterType[] = ['HIDDEN_VALUE', 'CONTRADICTORY_BEHAVIOR', 'UNUSUAL_ITEM'];
+    return types[Math.floor(Math.random() * types.length)];
+}
+
+/**
+ * Apply CONTRADICTORY_BEHAVIOR rare encounter to a profile:
+ * Force contradictory appearance-tag combinations
+ */
+function applyContradictoryBehavior(
+    profile: FillerCustomerProfile,
+    tags: BehaviorTag[]
+): { profile: FillerCustomerProfile; tags: BehaviorTag[]; resolve: RedemptionResolve } {
+    // Contradictory combos:
+    // decent/fancy appearance + DESPERATE tag + None/Weak resolve
+    // shabby appearance + SAVVY tag + Strong resolve
+    if (profile.appearance === 'decent' || profile.appearance === 'fancy') {
+        return {
+            profile: { ...profile, mood: 'anxious' },
+            tags: ['DESPERATE'],
+            resolve: 'None'
+        };
+    } else {
+        return {
+            profile: { ...profile, appearance: 'shabby', mood: 'calm' },
+            tags: ['SAVVY'],
+            resolve: 'Strong'
+        };
+    }
+}
+
+/**
+ * Create a profile for UNUSUAL_ITEM rare encounter:
+ * Invert the typical profile-item fit (young+antique, elderly+electronics)
+ */
+function createUnusualItemProfile(): FillerCustomerProfile {
+    const combos: FillerCustomerProfile[] = [
+        { age: 'young', gender: 'male', appearance: 'plain', mood: 'calm' },     // Young with antiques
+        { age: 'young', gender: 'female', appearance: 'decent', mood: 'calm' },  // Young with antiques
+        { age: 'elderly', gender: 'male', appearance: 'plain', mood: 'eager' },  // Elderly with electronics
+        { age: 'elderly', gender: 'female', appearance: 'decent', mood: 'calm' }, // Elderly with electronics
+    ];
+    return combos[Math.floor(Math.random() * combos.length)];
+}
+
 /**
  * Generate a filler customer with TRANSIENT event chain metadata
  *
@@ -825,9 +1332,27 @@ export function generateFillerCustomer(
     excludeTemplateIds?: Set<string>,
     forceJumpTrait: ForcedJumpTrait = null
 ): Customer {
-    const customerProfile = profile || generateRandomProfile();
-    const behaviorTags = inferBehaviorTags(customerProfile);
-    const redemptionResolve = inferRedemptionResolve(customerProfile, behaviorTags);
+    // Roll for rare encounter (v2.1 Section 11.2)
+    const rareEncounter = rollRareEncounter();
+
+    let customerProfile = profile || generateRandomProfile();
+    let behaviorTags = inferBehaviorTags(customerProfile);
+    let redemptionResolve = inferRedemptionResolve(customerProfile, behaviorTags);
+
+    // Apply rare encounter modifications
+    if (rareEncounter === 'CONTRADICTORY_BEHAVIOR') {
+        const result = applyContradictoryBehavior(customerProfile, behaviorTags);
+        customerProfile = result.profile;
+        behaviorTags = result.tags;
+        redemptionResolve = result.resolve;
+    } else if (rareEncounter === 'UNUSUAL_ITEM') {
+        customerProfile = profile || createUnusualItemProfile();
+        behaviorTags = inferBehaviorTags(customerProfile);
+        redemptionResolve = inferRedemptionResolve(customerProfile, behaviorTags);
+    } else if (rareEncounter === 'HIDDEN_VALUE') {
+        // Force a bargain jump trait -- item will have hidden high value
+        forceJumpTrait = 'BARGAIN';
+    }
 
     const name = generateName(customerProfile);
     const description = generateDescription(customerProfile);
@@ -916,6 +1441,8 @@ export function createTransientChain(
     contractType: ContractType
 ): EventChainState {
     const chainId = `transient_${item.id}`;
+    const itemValue = item.perceivedValue ?? item.realValue;
+    const pawnRatio = itemValue > 0 ? item.pawnAmount / itemValue : 0;
 
     return {
         id: chainId,
@@ -926,7 +1453,11 @@ export function createTransientChain(
             itemId: item.id,
             itemName: item.name,
             pawnAmount: item.pawnAmount,
-            realValue: item.realValue
+            realValue: item.realValue,
+            pawnRatio,                  // v2.1: stored for redemption rate calculation
+            customerDescription: customer.description,  // v2.1: for redemption visit dialogue
+            customerAppearance: customer.identityTags?.find(t => ['shabby', 'plain', 'decent', 'fancy'].includes(t)) || 'plain',
+            customerMood: customer.identityTags?.find(t => ['anxious', 'calm', 'reluctant', 'eager'].includes(t)) || 'calm',
         },
         simulationRules: [],  // TRANSIENT chains do not use SimRules
         chainType: 'TRANSIENT',

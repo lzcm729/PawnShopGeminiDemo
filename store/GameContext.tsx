@@ -114,6 +114,14 @@ const initialState: GameState = {
     currentCustomerInsight: null,
     // === POLICE INVESTIGATION ===
     currentPoliceInvestigation: null,
+    // === DAILY CHALLENGE (每日挑战 v2.1) ===
+    dailyChallenge: null,
+    rejectedCustomersToday: 0,
+    hadMistakeToday: false,
+    hadHighRiskItemToday: false,
+    // === CUSTOMER SCHEDULE (出场顺序 v2.1) ===
+    dailyCustomerSchedule: null,
+    scheduleSlotIndex: 0,
     // === DEBUG FLAGS ===
     debugRevealFloor: false
 };

@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
 import { NewsCategory, ItemStatus } from '../types';
-import { Sun, CloudRain, Wind, TrendingUp, Newspaper, AlertOctagon, ArrowRight, Droplets, Calendar } from 'lucide-react';
+import { Sun, CloudRain, Wind, TrendingUp, Newspaper, AlertOctagon, ArrowRight, Droplets, Calendar, Target } from 'lucide-react';
 import { Badge } from './ui/Badge';
 import { getDisplayName } from '../systems/items/tagUtils';
 
@@ -121,6 +121,22 @@ export const MorningBrief: React.FC = () => {
                                        +{expiringItems.length - 5} more items...
                                    </div>
                                )}
+                           </div>
+                       </div>
+                   )}
+
+                   {/* Daily Challenge (v2.1) */}
+                   {state.dailyChallenge && !state.dailyChallenge.isCompleted && (
+                       <div className="bg-amber-950 text-amber-100 p-4 border-l-4 border-amber-500 shadow-lg">
+                           <h3 className="text-amber-400 text-xs font-bold mb-2 flex items-center gap-2 uppercase tracking-wider">
+                               <Target className="w-3 h-3" /> Daily Challenge
+                           </h3>
+                           <div className="text-sm font-bold text-white mb-1">{state.dailyChallenge.title}</div>
+                           <div className="text-[11px] text-amber-200/80 mb-2">{state.dailyChallenge.description}</div>
+                           <div className="text-[10px] font-mono text-amber-400 pt-2 border-t border-amber-800/50">
+                               {state.dailyChallenge.reward.cash && `+$${state.dailyChallenge.reward.cash}`}
+                               {state.dailyChallenge.reward.reputation && `+${state.dailyChallenge.reward.reputation.amount} ${state.dailyChallenge.reward.reputation.axis}`}
+                               {' (可选)'}
                            </div>
                        </div>
                    )}
