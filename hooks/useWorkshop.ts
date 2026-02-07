@@ -10,6 +10,7 @@
 import { useCallback, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { Item, ItemStatus } from '../systems/items/types';
+import { STATE_TAGS } from '../systems/items/tags';
 import { EssenceBalance } from '../systems/economy/essence';
 import {
   Recipe,
@@ -17,11 +18,13 @@ import {
   ReforgeRecipe,
   RecipeStatus,
   WorkshopResult,
+  ViolationWarning,
   isRestoreRecipe,
   isReforgeRecipe,
   getRecipeStatus,
   performWorkshop,
   getBlockReasonText,
+  getViolationWarning,
   RESTORE_RECIPES,
   REFORGE_RECIPES,
 } from '../systems/workshop';
@@ -72,6 +75,9 @@ interface UseWorkshopReturn {
 
   /** 获取阻止原因的显示文本 */
   getReasonText: (reason: string) => string;
+
+  /** 获取违约重铸风险预警 */
+  getWarning: (item: Item) => ViolationWarning | null;
 }
 
 interface WorkshopOperationResult {
@@ -85,17 +91,60 @@ interface WorkshopOperationResult {
 // ============================================================================
 
 /**
- * 根据物品的负面标签确定唯一的修复配方
- * 优先修复第一个发现的负面状态
+ * 检查修复配方是否匹配物品
+ * 处理 targetTag（单目标）、targetAll（全面翻新）和 requiredTags（前置条件）
  */
-function getRestoreRecipeForItem(item: Item): RestoreRecipe | null {
+function doesRestoreRecipeMatch(recipe: RestoreRecipe, item: Item): boolean {
   const tags = item.tags || [];
 
-  // 按优先级检查负面标签
-  for (const recipe of RESTORE_RECIPES) {
-    if (tags.includes(recipe.targetTag)) {
-      return recipe;
+  // 全面翻新：只要物品有任何负面标签就匹配
+  if (recipe.targetAll) {
+    return STATE_TAGS.some(tag => tags.includes(tag));
+  }
+
+  // 单目标：检查物品是否有目标负面标签
+  if (recipe.targetTag && !tags.includes(recipe.targetTag)) {
+    return false;
+  }
+
+  // 检查前置标签（如艺术修复需要 ARTISTIC）
+  if (recipe.requiredTags && recipe.requiredTags.length > 0) {
+    if (!recipe.requiredTags.every(tag => tags.includes(tag))) {
+      return false;
     }
+  }
+
+  return true;
+}
+
+/**
+ * 根据物品属性确定最佳修复配方
+ * 优先级：艺术修复 > 机械修复 > 除锈 > 清洁 > 全面翻新
+ * （配方列表中有 requiredTags 的更具体配方排在前面）
+ */
+function getRestoreRecipeForItem(item: Item): RestoreRecipe | null {
+  // 遍历配方，找到第一个匹配的
+  // 艺术修复排在机械修复之后但有 requiredTags 区分
+  // 我们需要选择最具体的匹配
+  const tags = item.tags || [];
+  const hasArtistic = tags.includes('ARTISTIC');
+
+  for (const recipe of RESTORE_RECIPES) {
+    // 跳过全面翻新（不作为默认推荐）
+    if (recipe.targetAll) continue;
+
+    if (!doesRestoreRecipeMatch(recipe, item)) continue;
+
+    // 对于 BROKEN 标签，优先选择匹配 requiredTags 的配方
+    if (recipe.targetTag === 'BROKEN' && recipe.requiredTags?.includes('ARTISTIC')) {
+      if (hasArtistic) return recipe;
+      continue; // 物品没有 ARTISTIC，跳过艺术修复
+    }
+    if (recipe.targetTag === 'BROKEN' && !recipe.requiredTags) {
+      if (hasArtistic) continue; // 物品有 ARTISTIC，应该用艺术修复，跳过机械修复
+    }
+
+    return recipe;
   }
 
   return null;
@@ -103,36 +152,23 @@ function getRestoreRecipeForItem(item: Item): RestoreRecipe | null {
 
 /**
  * 获取物品所有可用的修复配方
- * 用于统计可修复的数量
  */
 function getAllRestoreRecipesForItem(item: Item): RestoreRecipe[] {
-  const tags = item.tags || [];
-  const matchingRecipes: RestoreRecipe[] = [];
-
-  for (const recipe of RESTORE_RECIPES) {
-    if (tags.includes(recipe.targetTag)) {
-      matchingRecipes.push(recipe);
-    }
-  }
-
-  return matchingRecipes;
+  return RESTORE_RECIPES.filter(recipe => doesRestoreRecipeMatch(recipe, item));
 }
 
 /**
  * 根据物品属性确定唯一的重铸配方
  * 按条件严格程度排序，选择最匹配的配方
  *
- * 注意：即使物品已重铸，也返回配方，以便UI显示正确的阻止原因
+ * 优先级（条件越严格越优先）：
+ * 1. imperial: 需要 VINTAGE_REAL + ARTISTIC
+ * 2. fake_history: 需要 VINTAGE_REAL
+ * 3. art_enhanced: 需要 ARTISTIC
+ * 4. trending: 无特殊要求（兜底）
  */
 function getReforgeRecipeForItem(item: Item): ReforgeRecipe | null {
   const tags = item.tags || [];
-
-  // 按优先级检查（条件越严格越优先）
-  // 1. imperial: 需要 VINTAGE_REAL + ARTISTIC
-  // 2. fake_history: 需要 VINTAGE_REAL
-  // 3. art_enhanced: 需要 ARTISTIC
-  // 4. limited: 需要特定类别
-  // 5. celebrity: 无特殊要求（兜底）
 
   for (const recipe of REFORGE_RECIPES) {
     // 检查前置标签
@@ -186,7 +222,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
         status: getRecipeStatus(recipe, item, essenceBalance, nightState),
       }));
 
-      // 获取该物品唯一的修复配方（第一个匹配的）
+      // 获取该物品唯一的修复配方（最佳匹配）
       const restoreRecipeMatch = getRestoreRecipeForItem(item);
       const restoreRecipe = restoreRecipeMatch
         ? { recipe: restoreRecipeMatch, status: getRecipeStatus(restoreRecipeMatch, item, essenceBalance, nightState) }
@@ -228,6 +264,11 @@ export const useWorkshop = (): UseWorkshopReturn => {
   // 获取阻止原因文本
   const getReasonText = useCallback((reason: string): string => {
     return getBlockReasonText(reason as any);
+  }, []);
+
+  // 获取违约风险预警
+  const getWarning = useCallback((item: Item): ViolationWarning | null => {
+    return getViolationWarning(item);
   }, []);
 
   // 执行修复
@@ -317,5 +358,6 @@ export const useWorkshop = (): UseWorkshopReturn => {
     doReforge,
     getStatus,
     getReasonText,
+    getWarning,
   };
 };

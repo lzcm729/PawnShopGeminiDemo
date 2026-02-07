@@ -171,6 +171,17 @@ export const TAG_DEFINITIONS: Record<ItemTag, TagDefinition> = {
     canBeRemoved: false,
   },
 
+  TRENDING: {
+    id: 'TRENDING',
+    group: 'ESSENCE',
+    valueMultiplier: 2.0,       // 2倍 - 潮流改装溢价
+    displayName: '潮流改装',
+    description: '经过改装赋予了流行文化价值。',
+    icon: '🔥',
+    isNegative: false,
+    canBeRemoved: false,
+  },
+
   CELEBRITY: {
     id: 'CELEBRITY',
     group: 'ESSENCE',

@@ -2,140 +2,118 @@
  * 工作台配方定义 (Workshop Recipes)
  *
  * 定义所有可用的修复和重铸配方。
+ * 参考设计文档 3.2/3.3节。
  *
- * 设计原则（来自D5）：
- * - 修复成本较低（约半个晚上的产出）
- * - 重铸成本较高（约3-5天的积累）
- * - 成本配比由物品属性决定，配方只定义基础成本
+ * 修复配方：清洁仅消耗精力；除锈/机械修复/艺术修复消耗精魄+精力；全面翻新移除全部负面标签。
+ * 重铸配方：做旧伪造/宫廷御制/艺术升华/潮流改装，成本为3-5天积累。
  */
 
 import { RestoreRecipe, ReforgeRecipe, Recipe } from './types';
 
 // ============================================================================
-// 修复配方
+// 修复配方（设计文档 3.2节）
 // ============================================================================
 
-/**
- * 修复配方列表
- *
- * 每个修复配方针对一种负面状态标签。
- * 基础成本设计为约半个晚上的格物产出（10点左右）。
- */
 export const RESTORE_RECIPES: RestoreRecipe[] = [
   {
-    id: 'restore_broken',
+    id: 'restore_clean',
     type: 'RESTORE',
-    name: '修复破损',
-    description: '修复物理损坏，恢复物品的完整性。',
-    targetTag: 'BROKEN',
-    resultTag: undefined, // 只移除 BROKEN，不添加新标签
-    baseCost: { craft: 8, time: 2 },
-    energyCost: 1,
-  },
-  {
-    id: 'restore_dirty',
-    type: 'RESTORE',
-    name: '清洁脏污',
-    description: '深度清洁物品，去除岁月的污垢。',
+    name: '清洁',
+    description: '深度清洁物品，去除岁月的污垢。最低门槛操作，仅消耗精力。',
     targetTag: 'DIRTY',
-    resultTag: undefined,
-    baseCost: { craft: 3, vibe: 5 },
+    baseCost: {},             // 0精魄
     energyCost: 1,
   },
   {
-    id: 'restore_rusted',
+    id: 'restore_derust',
     type: 'RESTORE',
-    name: '除锈保养',
-    description: '去除锈蚀，恢复金属光泽。',
+    name: '除锈',
+    description: '去除锈蚀，恢复金属光泽。基础金属修复。',
     targetTag: 'RUSTED',
-    resultTag: undefined,
-    baseCost: { craft: 6, time: 4 },
+    baseCost: { craft: 15, time: 5 },
     energyCost: 1,
+  },
+  {
+    id: 'restore_broken_mechanical',
+    type: 'RESTORE',
+    name: '机械修复',
+    description: '修复物理损坏，恢复精密机械的完整性。需要了解内部结构。',
+    targetTag: 'BROKEN',
+    baseCost: { craft: 30, time: 10 },
+    energyCost: 2,
+  },
+  {
+    id: 'restore_broken_artistic',
+    type: 'RESTORE',
+    name: '艺术修复',
+    description: '以审美判断修复艺术品的破损，恢复其美感与完整性。',
+    targetTag: 'BROKEN',
+    requiredTags: ['ARTISTIC'],
+    baseCost: { craft: 10, time: 15, vibe: 20 },
+    energyCost: 2,
+  },
+  {
+    id: 'restore_full_refurbish',
+    type: 'RESTORE',
+    name: '全面翻新',
+    description: '一次性清除所有瑕疵，高阶修复操作。',
+    targetAll: true,
+    baseCost: { craft: 40, time: 20, vibe: 10 },
+    energyCost: 3,
   },
 ];
 
 // ============================================================================
-// 重铸配方
+// 重铸配方（设计文档 3.3节）
 // ============================================================================
 
-/**
- * 重铸配方列表
- *
- * 重铸是更高阶的操作，注入新的"故事"给物品。
- * 基础成本设计为约3-5天的积累（50-80点）。
- *
- * 设计原则（来自C3, C4）：
- * - 重铸本身是中性操作，不带道德判断
- * - 成本配比反映操作所需的知识类型
- */
 export const REFORGE_RECIPES: ReforgeRecipe[] = [
-  // === 时间类重铸 ===
   {
     id: 'reforge_fake_history',
     type: 'REFORGE',
-    name: '伪造年份',
-    description: '通过做旧处理，让物品看起来更有年代感。需要了解历史风化的痕迹。',
+    name: '做旧伪造',
+    description: '通过做旧处理，让物品看起来更有年代感。伪造历史痕迹。',
     resultTag: 'FAKE_HISTORY',
-    baseCost: { time: 40, craft: 20 },
-    energyCost: 2,
+    baseCost: { craft: 30, time: 80 },
+    energyCost: 3,
     requiredTags: ['VINTAGE_REAL'],
     excludedTags: ['FAKE_HISTORY', 'IMPERIAL'],
     riskNote: '如果被识破，物品价值会大幅下降。',
   },
-
-  // === 名人类重铸 ===
-  {
-    id: 'reforge_celebrity',
-    type: 'REFORGE',
-    name: '名人关联',
-    description: '为物品编造一个与名人相关的故事。需要了解名人轶事和时代背景。',
-    resultTag: 'CELEBRITY',
-    baseCost: { vibe: 35, time: 25 },
-    energyCost: 2,
-    excludedTags: ['CELEBRITY', 'IMPERIAL'],
-    riskNote: '故事需要令人信服，否则可能被质疑。',
-  },
-
-  // === 稀缺性重铸 ===
-  {
-    id: 'reforge_limited',
-    type: 'REFORGE',
-    name: '限量版标记',
-    description: '添加限量版的标识和编号。需要了解品牌的限量发行规律。',
-    resultTag: 'LIMITED',
-    baseCost: { craft: 30, vibe: 30 },
-    energyCost: 2,
-    requiredCategories: ['手表', '首饰', '艺术品', '收藏品'],
-    excludedTags: ['LIMITED'],
-    riskNote: '专业买家可能会核实编号真伪。',
-  },
-
-  // === 艺术升华重铸 ===
-  {
-    id: 'reforge_art_enhanced',
-    type: 'REFORGE',
-    name: '艺术升华',
-    description: '邀请艺术大师对物品进行再创作，赋予其全新的艺术灵魂。',
-    resultTag: 'ART_ENHANCED',
-    baseCost: { vibe: 50, craft: 10 },
-    energyCost: 2,
-    requiredTags: ['ARTISTIC'],
-    excludedTags: ['ART_ENHANCED'],
-    riskNote: '艺术品的价值高度主观，市场评价可能因人而异。',
-  },
-
-  // === 高级重铸（解锁条件更严格）===
   {
     id: 'reforge_imperial',
     type: 'REFORGE',
-    name: '宫廷御用',
+    name: '宫廷御制',
     description: '为物品编造皇室或宫廷的出处。这是最高级的"故事"，也是最危险的。',
     resultTag: 'IMPERIAL',
-    baseCost: { time: 50, vibe: 30, craft: 20 },
+    baseCost: { craft: 50, time: 60, vibe: 30 },
     energyCost: 3,
     requiredTags: ['VINTAGE_REAL', 'ARTISTIC'],
     excludedTags: ['IMPERIAL', 'FAKE_HISTORY'],
     riskNote: '宫廷物品有严格的档案记录，编造故事风险极高。',
+  },
+  {
+    id: 'reforge_art_enhanced',
+    type: 'REFORGE',
+    name: '艺术升华',
+    description: '对物品进行艺术再创作，赋予其全新的艺术灵魂。',
+    resultTag: 'ART_ENHANCED',
+    baseCost: { craft: 20, time: 20, vibe: 70 },
+    energyCost: 3,
+    requiredTags: ['ARTISTIC'],
+    excludedTags: ['ART_ENHANCED'],
+    riskNote: '艺术品的价值高度主观，市场评价可能因人而异。',
+  },
+  {
+    id: 'reforge_trending',
+    type: 'REFORGE',
+    name: '潮流改装',
+    description: '赋予物品流行文化价值，迎合当下潮流趋势。',
+    resultTag: 'TRENDING',
+    baseCost: { craft: 40, vibe: 60 },
+    energyCost: 2,
+    excludedTags: ['TRENDING'],
+    riskNote: '潮流转瞬即逝，时机不对可能卖不出好价。',
   },
 ];
 
@@ -143,42 +121,24 @@ export const REFORGE_RECIPES: ReforgeRecipe[] = [
 // 配方查询
 // ============================================================================
 
-/**
- * 所有配方
- */
 export const ALL_RECIPES: Recipe[] = [...RESTORE_RECIPES, ...REFORGE_RECIPES];
 
-/**
- * 根据ID获取配方
- */
 export function getRecipeById(id: string): Recipe | undefined {
   return ALL_RECIPES.find(r => r.id === id);
 }
 
-/**
- * 获取所有修复配方
- */
 export function getRestoreRecipes(): RestoreRecipe[] {
   return RESTORE_RECIPES;
 }
 
-/**
- * 获取所有重铸配方
- */
 export function getReforgeRecipes(): ReforgeRecipe[] {
   return REFORGE_RECIPES;
 }
 
-/**
- * 根据目标标签获取修复配方
- */
 export function getRestoreRecipeForTag(tag: string): RestoreRecipe | undefined {
   return RESTORE_RECIPES.find(r => r.targetTag === tag);
 }
 
-/**
- * 根据结果标签获取重铸配方
- */
 export function getReforgeRecipeForResult(tag: string): ReforgeRecipe | undefined {
   return REFORGE_RECIPES.find(r => r.resultTag === tag);
 }

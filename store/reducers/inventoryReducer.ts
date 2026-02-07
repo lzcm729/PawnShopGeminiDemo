@@ -40,6 +40,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
         case 'REDEEM_ITEM': {
             const { itemId, paymentAmount, name } = action.payload;
             playSfx('CASH');
+            const redeemItem = state.inventory.find(i => i.id === itemId);
             const updatedInventory = state.inventory.map(item => {
                 if (item.id === itemId) {
                     const redeemLog = generateRedeemLog(state.currentCustomer?.name || "顾客", item, state.stats.day, paymentAmount);
@@ -53,12 +54,18 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 amount: paymentAmount,
                 type: 'REDEEM'
             };
+            // S2-F4: 修复后归还声誉奖励 人情+10
+            let redeemRep = { ...state.reputation };
+            if (redeemItem?.wasRestored) {
+                redeemRep[ReputationType.HUMANITY] = Math.min(100, redeemRep[ReputationType.HUMANITY] + 10);
+            }
             return {
                 ...state,
                 stats: { ...state.stats, cash: state.stats.cash + paymentAmount },
+                reputation: redeemRep,
                 inventory: updatedInventory,
                 todayTransactions: [...state.todayTransactions, record],
-                dayEvents: [...state.dayEvents, `${name} 已被赎回 (收回资金 $${paymentAmount})`]
+                dayEvents: [...state.dayEvents, `${name} 已被赎回 (收回资金 $${paymentAmount})${redeemItem?.wasRestored ? ' [修复归还: 人情+10]' : ''}`]
             };
         }
 

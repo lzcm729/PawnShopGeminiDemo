@@ -52,7 +52,11 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                                 : i
                         );
                         repDelta = { [ReputationType.HUMANITY]: 3, [ReputationType.CREDIBILITY]: 2 };
-                        log = `${item.name} 被赎回 (收款 $${cashDelta})`;
+                        // S2-F4: 修复后归还声誉奖励 人情+10
+                        if (item.wasRestored) {
+                            repDelta[ReputationType.HUMANITY] = (repDelta[ReputationType.HUMANITY] || 0) + 10;
+                        }
+                        log = `${item.name} 被赎回 (收款 $${cashDelta})${item.wasRestored ? ' [修复归还: 人情+10]' : ''}`;
                         satisfaction = 'GRATEFUL';
                         playSfx('CASH');
                     }

@@ -52,11 +52,17 @@ export interface RecipeBase {
 export interface RestoreRecipe extends RecipeBase {
   type: 'RESTORE';
 
-  /** 目标移除的标签 */
-  targetTag: StateTag;
+  /** 目标移除的标签（全面翻新时为 undefined） */
+  targetTag?: StateTag;
+
+  /** 是否移除全部负面标签（全面翻新） */
+  targetAll?: boolean;
 
   /** 移除后的替代标签（可选，如 BROKEN -> MINT） */
   resultTag?: ItemTag;
+
+  /** 前置条件：物品必须拥有的标签（如艺术修复需要 ARTISTIC） */
+  requiredTags?: ItemTag[];
 }
 
 /**
@@ -181,6 +187,26 @@ export interface WorkshopNarrative {
 
   /** 道德提醒（如果操作涉及典当中物品） */
   moralNote?: string;
+
+  /** 凝视时刻文本（操作完成后的情感铺垫） */
+  gazeText: string;
+}
+
+/**
+ * 违约重铸风险预警
+ */
+export interface ViolationWarning {
+  /** 赔偿金额：当金 x 200% */
+  compensationAmount: number;
+
+  /** 声誉损失 */
+  reputationLoss: { humanity: number; credibility: number };
+
+  /** 商人直觉文本 */
+  intuitionText: string;
+
+  /** 物品是否仍在当期 */
+  isActive: boolean;
 }
 
 // ============================================================================

@@ -13,6 +13,7 @@ export type {
   WorkshopBlockReason,
   RecipeStatus,
   WorkshopNarrative,
+  ViolationWarning,
 } from './types';
 
 export {
@@ -42,4 +43,5 @@ export {
   getBlockReasonText,
   getAvailableRestoreRecipes,
   getAvailableReforgeRecipes,
+  getViolationWarning,
 } from './workshopLogic';
