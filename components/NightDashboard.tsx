@@ -18,7 +18,8 @@ import { FacilityControlModal } from './FacilityControlModal';
 import { getHeatLevel } from '../systems/blackmarket/types';
 import { Tooltip } from './ui/Tooltip';
 import { ReputationType } from '../systems/core/types';
-import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost, hasBlackMarketContact, hasPrecisionBench } from '../systems/upgrades';
+import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost, hasBlackMarketContact, hasPrecisionBench, getUpgradeLevel, getEffectiveNightEnergy, getBlackMarketContactLevel } from '../systems/upgrades';
+import { GAME_CONFIG } from '../systems/game/config';
 
 export const NightDashboard: React.FC = () => {
     const { state, dispatch } = useGame();
@@ -50,6 +51,13 @@ export const NightDashboard: React.FC = () => {
 
     // Black market state
     const hasBlackMarket = hasBlackMarketContact(state.shopUpgrades);
+    // S1-I8: Backroom upgrade levels for presence indicators
+    const storageLevel = getUpgradeLevel('storage_expansion', state.shopUpgrades);
+    const workshopLevel = getUpgradeLevel('precision_bench', state.shopUpgrades);
+    const blackMarketLevel = getBlackMarketContactLevel(state.shopUpgrades);
+    const currentEnergy = getEffectiveNightEnergy(state.shopUpgrades);
+    const currentCapacity = getEffectiveInventoryCapacity(state.shopUpgrades);
+
     const blackmarketHeat = state.blackmarket?.heat ?? 0;
     const blackmarketHeatLevel = getHeatLevel(blackmarketHeat);
     const isBlackmarketLocked = state.blackmarket?.isLocked ?? false;
@@ -245,6 +253,11 @@ export const NightDashboard: React.FC = () => {
                             <span className="text-xs uppercase tracking-widest group-hover:text-white">
                                 Vault ({activeItems})
                             </span>
+                            {storageLevel > 0 && (
+                                <span className="text-[9px] text-stone-500 mt-0.5">
+                                    储物架 Lv{storageLevel} | {currentCapacity}位
+                                </span>
+                            )}
                         </button>
 
                         {/* Insight / 格物 Button */}
@@ -292,7 +305,7 @@ export const NightDashboard: React.FC = () => {
                                     {/* Central lock overlay */}
                                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                         <Lock className="w-6 h-6 text-amber-500/70 mb-2" />
-                                        <span className="text-[10px] text-amber-400/80 font-medium">需要「精密工作台」升级</span>
+                                        <span className="text-[10px] text-amber-400/80 font-medium">需要「工坊扩建」升级</span>
                                     </div>
                                 </>
                             )}
@@ -315,7 +328,7 @@ export const NightDashboard: React.FC = () => {
                                 )}>
                                     {!hasWorkshop
                                         ? <><Lock className="w-3 h-3" /> 未解锁</>
-                                        : '修复与重铸物品'}
+                                        : `工坊 Lv${workshopLevel} | 精力 ${currentEnergy}`}
                                 </span>
                             </div>
                         </button>
@@ -552,7 +565,7 @@ export const NightDashboard: React.FC = () => {
                                         ? <><Lock className="w-3 h-3" /> 未解锁</>
                                         : isBlackmarketLocked ? '已关闭' :
                                          hasRiskEvent ? '警方行动!' :
-                                         forfeitItems > 0 ? `${forfeitItems} 件可出售` : '变卖绝当物品'}
+                                         forfeitItems > 0 ? `Lv${blackMarketLevel} | ${forfeitItems} 件可出售` : `Lv${blackMarketLevel} | 变卖绝当物品`}
                                 </span>
                             </div>
                         </button>

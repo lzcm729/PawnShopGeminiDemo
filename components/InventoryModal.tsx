@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { PackageOpen, Moon, Archive, Wrench, Hammer, Eye, Skull, Lock, Search } from 'lucide-react';
+import { PackageOpen, Moon, Archive, Wrench, Hammer, Eye, Skull, Lock, Search, Package } from 'lucide-react';
 import { Item, ItemStatus } from '../types';
 import { PhaseIs } from '../systems/core/phases';
 import { Modal } from './ui/Modal';
@@ -10,8 +10,19 @@ import { ItemCard } from './ui/ItemCard';
 import { ItemDetailModal } from './ui/ItemDetailModal';
 import { playSfx } from '../systems/game/audio';
 import { cn } from '../lib/utils';
-import { getEffectiveInventoryCapacity, hasBlackMarketContact, hasPrecisionBench } from '../systems/upgrades';
+import { getEffectiveInventoryCapacity, hasBlackMarketContact, hasPrecisionBench, getUpgradeLevel } from '../systems/upgrades';
 import { calculateInterest } from '../systems/economy/interest';
+
+
+// S1-I5: Storage level visual configs per design doc 3.1
+const STORAGE_LEVEL_VISUALS: Record<number, { label: string; color: string; borderColor: string }> = {
+    0: { label: 'Capacity', color: 'text-stone-500', borderColor: 'border-stone-700' },
+    1: { label: '小木架', color: 'text-stone-400', borderColor: 'border-stone-600' },
+    2: { label: '铁制货架', color: 'text-zinc-400', borderColor: 'border-zinc-600' },
+    3: { label: '玻璃展柜', color: 'text-cyan-400', borderColor: 'border-cyan-800' },
+    4: { label: '金属保险柜', color: 'text-blue-400', borderColor: 'border-blue-800' },
+    5: { label: '专业保险柜', color: 'text-amber-400', borderColor: 'border-amber-800' },
+};
 
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -53,6 +64,10 @@ export const InventoryModal: React.FC = () => {
   });
 
   const isNightPhase = PhaseIs.night(state.phase);
+
+  // S1-I5: Storage level for visual differentiation
+  const storageLevel = getUpgradeLevel('storage_expansion', state.shopUpgrades);
+  const storageVisual = STORAGE_LEVEL_VISUALS[storageLevel] || STORAGE_LEVEL_VISUALS[0];
   const hasBlackMarket = hasBlackMarketContact(state.shopUpgrades);
   const hasWorkshop = hasPrecisionBench(state.shopUpgrades);
 
@@ -138,7 +153,7 @@ export const InventoryModal: React.FC = () => {
                               ? cn(enabledClass, "text-emerald-400 hover:border-emerald-700 hover:bg-emerald-950/30")
                               : cn(disabledClass, "text-emerald-600/50")
                       )}
-                      title={!hasWorkshop ? "需要解锁「精密工作台」" : isNightPhase ? "修复物品 (Workshop)" : "仅夜间可用"}
+                      title={!hasWorkshop ? "需要解锁「工坊扩建」" : isNightPhase ? "修复物品 (Workshop)" : "仅夜间可用"}
                   >
                       <Hammer className="w-3.5 h-3.5" />
                       <span>修复</span>
@@ -156,7 +171,7 @@ export const InventoryModal: React.FC = () => {
                               ? cn(enabledClass, "text-purple-400 hover:border-purple-700 hover:bg-purple-950/30")
                               : cn(disabledClass, "text-purple-600/50")
                       )}
-                      title={!hasWorkshop ? "需要解锁「精密工作台」" : isNightPhase ? "重铸物品 (Workshop)" : "仅夜间可用"}
+                      title={!hasWorkshop ? "需要解锁「工坊扩建」" : isNightPhase ? "重铸物品 (Workshop)" : "仅夜间可用"}
                   >
                       <Wrench className="w-3.5 h-3.5" />
                       <span>重铸</span>
@@ -230,17 +245,22 @@ export const InventoryModal: React.FC = () => {
           <div className="bg-black border-b border-noir-400 p-4 grid grid-cols-5 gap-4 shadow-md z-10">
               <div className={cn(
                   "bg-noir-200 border p-2 rounded flex flex-col items-center justify-center",
-                  isAtCapacity ? "border-red-500" : isNearCapacity ? "border-amber-500" : "border-noir-300"
+                  isAtCapacity ? "border-red-500" : isNearCapacity ? "border-amber-500" : storageVisual.borderColor
               )}>
                   <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1 flex items-center gap-1">
-                      <Archive className="w-3 h-3" /> Capacity
+                      <Package className="w-3 h-3" /> {storageVisual.label}
                   </span>
                   <span className={cn(
                       "text-lg font-mono font-bold",
-                      isAtCapacity ? "text-red-500" : isNearCapacity ? "text-amber-500" : "text-cyan-500"
+                      isAtCapacity ? "text-red-500" : isNearCapacity ? "text-amber-500" : storageVisual.color
                   )}>
                       {currentInventoryCount}/{inventoryCapacity}
                   </span>
+                  {storageLevel > 0 && (
+                      <span className={cn("text-[8px] mt-0.5 font-mono", storageVisual.color)}>
+                          Lv{storageLevel}
+                      </span>
+                  )}
               </div>
               <div className="bg-noir-200 border border-noir-300 p-2 rounded flex flex-col items-center justify-center">
                   <span className="text-[9px] text-noir-txt-muted uppercase tracking-wider mb-1">Active Pawns</span>

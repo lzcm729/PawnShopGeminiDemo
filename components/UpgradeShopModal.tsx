@@ -1,10 +1,10 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useGame } from '../store/GameContext';
 import { Modal } from './ui/Modal';
 import { HelpTooltip } from './ui/Tooltip';
 import { Button } from './ui/Button';
-import { Package, Wrench, Check, Lock, DollarSign, Zap, Coffee, Scan, ClipboardList, Skull } from 'lucide-react';
+import { Package, Wrench, Check, Lock, DollarSign, Zap, Coffee, Scan, ClipboardList, Skull, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getAvailableUpgradesWithStatus, getEffectiveInventoryCapacity, getEffectiveNightEnergy, BASE_INVENTORY_CAPACITY, getTotalMaintenanceCost, getPatienceBonus, getAnomalyDetectionThreshold } from '../systems/upgrades';
 import { GAME_CONFIG } from '../systems/game/config';
@@ -16,12 +16,102 @@ const LOCATION_CATEGORIES: { location: UpgradeLocation; nameCn: string; nameEn: 
     { location: 'COUNTER', nameCn: '柜台设备', nameEn: 'Counter', color: 'blue' },
 ];
 
+
+// Purchase feedback monologues per upgrade (keyed by upgradeId)
+const PURCHASE_MONOLOGUES: Record<string, string[]> = {
+    storage_expansion: [
+        '',
+        '"总算有地方放东西了..."',
+        '"空间宽敞多了，能接更多活了。"',
+        '"这后屋...快赶上仓库了。"',
+        '"想收什么就收什么，不用再挑挑拣拣。"',
+        '"整面墙都是架子...像个真正的当铺了。"',
+    ],
+    precision_bench: [
+        '',
+        '"有了工作台，手艺终于有用武之地了。"',
+        '"工坊扩建后，修复效率高多了。"',
+        '"这些工具...师傅看到会欣慰吧。"',
+    ],
+    tea_set: [
+        '',
+        '"一壶好茶，能让急躁的客人坐下来。"',
+        '"茶香四溢...谈生意也从容了。"',
+        '"上好的茶具，客人都不舍得走了。"',
+    ],
+    spectrometer: [
+        '',
+        '"有了这台仪器，假货无处遁形。"',
+        '"精度更高了...连细微的差异都能捕捉。"',
+        '"专业级设备，鉴定结果一目了然。"',
+    ],
+    appointment_board: [
+        '',
+        '"写个本子记一下，明天谁来。"',
+        '"有了档案柜，客户信息一目了然。"',
+        '"消息灵通了...连他们的情绪都能感知到。"',
+        '"预约热线开通！生意上门了。"',
+        '"VIP名册...这才是真正的人脉。"',
+    ],
+    black_market_contact: [
+        '',
+        '"...有些东西，正规渠道走不通。"',
+        '"关系越深，门路越广。"',
+        '"地下的规矩，我已经摸透了。"',
+    ],
+};
+
+// PurchaseFlash overlay component
+interface PurchaseFlashProps {
+    monologue: string;
+    upgradeName: string;
+    level: number;
+    onDismiss: () => void;
+}
+
+const PurchaseFlash: React.FC<PurchaseFlashProps> = ({ monologue, upgradeName, level, onDismiss }) => {
+    useEffect(() => {
+        const timer = setTimeout(onDismiss, 3000);
+        return () => clearTimeout(timer);
+    }, [onDismiss]);
+
+    return (
+        <div
+            className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
+            style={{ animation: 'purchaseFlashIn 0.3s ease-out, purchaseFlashOut 0.5s ease-in 2.5s forwards' }}
+        >
+            <style>
+                {`
+                    @keyframes purchaseFlashIn {
+                        from { opacity: 0; transform: scale(0.9); }
+                        to { opacity: 1; transform: scale(1); }
+                    }
+                    @keyframes purchaseFlashOut {
+                        from { opacity: 1; }
+                        to { opacity: 0; }
+                    }
+                `}
+            </style>
+            <div className="bg-noir-100/95 border border-amber-700 rounded-xl px-8 py-6 max-w-sm text-center shadow-2xl shadow-amber-900/30">
+                <Sparkles className="w-8 h-8 text-amber-400 mx-auto mb-3" />
+                <div className="text-xs text-amber-500 uppercase tracking-widest mb-1">
+                    {upgradeName} Lv{level}
+                </div>
+                <p className="text-sm text-stone-300 italic font-serif leading-relaxed">
+                    {monologue}
+                </p>
+            </div>
+        </div>
+    );
+};
+
 // Circular Arc Pattern Component - represents level with purple arcs
-const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: React.ReactNode; isMaxLevel?: boolean }> = ({
+const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: React.ReactNode; isMaxLevel?: boolean; isRecommended?: boolean }> = ({
     currentLevel,
     maxLevel,
     icon,
-    isMaxLevel = false
+    isMaxLevel = false,
+    isRecommended = false
 }) => {
     // Calculate arc angles based on max level (each level gets an equal arc)
     const gapAngle = 15; // Gap between arcs in degrees
@@ -65,7 +155,7 @@ const LevelArcRing: React.FC<{ currentLevel: number; maxLevel: number; icon: Rea
                 stroke={strokeColor}
                 strokeWidth="3"
                 strokeLinecap="round"
-                className={isNextLevel ? 'animate-arc-breathe' : undefined}
+                className={isNextLevel && isRecommended ? 'animate-arc-breathe' : undefined}
             />
         );
     });
@@ -104,6 +194,10 @@ export const UpgradeShopModal: React.FC = () => {
     const upgradesWithStatus = getAvailableUpgradesWithStatus(state.stats.cash, state.shopUpgrades);
     const totalMaintenanceCost = getTotalMaintenanceCost(state.shopUpgrades);
 
+    const [purchaseFeedback, setPurchaseFeedback] = useState<{ monologue: string; upgradeName: string; level: number } | null>(null);
+    const [recentPurchaseId, setRecentPurchaseId] = useState<string | null>(null);
+
+
     // Group upgrades by location - useMemo must be called before any conditional returns
     const upgradesByLocation = useMemo(() => {
         const grouped: Record<UpgradeLocation, typeof upgradesWithStatus> = {
@@ -116,17 +210,42 @@ export const UpgradeShopModal: React.FC = () => {
         return grouped;
     }, [upgradesWithStatus]);
 
+    // S1-I6: Find the single most-recommended upgrade (cheapest purchasable)
+    const recommendedUpgradeId = useMemo(() => {
+        const purchasable = upgradesWithStatus
+            .filter(u => u.canPurchase && !u.isMaxLevel)
+            .sort((a, b) => (a.nextLevelCost ?? Infinity) - (b.nextLevelCost ?? Infinity));
+        return purchasable.length > 0 ? purchasable[0].config.id : null;
+    }, [upgradesWithStatus]);
+
     // Calculate current effective values
     const currentCapacity = getEffectiveInventoryCapacity(state.shopUpgrades);
     const currentEnergy = getEffectiveNightEnergy(state.shopUpgrades);
     const patienceBonus = getPatienceBonus(state.shopUpgrades);
     const anomalyThreshold = getAnomalyDetectionThreshold(state.shopUpgrades);
 
+    // S1-I1: Clear recent purchase glow after 2s
+    useEffect(() => {
+        if (recentPurchaseId) {
+            const timer = setTimeout(() => setRecentPurchaseId(null), 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [recentPurchaseId]);
+
+    const handleDismissFlash = useCallback(() => setPurchaseFeedback(null), []);
+
     // Early return AFTER all hooks
     if (!state.showUpgradeShop) return null;
 
-    const handlePurchase = (upgradeId: string) => {
+    const handlePurchase = (upgradeId: string, upgradeName: string, newLevel: number) => {
         dispatch({ type: 'PURCHASE_UPGRADE', payload: { upgradeId } });
+        // S1-I1: Show purchase feedback
+        const monologues = PURCHASE_MONOLOGUES[upgradeId];
+        const monologue = monologues?.[newLevel] || '';
+        if (monologue) {
+            setPurchaseFeedback({ monologue, upgradeName, level: newLevel });
+        }
+        setRecentPurchaseId(upgradeId);
     };
 
     const getIcon = (iconName?: string) => {
@@ -153,6 +272,16 @@ export const UpgradeShopModal: React.FC = () => {
             }
             size="lg"
         >
+            {/* S1-I1: Purchase feedback overlay */}
+            {purchaseFeedback && (
+                <PurchaseFlash
+                    monologue={purchaseFeedback.monologue}
+                    upgradeName={purchaseFeedback.upgradeName}
+                    level={purchaseFeedback.level}
+                    onDismiss={handleDismissFlash}
+                />
+            )}
+
             <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                 {/* Current Status Header */}
                 <div className="bg-noir-200 border border-noir-400 rounded p-4">
@@ -240,17 +369,21 @@ export const UpgradeShopModal: React.FC = () => {
                                         const ownedUpgrade = state.shopUpgrades.upgrades.find(u => u.upgradeId === config.id);
                                         const isOwned = currentLevel > 0;
                                         const isEnabled = ownedUpgrade?.enabled ?? true;
+                                        const isRecommended = config.id === recommendedUpgradeId;
+                                        const isRecentPurchase = config.id === recentPurchaseId;
 
                                         return (
                                             <div
                                                 key={config.id}
                                                 className={cn(
-                                                    "border rounded-lg overflow-hidden transition-all",
-                                                    isMaxLevel
-                                                        ? "bg-noir-200 border-green-900/50"
-                                                        : canPurchase
-                                                            ? "bg-noir-200 border-amber-900/50 hover:border-amber-500/50"
-                                                            : "bg-noir-200 border-noir-400"
+                                                    "border rounded-lg overflow-hidden transition-all duration-500",
+                                                    isRecentPurchase
+                                                        ? "bg-amber-950/20 border-amber-500 shadow-lg shadow-amber-900/30"
+                                                        : isMaxLevel
+                                                            ? "bg-noir-200 border-green-900/50"
+                                                            : canPurchase
+                                                                ? "bg-noir-200 border-amber-900/50 hover:border-amber-500/50"
+                                                                : "bg-noir-200 border-noir-400"
                                                 )}
                                             >
                                                 {/* Main Card Content */}
@@ -261,6 +394,7 @@ export const UpgradeShopModal: React.FC = () => {
                                                         maxLevel={config.maxLevel}
                                                         icon={getIcon(config.icon)}
                                                         isMaxLevel={isMaxLevel}
+                                                        isRecommended={isRecommended}
                                                     />
 
                                                     {/* Right: Info */}
@@ -279,6 +413,11 @@ export const UpgradeShopModal: React.FC = () => {
                                                                     isEnabled ? "bg-green-950/50 text-green-400" : "bg-red-950/50 text-red-400"
                                                                 )}>
                                                                     {isEnabled ? 'ON' : 'OFF'}
+                                                                </span>
+                                                            )}
+                                                            {isRecommended && canPurchase && (
+                                                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/50 text-amber-400 flex items-center gap-1">
+                                                                    <Sparkles className="w-3 h-3" /> 推荐
                                                                 </span>
                                                             )}
                                                         </div>
@@ -323,7 +462,7 @@ export const UpgradeShopModal: React.FC = () => {
                                                                 variant={canPurchase ? "primary" : "ghost"}
                                                                 size="sm"
                                                                 disabled={!canPurchase}
-                                                                onClick={() => handlePurchase(config.id)}
+                                                                onClick={() => handlePurchase(config.id, config.nameCn, currentLevel + 1)}
                                                                 className={cn(
                                                                     "text-xs px-4",
                                                                     !canPurchase && "opacity-50 cursor-not-allowed"

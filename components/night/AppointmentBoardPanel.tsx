@@ -163,6 +163,32 @@ export const AppointmentBoardPanel: React.FC<AppointmentBoardPanelProps> = ({
           </div>
         </div>
 
+        {/* S1-I4: Discovery moment guidance for new info tiers */}
+        {boardConfig.level === 2 && (
+          <div className="bg-amber-950/20 border border-amber-800/50 rounded-lg p-3 text-center">
+            <p className="text-xs text-amber-300 italic font-serif">
+              “有了更好的情报网...连他们的心情都能感知到了。”
+            </p>
+            <p className="text-[10px] text-amber-500/60 mt-1">↑ 新解锁: 情绪状态显示</p>
+          </div>
+        )}
+        {boardConfig.level === 3 && (
+          <div className="bg-purple-950/20 border border-purple-800/50 rounded-lg p-3 text-center">
+            <p className="text-xs text-purple-300 italic font-serif">
+              “背景调查...知道他们是谁，就知道他们手里的东西值不值钱。”
+            </p>
+            <p className="text-[10px] text-purple-500/60 mt-1">↑ 新解锁: 背景线索 + 新闻关联</p>
+          </div>
+        )}
+        {boardConfig.level === 5 && (
+          <div className="bg-teal-950/20 border border-teal-800/50 rounded-lg p-3 text-center">
+            <p className="text-xs text-teal-300 italic font-serif">
+              “现在...我甚至可以选择想见什么样的人了。”
+            </p>
+            <p className="text-[10px] text-teal-500/60 mt-1">↑ 新解锁: 筛选偏好</p>
+          </div>
+        )}
+
         {/* Preference Filter (Lv5 only) */}
         {boardConfig.hasPreference && (
           <div className="flex items-center gap-4 p-3 bg-noir-200 rounded border border-noir-400">
@@ -329,27 +355,27 @@ const CandidateCard: React.FC<CandidateCardProps> = ({
             {candidate.itemSizeHint}
           </div>
 
-          {/* Emotion (Lv2+) */}
+          {/* S1-I4: Emotion (Lv2+) - with visual distinction */}
           {config.showEmotion && candidate.emotionDesc && (
-            <div className="flex items-center gap-2 mt-1 text-xs text-amber-400/80">
-              <AlertCircle className="w-3 h-3" />
-              {candidate.emotionDesc}
+            <div className="flex items-center gap-2 mt-1 text-xs text-amber-400/80 bg-amber-950/10 px-1.5 py-0.5 rounded border-l-2 border-amber-600/50">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              <span>{candidate.emotionDesc}</span>
             </div>
           )}
 
-          {/* Background Hint (Lv3+) */}
+          {/* S1-I4: Background Hint (Lv3+) - file-card style */}
           {config.showBackground && candidate.backgroundHint && (
-            <div className="flex items-center gap-2 mt-1 text-xs text-purple-400/80">
-              <Briefcase className="w-3 h-3" />
-              {candidate.backgroundHint}
+            <div className="flex items-center gap-2 mt-1 text-xs text-purple-400/80 bg-purple-950/10 px-1.5 py-0.5 rounded border-l-2 border-purple-600/50">
+              <Briefcase className="w-3 h-3 shrink-0" />
+              <span>{candidate.backgroundHint}</span>
             </div>
           )}
 
-          {/* News Link (Lv3+) */}
+          {/* S1-I4: News Link (Lv3+) - newspaper clipping style */}
           {config.showNewsLink && candidate.newsLink && (
-            <div className="flex items-center gap-2 mt-2 text-[10px] text-stone-600 italic">
-              <Newspaper className="w-3 h-3" />
-              [{candidate.newsLink}]
+            <div className="flex items-center gap-2 mt-2 text-[10px] text-stone-500 italic bg-stone-800/30 px-1.5 py-0.5 rounded border border-dashed border-stone-700/50">
+              <Newspaper className="w-3 h-3 shrink-0" />
+              <span>[{candidate.newsLink}]</span>
             </div>
           )}
         </div>

@@ -98,11 +98,12 @@ export function resetGameState(_state: GameState, _event: PhaseEvent): Partial<G
 }
 
 // ============================================
-// Morning/Day Start Actions
+// Night Closing Actions
 // ============================================
 
 /**
  * Deduct daily maintenance costs for enabled COUNTER upgrades
+ * Called during night closing (END_DAY transition), per design doc 2.2
  */
 export function deductMaintenanceCost(state: GameState, _event: PhaseEvent): Partial<GameState> {
     const cost = getTotalMaintenanceCost(state.shopUpgrades);

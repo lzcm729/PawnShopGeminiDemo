@@ -18,32 +18,33 @@ export const STORAGE_EXPANSION: UpgradeConfig = {
   effectType: 'INVENTORY_CAPACITY',
   maxLevel: 5,
   levels: [
-    { level: 1, cost: 500,  effectValue: 1, description: '增加1个库存位' },
-    { level: 2, cost: 1000, effectValue: 2, description: '增加2个库存位' },
-    { level: 3, cost: 2000, effectValue: 3, description: '增加3个库存位' },
-    { level: 4, cost: 4000, effectValue: 4, description: '增加4个库存位' },
-    { level: 5, cost: 8000, effectValue: 5, description: '增加5个库存位' },
+    { level: 1, cost: 500,  effectValue: 1, description: '总共+1（累计6位）' },
+    { level: 2, cost: 1000, effectValue: 2, description: '总共+2（累计7位）' },
+    { level: 3, cost: 2000, effectValue: 3, description: '总共+3（累计8位），解锁「分类摆放」' },
+    { level: 4, cost: 4000, effectValue: 4, description: '总共+4（累计9位）' },
+    { level: 5, cost: 8000, effectValue: 5, description: '总共+5（累计10位）' },
   ],
   icon: 'Package',
 };
 
 /**
- * Precision Bench (Backroom)
+ * Workshop Expansion (Backroom)
  * Increases night energy cap
  * No maintenance cost, permanently active
+ * Renamed from Precision Bench per design doc v1.1
  */
 export const PRECISION_BENCH: UpgradeConfig = {
   id: 'precision_bench',
-  name: 'Precision Bench',
-  nameCn: '精密工作台',
-  description: 'A proper workstation allows more night activities.',
+  name: 'Workshop Expansion',
+  nameCn: '工坊扩建',
+  description: 'Expand the workshop to allow more night activities.',
   location: 'BACKROOM',
   effectType: 'NIGHT_ENERGY',
   maxLevel: 3,
   levels: [
-    { level: 1, cost: 1500, effectValue: 1, description: '解锁工作台，夜间精力上限 3 -> 4' },
-    { level: 2, cost: 3000, effectValue: 2, description: '夜间精力上限 4 -> 5' },
-    { level: 3, cost: 6000, effectValue: 3, description: '夜间精力上限 5 -> 6' },
+    { level: 1, cost: 1500, effectValue: 1, description: '总共+1精力（上限3→4）' },
+    { level: 2, cost: 3000, effectValue: 2, description: '总共+2精力（上限3→5）' },
+    { level: 3, cost: 6000, effectValue: 3, description: '总共+3精力（上限3→6），解锁新夜间活动' },
   ],
   icon: 'Wrench',
 };
@@ -62,9 +63,9 @@ export const TEA_SET: UpgradeConfig = {
   effectType: 'PATIENCE_BONUS',
   maxLevel: 3,
   levels: [
-    { level: 1, cost: 800,  effectValue: 1, maintenanceCost: 20, description: '顾客初始耐心+1' },
-    { level: 2, cost: 1500, effectValue: 2, maintenanceCost: 35, description: '顾客初始耐心+2' },
-    { level: 3, cost: 3000, effectValue: 3, maintenanceCost: 50, description: '顾客初始耐心+3' },
+    { level: 1, cost: 800,  effectValue: 1, maintenanceCost: 20, description: '总共+1耐心（维护$20/天）' },
+    { level: 2, cost: 1500, effectValue: 2, maintenanceCost: 35, description: '总共+2耐心（维护$35/天）' },
+    { level: 3, cost: 3000, effectValue: 3, maintenanceCost: 50, description: '总共+3耐心（维护$50/天）' },
   ],
   icon: 'Coffee',
 };
@@ -83,9 +84,9 @@ export const SPECTROMETER: UpgradeConfig = {
   effectType: 'ANOMALY_DETECTION',
   maxLevel: 3,
   levels: [
-    { level: 1, cost: 2000, effectValue: 50, maintenanceCost: 30, description: '检测偏差>50%的物品' },
-    { level: 2, cost: 4000, effectValue: 30, maintenanceCost: 50, description: '检测偏差>30%的物品' },
-    { level: 3, cost: 8000, effectValue: 20, maintenanceCost: 80, description: '检测偏差>20%的物品' },
+    { level: 1, cost: 2000, effectValue: 50, maintenanceCost: 30, description: '检测偏差>50%（维护$30/天）' },
+    { level: 2, cost: 4000, effectValue: 30, maintenanceCost: 50, description: '检测偏差>30%（维护$50/天）' },
+    { level: 3, cost: 8000, effectValue: 20, maintenanceCost: 80, description: '检测偏差>20%（维护$80/天）' },
   ],
   icon: 'Scan',
 };
