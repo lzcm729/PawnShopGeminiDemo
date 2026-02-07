@@ -440,8 +440,6 @@ export function getInsightNarrative(
     discoveryText = '你仿佛能感受到物品主人曾经的情感寄托。';
   } else if (tags.includes('ARTISTIC')) {
     discoveryText = '艺术的美感让你的感知变得更加敏锐。';
-  } else if (tags.includes('TRENDY')) {
-    discoveryText = '你理解了这件物品为何能引起时下的追捧。';
   } else {
     discoveryText = '你从中获得了一些领悟。';
   }

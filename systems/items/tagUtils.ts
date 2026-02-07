@@ -19,14 +19,23 @@ import { getItemTemplate } from './csvLoader';
 
 /**
  * 添加标签到物品
+ *
+ * G3 互斥规则：同一物品同一时间只能拥有一个 G3（Essence）标签。
+ * 注入新的 G3 标签会自动替换已有的 G3 标签。
+ *
  * @returns 新的物品对象（不修改原对象）
  */
 export function addTag(item: Item, tag: ItemTag): Item {
-  const currentTags = item.tags || [];
+  let currentTags = item.tags || [];
 
   // 如果已有该标签，直接返回
   if (currentTags.includes(tag)) {
     return item;
+  }
+
+  // G3 互斥规则：新 Essence 标签替换已有的 Essence 标签
+  if (isEssenceTag(tag)) {
+    currentTags = currentTags.filter(t => !isEssenceTag(t));
   }
 
   return {
@@ -117,7 +126,10 @@ export function getRemovableTagsOnItem(item: Item): ItemTag[] {
 /**
  * 计算标签加成后的物品价值
  *
- * 公式：最终价值 = 基础价值 × ∏(所有激活标签的价值系数)
+ * 公式：最终价值 = clamp(基础价值 × ∏(标签系数), 基础价值 × 0.05, 基础价值 × 20)
+ *
+ * 价值边界：最终价值限制在基础价值的 5% 到 20 倍范围内，
+ * 防止标签叠加产生极端值。
  *
  * @param item 物品
  * @returns 计算后的价值
@@ -137,7 +149,11 @@ export function calculateTaggedValue(item: Item): number {
     return acc * def.valueMultiplier;
   }, 1);
 
-  return Math.round(baseValue * multiplier);
+  const rawValue = baseValue * multiplier;
+  const minValue = baseValue * 0.05;
+  const maxValue = baseValue * 20;
+
+  return Math.round(Math.max(minValue, Math.min(maxValue, rawValue)));
 }
 
 /**
@@ -163,9 +179,9 @@ export function getValueMultiplier(item: Item): number {
 /**
  * 获取当前应显示的变体
  *
- * 优先级顺序：
- * 1. 重铸态 (Essence): priority 100+
- * 2. 破损态 (State - Negative): priority 50-99
+ * 优先级顺序（设计文档 v1.0）：
+ * 1. 破损态 (State - Negative): priority 100+
+ * 2. 重铸态 (Essence): priority 50-99
  * 3. 修复态 (State - Restored): priority 20-49
  * 4. 默认态 (Default): priority 0-19
  *
@@ -236,6 +252,15 @@ export function getDisplayName(item: Item): string {
     return `${newName} (原：${originalName})`;
   };
 
+  // 破损态 + 重铸态组合：保留 G3 信息（设计文档 v1.0 变体名称规则）
+  const isBroken = (item.tags || []).includes('BROKEN');
+  if (workState === 'REFORGED' && isBroken) {
+    const reforgedName = item.nameReforged || template?.nameReforged;
+    if (reforgedName) {
+      return formatWithOriginal(`破损的${reforgedName}`);
+    }
+  }
+
   if (workState === 'REFORGED') {
     const reforgedName = item.nameReforged || template?.nameReforged;
     if (reforgedName) return formatWithOriginal(reforgedName);
@@ -279,6 +304,15 @@ export function getDisplayDescription(item: Item): string {
   // 尝试从 CSV 模板获取（兼容旧存档）
   const template = item.templateId ? getItemTemplate(item.templateId) :
                    item.id ? getItemTemplate(item.id) : undefined;
+
+  // 破损态 + 重铸态组合：保留 G3 信息（设计文档 v1.0 变体名称规则）
+  const isBrokenDesc = (item.tags || []).includes('BROKEN');
+  if (workState === 'REFORGED' && isBrokenDesc) {
+    const reforgedDesc = item.descReforged || template?.descReforged;
+    if (reforgedDesc) {
+      return `物品严重损坏，但仍可辨认出其不凡的来历。${reforgedDesc}`;
+    }
+  }
 
   if (workState === 'REFORGED') {
     const reforgedDesc = item.descReforged || template?.descReforged;

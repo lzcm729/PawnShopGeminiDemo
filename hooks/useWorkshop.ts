@@ -130,7 +130,7 @@ function getReforgeRecipeForItem(item: Item): ReforgeRecipe | null {
   // 按优先级检查（条件越严格越优先）
   // 1. imperial: 需要 VINTAGE_REAL + ARTISTIC
   // 2. fake_history: 需要 VINTAGE_REAL
-  // 3. trending: 需要 TRENDY
+  // 3. art_enhanced: 需要 ARTISTIC
   // 4. limited: 需要特定类别
   // 5. celebrity: 无特殊要求（兜底）
 

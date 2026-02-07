@@ -36,6 +36,7 @@ export const TAG_DEFINITIONS: Record<ItemTag, TagDefinition> = {
     icon: '🧹',
     isNegative: true,
     canBeRemoved: true,
+    cleanOnly: true,            // 清洁只消耗精力，不消耗精魄点数
   },
 
   RUSTED: {
@@ -47,17 +48,6 @@ export const TAG_DEFINITIONS: Record<ItemTag, TagDefinition> = {
     icon: '🔧',
     isNegative: true,
     canBeRemoved: true,
-  },
-
-  MINT: {
-    id: 'MINT',
-    group: 'STATE',
-    valueMultiplier: 1.2,       // 1.2倍 - 完美状态溢价
-    displayName: '完美',
-    description: '物品状态完美，如同全新。',
-    icon: '✨',
-    isNegative: false,
-    canBeRemoved: false,        // 完美状态不应被"移除"
   },
 
   // -------------------------------------------------------------------------
@@ -144,22 +134,6 @@ export const TAG_DEFINITIONS: Record<ItemTag, TagDefinition> = {
     },
   },
 
-  TRENDY: {
-    id: 'TRENDY',
-    group: 'ATTRIBUTE',
-    valueMultiplier: 1.0,
-    displayName: '潮流物品',
-    description: '当前流行文化中的热门物品。',
-    icon: '🔥',
-    isNegative: false,
-    canBeRemoved: false,
-    essenceYield: {
-      craft: 0.1,
-      time: 0.1,
-      vibe: 0.8,                // 主要产出灵韵
-    },
-  },
-
   // -------------------------------------------------------------------------
   // G3. 本质/价值组 (Essence Tags) - 重铸目标
   // -------------------------------------------------------------------------
@@ -178,7 +152,7 @@ export const TAG_DEFINITIONS: Record<ItemTag, TagDefinition> = {
   IMPERIAL: {
     id: 'IMPERIAL',
     group: 'ESSENCE',
-    valueMultiplier: 10.0,      // 10倍 - 御用极高溢价
+    valueMultiplier: 4.0,       // 4倍 - 御用高溢价（设计文档 v1.0 下调）
     displayName: '御用/宫廷',
     description: '被认定为皇室或宫廷使用的珍品。',
     icon: '👑',
@@ -186,26 +160,15 @@ export const TAG_DEFINITIONS: Record<ItemTag, TagDefinition> = {
     canBeRemoved: false,
   },
 
-  TRENDING: {
-    id: 'TRENDING',
+  ART_ENHANCED: {
+    id: 'ART_ENHANCED',
     group: 'ESSENCE',
-    valueMultiplier: 5.0,       // 5倍 - 潮流热点高溢价
-    displayName: '潮流热点',
-    description: '当前市场上的热门追捧对象。',
-    icon: '📈',
+    valueMultiplier: 3.0,       // 3倍 - 艺术升华重铸
+    displayName: '艺术升华',
+    description: '经过艺术大师的再创作，物品被赋予了全新的艺术灵魂。',
+    icon: '🎨',
     isNegative: false,
     canBeRemoved: false,
-  },
-
-  CURSED: {
-    id: 'CURSED',
-    group: 'ESSENCE',
-    valueMultiplier: 0.5,       // 0.5倍 - 诅咒降价，但特殊玩法
-    displayName: '诅咒',
-    description: '据说持有者会遭遇厄运。',
-    icon: '☠️',
-    isNegative: true,           // 这是负面标签
-    canBeRemoved: false,        // 诅咒不可解除（或需要特殊方式）
   },
 
   CELEBRITY: {
