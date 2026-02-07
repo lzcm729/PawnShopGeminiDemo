@@ -89,13 +89,21 @@ export const useGameEngine = () => {
         dispatch({ type: 'APPEND_ITEM_LOGS', payload: echoEntries });
     }
 
-    // 2. News Generation
+    // 2. News Generation (S3-F1~F6: v1.2 with priority algorithm, pending queue, violation detection)
     const newsResult = generateDailyNews(tempState);
-    dispatch({ type: 'UPDATE_NEWS', payload: newsResult });
-    
+    dispatch({ type: 'UPDATE_NEWS', payload: {
+        news: newsResult.news,
+        modifiers: newsResult.modifiers,
+        deferredNews: newsResult.deferredNews
+    }});
+
     newsResult.scheduledMails.forEach(mailId => {
         dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: mailId, delayDays: 0 } });
     });
+
+    // S3-F5: External chain triggers from violation detection
+    // Collected but not executed here — event chain system (S4-F2) will consume these
+    // Future: dispatch({ type: 'PROCESS_EXTERNAL_TRIGGERS', payload: newsResult.externalTriggers });
 
     // 3. Random Night Events
     const rollEvent = Math.random();

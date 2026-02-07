@@ -12,8 +12,8 @@ export const MorningBrief: React.FC = () => {
   const { state } = useGame();
   const { send, can } = useGameMachine();
 
-  const narratives = state.dailyNews.filter(n => n.category === NewsCategory.NARRATIVE);
-  const markets = state.dailyNews.filter(n => n.category === NewsCategory.MARKET);
+  const narratives = state.dailyNews.filter(n => n.category === NewsCategory.NARRATIVE_ECHO);
+  const markets = state.dailyNews.filter(n => n.category === NewsCategory.MARKET_INTEL);
   const flavors = state.dailyNews.filter(n => n.category === NewsCategory.FLAVOR);
 
   const activeFlavor = flavors[0];

@@ -5,7 +5,7 @@ import { Item } from '../items/types';
 import { Customer } from '../npc/types';
 import { TransactionRecord } from '../economy/types';
 import { EventChainState, MailInstance, SatisfactionLevel, DepartureSatisfaction, ExpiryEvent, PoliceInvestigationEvent } from '../narrative/types';
-import { ActiveNewsInstance, MarketModifier } from '../news/types';
+import { ActiveNewsInstance, MarketModifier, PendingNewsItem } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
 import { GameNode } from '../../types/node';
@@ -67,9 +67,10 @@ export interface GameState {
   pendingMails: MailInstance[];
   completedScenarioIds: string[];
   
-  dailyNews: ActiveNewsInstance[]; 
-  activeMarketEffects: MarketModifier[]; 
-  violationFlags: string[]; 
+  dailyNews: ActiveNewsInstance[];
+  activeMarketEffects: MarketModifier[];
+  violationFlags: string[];
+  pendingNews: PendingNewsItem[];         // v1.2: 延迟/溢出新闻队列
   
   financialHistory: DailyFinancialSnapshot[]; // History of past days
   

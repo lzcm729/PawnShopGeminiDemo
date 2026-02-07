@@ -110,7 +110,7 @@ export type Action =
     | { type: 'CLAIM_MAIL_REWARD'; payload: string }
 
     // News & Market
-    | { type: 'UPDATE_NEWS'; payload: { news: any[], modifiers: any[] } }
+    | { type: 'UPDATE_NEWS'; payload: { news: any[], modifiers: any[], deferredNews?: any[] } }
     | { type: 'ADD_VIOLATION'; payload: string }
     | { type: 'CLEAR_VIOLATIONS' }
 
