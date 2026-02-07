@@ -14,6 +14,13 @@ import { EssenceCost } from '../economy/essence';
 import { Item, ItemTrait } from '../items/types';
 
 // ============================================================================
+// 格物意外事件类型
+// ============================================================================
+
+/** 格物意外事件类型 */
+export type UnexpectedEventType = 'DISTRACTION' | 'REMARKABLE_FIND';
+
+// ============================================================================
 // 格物结果
 // ============================================================================
 
@@ -58,6 +65,36 @@ export interface InsightResult {
 
   /** 本次发现的特征（概率触发，单个） */
   traitDiscovered?: ItemTrait;
+
+  // --- v1.1 新增字段 ---
+
+  /** 格物意外事件（走神/惊人发现） */
+  unexpectedEvent?: UnexpectedEventType;
+
+  /** 窥见事件 - 物品故事碎片闪现 */
+  glimpse?: { text: string };
+
+  /** 共鸣事件 - 跨物品共鸣 */
+  resonance?: {
+    text: string;
+    bonusEssence: EssenceCost;
+    pairedItemId: string;
+    pairedItemName: string;
+  };
+}
+
+// ============================================================================
+// 收益递减状态
+// ============================================================================
+
+/** 收益递减状态 - 标记哪些收益已完成 */
+export interface DepletedRewards {
+  /** 估价已锁定 */
+  valueLocked: boolean;
+  /** 特征已全开 */
+  allTraitsRevealed: boolean;
+  /** 只剩点数收益 */
+  onlyEssenceRemaining: boolean;
 }
 
 // ============================================================================
@@ -96,6 +133,14 @@ export interface InsightStatus {
 
   /** 已发现的特征数量 */
   revealedTraitCount: number;
+
+  // --- v1.1 收益递减字段 ---
+
+  /** 收益递减状态 */
+  depletedRewards: DepletedRewards;
+
+  /** 距顿悟次数（基于最大产出的乐观估计） */
+  insightsToEpiphany: number;
 }
 
 /**
@@ -120,8 +165,11 @@ export interface InsightConfig {
   /** 每次格物消耗的精力 */
   energyCost: number;
 
-  /** 每次格物提取的知识量 */
-  extractionRate: number;
+  /** 每次格物提取的知识量（最小值） */
+  extractionRateMin: number;
+
+  /** 每次格物提取的知识量（最大值） */
+  extractionRateMax: number;
 
   /** 顿悟时的额外奖励比例 */
   epiphanyBonusRatio: number;

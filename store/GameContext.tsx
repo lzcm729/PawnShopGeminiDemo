@@ -92,7 +92,8 @@ const initialState: GameState = {
     nightState: {
         energy: GAME_CONFIG.NIGHT.BASE_ENERGY,
         maxEnergy: GAME_CONFIG.NIGHT.BASE_ENERGY,
-        actionsThisNight: [] as string[]
+        actionsThisNight: [] as string[],
+        energyLevel: 0,
     },
     // === SHOP UPGRADES ===
     shopUpgrades: { ...INITIAL_SHOP_UPGRADES },

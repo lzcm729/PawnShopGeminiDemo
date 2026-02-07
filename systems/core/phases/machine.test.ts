@@ -68,7 +68,7 @@ function createMockState(overrides: Partial<GameState> = {}): GameState {
         expiryQueue: [],
         coreLostItems: [],
         essenceBalance: { HOPE: 0, REGRET: 0, GREED: 0, TRUST: 0, FEAR: 0 },
-        nightState: { energy: 3, maxEnergy: 3, actionsThisNight: [] },
+        nightState: { energy: 3, maxEnergy: 3, actionsThisNight: [], energyLevel: 0 },
         shopUpgrades: { upgrades: [] },
         showUpgradeShop: false,
         showFacilityControl: false,

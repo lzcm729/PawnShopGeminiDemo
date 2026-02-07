@@ -19,6 +19,7 @@ export interface NightState {
   energy: number;              // 当前精力
   maxEnergy: number;           // 精力上限
   actionsThisNight: string[];  // 本夜已执行的操作
+  energyLevel: number;         // 精力等级 (0-indexed: 0=3, 1=4, 2=5)
 }
 
 export interface DailyFinancialSnapshot {
