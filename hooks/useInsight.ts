@@ -127,8 +127,8 @@ export const useInsight = (): UseInsightReturn => {
         };
       }
 
-      // 执行格物
-      const insightOutput = performInsight(item, nightState);
+      // 执行格物（传入库存以支持共鸣事件）
+      const insightOutput = performInsight(item, nightState, inventory);
       if (!insightOutput) {
         return {
           success: false,
@@ -146,8 +146,11 @@ export const useInsight = (): UseInsightReturn => {
         });
       }
 
-      // 增加获得的精魄
-      const totalEssence = mergeEssence(result.essenceGained, result.bonusEssence);
+      // 增加获得的精魄（包含共鸣奖励）
+      const totalEssence = mergeEssence(
+        mergeEssence(result.essenceGained, result.bonusEssence),
+        result.resonance?.bonusEssence
+      );
       if (hasEssence(totalEssence)) {
         dispatch({
           type: 'ADD_ESSENCE_BATCH',

@@ -81,7 +81,8 @@ export function resetGameState(_state: GameState, _event: PhaseEvent): Partial<G
         nightState: {
             energy: GAME_CONFIG.NIGHT.BASE_ENERGY,
             maxEnergy: GAME_CONFIG.NIGHT.BASE_ENERGY,
-            actionsThisNight: []
+            actionsThisNight: [],
+            energyLevel: 0,
         },
         shopUpgrades: { ...INITIAL_SHOP_UPGRADES },
         showUpgradeShop: false,

@@ -19,8 +19,16 @@ interface TomlNight {
   base_energy: number;
   insight_energy_cost: number;
   default_knowledge_capacity: number;
-  insight_extraction_rate: number;
+  insight_extraction_rate_min: number;
+  insight_extraction_rate_max: number;
   epiphany_bonus_ratio: number;
+  distraction_chance: number;
+  remarkable_find_chance: number;
+  glimpse_chance: number;
+  resonance_chance: number;
+  resonance_bonus_ratio: number;
+  energy_levels: number[];
+  epiphany_residual_uncertainty: number;
   insight_range_shrink_rate: number;
   insight_trait_discovery_chance: number;
   value_lock_threshold: number;
@@ -76,8 +84,16 @@ export const GAME_CONFIG = {
     BASE_ENERGY: tomlConfig.night.base_energy,
     INSIGHT_ENERGY_COST: tomlConfig.night.insight_energy_cost,
     DEFAULT_KNOWLEDGE_CAPACITY: tomlConfig.night.default_knowledge_capacity,
-    INSIGHT_EXTRACTION_RATE: tomlConfig.night.insight_extraction_rate,
+    INSIGHT_EXTRACTION_RATE_MIN: tomlConfig.night.insight_extraction_rate_min,
+    INSIGHT_EXTRACTION_RATE_MAX: tomlConfig.night.insight_extraction_rate_max,
     EPIPHANY_BONUS_RATIO: tomlConfig.night.epiphany_bonus_ratio,
+    DISTRACTION_CHANCE: tomlConfig.night.distraction_chance,
+    REMARKABLE_FIND_CHANCE: tomlConfig.night.remarkable_find_chance,
+    GLIMPSE_CHANCE: tomlConfig.night.glimpse_chance,
+    RESONANCE_CHANCE: tomlConfig.night.resonance_chance,
+    RESONANCE_BONUS_RATIO: tomlConfig.night.resonance_bonus_ratio,
+    ENERGY_LEVELS: tomlConfig.night.energy_levels,
+    EPIPHANY_RESIDUAL_UNCERTAINTY: tomlConfig.night.epiphany_residual_uncertainty,
     INSIGHT_RANGE_SHRINK_RATE: tomlConfig.night.insight_range_shrink_rate,
     INSIGHT_TRAIT_DISCOVERY_CHANCE: tomlConfig.night.insight_trait_discovery_chance,
     VALUE_LOCK_THRESHOLD: tomlConfig.night.value_lock_threshold,

@@ -3,13 +3,16 @@
  *
  * 夜间格物系统的UI组件，允许玩家研究库存物品获取精魄。
  *
- * UI 设计原则（来自夜间鉴定系统设计文档）：
- * 1. 状态区和操作区分离 - 上方显示当前状态，下方显示操作预期
- * 2. 动态隐藏已完成项 - 估价锁定后不再提示"估价收窄"
- * 3. 明确区分确定与概率 - 必得收益正常显示，概率收益标注概率
+ * v1.1 UI 增强：
+ * - 顿悟仪式化呈现（光晕、泛白、不可跳过 3-5s）
+ * - 精魄三色差异化（匠心=冷蓝、旧影=暖黄、灵韵=淡紫）
+ * - 收益递减可视化（淡出已完成收益、距顿悟提示）
+ * - 格物vs鉴定体验差异化（沉浸式探索风格）
+ * - 格物意外事件 UI（走神/惊人发现）
+ * - 窥见事件 UI（模糊画面 + 淡入淡出文字）
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { HelpTooltip } from '../ui/Tooltip';
 import { Button } from '../ui/Button';
@@ -31,11 +34,56 @@ import {
   HelpCircle,
   Star,
   Check,
+  Gem,
+  Brain,
+  CloudFog,
+  Flame,
 } from 'lucide-react';
-import { ESSENCE_DISPLAY_NAMES, ESSENCE_ICONS } from '../../systems/economy/essence';
+import { ESSENCE_DISPLAY_NAMES, ESSENCE_ICONS, EssenceType } from '../../systems/economy/essence';
 import { InsightResult, InsightNarrative, InsightStatus } from '../../systems/insight/types';
 import { getDisplayName } from '../../systems/items/tagUtils';
 import { GAME_CONFIG } from '../../systems/game/config';
+
+// ============================================================================
+// S3-I2: Essence color system (匠心=冷蓝, 旧影=暖黄, 灵韵=淡紫)
+// ============================================================================
+
+const ESSENCE_COLORS: Record<string, {
+  bg: string;
+  border: string;
+  text: string;
+  bar: string;
+  glow: string;
+}> = {
+  CRAFT: {
+    bg: 'bg-blue-950/50',
+    border: 'border-blue-700',
+    text: 'text-blue-400',
+    bar: 'bg-blue-500',
+    glow: 'shadow-blue-500/20',
+  },
+  TIME: {
+    bg: 'bg-amber-950/50',
+    border: 'border-amber-700',
+    text: 'text-amber-400',
+    bar: 'bg-amber-500',
+    glow: 'shadow-amber-500/20',
+  },
+  VIBE: {
+    bg: 'bg-purple-950/50',
+    border: 'border-purple-700',
+    text: 'text-purple-400',
+    bar: 'bg-purple-500',
+    glow: 'shadow-purple-500/20',
+  },
+  BALANCED: {
+    bg: 'bg-stone-800/50',
+    border: 'border-stone-600',
+    text: 'text-stone-400',
+    bar: 'bg-stone-500',
+    glow: '',
+  },
+};
 
 interface InsightPanelProps {
   isOpen: boolean;
@@ -63,14 +111,12 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
   // Auto-select item from pending selection when panel opens
   useEffect(() => {
     if (isOpen && state.pendingSelectedItemId) {
-      // Check if the pending item exists in insightable items
       const existsInInsight = insightableItems.some(
         i => i.item.id === state.pendingSelectedItemId
       );
       if (existsInInsight) {
         setSelectedItemId(state.pendingSelectedItemId);
       }
-      // Clear the pending selection
       dispatch({ type: 'SET_PENDING_SELECTED_ITEM', payload: null });
     }
   }, [isOpen, state.pendingSelectedItemId, insightableItems, dispatch]);
@@ -78,7 +124,6 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
   const handleInsight = (itemId: string) => {
     setIsProcessing(true);
 
-    // Capture old range before insight
     const itemData = insightableItems.find(i => i.item.id === itemId);
     const oldRange: [number, number] = itemData?.item.currentRange ?? [0, 0];
 
@@ -100,11 +145,6 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
     setSelectedItemId(null);
   };
 
-  // Group items: can insight vs cannot
-  const canInsightItems = insightableItems.filter(i => i.status.canInsight);
-  const cannotInsightItems = insightableItems.filter(i => !i.status.canInsight);
-
-  // Find selected item data
   const selectedItemData = selectedItemId
     ? insightableItems.find(i => i.item.id === selectedItemId)
     : null;
@@ -142,20 +182,20 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
         {/* Result Modal */}
         <InsightResultModal result={lastResult} onClose={clearResult} />
 
-        {/* Essence Type Legend */}
+        {/* S3-I2: Essence Type Legend with correct colors */}
         <div className="flex items-center gap-4 text-[10px] text-stone-500">
           <span className="uppercase tracking-wider">精魄类型:</span>
           <div className="flex items-center gap-1">
-            <div className="w-2 h-4 bg-amber-700 rounded-sm" />
+            <div className="w-2 h-4 bg-blue-500 rounded-sm" />
             <span>匠心</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-2 h-4 bg-blue-700 rounded-sm" />
+            <div className="w-2 h-4 bg-amber-500 rounded-sm" />
             <span>旧影</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-2 h-4 bg-pink-700 rounded-sm" />
-            <span>韵味</span>
+            <div className="w-2 h-4 bg-purple-500 rounded-sm" />
+            <span>灵韵</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-4 bg-stone-600 rounded-sm" />
@@ -165,7 +205,7 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
 
         {/* Main Content: List + Detail Panel */}
         <div className="flex gap-4">
-          {/* Item List - Fixed width */}
+          {/* Item List */}
           <div className="w-1/2 space-y-2 max-h-[60vh] overflow-y-auto pr-2 pb-4">
             <h4 className="text-xs uppercase text-stone-500 tracking-wider mb-2">
               库存物品 ({insightableItems.length})
@@ -186,7 +226,6 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
               ))}
             </div>
 
-            {/* Empty State */}
             {insightableItems.length === 0 && (
               <div className="text-center py-12 text-stone-500">
                 <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -195,7 +234,7 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({ isOpen, onClose }) =
             )}
           </div>
 
-          {/* Detail Panel - Fixed width, always visible */}
+          {/* Detail Panel */}
           <div className="w-1/2">
             {selectedItemData ? (
               <ItemDetailPanel
@@ -235,14 +274,10 @@ interface EssenceBadgeProps {
 }
 
 const EssenceBadge: React.FC<EssenceBadgeProps> = ({ type, amount, bonus }) => {
-  const colors: Record<string, string> = {
-    CRAFT: 'bg-amber-900/50 border-amber-700 text-amber-400',
-    TIME: 'bg-blue-900/50 border-blue-700 text-blue-400',
-    VIBE: 'bg-pink-900/50 border-pink-700 text-pink-400',
-  };
+  const colors = ESSENCE_COLORS[type];
 
   return (
-    <div className={cn('px-3 py-2 rounded border flex items-center gap-2', colors[type])}>
+    <div className={cn('px-3 py-2 rounded border flex items-center gap-2', colors.bg, colors.border, colors.text)}>
       <span>{ESSENCE_ICONS[type]}</span>
       <span className="font-mono font-bold">
         +{amount}
@@ -254,6 +289,10 @@ const EssenceBadge: React.FC<EssenceBadgeProps> = ({ type, amount, bonus }) => {
     </div>
   );
 };
+
+// ============================================================================
+// Item Card (List View)
+// ============================================================================
 
 interface InsightItemCardProps {
   item: Item;
@@ -278,33 +317,11 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
   onInsight,
   isProcessing,
 }) => {
-  const essenceColors: Record<string, string> = {
-    CRAFT: 'border-amber-700',
-    TIME: 'border-blue-700',
-    VIBE: 'border-pink-700',
-    BALANCED: 'border-stone-600',
-  };
+  const colors = ESSENCE_COLORS[primaryEssence];
 
-  const { progress, nearEpiphany, isValueLocked, hiddenTraitCount, revealedTraitCount, remainingKnowledge, estimatedYield } = status;
+  const { progress, nearEpiphany, isValueLocked, hiddenTraitCount, revealedTraitCount, remainingKnowledge, estimatedYield, depletedRewards, insightsToEpiphany } = status;
   const progressPercent = Math.round(progress * 100);
   const isDepleted = progress >= 1;
-
-  // Calculate estimated essence gain for next insight
-  const extractionRate = GAME_CONFIG.NIGHT.INSIGHT_EXTRACTION_RATE;
-  const actualExtraction = Math.min(extractionRate, remainingKnowledge);
-  const estimatedCraft = Math.floor(actualExtraction * (estimatedYield.craft || 0));
-  const estimatedTime = Math.floor(actualExtraction * (estimatedYield.time || 0));
-  const estimatedVibe = Math.floor(actualExtraction * (estimatedYield.vibe || 0));
-
-  // Determine primary essence type and display
-  const primaryType = primaryEssence === 'BALANCED' ? 'CRAFT' : primaryEssence;
-  const primaryAmount = primaryType === 'CRAFT' ? estimatedCraft : primaryType === 'TIME' ? estimatedTime : estimatedVibe;
-
-  // Check if all traits are revealed
-  const allTraitsRevealed = hiddenTraitCount === 0;
-
-  // Check if fully appraised (value locked AND all traits revealed)
-  const fullyAppraised = isValueLocked && allTraitsRevealed;
 
   const capacity = item.knowledgePool?.capacity || GAME_CONFIG.NIGHT.DEFAULT_KNOWLEDGE_CAPACITY;
   const extracted = capacity - remainingKnowledge;
@@ -315,13 +332,12 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
     <div
       className={cn(
         'bg-noir-200 border-l-4 p-2 rounded-r transition-all cursor-pointer relative',
-        essenceColors[primaryEssence],
+        colors.border,
         isSelected && 'ring-1 ring-purple-500',
         insightedTonight && 'opacity-60'
       )}
       onClick={onSelect}
     >
-      {/* "已格物" Stamp */}
       {insightedTonight && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] pointer-events-none z-10">
           <span className="text-red-500/60 text-lg font-bold border-2 border-red-500/60 px-2 py-0.5 rounded">
@@ -330,9 +346,7 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
         </div>
       )}
 
-      {/* Row 1: Large Icon + Content */}
       <div className="flex gap-3 items-start">
-        {/* Larger Icon */}
         <div className="w-12 h-12 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0 rounded overflow-hidden">
           <img
             src={getItemIcon(item)}
@@ -349,13 +363,10 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
           </div>
         </div>
 
-        {/* Content: Name + Traits + Valuation + Progress */}
         <div className="flex-1 min-w-0">
-          {/* Line 1: Name + Traits + Valuation */}
           <div className="flex items-center gap-1.5">
             <h4 className="font-bold text-noir-txt-primary text-sm truncate shrink-0">{getDisplayName(item)}</h4>
 
-            {/* Traits */}
             <div className="flex items-center gap-1 flex-1 min-w-0">
               {item.revealedTraits?.map((trait) => (
                 <span
@@ -386,23 +397,25 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
             </span>
           </div>
 
-          {/* Line 2: Progress Bar (shorter) */}
           <div className="flex items-center gap-1.5 mt-1.5">
             <div className="w-24 h-1.5 bg-noir-400 rounded-full overflow-hidden">
               <div
                 className={cn(
                   'h-full transition-all duration-300',
-                  isDepleted ? 'bg-stone-500' : nearEpiphany ? 'bg-yellow-500 animate-pulse' : 'bg-purple-500'
+                  isDepleted ? 'bg-stone-500' : nearEpiphany ? 'bg-yellow-500 animate-pulse' : colors.bar
                 )}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
             <span className="text-[9px] font-mono text-stone-500 shrink-0">{extracted}/{capacity}</span>
+            {/* S3-I3: Distance to epiphany indicator */}
+            {!isDepleted && insightsToEpiphany > 0 && insightsToEpiphany <= 3 && (
+              <span className="text-[9px] text-yellow-500/80">~{insightsToEpiphany}次</span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Row 3: Status (only if needed) */}
       {(isDepleted || nearEpiphany) && (
         <div className="mt-1 text-[9px]">
           {isDepleted && (
@@ -412,7 +425,7 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
           )}
           {nearEpiphany && !isDepleted && (
             <span className="text-yellow-500 flex items-center gap-1">
-              <Sparkles className="w-3 h-3" /> 即将顿悟！
+              <Sparkles className="w-3 h-3" /> 即将顿悟!
             </span>
           )}
         </div>
@@ -422,7 +435,7 @@ const InsightItemCard: React.FC<InsightItemCardProps> = ({
 };
 
 // ============================================================================
-// Item Detail Panel (Detailed View)
+// Item Detail Panel (S3-I3: Diminishing returns, S3-I4: Immersive style)
 // ============================================================================
 
 interface ItemDetailPanelProps {
@@ -436,11 +449,6 @@ interface ItemDetailPanelProps {
   currentEnergy: number;
 }
 
-/**
- * Detailed item panel showing:
- * 1. Current Status Section: valuation, traits, knowledge pool
- * 2. Insight Expectation Section: what the next insight will yield
- */
 const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
   item,
   status,
@@ -459,41 +467,30 @@ const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
     revealedTraitCount,
     remainingKnowledge,
     estimatedYield,
+    depletedRewards,
+    insightsToEpiphany,
   } = status;
 
   const isDepleted = progress >= 1;
   const capacity = item.knowledgePool?.capacity || GAME_CONFIG.NIGHT.DEFAULT_KNOWLEDGE_CAPACITY;
   const extracted = capacity - remainingKnowledge;
 
-  // Calculate estimated essence gain for next insight
-  const extractionRate = GAME_CONFIG.NIGHT.INSIGHT_EXTRACTION_RATE;
-  const actualExtraction = Math.min(extractionRate, remainingKnowledge);
-  const estimatedCraft = Math.floor(actualExtraction * (estimatedYield.craft || 0));
-  const estimatedTime = Math.floor(actualExtraction * (estimatedYield.time || 0));
-  const estimatedVibe = Math.floor(actualExtraction * (estimatedYield.vibe || 0));
+  const extractionRateMin = GAME_CONFIG.NIGHT.INSIGHT_EXTRACTION_RATE_MIN;
+  const extractionRateMax = GAME_CONFIG.NIGHT.INSIGHT_EXTRACTION_RATE_MAX;
+  const actualExtraction = Math.min(extractionRateMax, remainingKnowledge);
 
-  // Determine primary essence type
-  const primaryType = primaryEssence === 'BALANCED' ? 'TIME' : primaryEssence;
-  const primaryAmount =
-    primaryType === 'CRAFT'
-      ? estimatedCraft
-      : primaryType === 'TIME'
-      ? estimatedTime
-      : estimatedVibe;
-
-  // Check states
-  const allTraitsRevealed = hiddenTraitCount === 0;
-  const fullyAppraised = isValueLocked && allTraitsRevealed;
   const canPerformInsight = canInsight && currentEnergy >= GAME_CONFIG.NIGHT.INSIGHT_ENERGY_COST && !isDepleted;
 
-  // Epiphany bonus calculation
-  const epiphanyBonus = Math.floor(actualExtraction * GAME_CONFIG.NIGHT.EPIPHANY_BONUS_RATIO);
+  // S3-F2: Epiphany bonus based on capacity * ratio
+  const epiphanyBonus = Math.floor(capacity * GAME_CONFIG.NIGHT.EPIPHANY_BONUS_RATIO);
+
+  const essenceColors = ESSENCE_COLORS[primaryEssence];
 
   return (
     <div className="bg-noir-200 border border-noir-400 rounded-lg p-4 space-y-4">
-      {/* Item Header */}
+      {/* S3-I4: Item Header with larger image and contemplative style */}
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0 rounded overflow-hidden">
+        <div className="w-16 h-16 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0 rounded-lg overflow-hidden shadow-lg">
           <img
             src={getItemIcon(item)}
             alt={item.name}
@@ -505,18 +502,23 @@ const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
             }}
           />
           <div className="hidden items-center justify-center w-full h-full">
-            <CategoryIcon category={item.category} className="text-noir-txt-secondary w-6 h-6" />
+            <CategoryIcon category={item.category} className="text-noir-txt-secondary w-8 h-8" />
           </div>
         </div>
         <div>
-          <h3 className="font-bold text-noir-txt-primary">{getDisplayName(item)}</h3>
-          <p className="text-xs text-stone-500">{item.category}</p>
+          <h3 className="font-bold text-noir-txt-primary text-lg">{getDisplayName(item)}</h3>
+          <p className="text-xs text-stone-500 italic">{item.category}</p>
         </div>
       </div>
 
       {/* Insight Expectation Section */}
       {!isDepleted && (
-        <div className="bg-purple-950/30 rounded border border-purple-800/50 p-3 space-y-3">
+        <div className={cn(
+          'rounded border p-3 space-y-3',
+          nearEpiphany
+            ? 'bg-yellow-950/20 border-yellow-700/50'
+            : 'bg-purple-950/30 border-purple-800/50'
+        )}>
           <div className="flex items-center justify-between">
             <h4 className="text-xs uppercase text-purple-400 tracking-wider flex items-center gap-1">
               <BookOpen className="w-3 h-3" />
@@ -529,7 +531,7 @@ const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
 
           {/* Near Epiphany Warning */}
           {nearEpiphany && (
-            <div className="flex items-center gap-2 p-2 bg-yellow-900/30 rounded border border-yellow-700/50">
+            <div className="flex items-center gap-2 p-2 bg-yellow-900/30 rounded border border-yellow-700/50 animate-pulse">
               <Star className="w-4 h-4 text-yellow-400" />
               <span className="text-sm text-yellow-300 font-medium">将触发顿悟!</span>
             </div>
@@ -537,33 +539,65 @@ const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
 
           {/* Expected Gains */}
           <div className="space-y-2 text-xs">
-            {/* Essence gain (always) */}
+            {/* Essence gain (always) - show range */}
             <div className="flex items-center justify-between">
-              <span className="text-stone-400 flex items-center gap-1">
-                <span className="text-purple-400">+{actualExtraction}</span>
-                <Sparkles className="w-3 h-3 text-purple-400" />
+              <span className={cn('flex items-center gap-1', essenceColors.text)}>
+                <span>+{extractionRateMin}~{Math.min(extractionRateMax, remainingKnowledge)}</span>
+                <Sparkles className="w-3 h-3" />
                 <span>精魄</span>
               </span>
               <span className="text-stone-500">(必得)</span>
             </div>
 
-            {/* Range narrowing (if not locked) */}
-            {!isValueLocked && (
+            {/* S3-I3: Range narrowing - with depleted state */}
+            {!depletedRewards.valueLocked ? (
               <div className="flex items-center justify-between">
                 <span className="text-stone-400">
                   估价收窄 ~{Math.round(GAME_CONFIG.NIGHT.INSIGHT_RANGE_SHRINK_RATE * 100)}%
                 </span>
                 <span className="text-stone-500">(必得)</span>
               </div>
+            ) : (
+              <div className="flex items-center justify-between opacity-40">
+                <span className="text-stone-500 line-through">估价收窄</span>
+                <span className="text-pawn-green text-[10px] flex items-center gap-1">
+                  <Check className="w-3 h-3" /> 已完成
+                </span>
+              </div>
             )}
 
-            {/* Trait discovery (if hidden traits exist) */}
-            {hiddenTraitCount > 0 && (
-              <div className="flex items-center justify-between">
-                <span className="text-stone-400">可能发现特征</span>
-                <span className="text-stone-500">
-                  ({Math.round(GAME_CONFIG.NIGHT.INSIGHT_TRAIT_DISCOVERY_CHANCE * 100)}%)
+            {/* S3-I3: Trait discovery - with depleted state */}
+            {!depletedRewards.allTraitsRevealed ? (
+              hiddenTraitCount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-stone-400">可能发现特征</span>
+                  <span className="text-stone-500">
+                    ({Math.round(GAME_CONFIG.NIGHT.INSIGHT_TRAIT_DISCOVERY_CHANCE * 100)}%)
+                  </span>
+                </div>
+              )
+            ) : (
+              <div className="flex items-center justify-between opacity-40">
+                <span className="text-stone-500 line-through">特征发现</span>
+                <span className="text-pawn-green text-[10px] flex items-center gap-1">
+                  <Check className="w-3 h-3" /> 已完成
                 </span>
+              </div>
+            )}
+
+            {/* S3-I3: Pure points mode indicator */}
+            {depletedRewards.onlyEssenceRemaining && (
+              <div className="flex items-center gap-2 mt-1 p-1.5 bg-stone-800/50 rounded border border-stone-700/50">
+                <Gem className="w-3.5 h-3.5 text-stone-500" />
+                <span className="text-[10px] text-stone-500 italic">仅剩原矿可采</span>
+              </div>
+            )}
+
+            {/* S3-I3: Distance to epiphany */}
+            {insightsToEpiphany > 0 && (
+              <div className="flex items-center gap-1 mt-1 text-[10px] text-stone-500">
+                <Brain className="w-3 h-3" />
+                距顿悟约 {insightsToEpiphany} 次
               </div>
             )}
 
@@ -606,23 +640,6 @@ const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
             )}
           </div>
 
-          {/* Status messages */}
-          {isValueLocked && !allTraitsRevealed && (
-            <p className="text-[10px] text-stone-500 italic">
-              估价已锁定，不再收窄
-            </p>
-          )}
-          {allTraitsRevealed && !isValueLocked && (
-            <p className="text-[10px] text-stone-500 italic">
-              特征已全部发现
-            </p>
-          )}
-          {fullyAppraised && (
-            <p className="text-[10px] text-stone-500 italic">
-              已完全鉴定，继续格物仅获取点数
-            </p>
-          )}
-
           {/* Action Button */}
           <Button
             onClick={onInsight}
@@ -644,7 +661,6 @@ const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
             )}
           </Button>
 
-          {/* Cannot insight reason */}
           {!canInsight && reason && (
             <p className="mt-2 text-[10px] text-red-400 text-center flex items-center justify-center gap-1">
               <AlertCircle className="w-3 h-3" />
@@ -669,7 +685,7 @@ const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
 };
 
 // ============================================================================
-// Insight Result Modal
+// Insight Result Modal (S3-I1: Epiphany Ritual, S3-I5: Unexpected, S3-I6: Glimpse)
 // ============================================================================
 
 interface InsightResultModalProps {
@@ -682,22 +698,61 @@ interface InsightResultModalProps {
 }
 
 const InsightResultModal: React.FC<InsightResultModalProps> = ({ result, onClose }) => {
+  const [ritualPhase, setRitualPhase] = useState<'glow' | 'flash' | 'reveal' | 'done'>('glow');
+  const [canDismiss, setCanDismiss] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!result) {
+      setRitualPhase('glow');
+      setCanDismiss(false);
+      return;
+    }
+
+    if (result.result.isEpiphany) {
+      // S3-I1: Epiphany ritual - 4 second animation
+      setRitualPhase('glow');
+      setCanDismiss(false);
+
+      timerRef.current = setTimeout(() => setRitualPhase('flash'), 800);
+      const t2 = setTimeout(() => setRitualPhase('reveal'), 1600);
+      const t3 = setTimeout(() => {
+        setRitualPhase('done');
+        setCanDismiss(true);
+      }, 4000);
+
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    } else {
+      // Non-epiphany: immediately dismissable
+      setRitualPhase('done');
+      setCanDismiss(true);
+    }
+  }, [result]);
+
   if (!result) return null;
 
   const isEpiphany = result.result.isEpiphany;
-  const { rangeNarrowed, newRange, valueLocked, traitDiscovered } = result.result;
+  const { rangeNarrowed, newRange, valueLocked, traitDiscovered, unexpectedEvent, glimpse, resonance } = result.result;
   const oldRange = result.oldRange;
+
+  const handleClose = () => {
+    if (canDismiss) onClose();
+  };
 
   return (
     <Modal
       isOpen={!!result}
-      onClose={onClose}
+      onClose={handleClose}
       title={
         <span className="flex items-center gap-2 text-purple-300">
           {isEpiphany ? (
             <>
               <Sparkles className="w-5 h-5 text-yellow-400" />
-              顿悟！
+              顿悟!
             </>
           ) : (
             <>
@@ -709,20 +764,106 @@ const InsightResultModal: React.FC<InsightResultModalProps> = ({ result, onClose
       }
       size="md"
     >
-      <div className="bg-gradient-to-r from-purple-950/50 to-noir-300/50 p-6 rounded border border-purple-800">
+      {/* S3-I1: Epiphany ritual overlay */}
+      {isEpiphany && ritualPhase !== 'done' && (
+        <div className={cn(
+          'absolute inset-0 z-50 pointer-events-none transition-all duration-700',
+          ritualPhase === 'glow' && 'bg-yellow-500/10',
+          ritualPhase === 'flash' && 'bg-white/40',
+          ritualPhase === 'reveal' && 'bg-yellow-500/5',
+        )} />
+      )}
+
+      <div className={cn(
+        'p-6 rounded border transition-all duration-500',
+        isEpiphany
+          ? 'bg-gradient-to-r from-yellow-950/50 to-amber-950/30 border-yellow-700/50'
+          : 'bg-gradient-to-r from-purple-950/50 to-noir-300/50 border-purple-800'
+      )}>
         {/* Narrative */}
         <div className="space-y-3 mb-6 text-stone-300 text-sm italic">
-          <p>{result.narrative.actionText}</p>
-          <p>{result.narrative.discoveryText}</p>
+          <p className={cn(
+            'transition-opacity duration-1000',
+            isEpiphany && ritualPhase === 'glow' && 'opacity-0',
+          )}>
+            {result.narrative.actionText}
+          </p>
+          <p className={cn(
+            'transition-opacity duration-1000',
+            isEpiphany && (ritualPhase === 'glow' || ritualPhase === 'flash') && 'opacity-0',
+          )}>
+            {result.narrative.discoveryText}
+          </p>
           {result.narrative.epiphanyText && (
-            <p className="text-yellow-300">{result.narrative.epiphanyText}</p>
+            <p className={cn(
+              'text-yellow-300 font-medium transition-opacity duration-1000',
+              isEpiphany && ritualPhase !== 'done' && 'opacity-0',
+            )}>
+              {result.narrative.epiphanyText}
+            </p>
           )}
         </div>
 
-        {/* Appraisal Results: Range Narrowing and Trait Discovery */}
+        {/* S3-I5: Unexpected event display */}
+        {unexpectedEvent && (
+          <div className={cn(
+            'mb-4 p-3 rounded border',
+            unexpectedEvent === 'DISTRACTION'
+              ? 'bg-stone-800/50 border-stone-600 text-stone-400'
+              : 'bg-amber-950/50 border-amber-600 text-amber-300'
+          )}>
+            <div className="flex items-center gap-2">
+              {unexpectedEvent === 'DISTRACTION' ? (
+                <>
+                  <CloudFog className="w-4 h-4 text-stone-500" />
+                  <span className="text-sm">今晚心不在焉，产出减半...</span>
+                </>
+              ) : (
+                <>
+                  <Flame className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm font-medium">惊人发现! 产出翻倍!</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* S3-I6: Glimpse event display */}
+        {glimpse && (
+          <div className="mb-4 p-3 bg-indigo-950/30 rounded border border-indigo-800/40">
+            <div className="flex items-center gap-2 mb-1">
+              <Eye className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-[10px] uppercase text-indigo-400 tracking-wider">窥见</span>
+            </div>
+            <p className="text-sm text-indigo-300/80 italic">{glimpse.text}</p>
+          </div>
+        )}
+
+        {/* Resonance event display */}
+        {resonance && (
+          <div className="mb-4 p-3 bg-cyan-950/30 rounded border border-cyan-800/40">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="text-[10px] uppercase text-cyan-400 tracking-wider">共鸣</span>
+            </div>
+            <p className="text-sm text-cyan-300/80 italic">{resonance.text}</p>
+            <div className="mt-2 flex gap-2">
+              {resonance.bonusEssence.craft !== undefined && resonance.bonusEssence.craft > 0 && (
+                <span className="text-xs text-blue-400">+{resonance.bonusEssence.craft} 匠心</span>
+              )}
+              {resonance.bonusEssence.time !== undefined && resonance.bonusEssence.time > 0 && (
+                <span className="text-xs text-amber-400">+{resonance.bonusEssence.time} 旧影</span>
+              )}
+              {resonance.bonusEssence.vibe !== undefined && resonance.bonusEssence.vibe > 0 && (
+                <span className="text-xs text-purple-400">+{resonance.bonusEssence.vibe} 灵韵</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Appraisal Results */}
         {(rangeNarrowed || traitDiscovered) && (
           <div className="mb-4 space-y-2">
-            {/* Range Narrowing */}
             {rangeNarrowed && newRange && (
               <div className="flex items-center gap-2 text-sm">
                 <ChevronRight className="w-4 h-4 text-pawn-green" />
@@ -734,7 +875,9 @@ const InsightResultModal: React.FC<InsightResultModalProps> = ({ result, onClose
                 {valueLocked ? (
                   <span className="text-pawn-green font-medium flex items-center gap-1">
                     <Lock className="w-3 h-3" />
-                    ${newRange[0].toLocaleString()} (已锁定)
+                    ${newRange[0].toLocaleString()}
+                    {newRange[0] !== newRange[1] && ` ~ $${newRange[1].toLocaleString()}`}
+                    {' '}(已锁定)
                   </span>
                 ) : (
                   <span className="text-pawn-accent font-medium">
@@ -744,7 +887,6 @@ const InsightResultModal: React.FC<InsightResultModalProps> = ({ result, onClose
               </div>
             )}
 
-            {/* Trait Discovery */}
             {traitDiscovered && (
               <div className="flex items-start gap-2 text-sm">
                 <Star className="w-4 h-4 text-yellow-400 mt-0.5" />
@@ -802,15 +944,19 @@ const InsightResultModal: React.FC<InsightResultModalProps> = ({ result, onClose
         {isEpiphany && (
           <div className="mt-4 text-xs text-yellow-500 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
-            精力已返还！
+            精力已返还!
           </div>
         )}
       </div>
 
       {/* Close Button */}
       <div className="flex justify-end mt-4">
-        <Button onClick={onClose} className="px-6">
-          确定
+        <Button
+          onClick={handleClose}
+          disabled={!canDismiss}
+          className={cn('px-6', !canDismiss && 'opacity-50 cursor-not-allowed')}
+        >
+          {canDismiss ? '确定' : '...'}
         </Button>
       </div>
     </Modal>

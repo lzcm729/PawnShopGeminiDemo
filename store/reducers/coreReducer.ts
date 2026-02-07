@@ -87,7 +87,8 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 narrativeCustomersServedToday: action.payload.narrativeCustomersServedToday ?? 0,
                 nightState: {
                     ...action.payload.nightState,
-                    maxEnergy: effectiveMaxEnergy
+                    maxEnergy: effectiveMaxEnergy,
+                    energyLevel: action.payload.nightState?.energyLevel ?? 0,
                 },
                 // Set the migrated phase
                 phase,

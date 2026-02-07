@@ -43,11 +43,29 @@ insight_energy_cost = 1
 # 默认知识池容量（设计目标：需多夜才能顿悟）
 default_knowledge_capacity = 100
 
-# 每次格物提取的知识量
-insight_extraction_rate = 20
+# 每次格物提取的知识量（随机范围）
+insight_extraction_rate_min = 15
+insight_extraction_rate_max = 25
 
-# 顿悟时额外奖励比例
-epiphany_bonus_ratio = 0.2
+# 顿悟时额外奖励比例（知识池上限的百分比）
+epiphany_bonus_ratio = 0.25
+
+# 格物意外事件概率
+distraction_chance = 0.05
+remarkable_find_chance = 0.05
+
+# 窥见事件概率
+glimpse_chance = 0.15
+
+# 共鸣事件
+resonance_chance = 0.10
+resonance_bonus_ratio = 0.25
+
+# 精力上限成长阶梯
+energy_levels = [3, 4, 5]
+
+# 顿悟后残留不确定性（5%区间）
+epiphany_residual_uncertainty = 0.05
 
 # ------------------------------------------------------------
 # 夜间鉴定参数 (Night Appraisal)

@@ -102,7 +102,8 @@ export function nightReducer(state: GameState, action: Action): GameState {
                 nightState: {
                     energy: state.nightState.maxEnergy,
                     maxEnergy: state.nightState.maxEnergy,
-                    actionsThisNight: []
+                    actionsThisNight: [],
+                    energyLevel: state.nightState.energyLevel ?? 0,
                 }
             };
 

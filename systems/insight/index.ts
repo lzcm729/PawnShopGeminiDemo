@@ -10,6 +10,8 @@ export type {
   InsightConfig,
   InsightNarrative,
   InsightRecord,
+  UnexpectedEventType,
+  DepletedRewards,
 } from './types';
 
 // 逻辑函数导出
