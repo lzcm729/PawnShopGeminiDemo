@@ -90,7 +90,14 @@ export function coreReducer(state: GameState, action: Action): GameState {
                     maxEnergy: effectiveMaxEnergy
                 },
                 // Set the migrated phase
-                phase
+                phase,
+                // v2.1 migration: daily challenge & schedule
+                dailyChallenge: action.payload.dailyChallenge ?? null,
+                rejectedCustomersToday: action.payload.rejectedCustomersToday ?? 0,
+                hadMistakeToday: action.payload.hadMistakeToday ?? false,
+                hadHighRiskItemToday: action.payload.hadHighRiskItemToday ?? false,
+                dailyCustomerSchedule: action.payload.dailyCustomerSchedule ?? null,
+                scheduleSlotIndex: action.payload.scheduleSlotIndex ?? 0
             };
         }
 
@@ -131,7 +138,13 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 inventory: state.inventory.map(item => ({
                     ...item,
                     insightedTonight: false
-                }))
+                })),
+                // Reset daily challenge tracking (v2.1)
+                rejectedCustomersToday: 0,
+                hadMistakeToday: false,
+                hadHighRiskItemToday: false,
+                dailyCustomerSchedule: null,
+                scheduleSlotIndex: 0
             };
         }
 
@@ -253,9 +266,37 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 dayEvents: [...state.dayEvents, `Turned away ${state.currentCustomer?.name}`],
                 customersServedToday: servedCount,
                 // phase transition removed - handled by state machine
-                completedScenarioIds: newCompletedIds
+                completedScenarioIds: newCompletedIds,
+                rejectedCustomersToday: state.rejectedCustomersToday + 1
             };
         }
+
+        // === DAILY CHALLENGE (v2.1) ===
+        case 'SET_DAILY_CHALLENGE':
+            return { ...state, dailyChallenge: action.payload };
+
+        case 'COMPLETE_DAILY_CHALLENGE':
+            if (!state.dailyChallenge || state.dailyChallenge.isCompleted) return state;
+            return {
+                ...state,
+                dailyChallenge: { ...state.dailyChallenge, isCompleted: true }
+            };
+
+        case 'TRACK_REJECTED_CUSTOMER':
+            return { ...state, rejectedCustomersToday: state.rejectedCustomersToday + 1 };
+
+        case 'TRACK_MISTAKE':
+            return { ...state, hadMistakeToday: true };
+
+        case 'TRACK_HIGH_RISK_ITEM':
+            return { ...state, hadHighRiskItemToday: true };
+
+        // === CUSTOMER SCHEDULE (v2.1) ===
+        case 'SET_DAILY_SCHEDULE':
+            return { ...state, dailyCustomerSchedule: action.payload, scheduleSlotIndex: 0 };
+
+        case 'ADVANCE_SCHEDULE_SLOT':
+            return { ...state, scheduleSlotIndex: state.scheduleSlotIndex + 1 };
 
         default:
             return state;

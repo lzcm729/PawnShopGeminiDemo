@@ -11,6 +11,8 @@ import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '.
 import { GameNode } from '../../types/node';
 import { BlackmarketState } from '../blackmarket/types';
 import { CustomerInsightResult } from '../customerInsight';
+import { DailyChallenge } from './dailyChallenge';
+import { DailySchedule } from '../npc/customerScheduler';
 
 // === NIGHT PHASE TYPES ===
 export interface NightState {
@@ -109,6 +111,16 @@ export interface GameState {
 
   // === POLICE INVESTIGATION (警方调查) ===
   currentPoliceInvestigation: PoliceInvestigationEvent | null;  // 当前警方调查事件
+
+  // === DAILY CHALLENGE (每日挑战 v2.1) ===
+  dailyChallenge: DailyChallenge | null;
+  rejectedCustomersToday: number;        // Track rejected customers for challenge
+  hadMistakeToday: boolean;              // Track if any 打眼 occurred today
+  hadHighRiskItemToday: boolean;         // Track if accepted high-risk item today
+
+  // === CUSTOMER SCHEDULE (出场顺序 v2.1) ===
+  dailyCustomerSchedule: DailySchedule | null;
+  scheduleSlotIndex: number;             // Current slot being served
 
   // === DEBUG FLAGS ===
   debugRevealFloor: boolean;  // 调试：显示客户底价

@@ -2,19 +2,21 @@
 import React from 'react';
 import { Customer, TransactionResult, ReputationType } from '../types';
 import { Button } from './ui/Button';
-import { PackageCheck, DollarSign, Heart, Briefcase, Shield, Stamp, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive } from 'lucide-react';
+import { PackageCheck, DollarSign, Heart, Briefcase, Shield, Stamp, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
 import { getDisplayName } from '../systems/items/tagUtils';
 import { getCharacterPortraitPath, getItemIcon, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 import { CategoryIcon } from './ui/CategoryIcon';
+import { TransactionFeedback } from '../systems/npc/fillerGenerator';
 
 interface DealSuccessModalProps {
   customer: Customer;
   result: TransactionResult;
   onClose: () => void;
+  transactionFeedback?: TransactionFeedback | null;
 }
 
-export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, result, onClose }) => {
+export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, result, onClose, transactionFeedback }) => {
   const { reputationDelta, cashDelta } = result;
   const item = result.item!;
 
@@ -102,6 +104,33 @@ export const DealSuccessModal: React.FC<DealSuccessModalProps> = ({ customer, re
             </div>
         </div>
         
+        {/* Transaction Feedback - Redemption Rate Impact (v2.1) */}
+        {transactionFeedback && (
+            <div className="relative z-10 w-full bg-stone-900/60 p-3 rounded border border-stone-700 mb-4">
+                <div className="text-[10px] text-stone-500 uppercase tracking-widest mb-2">赎回意愿影响</div>
+                <div className="space-y-1">
+                    {transactionFeedback.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs">
+                            <span className="text-stone-400">{item.label}</span>
+                            <span className={`font-mono font-bold ${
+                                item.modifier > 0 ? 'text-pawn-green' :
+                                item.modifier < 0 ? 'text-red-400' :
+                                'text-stone-500'
+                            }`}>
+                                {item.modifier > 0 ? <TrendingUp className="w-3 h-3 inline mr-1" /> :
+                                 item.modifier < 0 ? <TrendingDown className="w-3 h-3 inline mr-1" /> :
+                                 <Minus className="w-3 h-3 inline mr-1" />}
+                                {item.effect}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+                <div className="mt-2 pt-2 border-t border-stone-700 flex justify-between items-center text-xs">
+                    <span className="text-stone-300 font-semibold">{transactionFeedback.summary}</span>
+                </div>
+            </div>
+        )}
+
         {/* Item Acquired */}
         <div className="relative z-10 w-full bg-stone-800 p-3 rounded flex items-center gap-4 mb-8 border border-stone-600">
              <div className="w-12 h-12 bg-black rounded overflow-hidden flex-shrink-0 flex items-center justify-center border border-stone-700">
