@@ -57,7 +57,7 @@ interface LogEntry {
 
 // Appraisal feedback structure passed from ItemPanel
 export interface AppraisalFeedback {
-    type: 'TRAIT_DISCOVERED' | 'RANGE_NARROWED' | 'MISHAP' | 'IMPATIENT' | 'ALREADY_KNOWN';
+    type: 'TRAIT_DISCOVERED' | 'RANGE_NARROWED' | 'BREAKTHROUGH' | 'MISHAP' | 'IMPATIENT' | 'ALREADY_KNOWN';
     text: string;
     traitId?: string;
     traitName?: string;
@@ -489,7 +489,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               text: feedback.text,
               sentiment: feedback.type === 'MISHAP' || feedback.type === 'IMPATIENT'
                   ? 'negative'
-                  : feedback.type === 'TRAIT_DISCOVERED'
+                  : feedback.type === 'TRAIT_DISCOVERED' || feedback.type === 'BREAKTHROUGH'
                   ? 'positive'
                   : 'neutral',
               type: 'INNER_MONOLOGUE',
@@ -935,6 +935,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                               return isBonus ? `✦ ${label}` : label;
                           }
                           case 'RANGE_NARROWED': return '估值范围收缩';
+                          case 'BREAKTHROUGH': return '灵光一闪';
                           case 'MISHAP': return '鉴定失误';
                           case 'IMPATIENT': return '客户不耐烦';
                           case 'ALREADY_KNOWN': return '暂无新发现';

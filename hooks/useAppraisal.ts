@@ -4,6 +4,7 @@ import { useGame } from '../store/GameContext';
 import { ItemTrait } from '../types';
 import { rollAppraisalEvent, AppraisalEvent, generateValuationRange } from '../systems/items/utils';
 import { generateAppraisalLog } from '../systems/game/utils/logGenerator';
+import { GAME_CONFIG } from '../systems/game/config';
 
 interface AppraisalResult {
     success: boolean;
@@ -13,7 +14,7 @@ interface AppraisalResult {
     newRange: [number, number];
     event?: AppraisalEvent;
     valueJump?: 'FAKE' | 'JACKPOT';  // Indicates value changed dramatically
-    isBreakthrough?: boolean;  // True when "灵光一闪" triggers (~10% chance, ×0.60 uncertainty)
+    isBreakthrough?: boolean;  // True when BREAKTHROUGH event fires (d100 roll 1-10)
 }
 
 export const useAppraisal = () => {
@@ -34,7 +35,7 @@ export const useAppraisal = () => {
         const item = customer.item;
         const hiddenTraits = item.hiddenTraits || [];
         const revealedTraits = item.revealedTraits || [];
-        
+
         const undiscoveredCandidates = hiddenTraits.filter(
             h => !revealedTraits.some(r => r.id === h.id)
         );
@@ -42,18 +43,27 @@ export const useAppraisal = () => {
         // Note: AP and patience checks are handled at UI level (button disabled)
         // When AP=0, button is disabled; when patience=0, customer leaves
 
+        const appraisalCount = item.appraisalCount || 0;
+
+        // S1-F1: d100 single-die mutually exclusive event roll
+        // S1-F3: Filter rules (first appraisal, max 1 negative, no mishap on fake)
         const event = rollAppraisalEvent(
-            item.appraisalCount || 0,
+            appraisalCount,
             item.uncertainty,
-            item.hasNegativeAppraisalEvent || false
+            item.hasNegativeAppraisalEvent || false,
+            item.isFake,
+            GAME_CONFIG.APPRAISAL_EVENTS
         );
+
+        // S1-F2: BREAKTHROUGH is now a d100 event, not a separate random roll
+        const isBreakthrough = event.type === 'BREAKTHROUGH';
 
         let extraPatienceCost = 0;
         let uncertaintyBoost = 0;
         let bonusTraits: ItemTrait[] = [];
 
         if (event.type === 'MISHAP') {
-            uncertaintyBoost = 0.05; 
+            uncertaintyBoost = GAME_CONFIG.APPRAISAL_EVENTS.MISHAP_UNCERTAINTY_INCREASE;
         } else if (event.type === 'IMPATIENT') {
             extraPatienceCost = 1;
         } else if (event.type === 'LUCKY_FIND') {
@@ -65,24 +75,45 @@ export const useAppraisal = () => {
         }
 
         dispatch({ type: 'CONSUME_AP', payload: 1 });
-        
+
         const totalPatienceCost = 1 + extraPatienceCost;
-        dispatch({ 
-            type: 'UPDATE_CUSTOMER_STATUS', 
-            payload: { 
-                patience: Math.max(0, customer.patience - totalPatienceCost), 
+        dispatch({
+            type: 'UPDATE_CUSTOMER_STATUS',
+            payload: {
+                patience: Math.max(0, customer.patience - totalPatienceCost),
                 mood: customer.mood,
-                currentAskPrice: customer.currentAskPrice || customer.desiredAmount 
-            } 
+                currentAskPrice: customer.currentAskPrice || customer.desiredAmount
+            }
         });
 
         const newTraitsFound: ItemTrait[] = [...bonusTraits];
-        
+
+        // S1-F5: FAKE pseudo-random pity system
+        // Track appraisal count for pity calculation (this is the count BEFORE this appraisal)
+        const currentAppraisalNum = appraisalCount + 1; // This is the Nth appraisal
+
         if (event.type !== 'MISHAP') {
             undiscoveredCandidates.forEach(trait => {
+                const baseChance = 0.5 - (trait.discoveryDifficulty * 0.3);
+
+                let effectiveChance = baseChance;
+
+                // S1-F5: Apply FAKE pity multiplier
+                if (trait.type === 'FAKE') {
+                    const pityGuaranteed = GAME_CONFIG.APPRAISAL_EVENTS.FAKE_PITY_GUARANTEED;
+                    if (currentAppraisalNum >= pityGuaranteed) {
+                        // Guaranteed discovery on Nth appraisal
+                        effectiveChance = 1.0;
+                    } else if (currentAppraisalNum === 3) {
+                        effectiveChance = baseChance * GAME_CONFIG.APPRAISAL_EVENTS.FAKE_PITY_MULTIPLIER_3;
+                    } else if (currentAppraisalNum === 2) {
+                        effectiveChance = baseChance * GAME_CONFIG.APPRAISAL_EVENTS.FAKE_PITY_MULTIPLIER_2;
+                    }
+                    // currentAppraisalNum === 1: normal probability (no multiplier)
+                }
+
                 const roll = Math.random();
-                const chance = 0.5 - (trait.discoveryDifficulty * 0.3); 
-                if (roll < chance) {
+                if (roll < effectiveChance) {
                     newTraitsFound.push(trait);
                 }
             });
@@ -98,15 +129,27 @@ export const useAppraisal = () => {
         const updatedHidden = hiddenTraits.filter(t => !discoveredIds.has(t.id));
 
         let newUncertainty = item.uncertainty;
-        let isBreakthrough = false;
 
         if (event.type === 'MISHAP') {
             newUncertainty = Math.min(0.5, newUncertainty + uncertaintyBoost);
         } else {
-            // ~10% chance of "灵光一闪" (breakthrough): ×0.60 instead of ×0.85
-            isBreakthrough = Math.random() < 0.10;
-            const shrinkFactor = isBreakthrough ? 0.60 : 0.85;
-            newUncertainty = Math.max(0.05, newUncertainty * shrinkFactor);
+            // S1-F4: Breakthrough-trait discovery interaction rules
+            const discoveredFakeOrJackpotTrait = uniqueNewTraits.find(
+                t => t.type === 'FAKE' || t.type === 'JACKPOT'
+            );
+
+            if (discoveredFakeOrJackpotTrait) {
+                // FAKE/JACKPOT discovery: uncertainty drops to 0.10
+                // If BREAKTHROUGH also fired, it does NOT stack — trait discovery takes priority
+                newUncertainty = 0.10;
+            } else if (isBreakthrough) {
+                // S1-F2: BREAKTHROUGH event: uncertainty ×0.60 (from config)
+                const breakthroughMultiplier = GAME_CONFIG.APPRAISAL_EVENTS.BREAKTHROUGH_UNCERTAINTY_MULTIPLIER;
+                newUncertainty = Math.max(0.05, newUncertainty * breakthroughMultiplier);
+            } else {
+                // Normal shrink: ×0.85
+                newUncertainty = Math.max(0.05, newUncertainty * 0.85);
+            }
         }
 
         const [currentMin, currentMax] = item.currentRange;
@@ -123,8 +166,10 @@ export const useAppraisal = () => {
             // Keep current range when normal traits are discovered
             newRange = [currentMin, currentMax];
         } else {
-            // Narrow or expand range (breakthrough doubles convergence speed)
-            const CONVERGENCE_SPEED = isBreakthrough ? 0.30 : 0.15;
+            // S1-F2 / S1-F4: Breakthrough uses faster convergence (0.30 vs 0.15)
+            // For non-jump traits (FLAW/STORY), breakthrough ×0.60 already applied above
+            const breakthroughRangeShrink = GAME_CONFIG.APPRAISAL_EVENTS.BREAKTHROUGH_RANGE_SHRINK;
+            const CONVERGENCE_SPEED = isBreakthrough ? breakthroughRangeShrink : 0.15;
             const anchor = item.perceivedValue ?? item.realValue;
 
             let calcMin = currentMin + (anchor - currentMin) * CONVERGENCE_SPEED;

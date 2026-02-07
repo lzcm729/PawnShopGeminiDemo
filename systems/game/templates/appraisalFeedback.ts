@@ -17,6 +17,9 @@ export const APPRAISAL_TEMPLATES = {
 
     /** When all traits already discovered */
     ALREADY_KNOWN: "这东西我已经看得很透彻了。",
+
+    /** When breakthrough event triggers (d100 roll 1-10, ×0.60 uncertainty) */
+    BREAKTHROUGH: "灵光一闪！突然看懂了关键细节，估值范围大幅收窄。",
 } as const;
 
 export type AppraisalTemplateKey = keyof typeof APPRAISAL_TEMPLATES;

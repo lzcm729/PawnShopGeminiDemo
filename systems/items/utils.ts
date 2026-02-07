@@ -104,37 +104,79 @@ export const getUncertaintyRisk = (min: number, max: number): UncertaintyRisk =>
     return 'LOW';
 };
 
-export type AppraisalEventType = 'NORMAL' | 'MISHAP' | 'IMPATIENT' | 'LUCKY_FIND';
+export type AppraisalEventType = 'NORMAL' | 'BREAKTHROUGH' | 'MISHAP' | 'IMPATIENT' | 'LUCKY_FIND';
 
 export interface AppraisalEvent {
     type: AppraisalEventType;
     message?: string;
 }
 
+/**
+ * d100 single-die mutually exclusive appraisal event roll (v1.7).
+ *
+ * Dice ranges (from GAME_CONFIG.APPRAISAL_EVENTS):
+ *   1  ~ BREAKTHROUGH_MAX(10)  : 灵光一闪
+ *   11 ~ MISHAP_MAX(15)        : 鉴定失误
+ *   16 ~ IMPATIENT_MAX(25)     : 客户不耐烦
+ *   26 ~ LUCKY_FIND_MAX(30)    : 意外发现
+ *   31 ~ 100                   : 无事件
+ *
+ * Filter rules (condition not met → treat as "no event", no re-roll):
+ *  - First appraisal (appraisalCount===0): no negative events (MISHAP, IMPATIENT)
+ *  - Max 1 negative event per item (hasNegativeEvent)
+ *  - FAKE items never trigger MISHAP (isFake)
+ */
 export const rollAppraisalEvent = (
     appraisalCount: number,
-    uncertainty: number,
-    hasNegativeEvent: boolean
+    _uncertainty: number,
+    hasNegativeEvent: boolean,
+    isFake: boolean = false,
+    config?: {
+        BREAKTHROUGH_MAX: number;
+        MISHAP_MAX: number;
+        IMPATIENT_MAX: number;
+        LUCKY_FIND_MAX: number;
+    }
 ): AppraisalEvent => {
-    if (appraisalCount === 0) return { type: 'NORMAL' };
+    // Default ranges match game.toml defaults
+    const cfg = config ?? {
+        BREAKTHROUGH_MAX: 10,
+        MISHAP_MAX: 15,
+        IMPATIENT_MAX: 25,
+        LUCKY_FIND_MAX: 30,
+    };
 
-    if (hasNegativeEvent) {
-         const roll = Math.random();
-         if (roll < 0.10) return { type: 'LUCKY_FIND', message: "意外发现！(Lucky Find)" };
-         return { type: 'NORMAL' };
+    // d100: 1-100
+    const roll = Math.floor(Math.random() * 100) + 1;
+
+    // --- 1 ~ BREAKTHROUGH_MAX: 灵光一闪 ---
+    if (roll <= cfg.BREAKTHROUGH_MAX) {
+        return { type: 'BREAKTHROUGH', message: "灵光一闪！(Breakthrough)" };
     }
 
-    const roll = Math.random();
-
-    if (roll < 0.05 && uncertainty < 0.15) {
+    // --- BREAKTHROUGH_MAX+1 ~ MISHAP_MAX: 鉴定失误 ---
+    if (roll <= cfg.MISHAP_MAX) {
+        // Filters: first appraisal, already had negative, or fake item
+        if (appraisalCount === 0 || hasNegativeEvent || isFake) {
+            return { type: 'NORMAL' };
+        }
         return { type: 'MISHAP', message: "等等...我刚才看错了？(Mishap: Range Widened)" };
     }
-    if (roll < 0.15 && roll >= 0.05 && appraisalCount >= 2) {
+
+    // --- MISHAP_MAX+1 ~ IMPATIENT_MAX: 客户不耐烦 ---
+    if (roll <= cfg.IMPATIENT_MAX) {
+        // Filters: first appraisal, already had negative, or not enough appraisals
+        if (appraisalCount === 0 || hasNegativeEvent || appraisalCount < 2) {
+            return { type: 'NORMAL' };
+        }
         return { type: 'IMPATIENT', message: "你到底买不买？(Customer Impatient: Patience -1)" };
     }
-    if (roll < 0.20 && roll >= 0.15) {
+
+    // --- IMPATIENT_MAX+1 ~ LUCKY_FIND_MAX: 意外发现 ---
+    if (roll <= cfg.LUCKY_FIND_MAX) {
         return { type: 'LUCKY_FIND', message: "意外发现！(Lucky Find)" };
     }
 
+    // --- 31~100: 无事件 ---
     return { type: 'NORMAL' };
 };
