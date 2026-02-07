@@ -13,7 +13,7 @@
 initial_funds = 10000
 
 # 终极目标：母亲手术费用（达成即胜利）
-goal_amount = 100000
+goal_amount = 500000
 
 # 每周医药费（固定支出，未支付则 Game Over）
 weekly_medical_cost = 1000
