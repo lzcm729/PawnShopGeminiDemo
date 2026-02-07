@@ -993,7 +993,7 @@ function handleAddForfeitCommand(
   const parsed = parseForfeitArgs(args);
 
   if (!parsed || !parsed.name) {
-    return { success: false, message: 'Usage: add forfeit <name> [--tags TAG1,TAG2]\nExample: add forfeit 测试钟表\nExample: add forfeit 贵重手表 --tags GOLD,MINT' };
+    return { success: false, message: 'Usage: add forfeit <name> [--tags TAG1,TAG2]\nExample: add forfeit 测试钟表\nExample: add forfeit 贵重手表 --tags GOLD,BROKEN' };
   }
 
   const state = getState();
@@ -1499,7 +1499,7 @@ export function getAvailableCommands(): CommandDef[] {
       command: 'add forfeit',
       description: 'Add a forfeit item for blackmarket testing (FORFEIT status, sellable)',
       usage: 'add forfeit <name> [--tags TAG1,TAG2]',
-      examples: [`add forfeit 测试钟表`, `add forfeit 贵重手表 --tags GOLD,MINT`]
+      examples: [`add forfeit 测试钟表`, `add forfeit 贵重手表 --tags GOLD,BROKEN`]
     },
     {
       command: 'add template',

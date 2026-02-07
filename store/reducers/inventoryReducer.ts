@@ -8,6 +8,7 @@ import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../../systems/game/utils/logGenerator';
 import { GamePhase } from '../../systems/core/phases';
+import { calculateTaggedValue } from '../../systems/items/tagUtils';
 
 export function inventoryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -369,17 +370,30 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
             const { itemId, tags, wasRestored, wasReforged, workState } = action.payload;
             return {
                 ...state,
-                inventory: state.inventory.map(item =>
-                    item.id === itemId
-                        ? {
-                            ...item,
-                            tags: tags !== undefined ? tags : item.tags,
-                            wasRestored: wasRestored !== undefined ? wasRestored : item.wasRestored,
-                            wasReforged: wasReforged !== undefined ? wasReforged : item.wasReforged,
-                            workState: workState !== undefined ? workState : item.workState,
-                        }
-                        : item
-                )
+                inventory: state.inventory.map(item => {
+                    if (item.id !== itemId) return item;
+
+                    const updatedItem = {
+                        ...item,
+                        tags: tags !== undefined ? tags : item.tags,
+                        wasRestored: wasRestored !== undefined ? wasRestored : item.wasRestored,
+                        wasReforged: wasReforged !== undefined ? wasReforged : item.wasReforged,
+                        workState: workState !== undefined ? workState : item.workState,
+                    };
+
+                    // realValue 同步协议：标签变化时自动重算 realValue
+                    if (tags !== undefined) {
+                        updatedItem.realValue = calculateTaggedValue(updatedItem);
+                    }
+
+                    // 重铸后 uncertainty 重置为高值（物品本质已改变）
+                    if (wasReforged === true || workState === 'REFORGED') {
+                        updatedItem.uncertainty = 0.8;
+                    }
+                    // 修复后 uncertainty 保持不变（修复不改变了解程度）
+
+                    return updatedItem;
+                })
             };
         }
 

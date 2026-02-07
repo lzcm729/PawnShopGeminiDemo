@@ -14,7 +14,7 @@
  * 描述物品当前的物理状况，通常是负面的。
  * 玩法关联："修复"行为的主要目标是移除此组标签。
  */
-export type StateTag = 'BROKEN' | 'DIRTY' | 'RUSTED' | 'MINT';
+export type StateTag = 'BROKEN' | 'DIRTY' | 'RUSTED';
 
 /**
  * G2. 材质/属性组 (Attribute Tags)
@@ -26,8 +26,7 @@ export type AttributeTag =
   | 'MECHANICAL'     // 精密机械 - 产出匠心
   | 'ARTISTIC'       // 艺术品 - 产出灵韵
   | 'VINTAGE_REAL'   // 真年份/古董 - 产出旧影
-  | 'SENTIMENTAL'    // 情感价值 - 产出旧影
-  | 'TRENDY';        // 潮流物品 - 产出灵韵
+  | 'SENTIMENTAL';   // 情感价值 - 产出旧影
 
 /**
  * G3. 本质/价值组 (Essence Tags)
@@ -37,8 +36,7 @@ export type AttributeTag =
 export type EssenceTag =
   | 'FAKE_HISTORY'   // 伪造历史 - 做旧处理的赝品
   | 'IMPERIAL'       // 御用/宫廷 - 极高溢价
-  | 'TRENDING'       // 潮流热点 - 短期价值暴涨
-  | 'CURSED'         // 诅咒 - 特殊玩法
+  | 'ART_ENHANCED'   // 艺术升华 - 高价值重铸
   | 'CELEBRITY'      // 名人关联 - 高溢价
   | 'LIMITED';       // 限量版 - 稀缺溢价
 
@@ -68,6 +66,7 @@ export interface TagDefinition {
   icon?: string;                // 图标 (emoji 或图片路径)
   isNegative?: boolean;         // 是否为负面标签
   canBeRemoved?: boolean;       // 是否可被移除（修复）
+  cleanOnly?: boolean;          // 是否为清洁操作（只消耗精力，不消耗精魄点数）
   essenceYield?: {              // 格物时的点数产出配比
     craft?: number;             // 匠心产出权重 (0-1)
     time?: number;              // 旧影产出权重 (0-1)
@@ -96,11 +95,14 @@ export interface ItemVariant {
 }
 
 /**
- * 变体优先级说明：
- * 1. 重铸态 (Essence): priority 100+ - 如果物品变成了"宫廷御用"，它就是御用品
- * 2. 破损态 (State - Negative): priority 50-99 - 如果御用怀表被砸烂了，它首先看起来是"烂的"
+ * 变体优先级说明（设计文档 v1.0）：
+ * 1. 破损态 (State - Negative): priority 100+ - 破损是最直观的物理信号，玩家需要一眼看出"这东西坏了"
+ * 2. 重铸态 (Essence): priority 50-99 - 如果物品经过重铸但没有损坏，展现重铸后的身份
  * 3. 修复态 (State - Restored): priority 20-49 - 特指从破损恢复的状态
  * 4. 默认态 (Default): priority 0-19 - 没有任何特殊状态标签时
+ *
+ * 变体名称规则：破损态优先显示时，名称仍保留 G3 信息。
+ * 例如 IMPERIAL+BROKEN 显示"碎裂的宫廷御表"而非"停摆的旧表"。
  */
 
 // ============================================================================
@@ -127,9 +129,9 @@ export interface KnowledgePool {
 // 类型守卫
 // ============================================================================
 
-export const STATE_TAGS: StateTag[] = ['BROKEN', 'DIRTY', 'RUSTED', 'MINT'];
-export const ATTRIBUTE_TAGS: AttributeTag[] = ['GOLD', 'MECHANICAL', 'ARTISTIC', 'VINTAGE_REAL', 'SENTIMENTAL', 'TRENDY'];
-export const ESSENCE_TAGS: EssenceTag[] = ['FAKE_HISTORY', 'IMPERIAL', 'TRENDING', 'CURSED', 'CELEBRITY', 'LIMITED'];
+export const STATE_TAGS: StateTag[] = ['BROKEN', 'DIRTY', 'RUSTED'];
+export const ATTRIBUTE_TAGS: AttributeTag[] = ['GOLD', 'MECHANICAL', 'ARTISTIC', 'VINTAGE_REAL', 'SENTIMENTAL'];
+export const ESSENCE_TAGS: EssenceTag[] = ['FAKE_HISTORY', 'IMPERIAL', 'ART_ENHANCED', 'CELEBRITY', 'LIMITED'];
 
 export function isStateTag(tag: ItemTag): tag is StateTag {
   return STATE_TAGS.includes(tag as StateTag);

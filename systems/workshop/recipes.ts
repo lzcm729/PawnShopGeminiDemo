@@ -110,18 +110,18 @@ export const REFORGE_RECIPES: ReforgeRecipe[] = [
     riskNote: '专业买家可能会核实编号真伪。',
   },
 
-  // === 潮流类重铸 ===
+  // === 艺术升华重铸 ===
   {
-    id: 'reforge_trending',
+    id: 'reforge_art_enhanced',
     type: 'REFORGE',
-    name: '潮流改造',
-    description: '将物品改造成符合当下潮流审美的样式。需要敏锐的时尚嗅觉。',
-    resultTag: 'TRENDING',
+    name: '艺术升华',
+    description: '邀请艺术大师对物品进行再创作，赋予其全新的艺术灵魂。',
+    resultTag: 'ART_ENHANCED',
     baseCost: { vibe: 50, craft: 10 },
     energyCost: 2,
-    requiredTags: ['TRENDY'],
-    excludedTags: ['TRENDING', 'VINTAGE_REAL'],
-    riskNote: '潮流瞬息万变，价值可能随时下跌。',
+    requiredTags: ['ARTISTIC'],
+    excludedTags: ['ART_ENHANCED'],
+    riskNote: '艺术品的价值高度主观，市场评价可能因人而异。',
   },
 
   // === 高级重铸（解锁条件更严格）===
@@ -134,7 +134,7 @@ export const REFORGE_RECIPES: ReforgeRecipe[] = [
     baseCost: { time: 50, vibe: 30, craft: 20 },
     energyCost: 3,
     requiredTags: ['VINTAGE_REAL', 'ARTISTIC'],
-    excludedTags: ['IMPERIAL', 'FAKE_HISTORY', 'TRENDING'],
+    excludedTags: ['IMPERIAL', 'FAKE_HISTORY'],
     riskNote: '宫廷物品有严格的档案记录，编造故事风险极高。',
   },
 ];

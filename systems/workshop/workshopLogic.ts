@@ -342,9 +342,9 @@ function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item): WorkshopNa
       actionText = `你仔细地为${item.name}添加限量版的标识和编号...`;
       resultText = '物品现在带有限量版的标记。它的稀缺性被"证明"了。';
       break;
-    case 'TRENDING':
-      actionText = `你开始改造${item.name}，让它符合当下的潮流审美...`;
-      resultText = '改造完成，物品焕发出时尚的气息。';
+    case 'ART_ENHANCED':
+      actionText = `你邀请了一位艺术大师对${item.name}进行再创作...`;
+      resultText = '艺术升华完成，物品被赋予了全新的艺术灵魂。';
       break;
     case 'IMPERIAL':
       actionText = `你开始为${item.name}编造一个与皇室相关的故事...`;
