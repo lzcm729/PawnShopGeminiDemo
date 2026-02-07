@@ -2,16 +2,47 @@
 import React from 'react';
 import { CategoryIcon } from './CategoryIcon';
 import { Item, ItemStatus } from '../../types';
-import { AlertTriangle, ShieldCheck, Heart, Skull, DollarSign } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Heart, Skull, DollarSign, User } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getDisplayName } from '../../systems/items/tagUtils';
 import { getItemIcon } from '../../systems/assets';
+import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../../systems/assets';
 
 interface ItemCardProps {
   item: Item;
   currentDay: number;
   actions?: React.ReactNode;
 }
+
+// S3-I4: Visual state based on days in storage (design doc D - Natural Decay)
+const getItemVisualFilter = (item: Item, currentDay: number): string => {
+    const daysInStorage = currentDay - (item.pawnDate || 0);
+
+    if (item.status === ItemStatus.SOLD || item.status === ItemStatus.REDEEMED) {
+        return 'grayscale(50%) opacity(70%)';
+    }
+
+    if (daysInStorage >= 21) return 'sepia(40%) brightness(80%)';
+    if (daysInStorage >= 14) return 'sepia(25%) brightness(90%)';
+    if (daysInStorage >= 7) return 'sepia(10%) brightness(95%)';
+    return 'none';
+};
+
+// Design doc E: Derive NPC portrait from relatedChainId
+const getNpcAvatarUrl = (item: Item): string | null => {
+    if (!item.relatedChainId) return null;
+    const charId = item.relatedChainId.replace(/^chain_/, '');
+    return getCharacterPortraitPath(charId, 'neutral');
+};
+
+// S3-C3: NPC badge tooltip text - derive readable name from chain ID
+const getNpcBadgeTooltip = (item: Item): string => {
+    if (!item.relatedChainId) return '';
+    const charId = item.relatedChainId.replace(/^chain_/, '');
+    // Capitalize first letter for display
+    const displayName = charId.charAt(0).toUpperCase() + charId.slice(1);
+    return `${displayName} 的物品`;
+};
 
 export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions }) => {
 
@@ -27,7 +58,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
   let statusText = "UNKNOWN";
 
   if (isReforged && isActive) {
-    // Reforged active items are treated as owned (breach already occurred)
     statusColor = "bg-purple-600";
     statusText = "REFORGED (OWNED)";
   } else if (isForfeit) {
@@ -52,8 +82,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
     }
   }
 
-  // Reforged items are treated as owned for display purposes
   const treatedAsOwned = isReforged && isActive;
+
+  // S3-I4: Visual filter for aging effect
+  const visualFilter = getItemVisualFilter(item, currentDay);
+
+  // Design doc E: NPC avatar badge
+  const npcAvatarUrl = getNpcAvatarUrl(item);
+  const npcBadgeTooltip = getNpcBadgeTooltip(item);
 
   return (
     <div className="relative flex flex-col bg-noir-200 shadow-sm transition-all duration-300 group overflow-hidden font-mono">
@@ -65,13 +101,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
           </div>
         </div>
 
-        {/* Centered Large Icon */}
+        {/* Centered Large Icon with S3-I4 visual decay + Design doc E NPC badge */}
         <div className="flex justify-center py-2">
-          <div className="w-24 h-24 bg-noir-300 border border-noir-400 flex items-center justify-center overflow-hidden rounded-lg shadow-inner">
+          <div className="relative w-24 h-24 bg-noir-300 border border-noir-400 flex items-center justify-center overflow-hidden rounded-lg shadow-inner">
             <img
               src={getItemIcon(item)}
               alt={item.name}
               className="w-full h-full object-contain p-1"
+              style={{ filter: visualFilter }}
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
                 const fallback = (e.target as HTMLImageElement).nextElementSibling;
@@ -81,6 +118,25 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
             <div className="hidden items-center justify-center w-full h-full">
               <CategoryIcon category={item.category} className="text-noir-txt-secondary w-10 h-10" />
             </div>
+
+            {/* Design doc E: NPC avatar badge - small corner overlay */}
+            {npcAvatarUrl && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full border-2 border-noir-200 bg-noir-300 overflow-hidden shadow-md" title={npcBadgeTooltip}>
+                    <img
+                        src={npcAvatarUrl}
+                        alt="NPC"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            const fallback = (e.target as HTMLImageElement).nextElementSibling;
+                            if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                        }}
+                    />
+                    <div className="hidden items-center justify-center w-full h-full">
+                        <User className="w-4 h-4 text-noir-txt-muted" />
+                    </div>
+                </div>
+            )}
           </div>
         </div>
 

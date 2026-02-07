@@ -6,7 +6,7 @@
 import { GameState, ReputationType, ItemStatus, TransactionRecord, SatisfactionLevel, ReputationProfile } from '../../types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
-import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../../systems/game/utils/logGenerator';
+import { generateRedeemLog, generateForfeitLog, generateSoldLog, generatePlayerChoiceLog, generateEchoLog } from '../../systems/game/utils/logGenerator';
 
 export function expiryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -40,9 +40,15 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                     if (event) {
                         cashDelta = event.redemptionCost.total;
                         const redeemLog = generateRedeemLog(event.npcName, item, state.stats.day, cashDelta);
+                        // S3-F1: Player choice log for expiry decision
+                        const choiceLog = generatePlayerChoiceLog(state.stats.day, 'EXPIRY_DECISION', {
+                            decision: 'redeem_accept', customerName: event.npcName,
+                        });
+                        // S3-F2: Echo entry for NPC redemption
+                        const echoLog = generateEchoLog(state.stats.day, 'NPC_REDEEMED', item.relatedChainId || '');
                         newInventory = newInventory.map(i =>
                             i.id === itemId
-                                ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || []), redeemLog] }
+                                ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || []), redeemLog, choiceLog, echoLog] }
                                 : i
                         );
                         repDelta = { [ReputationType.HUMANITY]: 3, [ReputationType.CREDIBILITY]: 2 };
@@ -73,6 +79,10 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                         const newDueDate = item.pawnInfo.dueDate + days;
                         const interest = Math.ceil(item.pawnInfo.principal * item.pawnInfo.interestRate);
                         cashDelta = interest;
+                        // S3-F1: Player choice log for renewal decision
+                        const choiceLog = generatePlayerChoiceLog(state.stats.day, 'EXPIRY_DECISION', {
+                            decision: 'renew_accept',
+                        });
                         newInventory = newInventory.map(i =>
                             i.id === itemId && i.pawnInfo
                                 ? {
@@ -81,7 +91,8 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                                         ...i.pawnInfo,
                                         dueDate: newDueDate,
                                         extensionCount: (i.pawnInfo.extensionCount || 0) + 1
-                                    }
+                                    },
+                                    logs: [...(i.logs || []), choiceLog]
                                 }
                                 : i
                         );
@@ -94,9 +105,13 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 }
                 case 'renew_refuse': {
                     const forfeitLog = generateForfeitLog(item, state.stats.day, "拒绝续当");
+                    // S3-F1: Player choice log
+                    const choiceLog = generatePlayerChoiceLog(state.stats.day, 'EXPIRY_DECISION', {
+                        decision: 'renew_refuse',
+                    });
                     newInventory = newInventory.map(i =>
                         i.id === itemId
-                            ? { ...i, status: ItemStatus.FORFEIT, logs: [...(i.logs || []), forfeitLog] }
+                            ? { ...i, status: ItemStatus.FORFEIT, logs: [...(i.logs || []), forfeitLog, choiceLog] }
                             : i
                     );
                     repDelta = { [ReputationType.HUMANITY]: -10 };
@@ -109,9 +124,14 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                     const price = salePrice || Math.floor(item.realValue * 0.8);
                     cashDelta = price;
                     const soldLog = generateSoldLog(item, state.stats.day, price);
+                    // S3-F1: Player choice log + S3-F2: Echo for expired no-redeem
+                    const choiceLog = generatePlayerChoiceLog(state.stats.day, 'EXPIRY_DECISION', {
+                        decision: 'noshow_sell',
+                    });
+                    const echoLog = generateEchoLog(state.stats.day, 'EXPIRED_NO_REDEEM', item.relatedChainId || '');
                     newInventory = newInventory.map(i =>
                         i.id === itemId
-                            ? { ...i, status: ItemStatus.SOLD, logs: [...(i.logs || []), soldLog] }
+                            ? { ...i, status: ItemStatus.SOLD, logs: [...(i.logs || []), echoLog, choiceLog, soldLog] }
                             : i
                     );
                     log = `绝当物品出售: ${item.name} ($${price})`;
@@ -120,9 +140,14 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 }
                 case 'noshow_keep': {
                     const forfeitLog = generateForfeitLog(item, state.stats.day, "客户未现身");
+                    // S3-F1: Player choice log + S3-F2: Echo for expired no-redeem
+                    const choiceLog = generatePlayerChoiceLog(state.stats.day, 'EXPIRY_DECISION', {
+                        decision: 'noshow_keep',
+                    });
+                    const echoLog = generateEchoLog(state.stats.day, 'EXPIRED_NO_REDEEM', item.relatedChainId || '');
                     newInventory = newInventory.map(i =>
                         i.id === itemId
-                            ? { ...i, status: ItemStatus.FORFEIT, logs: [...(i.logs || []), forfeitLog] }
+                            ? { ...i, status: ItemStatus.FORFEIT, logs: [...(i.logs || []), echoLog, choiceLog, forfeitLog] }
                             : i
                     );
                     log = `保留绝当物品: ${item.name}`;

@@ -177,5 +177,8 @@ export type Action =
     | { type: 'POLICE_INVESTIGATION_DECISION'; payload: { surrender: boolean; itemId: string } }
     | { type: 'CLEAR_POLICE_INVESTIGATION' }
 
+    // Item Log System (S3-F1/F2)
+    | { type: 'APPEND_ITEM_LOGS'; payload: { itemId: string; log: ItemLogEntry }[] }
+
     // Debug flags
     | { type: 'DEBUG_TOGGLE_FLOOR' };
