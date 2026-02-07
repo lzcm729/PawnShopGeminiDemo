@@ -179,13 +179,13 @@ export const useGameEngine = () => {
         newCareLevel = 'Premium';
         newHealth = Math.min(100, newHealth + 2 + decayModifier);  // Recovery +2% (+3% with saint_guardian), capped at 100
         newRisk = Math.max(5, newRisk - 5);
-        newStatus = 'Improving';
+        newStatus = 'Stable';
         // logMessage handled by payment action
     } else if (isBillOverdue) {
         newCareLevel = 'None';
         newHealth -= 15;  // Rapid decay -15%
         newRisk = Math.min(100, newRisk + 10);
-        newStatus = 'Worsening';
+        newStatus = 'Declining';
         logMessage = "警告：医药费断缴！药物已停供，母亲病情急剧恶化。";
     } else {
         // PENDING status: health remains stable (no change)
@@ -204,6 +204,11 @@ export const useGameEngine = () => {
     }
 
     newHealth = Math.max(0, Math.min(100, newHealth));
+
+    // Map status based on health thresholds per design doc
+    if (newHealth >= 70) newStatus = 'Stable';
+    else if (newHealth >= 40) newStatus = 'Declining';
+    else newStatus = 'Critical';
 
     const updatedMother: MotherCondition = {
         health: newHealth,

@@ -37,7 +37,7 @@ export interface MedicalBill {
 
 export interface MotherCondition {
   health: number; // 0-100
-  status: 'Stable' | 'Critical' | 'Improving' | 'Worsening';
+  status: 'Stable' | 'Declining' | 'Critical';
   risk: number; // 0-100% chance of complication
   careLevel: 'None' | 'Basic' | 'Premium';
 }

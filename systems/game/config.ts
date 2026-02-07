@@ -126,7 +126,7 @@ export const GAME_CONFIG = {
     health: tomlConfig.mother.health,
     status: tomlConfig.mother.status as 'Stable' | 'Declining' | 'Critical',
     risk: tomlConfig.mother.risk,
-    careLevel: tomlConfig.mother.care_level as 'Basic' | 'Standard' | 'Premium'
+    careLevel: tomlConfig.mother.care_level as 'None' | 'Basic' | 'Premium'
   } as const,
 
   // --- MOTHER DYNAMIC PARAMETERS (母亲动态参数) ---

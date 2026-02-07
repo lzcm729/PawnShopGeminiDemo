@@ -86,6 +86,7 @@ export type Action =
     | { type: 'PAY_RENT' }
     | { type: 'PURCHASE_TREATMENT'; payload: { type: 'STABILIZE' | 'REDUCE_RISK', cost: number } }
     | { type: 'VISIT_MOTHER' }
+    | { type: 'EMERGENCY_TREATMENT' }
     | { type: 'PAY_SURGERY' }
     | { type: 'UPDATE_MOTHER_STATUS'; payload: MotherCondition }
     | { type: 'DEBUG_ADD_CASH'; payload: number }
