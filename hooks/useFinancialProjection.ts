@@ -1,18 +1,42 @@
 
 import { useMemo } from 'react';
 import { useGame } from '../store/GameContext';
-import { CalendarDayData, CalendarEvent } from '../systems/economy/types';
+import { CalendarDayData, CalendarEvent, IncomeCertainty, CERTAINTY_WEIGHTS, WARNING_THRESHOLD } from '../systems/economy/types';
 import { ItemStatus } from '../systems/items/types';
 import { calculateInterest } from '../systems/economy/interest';
+import { GAME_CONFIG } from '../systems/game/config';
+
+// Map NPC redemptionResolve to calendar IncomeCertainty tier
+function resolveToIncomeCertainty(resolve: string | undefined): IncomeCertainty {
+    switch (resolve) {
+        case 'Strong': return 'HIGH';
+        case 'Medium': return 'MEDIUM';
+        case 'Weak':
+        case 'None':
+        default: return 'LOW';
+    }
+}
+
+// Settlement ceremony data for Day 7 (design doc Section 2.G)
+export interface SettlementCeremonyData {
+    isSettlementDay: boolean;       // True if today is a medical bill due day
+    isSettlementEve: boolean;       // True if tomorrow is a medical bill due day (Day 6 reminder)
+    billAmount: number;             // The medical bill amount
+    canAfford: boolean;             // Whether player can pay
+    shortfall: number;              // Deficit if cannot afford (positive number)
+    balanceAfterPayment: number;    // Cash remaining after payment
+    narrativeLine: string;          // Three-beat narrative closure text
+    severityTier: 'COMFORTABLE' | 'TIGHT' | 'BARELY_SURVIVED'; // Emotional tier
+}
 
 export const useFinancialProjection = () => {
     const { state } = useGame();
-    const { stats, inventory, financialHistory } = state;
+    const { stats, inventory, financialHistory, activeChains } = state;
 
     const projection = useMemo(() => {
         const days: CalendarDayData[] = [];
         let runningBalance = stats.cash;
-        const RENT_INTERVAL = 7;
+        const MEDICAL_INTERVAL = GAME_CONFIG.BILL_CYCLE;
         const START_OFFSET = -2; // Start grid from 2 days ago
         
         // 1. Setup Rolling Horizon (28 Days)
@@ -28,7 +52,7 @@ export const useFinancialProjection = () => {
                     days.push({
                         dayId: currentProjectionDay,
                         events: history.events.map(e => ({
-                            type: e.type === 'INCOME' ? 'INCOME_POTENTIAL' : 'BILL', 
+                            type: e.type === 'INCOME' ? 'INCOME_POTENTIAL' as const : 'BILL' as const,
                             amount: e.amount,
                             label: e.label,
                             isCertain: true
@@ -39,7 +63,6 @@ export const useFinancialProjection = () => {
                         isPast: true
                     });
                 } else {
-                    // Pre-game history (Day 0, -1, etc.)
                     days.push({
                         dayId: currentProjectionDay,
                         events: [],
@@ -57,31 +80,27 @@ export const useFinancialProjection = () => {
             // 2. Daily Burn Rate
             runningBalance -= stats.dailyExpenses;
 
-            // 3. Fixed Costs (Rent) - "Management by Exception"
-            // Logic: Check if currentProjectionDay is a rent day relative to the next due date
-            // Note: rentDueDate moves. We assume regular intervals for projection.
-            let isRentDay = false;
-            if (currentProjectionDay >= stats.rentDueDate) {
-                // Check if it aligns with the 7-day cycle from the current due date
-                const delta = currentProjectionDay - stats.rentDueDate;
-                if (delta % RENT_INTERVAL === 0) {
-                    isRentDay = true;
+            // 3. Medical Bill - the core survival pressure
+            let isMedicalDay = false;
+            if (currentProjectionDay >= stats.medicalBill.dueDate) {
+                const delta = currentProjectionDay - stats.medicalBill.dueDate;
+                if (delta % MEDICAL_INTERVAL === 0) {
+                    isMedicalDay = true;
                 }
             }
 
-            if (isRentDay) {
-                const rentAmount = stats.rentDue;
-                runningBalance -= rentAmount;
+            if (isMedicalDay) {
+                const billAmount = stats.medicalBill.amount;
+                runningBalance -= billAmount;
                 dailyEvents.push({
                     type: 'BILL',
-                    amount: -rentAmount,
+                    amount: -billAmount,
                     label: '母亲医药费 (Medical)',
                     isCertain: true
                 });
             }
 
-            // 4. Item Due Dates & Story Moments
-            // Include both ACTIVE and SOLD items - sold items still have due dates for breach redemption
+            // 4. Item Due Dates with Certainty Grading (S2-F2/F4)
             const expiringItems = inventory.filter(item =>
                 (item.status === ItemStatus.ACTIVE || item.status === ItemStatus.SOLD) &&
                 item.pawnInfo &&
@@ -95,15 +114,35 @@ export const useFinancialProjection = () => {
                     const interest = calculateInterest(item.pawnInfo.principal, item.pawnInfo.interestRate, item.pawnInfo.termDays);
                     const totalIncome = item.pawnInfo.principal + interest;
 
-                    // For sold items or reforged items, we won't receive income
-                    // (reforged items are treated as owned, customer won't redeem)
+                    // Look up redemptionResolve from the related chain (S2-F4)
+                    let certainty: IncomeCertainty = 'LOW';
                     if (!isSold && !isReforged) {
-                        runningBalance += totalIncome;
+                        const chain = activeChains.find(c => c.id === item.relatedChainId);
+                        const resolve = chain?.redemptionResolve;
+                        certainty = resolveToIncomeCertainty(resolve);
+
+                        // For narrative chains without explicit redemptionResolve,
+                        // infer from chain variables (funds/hope)
+                        if (!resolve && chain) {
+                            const funds = (chain.variables.funds as number) ?? 0;
+                            const hope = (chain.variables.hope as number) ?? 50;
+                            if (funds >= totalIncome && hope >= 40) {
+                                certainty = 'HIGH';
+                            } else if (hope > 30) {
+                                certainty = 'MEDIUM';
+                            } else {
+                                certainty = 'LOW';
+                            }
+                        }
+
+                        // Apply weighted income to running balance
+                        const weight = CERTAINTY_WEIGHTS[certainty];
+                        runningBalance += totalIncome * weight;
                     }
 
-                    let label = `到期: ${item.name}`;
+                    let label = '到期: ' + item.name;
                     if (isSold) {
-                        label = `到期(已售): ${item.name}`;
+                        label = '到期(已售): ' + item.name;
                     }
 
                     dailyEvents.push({
@@ -112,15 +151,18 @@ export const useFinancialProjection = () => {
                         label,
                         isCertain: false,
                         relatedId: item.id,
-                        wasReforged: isReforged
+                        wasReforged: isReforged,
+                        certainty: (isSold || isReforged) ? undefined : certainty
                     });
                 }
             });
 
-            // 5. Mails are NOT shown on calendar - they are narrative surprises, not financial forecasts
+            // 5. Mails are NOT shown on calendar
 
-            // 6. Determine Risk Level
-            const riskLevel = runningBalance < 0 ? 'CRITICAL' : 'SAFE';
+            // 6. Three-level Risk Assessment (S2-F1)
+            const riskLevel = runningBalance < 0 ? 'CRITICAL'
+                            : runningBalance < WARNING_THRESHOLD ? 'WARNING'
+                            : 'SAFE';
 
             days.push({
                 dayId: currentProjectionDay,
@@ -133,7 +175,53 @@ export const useFinancialProjection = () => {
         }
 
         return days;
-    }, [stats.day, stats.cash, stats.rentDue, stats.rentDueDate, stats.dailyExpenses, inventory, financialHistory]);
+    }, [stats.day, stats.cash, stats.medicalBill.amount, stats.medicalBill.dueDate, stats.dailyExpenses, inventory, financialHistory, activeChains]);
 
     return projection;
+};
+
+// Separate hook for settlement ceremony data (S2-F3)
+export const useSettlementCeremony = (): SettlementCeremonyData => {
+    const { state } = useGame();
+    const { stats } = state;
+
+    return useMemo((): SettlementCeremonyData => {
+        const { medicalBill, cash, day } = stats;
+        const nextMedicalDueDate = medicalBill.dueDate;
+        const isSettlementDay = day === nextMedicalDueDate;
+        const isSettlementEve = day === nextMedicalDueDate - 1;
+        const billAmount = medicalBill.amount;
+        const canAfford = cash >= billAmount;
+        const shortfall = canAfford ? 0 : billAmount - cash;
+        const balanceAfterPayment = cash - billAmount;
+        const nextWeekMedical = GAME_CONFIG.WEEKLY_MEDICAL_COST;
+
+        let narrativeLine: string;
+        let severityTier: 'COMFORTABLE' | 'TIGHT' | 'BARELY_SURVIVED';
+
+        if (!canAfford) {
+            narrativeLine = '';
+            severityTier = 'BARELY_SURVIVED';
+        } else if (balanceAfterPayment > nextWeekMedical * 2) {
+            narrativeLine = '母亲又撑过了一周。账上还有余量......但别放松。';
+            severityTier = 'COMFORTABLE';
+        } else if (balanceAfterPayment >= 100) {
+            narrativeLine = '母亲又撑过了一周。但下一周...... $' + balanceAfterPayment + ' 够吗？';
+            severityTier = 'TIGHT';
+        } else {
+            narrativeLine = '母亲又撑过了一周。但你的手在发抖——口袋里几乎什么都不剩了。';
+            severityTier = 'BARELY_SURVIVED';
+        }
+
+        return {
+            isSettlementDay,
+            isSettlementEve,
+            billAmount,
+            canAfford,
+            shortfall,
+            balanceAfterPayment,
+            narrativeLine,
+            severityTier
+        };
+    }, [stats.day, stats.cash, stats.medicalBill.dueDate, stats.medicalBill.amount]);
 };
