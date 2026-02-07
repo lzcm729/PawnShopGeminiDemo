@@ -1,6 +1,6 @@
 
 import { GameState } from '../game/types';
-import { SatisfactionLevel } from './types';
+import { SatisfactionLevel, DepartureSatisfaction, RedeemSatisfaction, RenewalSatisfaction, PostForfeitSatisfaction } from './types';
 
 export interface InnerVoice {
     id: string;
@@ -94,13 +94,108 @@ export const DEPARTURE_THOUGHTS: Record<SatisfactionLevel, string[]> = {
     ]
 };
 
+// Scene-specific departure thoughts
+export const SCENE_DEPARTURE_THOUGHTS: {
+    REDEEM: Record<RedeemSatisfaction, string[]>;
+    RENEWAL: Record<RenewalSatisfaction, string[]>;
+    POST_FORFEIT: Record<PostForfeitSatisfaction, string[]>;
+} = {
+    REDEEM: {
+        RELIEVED: [
+            "他回来了。至少这一次，故事有个好结局。",
+            "赎回了... 这就对了。",
+            "看着他拿回自己的东西，我竟松了口气。",
+        ],
+        GRATEFUL: [
+            "他回来了，而且... 是带着笑的。也许当初少收那点利息，值了。",
+            "他说了谢谢。真心的那种。",
+            "也许这行当偶尔也能做点好事。",
+        ],
+        BITTER: [
+            "他拿回了东西，但那表情... 像是在恨我。",
+            "利息是按规矩收的... 为什么我心里不是滋味。",
+            "他走的时候，连头都没回。",
+        ],
+        BITTERSWEET: [
+            "物归原主了。可他的眼神里，说的不只是'谢谢'。",
+            "他拿着那东西站了很久... 像是在看一个旧朋友。",
+            "故事结束了。但我不确定这算好结局还是坏结局。",
+        ],
+    },
+    RENEWAL: {
+        WEARY: [
+            "又续了。他还能续几次？",
+            "同样的手续，同样的签字... 只是他的背又弯了一点。",
+            "续当，续当，续当... 这日子什么时候是个头。",
+        ],
+        ANXIOUS: [
+            "他的手在签字时一直在抖...",
+            "他问了三遍'还有多少天'。我没忍心告诉他实话。",
+            "时间快到了... 他知道，我也知道。",
+        ],
+        NUMB: [
+            "和上次说的一模一样的话。连表情都没变过。",
+            "他来了，签了字，走了。像一台机器。",
+            "第几次了？我已经记不清了。",
+        ],
+        HOPEFUL: [
+            "也许这次真的会不一样。",
+            "他说快了... 我选择相信他。",
+            "他走的时候步子比上次轻了些。也许真有转机。",
+        ],
+    },
+    POST_FORFEIT: {
+        GRIEF: [
+            "那东西还在柜子里。我每次看到它... 都会想起他的脸。",
+            "他走后，店里安静得可怕。",
+            "有些东西，钱买不回来。我比谁都清楚。",
+        ],
+        RESIGNED: [
+            "这是生意。这是生意。...这真的只是生意吗？",
+            "规矩就是规矩。他也说了'认了'。可我...",
+            "又一件绝当品。柜子里又多了一个故事。",
+        ],
+        HOSTILE: [
+            "他恨我。也许他有理由恨我。",
+            "他摔门的声音还在耳边回响。",
+            "那眼神... 我今晚大概睡不着了。",
+        ],
+        PLEADING: [
+            "他走的时候回头看了三次... 我装作没看见。",
+            "'再给我两天'... 我能给他什么？我自己都朝不保夕。",
+            "他最后没说话。但那个眼神比任何话都重。",
+        ],
+    },
+};
+
 export const getBedtimeMonologue = (state: GameState): string => {
     const candidates = BEDTIME_THOUGHTS.filter(t => t.condition(state));
     candidates.sort((a, b) => b.priority - a.priority);
     return candidates.length > 0 ? candidates[0].text : "......";
 };
 
-export const getDepartureMonologue = (satisfaction: SatisfactionLevel): string => {
+/**
+ * Get departure monologue text.
+ * When departureSatisfaction is provided and scene-specific, uses scene-specific thoughts.
+ * Otherwise falls back to base satisfaction thoughts.
+ */
+export const getDepartureMonologue = (
+    satisfaction: SatisfactionLevel,
+    departureSatisfaction?: DepartureSatisfaction | null
+): string => {
+    // Try scene-specific thoughts when available
+    if (departureSatisfaction && departureSatisfaction.scene !== 'PAWN') {
+        const sceneKey = departureSatisfaction.scene as keyof typeof SCENE_DEPARTURE_THOUGHTS;
+        const sceneThoughts = SCENE_DEPARTURE_THOUGHTS[sceneKey];
+        if (sceneThoughts) {
+            const options = (sceneThoughts as Record<string, string[]>)[departureSatisfaction.level];
+            if (options && options.length > 0) {
+                return options[Math.floor(Math.random() * options.length)];
+            }
+        }
+    }
+
+    // Fallback to base satisfaction thoughts
     const options = DEPARTURE_THOUGHTS[satisfaction];
     if (!options) return "...";
     return options[Math.floor(Math.random() * options.length)];

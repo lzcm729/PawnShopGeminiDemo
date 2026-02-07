@@ -11,6 +11,7 @@ import { TypewriterText } from './ui/TextEffects';
 import { playSfx } from '../systems/game/audio';
 import { PhaseIs } from '../systems/core/phases';
 import { getDepartureMonologue } from '../systems/narrative/innerVoiceRegistry';
+import { getDepartureTimingConfig } from '../systems/game/utils/departureTiming';
 import { cn } from '../lib/utils';
 import { getCharacterPortraitPath, EmotionType, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 
@@ -32,13 +33,15 @@ export const DepartureView: React.FC = () => {
   const { state, dispatch } = useGame();
   const { processNextExpiryEvent } = useGameEngine();
   const { send, can } = useGameMachine();
-  const { currentCustomer, lastSatisfaction, lastDealSummary, expiryQueue } = state;
+  const { currentCustomer, lastSatisfaction, lastDepartureSatisfaction, lastDealSummary, expiryQueue } = state;
 
   const [textComplete, setTextComplete] = useState(false);
   const [showInnerVoice, setShowInnerVoice] = useState(false);
   const [innerVoiceText, setInnerVoiceText] = useState("");
 
   const satisfaction = lastSatisfaction || 'NEUTRAL';
+  const isNarrativeNPC = !!currentCustomer?.chainId;
+  const timingConfig = useMemo(() => getDepartureTimingConfig(satisfaction, isNarrativeNPC), [satisfaction, isNarrativeNPC]);
 
   // Check if we're in an expiry settlement flow
   const hasMoreExpiryEvents = expiryQueue && expiryQueue.length > 0;
@@ -81,19 +84,20 @@ export const DepartureView: React.FC = () => {
 
   // Audio & Setup
   useEffect(() => {
-      if (lastSatisfaction) {
-          // Determine monologue
-          setInnerVoiceText(getDepartureMonologue(satisfaction));
+      if (lastSatisfaction && timingConfig.showInnerVoice) {
+          setInnerVoiceText(getDepartureMonologue(satisfaction, lastDepartureSatisfaction));
       }
-  }, [lastSatisfaction, satisfaction]);
+  }, [lastSatisfaction, satisfaction, lastDepartureSatisfaction, timingConfig.showInnerVoice]);
 
   // For silent actions, trigger inner voice immediately (no typewriter callback)
   useEffect(() => {
       if (isSilentAction && currentCustomer) {
           setTextComplete(true);
-          setTimeout(() => setShowInnerVoice(true), 800);
+          if (timingConfig.showInnerVoice) {
+              setTimeout(() => setShowInnerVoice(true), timingConfig.afterglow);
+          }
       }
-  }, [isSilentAction, currentCustomer?.id]);
+  }, [isSilentAction, currentCustomer?.id, timingConfig]);
 
   const handleNext = () => {
       playSfx('FOOTSTEP');
@@ -113,8 +117,9 @@ export const DepartureView: React.FC = () => {
 
   const onCustomerTextComplete = () => {
       setTextComplete(true);
-      // Always show inner voice after customer dialogue completes
-      setTimeout(() => setShowInnerVoice(true), 800);
+      if (timingConfig.showInnerVoice) {
+          setTimeout(() => setShowInnerVoice(true), timingConfig.afterglow);
+      }
   };
 
   if (!currentCustomer) return null;
@@ -142,6 +147,9 @@ export const DepartureView: React.FC = () => {
           break;
       case 'DESPERATE':
           borderStyle = "border-stone-600 opacity-80";
+          break;
+      case 'CONFLICTED':
+          borderStyle = "border-purple-700 shadow-[0_0_20px_rgba(147,51,234,0.2),0_0_40px_rgba(217,119,6,0.15)]";
           break;
       default:
           borderStyle = "border-stone-700";
@@ -180,7 +188,7 @@ export const DepartureView: React.FC = () => {
                       <span className="font-mono text-sm tracking-wide">{exitText}</span>
                   ) : (
                       <>
-                        "<TypewriterText text={exitText || "..."} speed={40} onComplete={onCustomerTextComplete} />"
+                        "<TypewriterText text={exitText || "..."} speed={timingConfig.typewriterSpeed} onComplete={onCustomerTextComplete} />"
                       </>
                   )}
               </div>

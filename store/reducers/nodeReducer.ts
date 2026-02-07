@@ -37,7 +37,8 @@ export function nodeReducer(state: GameState, action: Action): GameState {
                 ...state,
                 currentNode: node,
                 phase: { type: 'NEGOTIATION', mode: 'PAWN' } as GamePhase,
-                lastSatisfaction: null
+                lastSatisfaction: null,
+                lastDepartureSatisfaction: null
             };
         }
 

@@ -129,6 +129,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 stats: { ...state.stats, actionPoints: effectiveMaxAP, visitedToday: false },
                 violationFlags: [],
                 lastSatisfaction: null,
+                lastDepartureSatisfaction: null,
                 // Reset night state for the upcoming night
                 nightState: {
                     ...state.nightState,
@@ -174,7 +175,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
             // Phase transition handled by state machine (CLOSE_SHOP event)
             // This action now only handles data cleanup
             // Sound effect removed to prevent duplicate play with UI interaction
-            return { ...state, currentCustomer: null, currentNode: null, lastSatisfaction: null };
+            return { ...state, currentCustomer: null, currentNode: null, lastSatisfaction: null, lastDepartureSatisfaction: null };
 
         case 'SET_PHASE':
             // Handle legacy SET_PHASE action - convert to new format if needed

@@ -4,6 +4,7 @@
  */
 
 import { GameState, ReputationType, ItemStatus, TransactionRecord, SatisfactionLevel, ReputationProfile } from '../../types';
+import { PostForfeitSatisfaction } from '../../systems/narrative/types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../../systems/game/utils/logGenerator';
@@ -282,6 +283,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 customersServedToday: servedCount,
                 phase: { type: 'DEPARTURE' } as GamePhase,
                 lastSatisfaction: 'GRATEFUL',
+                lastDepartureSatisfaction: { scene: 'RENEWAL', level: 'HOPEFUL' as const },
                 dayEvents: [...state.dayEvents, `同意续当请求: ${name} (利息 +${(interestBonus * 100).toFixed(0)}%)`]
             };
         }
@@ -294,6 +296,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 customersServedToday: servedCount,
                 phase: { type: 'DEPARTURE' } as GamePhase,
                 lastSatisfaction: 'DESPERATE',
+                lastDepartureSatisfaction: { scene: 'POST_FORFEIT', level: 'HOSTILE' as const },
                 dayEvents: [...state.dayEvents, `拒绝续当请求: ${name}`]
             };
         }
@@ -353,7 +356,11 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
                 dayEvents: [...state.dayEvents, log],
                 phase: { type: 'DEPARTURE' } as GamePhase,
-                lastSatisfaction: satisfaction
+                lastSatisfaction: satisfaction,
+                lastDepartureSatisfaction: { scene: 'POST_FORFEIT', level: (
+                    satisfaction === 'GRATEFUL' ? 'RELIEVED' :
+                    satisfaction === 'DESPERATE' ? 'HOSTILE' : 'RESIGNED'
+                ) as PostForfeitSatisfaction }
             };
         }
 

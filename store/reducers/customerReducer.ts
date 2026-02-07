@@ -44,6 +44,7 @@ export function customerReducer(state: GameState, action: Action): GameState {
                 currentNode: pawnNode,
                 // phase transition removed - handled by state machine
                 lastSatisfaction: null,
+                lastDepartureSatisfaction: null,
                 currentCustomerInsight: null  // Clear insight for new customer
             };
         }
@@ -252,6 +253,9 @@ export function customerReducer(state: GameState, action: Action): GameState {
 
         case 'SET_SATISFACTION':
             return { ...state, lastSatisfaction: action.payload };
+
+        case 'SET_DEPARTURE_SATISFACTION':
+            return { ...state, lastDepartureSatisfaction: action.payload };
 
         // === CUSTOMER INSIGHT ===
         case 'USE_CUSTOMER_INSIGHT':

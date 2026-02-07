@@ -62,6 +62,7 @@ function createMockState(overrides: Partial<GameState> = {}): GameState {
         violationFlags: [],
         financialHistory: [],
         lastSatisfaction: null,
+        lastDepartureSatisfaction: null,
         lastDealSummary: null,
         activeMilestones: [],
         currentExpiryEvent: null,

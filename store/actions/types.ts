@@ -4,6 +4,7 @@
  */
 
 import { GameState, Customer, Mood, ReputationProfile, Item, EventChainState, SatisfactionLevel, MotherCondition, ExpiryEvent, PoliceInvestigationEvent } from '../../types';
+import { DepartureSatisfaction } from '../../systems/narrative/types';
 import { GamePhase } from '../../systems/core/phases';
 import { EssenceType, EssenceBalance } from '../../systems/economy/essence';
 import { KnowledgePool } from '../../systems/items/tags';
@@ -43,6 +44,7 @@ export type Action =
     | { type: 'MARK_NO_MORE_CUSTOMERS' }
     | { type: 'INCREMENT_NARRATIVE_CUSTOMER' }  // Track narrative customer served (no limit)
     | { type: 'SET_SATISFACTION'; payload: SatisfactionLevel }
+    | { type: 'SET_DEPARTURE_SATISFACTION'; payload: DepartureSatisfaction }
 
     // Customer Insight (洞察客户)
     | { type: 'USE_CUSTOMER_INSIGHT'; payload: CustomerInsightResult }

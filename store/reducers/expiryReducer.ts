@@ -4,9 +4,11 @@
  */
 
 import { GameState, ReputationType, ItemStatus, TransactionRecord, SatisfactionLevel, ReputationProfile } from '../../types';
+import { DepartureSatisfaction } from '../../systems/narrative/types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog, generatePlayerChoiceLog, generateEchoLog } from '../../systems/game/utils/logGenerator';
+import { evaluateRedeemSatisfaction, evaluateRenewalSatisfaction, evaluatePostForfeitSatisfaction, mapToBaseSatisfaction } from '../../systems/game/utils/satisfaction';
 
 export function expiryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -31,6 +33,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
             let repDelta: Partial<ReputationProfile> = {};
             let log = "";
             let satisfaction: SatisfactionLevel = 'NEUTRAL';
+            let departureSatisfaction: DepartureSatisfaction | null = null;
             const event = state.currentExpiryEvent;
             const isNoShow = choice === 'noshow_sell' || choice === 'noshow_keep';
             const isBreachDiscovery = choice === 'breach_discovered';
@@ -57,7 +60,13 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                             repDelta[ReputationType.HUMANITY] = (repDelta[ReputationType.HUMANITY] || 0) + 10;
                         }
                         log = `${item.name} 被赎回 (收款 $${cashDelta})${item.wasRestored ? ' [修复归还: 人情+10]' : ''}`;
-                        satisfaction = 'GRATEFUL';
+                        const redeemLevel = evaluateRedeemSatisfaction(
+                            event.interestRate,
+                            event.redemptionCost.total,
+                            event.redemptionCost.principal
+                        );
+                        departureSatisfaction = { scene: 'REDEEM', level: redeemLevel };
+                        satisfaction = mapToBaseSatisfaction('REDEEM', redeemLevel);
                         playSfx('CASH');
                     }
                     break;
@@ -72,6 +81,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                             [ReputationType.INNOCENCE]: -5  // Breaking contract reduces legal standing
                         };
                         log = `拒绝赎回: ${item.name}，支付违约赔偿金 $${compensation}`;
+                        departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
                         satisfaction = 'DESPERATE';
                         playSfx('FAIL');
                     }
@@ -102,7 +112,10 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                         );
                         repDelta = { [ReputationType.HUMANITY]: 5 };
                         log = `同意续当: ${item.name} (收取利息 $${interest}，延期至 Day ${newDueDate})`;
-                        satisfaction = 'GRATEFUL';
+                        const renewalCount = item.pawnInfo.extensionCount || 0;
+                        const renewLevel = evaluateRenewalSatisfaction(renewalCount, item.pawnInfo.interestRate);
+                        departureSatisfaction = { scene: 'RENEWAL', level: renewLevel };
+                        satisfaction = mapToBaseSatisfaction('RENEWAL', renewLevel);
                         playSfx('CASH');
                     }
                     break;
@@ -120,6 +133,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                     );
                     repDelta = { [ReputationType.HUMANITY]: -10 };
                     log = `拒绝续当: ${item.name} 已绝当`;
+                    departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
                     satisfaction = 'DESPERATE';
                     playSfx('CLICK');
                     break;
@@ -166,6 +180,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                         [ReputationType.CREDIBILITY]: -1
                     };
                     log = `[违约] ${event?.npcName || '顾客'} 发现 ${item.name} 已被变卖，人情 -3，商誉 -1`;
+                    departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
                     satisfaction = 'DESPERATE';
                     playSfx('FAIL');
                     // Clear breach tracking since penalty is now applied
@@ -227,7 +242,8 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 currentExpiryEvent: null,
                 todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
                 dayEvents: [...state.dayEvents, log],
-                lastSatisfaction: satisfaction
+                lastSatisfaction: satisfaction,
+                lastDepartureSatisfaction: departureSatisfaction
                 // phase transition removed - handled by state machine
             };
         }
