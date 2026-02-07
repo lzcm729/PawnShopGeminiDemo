@@ -81,6 +81,7 @@ const initialState: GameState = {
     violationFlags: [],
     financialHistory: [],
     lastSatisfaction: null,
+    lastDepartureSatisfaction: null,
     lastDealSummary: null,
     activeMilestones: [],
     // === EXPIRY SYSTEM ===

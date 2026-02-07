@@ -4,6 +4,17 @@ import { Mood } from '../core/types';
 
 export type SatisfactionLevel = 'GRATEFUL' | 'NEUTRAL' | 'RESENTFUL' | 'DESPERATE' | 'CONFLICTED';
 
+// === MULTI-SCENE DEPARTURE SATISFACTION ===
+export type RedeemSatisfaction = 'RELIEVED' | 'GRATEFUL' | 'BITTER' | 'BITTERSWEET';
+export type RenewalSatisfaction = 'WEARY' | 'ANXIOUS' | 'NUMB' | 'HOPEFUL';
+export type PostForfeitSatisfaction = 'GRIEF' | 'RESIGNED' | 'HOSTILE' | 'PLEADING';
+
+export type DepartureSatisfaction =
+    | { scene: 'PAWN'; level: SatisfactionLevel }
+    | { scene: 'REDEEM'; level: RedeemSatisfaction }
+    | { scene: 'RENEWAL'; level: RenewalSatisfaction }
+    | { scene: 'POST_FORFEIT'; level: PostForfeitSatisfaction };
+
 // === POLICE INVESTIGATION TYPES ===
 export interface PoliceInvestigationEvent {
     itemId: string;

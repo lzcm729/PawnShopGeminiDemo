@@ -41,6 +41,7 @@ export function policeReducer(state: GameState, action: Action): GameState {
                     reputation: newRep,
                     phase: { type: 'DEPARTURE' },
                     lastSatisfaction: 'RESENTFUL',
+                    lastDepartureSatisfaction: { scene: 'PAWN', level: 'RESENTFUL' as const },
                     dayEvents: [
                         ...state.dayEvents,
                         `拒绝收购疑似赃物: ${item.name}。(清白 +1)`

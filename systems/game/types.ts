@@ -4,7 +4,7 @@ import { GamePhase } from '../core/phases';
 import { Item } from '../items/types';
 import { Customer } from '../npc/types';
 import { TransactionRecord } from '../economy/types';
-import { EventChainState, MailInstance, SatisfactionLevel, ExpiryEvent, PoliceInvestigationEvent } from '../narrative/types';
+import { EventChainState, MailInstance, SatisfactionLevel, DepartureSatisfaction, ExpiryEvent, PoliceInvestigationEvent } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
@@ -74,6 +74,7 @@ export interface GameState {
   financialHistory: DailyFinancialSnapshot[]; // History of past days
   
   lastSatisfaction: SatisfactionLevel | null; // Tracks the emotional outcome of the last deal
+  lastDepartureSatisfaction: DepartureSatisfaction | null; // Scene-specific departure satisfaction for UI
   lastDealSummary: DealSummary | null; // Summary of the last deal for departure view
   activeMilestones: string[];
 

@@ -882,20 +882,24 @@ export const useGameEngine = () => {
   const commitTransaction = (result: TransactionResult) => {
     const currentCust = state.currentCustomer;
     
-    // 1. Calculate Satisfaction
+    // 1. Calculate Satisfaction (2D matrix: contract tier x pawn ratio)
     if (currentCust) {
-        let satisfaction = evaluateSatisfaction(
-            result.terms?.principal || 0,
-            result.terms?.rate || 0.05,
-            currentCust.minimumAmount,
-            currentCust.minimumAmount,
-            false
+        const principal = result.terms?.principal || 0;
+        const rate = result.terms?.rate || 0.05;
+        const valuation = currentCust.minimumAmount;
+        const pawnRatio = valuation > 0 ? principal / valuation : 0.7;
+
+        const satisfaction = evaluateSatisfaction(
+            principal,
+            rate,
+            valuation,
+            valuation,
+            false,
+            pawnRatio
         );
-        
-        // Manual override for logic logic: if charity (rate 0), it is grateful
-        if (result.terms?.rate === 0) satisfaction = 'GRATEFUL';
-        
+
         dispatch({ type: 'SET_SATISFACTION', payload: satisfaction });
+        dispatch({ type: 'SET_DEPARTURE_SATISFACTION', payload: { scene: 'PAWN', level: satisfaction } });
     }
 
     if (result.success && result.item && (result.item.category === '违禁品' || result.item.isSuspicious)) {

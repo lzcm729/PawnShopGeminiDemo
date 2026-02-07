@@ -72,6 +72,7 @@ export function resetGameState(_state: GameState, _event: PhaseEvent): Partial<G
         violationFlags: [],
         financialHistory: [],
         lastSatisfaction: null,
+        lastDepartureSatisfaction: null,
         lastDealSummary: null,
         activeMilestones: [],
         currentExpiryEvent: null,
@@ -216,6 +217,7 @@ export function resetDailyCounters(state: GameState, _event: PhaseEvent): Partia
         todayTransactions: [],
         violationFlags: [],
         lastSatisfaction: null,
+        lastDepartureSatisfaction: null,
         stats: {
             ...state.stats,
             actionPoints: effectiveMaxAP,
@@ -240,7 +242,8 @@ export function resetDailyCounters(state: GameState, _event: PhaseEvent): Partia
  */
 export function setSatisfactionDesperate(_state: GameState, _event: PhaseEvent): Partial<GameState> {
     return {
-        lastSatisfaction: 'DESPERATE'
+        lastSatisfaction: 'DESPERATE',
+        lastDepartureSatisfaction: { scene: 'PAWN', level: 'DESPERATE' }
     };
 }
 
