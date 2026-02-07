@@ -39,6 +39,15 @@ interface TomlMother {
   status: string;
   risk: number;
   care_level: string;
+  // 不定时小额医疗支出
+  random_medical_chance: number;
+  random_medical_min: number;
+  random_medical_max: number;
+  // 健康值每日变化
+  health_recovery_rate: number;
+  health_decay_rate: number;
+  emergency_treatment_cost: number;
+  emergency_treatment_heal: number;
 }
 
 interface TomlGameplay {
@@ -52,12 +61,26 @@ interface TomlReputation {
   innocence: number;
 }
 
+interface TomlAppraisalEvents {
+  breakthrough_max: number;
+  breakthrough_uncertainty_multiplier: number;
+  breakthrough_range_shrink: number;
+  mishap_max: number;
+  mishap_uncertainty_increase: number;
+  impatient_max: number;
+  lucky_find_max: number;
+  fake_pity_multiplier_2: number;
+  fake_pity_multiplier_3: number;
+  fake_pity_guaranteed: number;
+}
+
 interface GameConfigToml {
   economy: TomlEconomy;
   night: TomlNight;
   mother: TomlMother;
   gameplay: TomlGameplay;
   reputation: TomlReputation;
+  appraisal_events: TomlAppraisalEvents;
 }
 
 // Cast TOML import to typed interface
@@ -106,6 +129,17 @@ export const GAME_CONFIG = {
     careLevel: tomlConfig.mother.care_level as 'Basic' | 'Standard' | 'Premium'
   } as const,
 
+  // --- MOTHER DYNAMIC PARAMETERS (母亲动态参数) ---
+  MOTHER: {
+    RANDOM_MEDICAL_CHANCE: tomlConfig.mother.random_medical_chance,
+    RANDOM_MEDICAL_MIN: tomlConfig.mother.random_medical_min,
+    RANDOM_MEDICAL_MAX: tomlConfig.mother.random_medical_max,
+    HEALTH_RECOVERY_RATE: tomlConfig.mother.health_recovery_rate,
+    HEALTH_DECAY_RATE: tomlConfig.mother.health_decay_rate,
+    EMERGENCY_TREATMENT_COST: tomlConfig.mother.emergency_treatment_cost,
+    EMERGENCY_TREATMENT_HEAL: tomlConfig.mother.emergency_treatment_heal,
+  },
+
   // --- GAMEPLAY SETTINGS ---
   INITIAL_ACTION_POINTS: tomlConfig.gameplay.initial_action_points,
   MAX_CUSTOMERS_PER_DAY: tomlConfig.gameplay.max_customers_per_day,
@@ -115,6 +149,20 @@ export const GAME_CONFIG = {
     HUMANITY: tomlConfig.reputation.humanity,
     CREDIBILITY: tomlConfig.reputation.credibility,
     INNOCENCE: tomlConfig.reputation.innocence
+  },
+
+  // --- APPRAISAL EVENTS (鉴定意外事件) ---
+  APPRAISAL_EVENTS: {
+    BREAKTHROUGH_MAX: tomlConfig.appraisal_events.breakthrough_max,
+    BREAKTHROUGH_UNCERTAINTY_MULTIPLIER: tomlConfig.appraisal_events.breakthrough_uncertainty_multiplier,
+    BREAKTHROUGH_RANGE_SHRINK: tomlConfig.appraisal_events.breakthrough_range_shrink,
+    MISHAP_MAX: tomlConfig.appraisal_events.mishap_max,
+    MISHAP_UNCERTAINTY_INCREASE: tomlConfig.appraisal_events.mishap_uncertainty_increase,
+    IMPATIENT_MAX: tomlConfig.appraisal_events.impatient_max,
+    LUCKY_FIND_MAX: tomlConfig.appraisal_events.lucky_find_max,
+    FAKE_PITY_MULTIPLIER_2: tomlConfig.appraisal_events.fake_pity_multiplier_2,
+    FAKE_PITY_MULTIPLIER_3: tomlConfig.appraisal_events.fake_pity_multiplier_3,
+    FAKE_PITY_GUARANTEED: tomlConfig.appraisal_events.fake_pity_guaranteed,
   },
 
   // --- NARRATIVE CONFIG ---

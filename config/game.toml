@@ -95,6 +95,17 @@ risk = 10
 # 护理等级："Basic" | "Standard" | "Premium"
 care_level = "Basic"
 
+# 不定时小额医疗支出（每天有概率触发）
+random_medical_chance = 0.15    # 每天触发概率 15%
+random_medical_min = 100        # 最小金额
+random_medical_max = 300        # 最大金额
+
+# 健康值每日变化
+health_recovery_rate = 2        # 已支付状态每天恢复 +2%
+health_decay_rate = 15          # 欠费状态每天衰减 -15%
+emergency_treatment_cost = 200  # 紧急治疗费用
+emergency_treatment_heal = 5    # 紧急治疗恢复量 +5%
+
 # ------------------------------------------------------------
 # 游戏玩法 (Gameplay)
 # ------------------------------------------------------------
@@ -118,3 +129,29 @@ credibility = 50
 
 # 清白（高 = 法律干净，做坏事会减少）
 innocence = 50
+
+# ------------------------------------------------------------
+# 鉴定意外事件 (Appraisal Events) — d100 单骰互斥
+# ------------------------------------------------------------
+[appraisal_events]
+# 灵光一闪：骰子 1-10
+breakthrough_max = 10
+breakthrough_uncertainty_multiplier = 0.60
+breakthrough_range_shrink = 0.30
+
+# 鉴定失误：骰子 11-15
+mishap_max = 15
+mishap_uncertainty_increase = 0.05
+
+# 客户不耐烦：骰子 16-25
+impatient_max = 25
+
+# 意外发现：骰子 26-30
+lucky_find_max = 30
+
+# 31-100 无事件
+
+# FAKE 保底机制
+fake_pity_multiplier_2 = 1.5   # 第2次鉴定概率倍率
+fake_pity_multiplier_3 = 2.0   # 第3次鉴定概率倍率
+fake_pity_guaranteed = 4        # 第N次强制发现
