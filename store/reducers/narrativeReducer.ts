@@ -3,10 +3,12 @@
  * Handles event chains, mail system, news/modifiers
  */
 
-import { GameState, MailInstance, TransactionRecord } from '../../types';
+import { GameState, MailInstance, MailAttachment, TransactionRecord } from '../../types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { getMailTemplate } from '../../systems/narrative/mailRegistry';
+import { resolveMailReward } from '../../systems/narrative/mailUtils';
+import { checkMailChannelTiming } from '../../systems/narrative/channelProtocol';
 
 export function narrativeReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -26,18 +28,33 @@ export function narrativeReducer(state: GameState, action: Action): GameState {
         }
 
         case 'SCHEDULE_MAIL': {
-            const { templateId, delayDays, metadata } = action.payload;
+            const { templateId, delayDays, metadata, sourceChainId, relatedEventId } = action.payload;
+
+            // S2-F5: Channel protocol timing — ensure news-before-mail rule
+            let effectiveDelay = delayDays;
+            if (sourceChainId || relatedEventId) {
+                const extraDelay = checkMailChannelTiming(state, sourceChainId, relatedEventId);
+                effectiveDelay = Math.max(effectiveDelay, extraDelay);
+            }
+
+            // S2-F3: Resolve reward at schedule time (for probabilistic attachments)
+            const template = getMailTemplate(templateId);
+            const resolvedAttachment = template ? resolveMailReward(template) : undefined;
+
             const newMail: MailInstance = {
                 uniqueId: crypto.randomUUID(),
                 templateId,
-                arrivalDay: state.stats.day + delayDays,
+                arrivalDay: state.stats.day + effectiveDelay,
                 isRead: false,
                 isClaimed: false,
-                metadata
+                metadata,
+                resolvedAttachment,
+                sourceChainId,
+                relatedEventId
             };
             // delayDays: 0 means immediate delivery (same-day reaction), goes directly to inbox
             // delayDays > 0 means future delivery, goes to pendingMails
-            if (delayDays === 0) {
+            if (effectiveDelay === 0) {
                 return { ...state, inbox: [newMail, ...state.inbox] };
             }
             return { ...state, pendingMails: [...state.pendingMails, newMail] };
@@ -61,22 +78,28 @@ export function narrativeReducer(state: GameState, action: Action): GameState {
         case 'CLAIM_MAIL_REWARD': {
             const mail = state.inbox.find(m => m.uniqueId === action.payload);
             if (!mail || mail.isClaimed) return state;
+
+            // Use resolvedAttachment (decided at schedule time) if available,
+            // otherwise fall back to template attachments for backward compatibility
             const template = getMailTemplate(mail.templateId);
-            if (!template || !template.attachments) return state;
+            const attachment: MailAttachment | undefined = mail.resolvedAttachment
+                ?? template?.attachments;
+            if (!attachment) return state;
+
             let cashDelta = 0;
             let newInventory = [...state.inventory];
             let transaction: TransactionRecord | null = null;
             playSfx('CASH');
-            if (template.attachments.cash) {
-                cashDelta = template.attachments.cash;
+            if (attachment.cash) {
+                cashDelta = attachment.cash;
                 transaction = {
                     id: crypto.randomUUID(),
-                    description: `邮件奖励: ${template.sender}`,
+                    description: `邮件奖励: ${template?.sender ?? '未知'}`,
                     amount: cashDelta,
                     type: 'REWARD'
                 };
             }
-            if (template.attachments.item) newInventory.push(template.attachments.item);
+            if (attachment.item) newInventory.push(attachment.item);
             const updatedInbox = state.inbox.map(m => m.uniqueId === action.payload ? { ...m, isClaimed: true } : m);
             const updatedTransactions = transaction ? [...state.todayTransactions, transaction] : state.todayTransactions;
             return {

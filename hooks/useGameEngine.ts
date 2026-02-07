@@ -18,6 +18,8 @@ import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } fro
 import { PhaseEvent } from '../systems/core/phases/types';
 import { checkForPoliceInvestigation } from '../systems/police';
 import { calculateRedemptionTotal } from '../systems/economy/interest';
+import { resolveMailDelay } from '../systems/narrative/mailUtils';
+import { getMailTemplate } from '../systems/narrative/mailRegistry';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -64,7 +66,11 @@ export const useGameEngine = () => {
                     metadata.relatedItemName = "Unknown Item";
                  }
              }
-             dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: op.templateId, delayDays: op.delayDays || 0, metadata } });
+             // S2-F2: Use template delay level when effect doesn't specify explicit days
+             const effectDelay = op.delayDays || 0;
+             const tpl = getMailTemplate(op.templateId);
+             const finalDelay = effectDelay > 0 ? effectDelay : resolveMailDelay(tpl?.delay);
+             dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: op.templateId, delayDays: finalDelay, metadata, sourceChainId: chainId } });
         }
     });
 
@@ -365,9 +371,12 @@ export const useGameEngine = () => {
                         payload: { chainId, variable: effect.variable, value: effect.value }
                     });
                 } else if (effect.type === 'SCHEDULE_MAIL' && effect.templateId) {
+                    const effectDelay = effect.delayDays || 0;
+                    const tpl = getMailTemplate(effect.templateId);
+                    const finalDelay = effectDelay > 0 ? effectDelay : resolveMailDelay(tpl?.delay);
                     dispatch({
                         type: 'SCHEDULE_MAIL',
-                        payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0 }
+                        payload: { templateId: effect.templateId, delayDays: finalDelay, sourceChainId: chainId }
                     });
                 }
             });
@@ -508,7 +517,8 @@ export const useGameEngine = () => {
                       
                       if (narrativeEvent.failureMailId && isBroke && !canAffordInterest) {
                            const mailId = narrativeEvent.failureMailId || 'mail_generic_plea';
-                           dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: mailId, delayDays: 0, metadata: { relatedItemName: item.name } } });
+                           const failTpl = getMailTemplate(mailId);
+                           dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: mailId, delayDays: resolveMailDelay(failTpl?.delay), metadata: { relatedItemName: item.name }, sourceChainId: narrativeEvent.chainId } });
                            if (narrativeEvent.onFailure) applyChainEffects(narrativeEvent.chainId, narrativeEvent.onFailure);
 
                            setTimeout(() => {
@@ -810,14 +820,20 @@ export const useGameEngine = () => {
                          case 'SCHEDULE_MAIL':
                              if (effect.templateId) {
                                  const meta: any = { relatedItemName: customer?.item.name };
-                                 dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0, metadata: meta } });
+                                 const ed = effect.delayDays || 0;
+                                 const mt = getMailTemplate(effect.templateId);
+                                 const fd = ed > 0 ? ed : resolveMailDelay(mt?.delay);
+                                 dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: effect.templateId, delayDays: fd, metadata: meta, sourceChainId: chainId } });
                              }
                              break;
                          case 'CONDITIONAL_MAIL':
                              if (effect.condition && effect.templateId) {
                                  if (checkCondition(effect.condition, newChain)) {
                                       const meta: any = { relatedItemName: customer?.item.name };
-                                      dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: effect.templateId, delayDays: effect.delayDays || 0, metadata: meta } });
+                                      const ed2 = effect.delayDays || 0;
+                                      const mt2 = getMailTemplate(effect.templateId);
+                                      const fd2 = ed2 > 0 ? ed2 : resolveMailDelay(mt2?.delay);
+                                      dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: effect.templateId, delayDays: fd2, metadata: meta, sourceChainId: chainId } });
                                  }
                              }
                              break;

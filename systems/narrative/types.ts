@@ -136,9 +136,16 @@ export interface Dialogue {
 // --- MAIL SYSTEM ---
 export type MailDelay = 'immediate' | 'standard' | 'slow' | 'surprise';
 
+/** Non-monetary reward types for善行 mails (design doc H) */
+export type NonMonetaryRewardType = 'REFERRAL' | 'INTEL' | 'NPC_HELP';
+
 export interface MailAttachment {
   cash?: number;
   item?: Item;
+  /** For system-generated善行 reward mails: randomized cash range */
+  cashRange?: { min: number; max: number };
+  /** Non-monetary reward type (口碑推荐 / 情报线索 / NPC帮助) */
+  rewardType?: NonMonetaryRewardType;
 }
 
 export interface MailTemplate {
@@ -152,11 +159,17 @@ export interface MailTemplate {
 
 export interface MailInstance {
   uniqueId: string;
-  templateId: string; 
-  arrivalDay: number; 
+  templateId: string;
+  arrivalDay: number;
   isRead: boolean;
-  isClaimed: boolean; 
-  metadata?: any; 
+  isClaimed: boolean;
+  metadata?: any;
+  /** Resolved attachment snapshot (for probabilistic rewards, captured at schedule time) */
+  resolvedAttachment?: MailAttachment;
+  /** Related event ID for channel protocol cross-reference */
+  relatedEventId?: string;
+  /** Source chain ID for channel protocol cross-reference */
+  sourceChainId?: string;
 }
 
 // --- SIMULATION RULES ---

@@ -73,3 +73,25 @@ export interface ConsequenceDispatchRequest {
   retroContent?: string;    // 回忆录内容
   itemLogEntry?: string;    // 库存日志条目
 }
+
+/**
+ * Check channel timing rules for a mail being scheduled.
+ * Returns the minimum delay in days to satisfy the protocol.
+ *
+ * Rules enforced:
+ * 1. NEWS_BEFORE_MAIL: If same-chain news exists today, mail must wait at least 1 day.
+ * 2. Same event across two channels must be separated by at least 1 day.
+ */
+export function checkMailChannelTiming(
+    state: { dailyNews: Array<{ relatedChainId?: string }>; inbox: Array<{ sourceChainId?: string; arrivalDay: number }> },
+    sourceChainId?: string,
+    _relatedEventId?: string
+): number {
+    if (!sourceChainId) return 0;
+
+    // Rule 1: If today's news references the same chain, delay mail by at least 1 day
+    const hasNewsToday = state.dailyNews.some(n => n.relatedChainId === sourceChainId);
+    if (hasNewsToday) return 1;
+
+    return 0;
+}

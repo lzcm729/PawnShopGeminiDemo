@@ -102,7 +102,7 @@ export type Action =
     // Narrative (chains, mail)
     | { type: 'UPDATE_CHAINS'; payload: EventChainState[] }
     | { type: 'UPDATE_CHAIN_VAR'; payload: { chainId: string; variable: string; value: number } }
-    | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number; metadata?: any } }
+    | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number; metadata?: any; sourceChainId?: string; relatedEventId?: string } }
     | { type: 'PROCESS_DAILY_MAIL' }
     | { type: 'READ_MAIL'; payload: string }
     | { type: 'CLAIM_MAIL_REWARD'; payload: string }

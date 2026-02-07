@@ -35,7 +35,8 @@ import {
     AcceptedDialogueNode,
     RejectionLinesNode,
     ExitDialoguesNode,
-    SimulationRuleNode
+    SimulationRuleNode,
+    MailDelay
 } from '../types';
 
 // Re-export types for parser usage
@@ -265,7 +266,8 @@ export function createMailBlock(
     subject: string,
     body: string,
     location: SourceLocation,
-    attachments?: { cash?: number }
+    attachments?: { cash?: number },
+    delay?: MailDelay
 ): MailBlock {
     return {
         type: 'MailBlock',
@@ -278,7 +280,8 @@ export function createMailBlock(
             type: 'MailAttachmentNode',
             ...attachments,
             location
-        } : undefined
+        } : undefined,
+        delay
     };
 }
 
