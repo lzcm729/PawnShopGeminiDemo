@@ -174,6 +174,76 @@ const NEWS_LINK_TEMPLATES: { [key: string]: string[] } = {
 };
 
 // ============================================================================
+// Mystery Visitor (Variable Reward Element)
+// ============================================================================
+
+/**
+ * Mystery visitor template for appointment board.
+ * Low probability appearance - high risk/high reward.
+ * Per design doc 4.3: "神秘来访者" - blurred info, gambling decision.
+ */
+const MYSTERY_VISITOR_TEMPLATE: CandidateTemplate = {
+  id: 'mystery_visitor',
+  genders: ['???'],
+  ages: ['不详'],
+  appearances: [
+    '看不清面容的人影',
+    '裹着深色外套的身影',
+    '戴着帽子压低帽檐的人',
+  ],
+  itemHints: [
+    '手中似乎捧着什么东西',
+    '怀里抱着一个形状不明的包裹',
+    '提着一个沉甸甸的袋子',
+  ],
+  emotions: [
+    '无法判断情绪',
+    '看不清表情',
+    '神秘莫测',
+  ],
+  backgrounds: [
+    '来历不明',
+    '身份成谜',
+    '无法推断身份',
+  ],
+  urgency: 'medium',
+};
+
+/** Probability of a mystery visitor appearing in the candidate pool (per generation) */
+const MYSTERY_VISITOR_CHANCE = 0.15;
+
+/**
+ * Generate a mystery visitor candidate.
+ * Information is intentionally vague regardless of board level.
+ */
+function generateMysteryCandidate(config: AppointmentBoardLevelConfig): AppointmentCandidate {
+  const template = MYSTERY_VISITOR_TEMPLATE;
+  const appearance = randomPick(template.appearances);
+  const itemHint = randomPick(template.itemHints);
+
+  const candidate: AppointmentCandidate = {
+    id: crypto.randomUUID(),
+    appearanceDesc: `${appearance}`,
+    itemSizeHint: itemHint,
+    urgency: 'medium',
+    templateSeed: 'mystery_visitor',
+  };
+
+  // Mystery visitors show emotion/background as "???" hints even at higher levels
+  if (config.showEmotion) {
+    candidate.emotionDesc = randomPick(template.emotions);
+  }
+  if (config.showBackground) {
+    candidate.backgroundHint = randomPick(template.backgrounds);
+  }
+  if (config.showNewsLink) {
+    candidate.newsLink = '...与某条传闻似乎有关';
+  }
+
+  return candidate;
+}
+
+// ============================================================================
 // Candidate Generation Functions
 // ============================================================================
 
@@ -267,7 +337,19 @@ export function generateAppointmentCandidates(
   const candidates: AppointmentCandidate[] = [];
   const usedTemplates = new Set<string>();
 
+  // Mystery visitor: low probability chance to replace one candidate slot
+  const hasMysteryVisitor = Math.random() < MYSTERY_VISITOR_CHANCE;
+  const mysterySlot = hasMysteryVisitor
+    ? Math.floor(Math.random() * config.candidateCount)
+    : -1;
+
   for (let i = 0; i < config.candidateCount; i++) {
+    // Insert mystery visitor at the randomly chosen slot
+    if (i === mysterySlot) {
+      candidates.push(generateMysteryCandidate(config));
+      continue;
+    }
+
     // Try to avoid duplicate templates
     let template: CandidateTemplate;
     let attempts = 0;

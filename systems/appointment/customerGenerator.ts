@@ -182,6 +182,29 @@ const CANDIDATE_CUSTOMER_TEMPLATES: Record<string, CandidateCustomerTemplate> = 
     identityTags: ['Casual', 'LowNeed'],
     priceMod: { min: 0.9, max: 1.2 }
   },
+  mystery_visitor: {
+    names: ['Stranger', 'The Cloaked One', 'Unknown Visitor'],
+    descriptions: [
+      'A figure whose face is obscured by shadow.',
+      'Someone wrapped in a dark coat, expression unreadable.',
+      'A person with their hat pulled low, avoiding eye contact.',
+    ],
+    itemTemplateIds: ['item_diamond_mystery', 'item_watch_gambler', 'item_console_student'],
+    dialogues: [{
+      greeting: "...You buy things here, right?",
+      pawnReason: "I'd rather not say.",
+      redemptionPlea: "...Maybe I'll come back. Maybe not.",
+      negotiationDynamic: "Take it or leave it.",
+      accepted: { fair: "...Fine.", fleeced: "*nods silently*", premium: "...Generous." },
+      rejected: "*leaves without a word*",
+      rejectionLines: { standard: "...", angry: "Your loss." },
+      exitDialogues: { grateful: "...Thank you.", neutral: "*nods*", resentful: "...", desperate: "*disappears into the crowd*" }
+    }],
+    redemptionResolve: ['None', 'Weak', 'Strong'],
+    behaviorTags: [['SUSPICIOUS'], ['SAVVY'], ['DESPERATE']],
+    identityTags: ['Mystery', 'Unknown'],
+    priceMod: { min: 0.5, max: 1.3 }
+  },
   business_person: {
     names: ['Boss Chen', 'CEO Wang', 'Director Li'],
     descriptions: ['A confident business person.', 'Someone who exudes authority.', 'An executive type checking their watch.'],
