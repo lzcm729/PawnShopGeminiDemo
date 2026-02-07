@@ -48,7 +48,8 @@ export const DepartureView: React.FC = () => {
       'GRATEFUL': "谢谢你... 你是个好人。我会永远记得今天的。",
       'NEUTRAL': "走了。回见。",
       'RESENTFUL': "算你狠... 咱们走着瞧。",
-      'DESPERATE': "求求你... (叹气) 我真的没路可走了..."
+      'DESPERATE': "求求你... (叹气) 我真的没路可走了...",
+      'CONFLICTED': "...谢谢，也许吧。(摇摇头，转身离开)"
   };
 
   // Silent Variants (Fallback logic)
@@ -56,7 +57,8 @@ export const DepartureView: React.FC = () => {
       'RESENTFUL': "[他一言不发，只是冷冷地看了你一眼，转身撞开门离开了]",
       'DESPERATE': "[她低着头，沉默了很久，最后什么都没说，拖着沉重的脚步走了出去]",
       'NEUTRAL': "[点点头，转身融入了街道的人流中]",
-      'GRATEFUL': "[深深鞠了一躬，擦了擦眼角，转身离开]"
+      'GRATEFUL': "[深深鞠了一躬，擦了擦眼角，转身离开]",
+      'CONFLICTED': "[他欲言又止，最终只是轻叹一声，头也不回地走了]"
   };
 
   // Memoize exit text to prevent random change on re-render

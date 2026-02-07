@@ -25,6 +25,11 @@ export function transformMail(ast: MailBlock): MailTemplate {
         }
     }
 
+    // Add delay if present
+    if (ast.delay) {
+        template.delay = ast.delay;
+    }
+
     return template;
 }
 

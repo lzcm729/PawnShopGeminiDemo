@@ -62,7 +62,7 @@ export async function checkItemIconExists(itemId: string, state: ItemState = 'de
 // 人物头像
 // ============================================================================
 
-export type EmotionType = 'neutral' | 'grateful' | 'resentful' | 'desperate' | 'angry';
+export type EmotionType = 'neutral' | 'grateful' | 'resentful' | 'desperate' | 'angry' | 'conflicted';
 
 /**
  * 获取人物头像路径

@@ -222,6 +222,8 @@ export interface MarkCoreLostAction extends ASTNode {
 
 // === MAIL BLOCK ===
 
+export type MailDelay = 'immediate' | 'standard' | 'slow' | 'surprise';
+
 export interface MailBlock extends ASTNode {
     type: 'MailBlock';
     id: string;
@@ -229,6 +231,7 @@ export interface MailBlock extends ASTNode {
     subject: string;
     body: string;
     attachments?: MailAttachmentNode;
+    delay?: MailDelay;  // 投递延迟级别，默认 'standard'
 }
 
 export interface MailAttachmentNode extends ASTNode {
@@ -380,6 +383,7 @@ export interface ExitDialoguesNode extends ASTNode {
     neutral: DialogueTextNode;
     resentful: DialogueTextNode;
     desperate: DialogueTextNode;
+    conflicted?: DialogueTextNode;
 }
 
 // === OUTCOMES BLOCK ===

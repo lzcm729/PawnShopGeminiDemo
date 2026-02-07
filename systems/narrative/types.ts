@@ -2,7 +2,7 @@
 import { Item } from '../items/types';
 import { Mood } from '../core/types';
 
-export type SatisfactionLevel = 'GRATEFUL' | 'NEUTRAL' | 'RESENTFUL' | 'DESPERATE';
+export type SatisfactionLevel = 'GRATEFUL' | 'NEUTRAL' | 'RESENTFUL' | 'DESPERATE' | 'CONFLICTED';
 
 // === POLICE INVESTIGATION TYPES ===
 export interface PoliceInvestigationEvent {
@@ -77,9 +77,11 @@ export interface ExitLines {
   neutral: string;
   resentful: string;
   desperate: string;
+  conflicted?: string;
   // Silent variants (Actions instead of words)
   resentful_silent?: string;
   desperate_silent?: string;
+  conflicted_silent?: string;
 }
 
 export interface TriggerCondition {
@@ -116,6 +118,7 @@ export interface DialogueTemplate {
       neutral: DialogueText;
       resentful: DialogueText;
       desperate: DialogueText;
+      conflicted?: DialogueText;
   };
 }
 
@@ -131,6 +134,8 @@ export interface Dialogue {
 }
 
 // --- MAIL SYSTEM ---
+export type MailDelay = 'immediate' | 'standard' | 'slow' | 'surprise';
+
 export interface MailAttachment {
   cash?: number;
   item?: Item;
@@ -142,6 +147,7 @@ export interface MailTemplate {
   subject: string;
   body: string;
   attachments?: MailAttachment;
+  delay?: MailDelay;  // 投递延迟级别，默认 'standard'
 }
 
 export interface MailInstance {
@@ -303,6 +309,7 @@ export interface CustomerPortraits {
     resentful?: string;
     desperate?: string;
     angry?: string;
+    conflicted?: string;
 }
 
 // Import and re-export BehaviorTag from npc/types for backward compatibility
