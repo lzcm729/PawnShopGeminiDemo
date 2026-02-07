@@ -44,6 +44,9 @@ export const useGameEngine = () => {
   };
 
   const performNightCycle = () => {
+    // 0. Deduct maintenance costs for enabled COUNTER upgrades (night closing)
+    dispatch({ type: 'DEDUCT_MAINTENANCE_COST' });
+
     // 1. Narrative Side Effects
     const { chains: simulatedChains, sideEffects } = runDailySimulation(state.activeChains);
     
@@ -305,12 +308,10 @@ export const useGameEngine = () => {
   };
 
   const startNewDay = () => {
-    // NOTE: Maintenance cost, blackmarket refresh, and mail processing are now handled
+    // NOTE: Blackmarket refresh and mail processing are handled
     // by the state machine effects when OPEN_SHOP transitions to DAY_START.EXPIRY_CHECK.
+    // Maintenance cost is deducted at night closing (END_DAY transition).
     // These dispatch calls are kept for backward compatibility during migration.
-
-    // 0. Deduct maintenance costs for enabled COUNTER upgrades
-    dispatch({ type: 'DEDUCT_MAINTENANCE_COST' });
 
     // 0.5. Refresh Black Market daily state (check lock expiration)
     dispatch({ type: 'BLACKMARKET_REFRESH_DAILY' });

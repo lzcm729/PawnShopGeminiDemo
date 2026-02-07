@@ -110,22 +110,26 @@ export const FacilityControlModal: React.FC = () => {
                     )}
                 </div>
 
-                {/* Facility List */}
+                {/* S1-I2: Facility List with differentiated toggle visuals */}
                 <div className="space-y-3">
-                    {counterUpgrades.map(upgrade => (
+                    {counterUpgrades.map(upgrade => {
+                        const isTeaSet = upgrade.upgradeId === 'tea_set';
+                        const enabledBg = isTeaSet ? "bg-amber-950/20 border-amber-800" : "bg-cyan-950/20 border-cyan-800";
+                        const enabledIconBg = isTeaSet ? "bg-amber-900/50 text-amber-400" : "bg-cyan-900/50 text-cyan-400";
+                        return (
                         <div
                             key={upgrade.upgradeId}
                             className={cn(
                                 "flex items-center justify-between p-4 rounded-lg border transition-all",
                                 upgrade.enabled
-                                    ? "bg-blue-950/30 border-blue-800"
+                                    ? enabledBg
                                     : "bg-noir-300/50 border-noir-400 opacity-70"
                             )}
                         >
                             <div className="flex items-center gap-4">
                                 <div className={cn(
                                     "w-12 h-12 rounded-lg flex items-center justify-center",
-                                    upgrade.enabled ? "bg-blue-900/50 text-blue-400" : "bg-noir-400 text-noir-txt-muted"
+                                    upgrade.enabled ? enabledIconBg : "bg-noir-400 text-noir-txt-muted"
                                 )}>
                                     {getSmallIcon(upgrade.icon)}
                                 </div>
@@ -142,6 +146,17 @@ export const FacilityControlModal: React.FC = () => {
                                             {upgrade.enabled ? `-$${upgrade.maintenanceCost}/day` : "Disabled - No cost"}
                                         </span>
                                     </div>
+                                </div>
+                                {/* S1-I2: Immersive status hint */}
+                                <div className={cn(
+                                    "text-[10px] mt-1.5 italic",
+                                    upgrade.enabled
+                                        ? isTeaSet ? "text-amber-500/70" : "text-cyan-500/70"
+                                        : "text-stone-600"
+                                )}>
+                                    {upgrade.enabled
+                                        ? (isTeaSet ? "☕ 沁茶中...柜台飘来淡淡茶香" : "⚡ 设备已预热，指示灯亮起")
+                                        : (isTeaSet ? "茶具已收起" : "设备已关闭，指示灯熄灭")}
                                 </div>
                             </div>
                             <button
@@ -161,7 +176,8 @@ export const FacilityControlModal: React.FC = () => {
                                 )}
                             </button>
                         </div>
-                    ))}
+                    );
+                    })}
                 </div>
 
                 {/* Info Footer */}

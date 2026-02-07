@@ -61,7 +61,7 @@ export function upgradeReducer(state: GameState, action: Action): GameState {
         }
 
         case 'DEDUCT_MAINTENANCE_COST': {
-            // Deduct maintenance cost for enabled COUNTER upgrades at the start of each day
+            // Deduct maintenance cost for enabled COUNTER upgrades at night closing
             const maintenanceCost = getTotalMaintenanceCost(state.shopUpgrades);
             if (maintenanceCost <= 0) return state;
 

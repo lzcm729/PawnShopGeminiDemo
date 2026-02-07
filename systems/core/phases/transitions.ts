@@ -46,7 +46,7 @@ export const TRANSITIONS: TransitionRule[] = [
         event: 'OPEN_SHOP',
         to: () => ({ type: 'DAY_START', subphase: 'EXPIRY_CHECK' }),
         effects: [
-            actions.deductMaintenanceCost,
+            // Note: deductMaintenanceCost moved to END_DAY (night closing) per design doc 2.2
             actions.refreshBlackmarket,
             actions.processMailAction
         ]
@@ -157,7 +157,8 @@ export const TRANSITIONS: TransitionRule[] = [
     {
         from: (p) => p.type === 'NIGHT' && p.subphase === 'ACTIVE',
         event: 'END_DAY',
-        to: () => ({ type: 'NIGHT', subphase: 'PROCESSING' })
+        to: () => ({ type: 'NIGHT', subphase: 'PROCESSING' }),
+        effects: [actions.deductMaintenanceCost]
     },
 
     // ========== NIGHT: PROCESSING ==========

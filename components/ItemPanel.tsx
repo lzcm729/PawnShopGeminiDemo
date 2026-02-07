@@ -436,13 +436,23 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
                      <div className="bg-black/70 px-2 py-1 text-[10px] font-mono text-stone-400 border border-stone-700 backdrop-blur-sm rounded">
                        {(item.condition || 'Unknown').toUpperCase()} | {item.category}
                      </div>
-                     {/* Spectrometer Anomaly Alert */}
-                     {hasAnomaly && (
-                         <div className="bg-red-950/80 px-2 py-1 text-[10px] font-mono text-red-400 border border-red-700 backdrop-blur-sm rounded flex items-center gap-1 animate-pulse">
-                             <Radio className="w-3 h-3" />
-                             <span>ANOMALY</span>
-                         </div>
-                     )}
+                     {/* S1-I3: Spectrometer Anomaly Alert - Graded severity */}
+                     {hasAnomaly && (() => {
+                         const visualValue = item.perceivedValue ?? item.realValue;
+                         const pctDiff = item.realValue > 0 ? (Math.abs(visualValue - item.realValue) / item.realValue) * 100 : 0;
+                         const severity = pctDiff > 80 ? 'severe' : pctDiff > 40 ? 'moderate' : 'mild';
+                         const severityStyle = severity === 'severe'
+                             ? "bg-red-950/80 text-red-400 border-red-700 animate-pulse"
+                             : severity === 'moderate'
+                             ? "bg-orange-950/80 text-orange-400 border-orange-700"
+                             : "bg-yellow-950/80 text-yellow-400 border-yellow-700";
+                         return (
+                             <div className={"px-2 py-1 text-[10px] font-mono border backdrop-blur-sm rounded flex items-center gap-1 " + severityStyle}>
+                                 <Radio className="w-3 h-3" />
+                                 <span>{severity === 'severe' ? 'ALERT' : severity === 'moderate' ? 'ANOMALY' : 'NOTICE'}</span>
+                             </div>
+                         );
+                     })()}
                  </div>
                  
                  <div className="flex flex-col items-end gap-1">
@@ -537,13 +547,34 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
                         <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-20 pointer-events-none"></div>
                     </div>
                     
-                    {/* Spectrometer Anomaly Warning - Takes priority */}
-                    {hasAnomaly && (
-                      <div className="flex items-center justify-center gap-2 text-red-400 text-[10px] font-bold mt-1 bg-red-950/40 py-1 rounded border border-red-700/50 animate-pulse">
-                        <Radio className="w-3 h-3" />
-                        <span>光谱分析仪检测到异常！可能是假货或捡漏 (SPECTROMETER ALERT)</span>
-                      </div>
-                    )}
+                    {/* S1-I3: Spectrometer Anomaly Warning - Graded severity with immersive copy */}
+                    {hasAnomaly && (() => {
+                        const visualValue = item.perceivedValue ?? item.realValue;
+                        const pctDiff = item.realValue > 0 ? (Math.abs(visualValue - item.realValue) / item.realValue) * 100 : 0;
+                        const severity = pctDiff > 80 ? 'severe' : pctDiff > 40 ? 'moderate' : 'mild';
+                        if (severity === 'severe') {
+                            return (
+                                <div className="flex items-center justify-center gap-2 text-red-400 text-[10px] font-bold mt-1 bg-red-950/40 py-1 rounded border border-red-700/50 animate-pulse">
+                                    <Radio className="w-3 h-3" />
+                                    <span>...这个读数不对。差得有点离谱。</span>
+                                </div>
+                            );
+                        } else if (severity === 'moderate') {
+                            return (
+                                <div className="flex items-center justify-center gap-2 text-orange-400 text-[10px] font-bold mt-1 bg-orange-950/30 py-1 rounded border border-orange-800/50">
+                                    <Radio className="w-3 h-3" />
+                                    <span>...这个读数不太对。值得深入看看。</span>
+                                </div>
+                            );
+                        } else {
+                            return (
+                                <div className="flex items-center justify-center gap-2 text-yellow-400 text-[10px] mt-1 bg-yellow-950/20 py-1 rounded border border-yellow-900/30">
+                                    <Radio className="w-3 h-3" />
+                                    <span>嗯...有点蹊跷，但也可能是仪器偏差。</span>
+                                </div>
+                            );
+                        }
+                    })()}
                     {!hasAnomaly && uncertaintyRisk === 'HIGH' && (
                       <div className="flex items-center justify-center gap-2 text-red-500 text-[10px] font-bold mt-1 bg-red-950/20 py-0.5 rounded border border-red-900/30 animate-pulse">
                         <AlertTriangle className="w-3 h-3" />

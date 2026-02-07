@@ -28,15 +28,16 @@ export const STORAGE_EXPANSION: UpgradeConfig = {
 };
 
 /**
- * Precision Bench (Backroom)
+ * Workshop Expansion (Backroom)
  * Increases night energy cap
  * No maintenance cost, permanently active
+ * Renamed from Precision Bench per design doc v1.1
  */
 export const PRECISION_BENCH: UpgradeConfig = {
   id: 'precision_bench',
-  name: 'Precision Bench',
-  nameCn: '精密工作台',
-  description: 'A proper workstation allows more night activities.',
+  name: 'Workshop Expansion',
+  nameCn: '工坊扩建',
+  description: 'Expand the workshop to allow more night activities.',
   location: 'BACKROOM',
   effectType: 'NIGHT_ENERGY',
   maxLevel: 3,
