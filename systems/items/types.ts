@@ -28,13 +28,23 @@ export interface ItemTrait {
   };
 }
 
+// Player choice types recorded in item log snapshots (设计文档 A节)
+export type PlayerChoiceType = 'CONTRACT_RATE' | 'DEPARTURE' | 'EXPIRY_DECISION';
+
+// Echo trigger types for event chain resonance entries (设计文档 J节)
+export type EchoTrigger = 'HOPE_COLLAPSE' | 'JOB_SUCCESS' | 'EXPIRED_NO_REDEEM' | 'FUNDS_DEPLETED' | 'NPC_REDEEMED';
+
+// Visit tier for progressive referencing (设计文档 F节)
+export type VisitTier = 1 | 2 | 3 | 4 | 5;
+
 export interface ItemLogEntry {
   id: string;
   day: number;
   content: string;
-  type: 'ENTRY' | 'REDEEM' | 'FORFEIT' | 'SOLD' | 'INFO' | 'APPRAISAL';
+  type: 'ENTRY' | 'REDEEM' | 'FORFEIT' | 'SOLD' | 'INFO' | 'APPRAISAL' | 'PLAYER_CHOICE' | 'ECHO';
   metadata?: {
       visitCount?: number;
+      visitTier?: VisitTier;
       moodState?: string;
       // REDEEM related
       payment?: number;
@@ -46,6 +56,16 @@ export interface ItemLogEntry {
       isNegative?: boolean;
       valueJump?: 'FAKE' | 'JACKPOT';
       newRange?: [number, number];
+      // PLAYER_CHOICE related (设计文档 A节)
+      playerChoice?: {
+          type: PlayerChoiceType;
+          rate?: number;           // 合同利率 (0, 0.05, 0.10, 0.20)
+          satisfaction?: string;   // 送客态度 (GRATEFUL, NEUTRAL, RESENTFUL, DESPERATE)
+          decision?: string;       // 到期决策 (redeem_accept, renew_accept, noshow_sell, etc.)
+      };
+      // ECHO related (设计文档 J节)
+      echoTrigger?: EchoTrigger;
+      echoChainId?: string;
   };
 }
 

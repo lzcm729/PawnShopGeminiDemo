@@ -349,6 +349,22 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
             };
         }
 
+        case 'APPEND_ITEM_LOGS': {
+            // S3-F1/F2: Append log entries to specific items (player choices, echo entries)
+            const logEntries = action.payload;
+            const updatedInventory = state.inventory.map(item => {
+                const itemLogs = logEntries.filter(e => e.itemId === item.id);
+                if (itemLogs.length > 0) {
+                    return {
+                        ...item,
+                        logs: [...(item.logs || []), ...itemLogs.map(e => e.log)]
+                    };
+                }
+                return item;
+            });
+            return { ...state, inventory: updatedInventory };
+        }
+
         case 'UPDATE_ITEM_TAGS': {
             const { itemId, tags, wasRestored, wasReforged, workState } = action.payload;
             return {

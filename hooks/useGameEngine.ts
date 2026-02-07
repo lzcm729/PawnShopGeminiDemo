@@ -3,7 +3,8 @@ import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow, checkCondition, resolveDialogue, checkRenewalRequests } from '../systems/narrative/engine';
 import { generateDailyNews } from '../systems/news/engine';
-import { generatePawnLog } from '../systems/game/utils/logGenerator';
+import { generatePawnLog, generatePlayerChoiceLog } from '../systems/game/utils/logGenerator';
+import { detectEchoEntries } from '../systems/game/utils/echoDetector';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, ChainUpdateEffect, MotherCondition, ExpiryEvent } from '../types';
 import { usePawnShop } from './usePawnShop';
@@ -75,6 +76,12 @@ export const useGameEngine = () => {
     };
 
     dispatch({ type: 'UPDATE_CHAINS', payload: simulatedChains });
+
+    // 1b. S3-F2: Echo detection - compare chain states before/after simulation
+    const echoEntries = detectEchoEntries(state.activeChains, simulatedChains, state.inventory, nextDay);
+    if (echoEntries.length > 0) {
+        dispatch({ type: 'APPEND_ITEM_LOGS', payload: echoEntries });
+    }
 
     // 2. News Generation
     const newsResult = generateDailyNews(tempState);
@@ -736,12 +743,18 @@ export const useGameEngine = () => {
         narrativeLog.content += " [警告] 在严打期间收受违规物品，已被市场监管部门注意！";
     }
 
-    const updatedLogs = [...(item.logs || []), narrativeLog];
+    // S3-F1: Append player choice log (contract rate)
+    const contractChoiceLog = generatePlayerChoiceLog(state.stats.day, 'CONTRACT_RATE', {
+        rate: rate,
+        principal: offer,
+    });
+
+    const updatedLogs = [...(item.logs || []), narrativeLog, contractChoiceLog];
 
     const finalizedItem: Item = {
       ...item,
       pawnAmount: offer,
-      pawnInfo: pawnInfo, 
+      pawnInfo: pawnInfo,
       pawnDate: state.stats.day,
       status: ItemStatus.ACTIVE,
       logs: updatedLogs
