@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { useAppraisal } from '../hooks/useAppraisal';
 import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert, CheckCircle2, Radio, Sparkles, Zap } from 'lucide-react';
@@ -13,6 +13,7 @@ import { playSfx } from '../systems/game/audio';
 import { getDisplayName } from '../systems/items/tagUtils';
 import { checkItemAnomaly, getAnomalyDetectionThreshold } from '../systems/upgrades';
 import { getItemIcon } from '../systems/assets';
+import { getAnomalyMessage, getAnomalySeverity, getNormalConfirmationMessage } from '../systems/upgrades/spectrometerFeedback';
 
 // Appraisal feedback visual effect types
 type AppraisalEffectType = 'none' | 'range_narrowed' | 'breakthrough' | 'fake' | 'jackpot' | 'mishap';
@@ -409,6 +410,20 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
   const anomalyThreshold = getAnomalyDetectionThreshold(state.shopUpgrades);
   const hasAnomaly = checkItemAnomaly(item.perceivedValue, item.realValue, state.shopUpgrades);
 
+  // Memoize anomaly message to prevent re-rendering flickering
+  const anomalyMessageData = useMemo(() => {
+    if (!hasAnomaly) return null;
+    const visualValue = item.perceivedValue ?? item.realValue;
+    const pctDiff = item.realValue > 0 ? (Math.abs(visualValue - item.realValue) / item.realValue) * 100 : 0;
+    const severity = getAnomalySeverity(pctDiff);
+    return { severity, message: getAnomalyMessage(severity) };
+  }, [hasAnomaly, item.id, item.perceivedValue, item.realValue]);
+
+  // Memoize normal confirmation message
+  const normalMessage = useMemo(() => {
+    return getNormalConfirmationMessage();
+  }, [item.id]);
+
   return (
       <div className={`h-full bg-[#1c1917] border-x border-[#44403c] flex flex-col overflow-hidden relative ${
           appraisalEffect === 'mishap' ? 'animate-shake' : ''
@@ -547,34 +562,39 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
                         <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-20 pointer-events-none"></div>
                     </div>
                     
-                    {/* S1-I3: Spectrometer Anomaly Warning - Graded severity with immersive copy */}
-                    {hasAnomaly && (() => {
-                        const visualValue = item.perceivedValue ?? item.realValue;
-                        const pctDiff = item.realValue > 0 ? (Math.abs(visualValue - item.realValue) / item.realValue) * 100 : 0;
-                        const severity = pctDiff > 80 ? 'severe' : pctDiff > 40 ? 'moderate' : 'mild';
+                    {/* S1-I3: Spectrometer Anomaly Warning - Graded severity with dynamic messages */}
+                    {hasAnomaly && anomalyMessageData && (() => {
+                        const { severity, message } = anomalyMessageData;
                         if (severity === 'severe') {
                             return (
                                 <div className="flex items-center justify-center gap-2 text-red-400 text-[10px] font-bold mt-1 bg-red-950/40 py-1 rounded border border-red-700/50 animate-pulse">
                                     <Radio className="w-3 h-3" />
-                                    <span>...这个读数不对。差得有点离谱。</span>
+                                    <span>{message.text}</span>
                                 </div>
                             );
                         } else if (severity === 'moderate') {
                             return (
                                 <div className="flex items-center justify-center gap-2 text-orange-400 text-[10px] font-bold mt-1 bg-orange-950/30 py-1 rounded border border-orange-800/50">
                                     <Radio className="w-3 h-3" />
-                                    <span>...这个读数不太对。值得深入看看。</span>
+                                    <span>{message.text}</span>
                                 </div>
                             );
                         } else {
                             return (
                                 <div className="flex items-center justify-center gap-2 text-yellow-400 text-[10px] mt-1 bg-yellow-950/20 py-1 rounded border border-yellow-900/30">
                                     <Radio className="w-3 h-3" />
-                                    <span>嗯...有点蹊跷，但也可能是仪器偏差。</span>
+                                    <span>{message.text}</span>
                                 </div>
                             );
                         }
                     })()}
+                    {/* S1-I3: Spectrometer Normal Confirmation - Positive feedback when no anomaly */}
+                    {!hasAnomaly && anomalyThreshold > 0 && (
+                      <div className="flex items-center justify-center gap-2 text-green-400 text-[10px] mt-1 bg-green-950/20 py-1 rounded border border-green-900/30">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>{normalMessage}</span>
+                      </div>
+                    )}
                     {!hasAnomaly && uncertaintyRisk === 'HIGH' && (
                       <div className="flex items-center justify-center gap-2 text-red-500 text-[10px] font-bold mt-1 bg-red-950/20 py-0.5 rounded border border-red-900/30 animate-pulse">
                         <AlertTriangle className="w-3 h-3" />
