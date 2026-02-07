@@ -112,7 +112,12 @@ export function narrativeReducer(state: GameState, action: Action): GameState {
         }
 
         case 'UPDATE_NEWS':
-            return { ...state, dailyNews: action.payload.news, activeMarketEffects: action.payload.modifiers };
+            return {
+                ...state,
+                dailyNews: action.payload.news,
+                activeMarketEffects: action.payload.modifiers,
+                ...(action.payload.deferredNews !== undefined ? { pendingNews: action.payload.deferredNews } : {})
+            };
 
         case 'ADD_VIOLATION':
             if (state.violationFlags.includes(action.payload)) return state;

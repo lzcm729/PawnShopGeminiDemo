@@ -69,7 +69,7 @@ export const MailModal: React.FC = () => {
   const selectedMailInstance = selectedMailId ? state.inbox.find(m => m.uniqueId === selectedMailId) : null;
   const selectedTemplate = selectedMailInstance ? getMailTemplate(selectedMailInstance.templateId) : null;
 
-  const narrativeNews = state.dailyNews.find(n => n.category === NewsCategory.NARRATIVE) || state.dailyNews[0];
+  const narrativeNews = state.dailyNews.find(n => n.category === NewsCategory.NARRATIVE_ECHO) || state.dailyNews[0];
 
   const displayBody = selectedTemplate && selectedMailInstance
       ? interpolateMailBody(selectedTemplate.body, {

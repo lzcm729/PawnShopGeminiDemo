@@ -79,6 +79,7 @@ const initialState: GameState = {
     dailyNews: [],
     activeMarketEffects: [],
     violationFlags: [],
+    pendingNews: [],
     financialHistory: [],
     lastSatisfaction: null,
     lastDepartureSatisfaction: null,
