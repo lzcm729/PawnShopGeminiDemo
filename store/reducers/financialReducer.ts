@@ -33,7 +33,7 @@ export function financialReducer(state: GameState, action: Action): GameState {
                 ...currentMother,
                 careLevel: 'Premium' as const,
                 risk: Math.max(0, currentMother.risk - 5),
-                status: 'Improving' as const
+                status: 'Stable' as const
             };
             return {
                 ...state,
@@ -129,6 +129,27 @@ export function financialReducer(state: GameState, action: Action): GameState {
             };
         }
 
+        case 'EMERGENCY_TREATMENT': {
+            const etCost = GAME_CONFIG.MOTHER.EMERGENCY_TREATMENT_COST;
+            if (state.stats.cash < etCost) return state;
+            playSfx('SUCCESS');
+            const etHealth = Math.min(100, state.stats.motherStatus.health + GAME_CONFIG.MOTHER.EMERGENCY_TREATMENT_HEAL);
+            const etStatus = etHealth >= 70 ? 'Stable' as const : etHealth >= 40 ? 'Declining' as const : 'Critical' as const;
+            const etMother = { ...state.stats.motherStatus, health: etHealth, status: etStatus };
+            const etRecord: TransactionRecord = {
+                id: crypto.randomUUID(),
+                description: "紧急治疗",
+                amount: -etCost,
+                type: 'MEDICAL'
+            };
+            return {
+                ...state,
+                stats: { ...state.stats, cash: state.stats.cash - etCost, motherStatus: etMother },
+                todayTransactions: [...state.todayTransactions, etRecord],
+                dayEvents: [...state.dayEvents, `紧急治疗: 支付$${etCost}，母亲健康值恢复至${etHealth}%。`]
+            };
+        }
+
         case 'PAY_SURGERY': {
             const surgeryCost = GAME_CONFIG.GOAL_AMOUNT;
             const record: TransactionRecord = {
@@ -152,16 +173,40 @@ export function financialReducer(state: GameState, action: Action): GameState {
             const currentDay = state.stats.day;
             const nextDay = state.stats.day + 1;
             const expense = state.stats.dailyExpenses;
-            const endingCash = state.stats.cash - expense;
+            let endingCash = state.stats.cash - expense;
             const income = state.todayTransactions.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
             const txExpenses = state.todayTransactions.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0);
-            const netChange = income + txExpenses - expense;
+            let netChange = income + txExpenses - expense;
             const snapshotEvents = state.todayTransactions.map(t => ({
                 type: t.amount > 0 ? 'INCOME' as const : 'EXPENSE' as const,
                 amount: t.amount,
                 label: t.description
             }));
             snapshotEvents.push({ type: 'EXPENSE', amount: -expense, label: '店铺运营 (Burn)' });
+
+            // S2-F4/F5: Random unscheduled medical expense
+            const RANDOM_MEDICAL_DESCS = ["门诊复查", "药物补充", "血液检查", "护理用品", "医疗耗材", "复诊挂号"];
+            let endDayEvents = [...state.dayEvents];
+            let endDayTransactions = [...state.todayTransactions];
+            if (Math.random() < GAME_CONFIG.MOTHER.RANDOM_MEDICAL_CHANCE) {
+                const rmAmount = Math.floor(
+                    GAME_CONFIG.MOTHER.RANDOM_MEDICAL_MIN +
+                    Math.random() * (GAME_CONFIG.MOTHER.RANDOM_MEDICAL_MAX - GAME_CONFIG.MOTHER.RANDOM_MEDICAL_MIN)
+                );
+                const rmDesc = RANDOM_MEDICAL_DESCS[Math.floor(Math.random() * RANDOM_MEDICAL_DESCS.length)];
+                endingCash -= rmAmount;
+                netChange -= rmAmount;
+                snapshotEvents.push({ type: 'EXPENSE', amount: -rmAmount, label: `突发医疗: ${rmDesc}` });
+                const rmRecord: TransactionRecord = {
+                    id: crypto.randomUUID(),
+                    description: rmDesc,
+                    amount: -rmAmount,
+                    type: 'MEDICAL'
+                };
+                endDayTransactions = [...endDayTransactions, rmRecord];
+                endDayEvents = [...endDayEvents, `突发医疗支出: $${rmAmount} (${rmDesc})`];
+            }
+
             const newSnapshot: DailyFinancialSnapshot = {
                 day: currentDay,
                 startingCash: state.stats.cash - (income + txExpenses),
@@ -172,17 +217,19 @@ export function financialReducer(state: GameState, action: Action): GameState {
             if (endingCash < 0) {
                 clearSave();
                 playSfx('FAIL');
-                return { ...state, phase: { type: 'GAME_OVER', reason: 'Bankrupt' } as GamePhase, dayEvents: [...state.dayEvents, "Bankrupt: Daily expenses exceeded cash."] };
+                return { ...state, phase: { type: 'GAME_OVER', reason: 'Bankrupt' } as GamePhase, dayEvents: [...endDayEvents, "Bankrupt: Daily expenses exceeded cash."] };
             }
             if (state.stats.motherStatus.health <= 0) {
                 clearSave();
                 playSfx('FAIL');
-                return { ...state, phase: { type: 'GAME_OVER', reason: '母亲去世' } as GamePhase, dayEvents: [...state.dayEvents, "GAME OVER: 母亲病情恶化去世。"] };
+                return { ...state, phase: { type: 'GAME_OVER', reason: '母亲去世' } as GamePhase, dayEvents: [...endDayEvents, "GAME OVER: 母亲病情恶化去世。"] };
             }
             return {
                 ...state,
                 stats: { ...state.stats, day: nextDay, cash: endingCash, actionPoints: state.stats.maxActionPoints },
                 financialHistory: [...state.financialHistory, newSnapshot],
+                dayEvents: endDayEvents,
+                todayTransactions: endDayTransactions,
                 phase: { type: 'MORNING_BRIEF' } as GamePhase
             };
         }

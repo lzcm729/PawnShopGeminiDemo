@@ -6,6 +6,7 @@ import { Button } from './ui/Button';
 import { Activity, HeartPulse, ShieldAlert, CreditCard, Syringe, PlusSquare, AlertTriangle, Battery, Wallet } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
+import { GAME_CONFIG } from '../systems/game/config';
 
 export const MedicalModal: React.FC = () => {
     const { state, dispatch } = useGame();
@@ -31,16 +32,17 @@ export const MedicalModal: React.FC = () => {
     const healthStatus = getHealthStatus(healthPercent);
 
     // Prices
-    const COST_INJECTION = 200;
+    const COST_EMERGENCY = GAME_CONFIG.MOTHER.EMERGENCY_TREATMENT_COST;
+    const HEAL_AMOUNT = GAME_CONFIG.MOTHER.EMERGENCY_TREATMENT_HEAL;
     const COST_THERAPY = 500;
 
     const handlePayBill = () => {
         dispatch({ type: 'PAY_MEDICAL_BILL' });
     };
 
-    const handleInjection = () => {
-        if (cash >= COST_INJECTION) {
-            dispatch({ type: 'PURCHASE_TREATMENT', payload: { type: 'STABILIZE', cost: COST_INJECTION } });
+    const handleEmergencyTreatment = () => {
+        if (cash >= COST_EMERGENCY) {
+            dispatch({ type: 'EMERGENCY_TREATMENT' });
         }
     };
 
@@ -56,13 +58,26 @@ export const MedicalModal: React.FC = () => {
             onClose={() => dispatch({ type: 'TOGGLE_MEDICAL' })}
             title={<><Activity className="w-5 h-5 text-teal-500 animate-pulse" /> MEDICAL_TERMINAL_V4</>}
             size="lg"
-            className="border-teal-900 bg-[#051a1a] shadow-[0_0_50px_rgba(20,184,166,0.1)]"
+            className={cn(
+                "bg-[#051a1a]",
+                isBillOverdue
+                    ? "border-red-700 shadow-[0_0_50px_rgba(239,68,68,0.2)]"
+                    : "border-teal-900 shadow-[0_0_50px_rgba(20,184,166,0.1)]"
+            )}
             noPadding
         >
             <div className="flex flex-col h-[600px] bg-[#020b0b] text-teal-500 font-mono relative overflow-hidden">
                 {/* Background Grid */}
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.05)_1px,transparent_1px)] bg-[length:20px_20px] pointer-events-none"></div>
                 <div className="absolute inset-0 bg-radial-gradient from-transparent to-[#020b0b] pointer-events-none"></div>
+
+                {/* Overdue Warning Banner */}
+                {isBillOverdue && (
+                    <div className="px-8 py-2 bg-red-950/40 border-b border-red-700 relative z-10 flex items-center gap-3 animate-pulse">
+                        <AlertTriangle className="w-5 h-5 text-red-400" />
+                        <span className="text-xs font-bold text-red-400 uppercase tracking-wider">欠费中 — 药物供应中断，母亲病情正在恶化 (-{GAME_CONFIG.MOTHER.HEALTH_DECAY_RATE}%/天)</span>
+                    </div>
+                )}
 
                 {/* Cash Display Bar */}
                 <div className="px-8 pt-4 pb-2 border-b border-teal-900/50 relative z-10 flex justify-end items-center">
@@ -166,25 +181,25 @@ export const MedicalModal: React.FC = () => {
                             </div>
 
                             <div className="mt-4 space-y-4">
-                                {/* Option A: Stabilizer */}
+                                {/* Option A: Emergency Treatment */}
                                 <div className="flex justify-between items-center group">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-teal-900/20 rounded border border-teal-800 text-teal-400 group-hover:text-white transition-colors">
                                             <Syringe className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <div className="text-xs font-bold text-teal-300">Emergency Stabilizer</div>
-                                            <div className="text-[10px] text-teal-700">Instant +5 HP Recovery</div>
+                                            <div className="text-xs font-bold text-teal-300">紧急治疗</div>
+                                            <div className="text-[10px] text-teal-700">Instant +{HEAL_AMOUNT}% HP Recovery</div>
                                         </div>
                                     </div>
-                                    <Button 
-                                        onClick={handleInjection}
-                                        disabled={cash < COST_INJECTION || healthPercent >= 100}
+                                    <Button
+                                        onClick={handleEmergencyTreatment}
+                                        disabled={cash < COST_EMERGENCY || healthPercent >= 100}
                                         size="sm"
                                         className="w-24 border-teal-700 hover:bg-teal-900/50 text-teal-400"
                                         variant="outline"
                                     >
-                                        ${COST_INJECTION}
+                                        ${COST_EMERGENCY}
                                     </Button>
                                 </div>
 

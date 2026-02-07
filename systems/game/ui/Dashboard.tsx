@@ -29,7 +29,7 @@ export const Dashboard: React.FC = () => {
     
     // Mother Status Logic
     const { motherStatus, medicalBill } = stats;
-    const isCritical = motherStatus.status === 'Critical' || motherStatus.status === 'Worsening';
+    const isCritical = motherStatus.status === 'Critical' || motherStatus.status === 'Declining';
     
     // Pulse Speed based on Risk
     const pulseSpeed = motherStatus.risk > 50 ? '0.5s' : (motherStatus.risk > 20 ? '1s' : '2s');
