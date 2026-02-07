@@ -36,10 +36,7 @@ export type AttributeTag =
 export type EssenceTag =
   | 'FAKE_HISTORY'   // 伪造历史 - 做旧处理的赝品
   | 'IMPERIAL'       // 御用/宫廷 - 极高溢价
-  | 'ART_ENHANCED'   // 艺术升华 - 高价值重铸
-  | 'TRENDING'       // 潮流改装 - 流行文化价值
-  | 'CELEBRITY'      // 名人关联 - 高溢价
-  | 'LIMITED';       // 限量版 - 稀缺溢价
+  | 'ART_ENHANCED';  // 艺术升华 - 高价值重铸
 
 /**
  * 所有标签类型的联合
@@ -132,7 +129,7 @@ export interface KnowledgePool {
 
 export const STATE_TAGS: StateTag[] = ['BROKEN', 'DIRTY', 'RUSTED'];
 export const ATTRIBUTE_TAGS: AttributeTag[] = ['GOLD', 'MECHANICAL', 'ARTISTIC', 'VINTAGE_REAL', 'SENTIMENTAL'];
-export const ESSENCE_TAGS: EssenceTag[] = ['FAKE_HISTORY', 'IMPERIAL', 'ART_ENHANCED', 'TRENDING', 'CELEBRITY', 'LIMITED'];
+export const ESSENCE_TAGS: EssenceTag[] = ['FAKE_HISTORY', 'IMPERIAL', 'ART_ENHANCED'];
 
 export function isStateTag(tag: ItemTag): tag is StateTag {
   return STATE_TAGS.includes(tag as StateTag);

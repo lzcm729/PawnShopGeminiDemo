@@ -436,10 +436,6 @@ function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item): WorkshopNa
       actionText = `你开始为${item.name}编造一个与皇室相关的故事...`;
       resultText = '一个惊人的"宫廷来历"被创造出来了。这是一把双刃剑。';
       break;
-    case 'TRENDING':
-      actionText = `你开始改装${item.name}，融入当下的流行元素...`;
-      resultText = '物品散发着时髦的气息。年轻人会喜欢这个。';
-      break;
     default:
       actionText = `你开始为${item.name}注入新的故事...`;
       resultText = '物品被赋予了新的"身份"。';

@@ -104,17 +104,6 @@ export const REFORGE_RECIPES: ReforgeRecipe[] = [
     excludedTags: ['ART_ENHANCED'],
     riskNote: '艺术品的价值高度主观，市场评价可能因人而异。',
   },
-  {
-    id: 'reforge_trending',
-    type: 'REFORGE',
-    name: '潮流改装',
-    description: '赋予物品流行文化价值，迎合当下潮流趋势。',
-    resultTag: 'TRENDING',
-    baseCost: { craft: 40, vibe: 60 },
-    energyCost: 2,
-    excludedTags: ['TRENDING'],
-    riskNote: '潮流转瞬即逝，时机不对可能卖不出好价。',
-  },
 ];
 
 // ============================================================================

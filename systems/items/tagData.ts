@@ -171,38 +171,6 @@ export const TAG_DEFINITIONS: Record<ItemTag, TagDefinition> = {
     canBeRemoved: false,
   },
 
-  TRENDING: {
-    id: 'TRENDING',
-    group: 'ESSENCE',
-    valueMultiplier: 2.0,       // 2倍 - 潮流改装溢价
-    displayName: '潮流改装',
-    description: '经过改装赋予了流行文化价值。',
-    icon: '🔥',
-    isNegative: false,
-    canBeRemoved: false,
-  },
-
-  CELEBRITY: {
-    id: 'CELEBRITY',
-    group: 'ESSENCE',
-    valueMultiplier: 8.0,       // 8倍 - 名人关联高溢价
-    displayName: '名人关联',
-    description: '与知名人物有关联的物品。',
-    icon: '⭐',
-    isNegative: false,
-    canBeRemoved: false,
-  },
-
-  LIMITED: {
-    id: 'LIMITED',
-    group: 'ESSENCE',
-    valueMultiplier: 4.0,       // 4倍 - 限量版溢价
-    displayName: '限量版',
-    description: '限量发行的稀缺物品。',
-    icon: '🏷️',
-    isNegative: false,
-    canBeRemoved: false,
-  },
 };
 
 // ============================================================================
