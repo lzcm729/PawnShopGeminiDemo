@@ -268,20 +268,21 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
                           isBonus,
                       });
                   }
-              } else if (!result.event || result.event.type === 'NORMAL') {
+              } else if (!result.event || result.event.type === 'NORMAL' || result.event.type === 'BREAKTHROUGH') {
                   // Range narrowed without trait discovery
                   if (result.isBreakthrough) {
                       // Breakthrough: much stronger range narrowing
                       setFeedbackMsg({ type: 'breakthrough', text: "灵光一闪！估值大幅收窄" });
                       setAppraisalEffect('breakthrough');
                       playSfx('SUCCESS');
+                      onAppraisalFeedback?.({ type: 'BREAKTHROUGH', text: APPRAISAL_TEMPLATES.BREAKTHROUGH });
                   } else {
                       // Normal range narrowing
                       setFeedbackMsg({ type: 'success', text: "估值范围已更新 (Range Narrowed)" });
                       setAppraisalEffect('range_narrowed');
                       playSfx('CLICK');
+                      onAppraisalFeedback?.({ type: 'RANGE_NARROWED', text: APPRAISAL_TEMPLATES.RANGE_NARROWED });
                   }
-                  onAppraisalFeedback?.({ type: 'RANGE_NARROWED', text: APPRAISAL_TEMPLATES.RANGE_NARROWED });
               }
           }
       }, 600);
