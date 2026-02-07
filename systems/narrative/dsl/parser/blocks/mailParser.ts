@@ -6,7 +6,9 @@
 import { BaseParser } from '../baseParser';
 import { DSLMissingFieldError } from '../errors';
 import * as AST from '../ast';
-import { MailBlock } from '../../types';
+import { MailBlock, MailDelay } from '../../types';
+
+const VALID_DELAYS: MailDelay[] = ['immediate', 'standard', 'slow', 'surprise'];
 
 export class MailBlockParser extends BaseParser {
     /**
@@ -23,6 +25,7 @@ export class MailBlockParser extends BaseParser {
         let subject = '';
         let body = '';
         let cash: number | undefined;
+        let delay: MailDelay | undefined;
 
         if (this.check('INDENT')) {
             this.advance();
@@ -46,6 +49,13 @@ export class MailBlockParser extends BaseParser {
                         case 'cash':
                             cash = this.parseNumberValue();
                             break;
+                        case 'delay': {
+                            const val = this.parseStringValue() as MailDelay;
+                            if (VALID_DELAYS.includes(val)) {
+                                delay = val;
+                            }
+                            break;
+                        }
                     }
                     this.skipNewlines();
                 } else {
@@ -62,6 +72,6 @@ export class MailBlockParser extends BaseParser {
         if (!subject) throw new DSLMissingFieldError('subject', '@mail', location, this.source);
         if (!body) throw new DSLMissingFieldError('body', '@mail', location, this.source);
 
-        return AST.createMailBlock(id, sender, subject, body, location, cash ? { cash } : undefined);
+        return AST.createMailBlock(id, sender, subject, body, location, cash ? { cash } : undefined, delay);
     }
 }

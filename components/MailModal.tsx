@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
-import { Mail, Download, Terminal, AlertCircle, File, ChevronRight, Hash } from 'lucide-react';
+import { Mail, Download, Terminal, AlertCircle, File, ChevronRight, Hash, Gift, Users, Search } from 'lucide-react';
 import { getMailTemplate } from '../systems/narrative/mailRegistry';
 import { interpolateMailBody } from '../systems/narrative/mailUtils';
+import { MailAttachment } from '../types';
 import { NewsCategory } from '../types';
 import { playSfx } from '../systems/game/audio';
 import { Modal } from './ui/Modal';
@@ -11,34 +12,86 @@ import { HelpTooltip } from './ui/Tooltip';
 import { cn } from '../lib/utils';
 import { TypewriterText } from './ui/TextEffects';
 
+/** Determine the effective attachment for display (resolved > template) */
+function getEffectiveAttachment(
+    resolvedAttachment: MailAttachment | undefined,
+    templateAttachments: MailAttachment | undefined
+): MailAttachment | undefined {
+    return resolvedAttachment ?? templateAttachments;
+}
+
+/** Check if an attachment has claimable content */
+function hasClaimableContent(att: MailAttachment | undefined): boolean {
+    if (!att) return false;
+    return !!(att.cash || att.item || att.rewardType);
+}
+
+/** Describe attachment contents for display */
+function describeAttachment(att: MailAttachment): string {
+    const parts: string[] = [];
+    if (att.cash) parts.push(`${att.cash} CR`);
+    if (att.item) parts.push('ITEM_OBJ');
+    if (att.rewardType) {
+        switch (att.rewardType) {
+            case 'REFERRAL': parts.push('REFERRAL_LINK'); break;
+            case 'INTEL': parts.push('INTEL_DATA'); break;
+            case 'NPC_HELP': parts.push('ASSIST_TOKEN'); break;
+        }
+    }
+    return parts.length > 0 ? `Contains: ${parts.join(' + ')}` : 'EMPTY_PAYLOAD';
+}
+
 export const MailModal: React.FC = () => {
   const { state, dispatch } = useGame();
   const [selectedMailId, setSelectedMailId] = useState<string | null>(null);
+  const [bodyReadComplete, setBodyReadComplete] = useState(false);
+  const [claimAnimating, setClaimAnimating] = useState(false);
 
-  if (!state.showMail) return null;
-
+  // Reset read state when selecting a new mail
   const handleSelectMail = (uniqueId: string) => {
       playSfx('CLICK');
       setSelectedMailId(uniqueId);
+      setBodyReadComplete(false);
+      setClaimAnimating(false);
       dispatch({ type: 'READ_MAIL', payload: uniqueId });
   };
 
   const handleClaim = (uniqueId: string) => {
+      setClaimAnimating(true);
       playSfx('SUCCESS');
-      dispatch({ type: 'CLAIM_MAIL_REWARD', payload: uniqueId });
+      // Brief delay for visual feedback before dispatching
+      setTimeout(() => {
+          dispatch({ type: 'CLAIM_MAIL_REWARD', payload: uniqueId });
+          setClaimAnimating(false);
+      }, 400);
   };
 
   const selectedMailInstance = selectedMailId ? state.inbox.find(m => m.uniqueId === selectedMailId) : null;
   const selectedTemplate = selectedMailInstance ? getMailTemplate(selectedMailInstance.templateId) : null;
-  
+
   const narrativeNews = state.dailyNews.find(n => n.category === NewsCategory.NARRATIVE) || state.dailyNews[0];
 
-  const displayBody = selectedTemplate && selectedMailInstance 
-      ? interpolateMailBody(selectedTemplate.body, { 
+  const displayBody = selectedTemplate && selectedMailInstance
+      ? interpolateMailBody(selectedTemplate.body, {
           ...selectedMailInstance.metadata || {},
           recentNews: narrativeNews ? { headline: narrativeNews.headline, body: narrativeNews.body } : undefined
-      }) 
+      })
       : "";
+
+  // Determine the effective attachment for the selected mail
+  const effectiveAttachment = selectedMailInstance && selectedTemplate
+      ? getEffectiveAttachment(selectedMailInstance.resolvedAttachment, selectedTemplate.attachments)
+      : undefined;
+  const showAttachmentSection = hasClaimableContent(effectiveAttachment);
+
+  // For already-read mails, skip the reveal delay
+  useEffect(() => {
+      if (selectedMailInstance?.isRead) {
+          setBodyReadComplete(true);
+      }
+  }, [selectedMailId]);
+
+  if (!state.showMail) return null;
 
   return (
     <Modal
@@ -59,7 +112,7 @@ export const MailModal: React.FC = () => {
                     <span>{'>'} INBOX_DIR</span>
                     <span>[{state.inbox.length}]</span>
                 </div>
-                
+
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {state.inbox.length === 0 ? (
                         <div className="p-4 text-green-900 text-xs text-center mt-10">
@@ -70,9 +123,11 @@ export const MailModal: React.FC = () => {
                             const tpl = getMailTemplate(mail.templateId);
                             if (!tpl) return null;
                             const isSelected = selectedMailId === mail.uniqueId;
-                            
+                            const att = getEffectiveAttachment(mail.resolvedAttachment, tpl.attachments);
+                            const hasUnclaimed = hasClaimableContent(att) && !mail.isClaimed;
+
                             return (
-                                <button 
+                                <button
                                     key={mail.uniqueId}
                                     onClick={() => handleSelectMail(mail.uniqueId)}
                                     className={cn(
@@ -81,12 +136,17 @@ export const MailModal: React.FC = () => {
                                     )}
                                 >
                                     {isSelected && <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500 animate-pulse"></div>}
-                                    
+
                                     <div className="flex justify-between items-baseline mb-1">
-                                        <span className={cn("text-xs font-bold uppercase truncate max-w-[70%]", !mail.isRead && "animate-pulse text-green-400")}>
+                                        <span className={cn("text-xs font-bold uppercase truncate max-w-[60%]", !mail.isRead && "animate-pulse text-green-400")}>
                                             {!mail.isRead ? "> NEW " : ""}{tpl.sender}
                                         </span>
-                                        <span className="text-[9px] opacity-60">D:{mail.arrivalDay}</span>
+                                        <div className="flex items-center gap-1">
+                                            {hasUnclaimed && mail.isRead && (
+                                                <File className="w-3 h-3 text-amber-500 animate-pulse" />
+                                            )}
+                                            <span className="text-[9px] opacity-60">D:{mail.arrivalDay}</span>
+                                        </div>
                                     </div>
                                     <div className="text-[10px] truncate opacity-80 pl-2">
                                         {tpl.subject}
@@ -126,12 +186,16 @@ export const MailModal: React.FC = () => {
 
                         {/* Body */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 text-sm text-green-600 font-mono">
-                            <TypewriterText text={displayBody} speed={10} />
+                            <TypewriterText
+                                text={displayBody}
+                                speed={10}
+                                onComplete={() => setBodyReadComplete(true)}
+                            />
                         </div>
 
-                        {/* Attachments Footer */}
-                        {selectedTemplate.attachments && (
-                            <div className="mt-6 border-t-2 border-dashed border-green-900 pt-4">
+                        {/* Attachments Footer — revealed only after body is read */}
+                        {showAttachmentSection && bodyReadComplete && effectiveAttachment && (
+                            <div className="mt-6 border-t-2 border-dashed border-green-900 pt-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
                                 <div className="text-[10px] opacity-50 uppercase tracking-widest mb-2 flex items-center gap-2">
                                     <Hash className="w-3 h-3" /> ATTACHED_BINARY_DATA
                                 </div>
@@ -139,21 +203,25 @@ export const MailModal: React.FC = () => {
                                 {selectedMailInstance.isClaimed ? (
                                     <div className="flex items-center gap-2 text-green-800 text-xs py-2 border border-green-900/30 bg-green-950/5 px-3">
                                         <AlertCircle className="w-4 h-4" />
-                                        <span>[STATUS: EXTRACTED]</span>
+                                        <span>[STATUS: EXTRACTED] {effectiveAttachment.cash ? `+${effectiveAttachment.cash} CR` : ''}</span>
+                                    </div>
+                                ) : claimAnimating ? (
+                                    <div className="flex items-center justify-center py-3 border border-green-500 bg-green-900/20 text-green-400 text-xs animate-pulse">
+                                        <Download className="w-4 h-4 mr-2 animate-bounce" />
+                                        DECRYPTING...
                                     </div>
                                 ) : (
-                                    <div className="flex items-center justify-between bg-green-900/10 border border-green-700 p-2 hover:bg-green-900/20 transition-colors">
+                                    <div className="flex items-center justify-between bg-green-900/10 border border-green-700 p-2 hover:bg-green-900/20 transition-colors animate-pulse hover:animate-none">
                                         <div className="text-green-400 text-xs font-bold flex items-center gap-3">
                                             <File className="w-5 h-5" />
                                             <div className="flex flex-col">
                                                 <span>ENCRYPTED_ASSET.DAT</span>
                                                 <span className="text-[9px] opacity-70 font-normal">
-                                                    Contains: {selectedTemplate.attachments.cash ? `${selectedTemplate.attachments.cash} CR` : ''} 
-                                                    {selectedTemplate.attachments.item ? ` + ITEM_OBJ` : ''}
+                                                    {describeAttachment(effectiveAttachment)}
                                                 </span>
                                             </div>
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={() => handleClaim(selectedMailInstance.uniqueId)}
                                             className="text-[10px] font-bold bg-green-700 text-black px-3 py-1 hover:bg-green-600 flex items-center gap-1"
                                         >
