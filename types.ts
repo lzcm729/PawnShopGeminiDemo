@@ -13,6 +13,7 @@ export * from './systems/reputation/types';
 export * from './systems/upgrades/types';
 export * from './systems/blackmarket/types';
 export * from './systems/customerInsight/types';
+export * from './systems/characterAbility/types';
 
 // Node Architecture Types
 export * from './types/node';

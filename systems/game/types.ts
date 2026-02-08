@@ -13,6 +13,7 @@ import { BlackmarketState } from '../blackmarket/types';
 import { CustomerInsightResult } from '../customerInsight';
 import { DailyChallenge } from './dailyChallenge';
 import { DailySchedule } from '../npc/customerScheduler';
+import { AbilityState } from '../characterAbility/types';
 
 // === NIGHT PHASE TYPES ===
 export interface NightState {
@@ -124,6 +125,10 @@ export interface GameState {
   // === CUSTOMER SCHEDULE (出场顺序 v2.1) ===
   dailyCustomerSchedule: DailySchedule | null;
   scheduleSlotIndex: number;             // Current slot being served
+
+  // === CHARACTER ABILITY (人物能力升级系统) ===
+  abilityState: AbilityState;               // 修行系统状态
+  showAbilityPanel: boolean;                // 修行面板显示状态
 
   // === DEBUG FLAGS ===
   debugRevealFloor: boolean;  // 调试：显示客户底价

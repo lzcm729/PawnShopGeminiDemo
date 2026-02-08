@@ -28,6 +28,7 @@ import { INITIAL_ESSENCE_BALANCE } from '../systems/economy/essence';
 import { INITIAL_SHOP_UPGRADES } from '../systems/upgrades';
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../systems/appointment';
 import { createInitialBlackmarketState } from '../systems/blackmarket';
+import { createInitialAbilityState } from '../systems/characterAbility';
 
 // Import combined reducer and action types
 import { gameReducer, Action } from './reducers';
@@ -125,6 +126,9 @@ const initialState: GameState = {
     // === CUSTOMER SCHEDULE (出场顺序 v2.1) ===
     dailyCustomerSchedule: null,
     scheduleSlotIndex: 0,
+    // === CHARACTER ABILITY (人物能力升级系统) ===
+    abilityState: createInitialAbilityState(),
+    showAbilityPanel: false,
     // === DEBUG FLAGS ===
     debugRevealFloor: false
 };
