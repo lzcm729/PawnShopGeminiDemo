@@ -20,21 +20,24 @@ export type HeatLevel = 'SAFE' | 'WATCHED' | 'WARNING' | 'DANGER';
 
 /**
  * Heat level thresholds and risk probabilities
+ * v3.6 [#34]: narrativeDescription replaces riskPercent for player-facing display
  */
 export interface HeatConfig {
   level: HeatLevel;
   minHeat: number;
   maxHeat: number;
-  riskPercent: number;
+  riskPercent: number;              // Internal probability (hidden from player)
   displayName: string;
   description: string;
+  narrativeDescription: string;     // v3.6 [#34]: Player-facing narrative risk text
+  color: string;                    // v3.6 [#34]: UI color indicator
 }
 
 export const HEAT_LEVELS: HeatConfig[] = [
-  { level: 'SAFE', minHeat: 0, maxHeat: 2, riskPercent: 0, displayName: '安全', description: '无警方关注' },
-  { level: 'WATCHED', minHeat: 3, maxHeat: 5, riskPercent: 15, displayName: '关注', description: '有人在打听' },
-  { level: 'WARNING', minHeat: 6, maxHeat: 8, riskPercent: 30, displayName: '警告', description: '便衣出没' },
-  { level: 'DANGER', minHeat: 9, maxHeat: 10, riskPercent: 50, displayName: '危险', description: '随时可能搜查' }
+  { level: 'SAFE', minHeat: 0, maxHeat: 2, riskPercent: 0, displayName: '安全', description: '无警方关注', narrativeDescription: '近来风平浪静', color: 'green' },
+  { level: 'WATCHED', minHeat: 3, maxHeat: 5, riskPercent: 15, displayName: '关注', description: '有人在打听', narrativeDescription: '偶尔有人打听你的生意', color: 'yellow' },
+  { level: 'WARNING', minHeat: 6, maxHeat: 8, riskPercent: 30, displayName: '警告', description: '便衣出没', narrativeDescription: '经常有人在对面盯梢', color: 'orange' },
+  { level: 'DANGER', minHeat: 9, maxHeat: 10, riskPercent: 50, displayName: '危险', description: '随时可能搜查', narrativeDescription: '街角总停着一辆面包车', color: 'red' }
 ];
 
 // ============================================================================
@@ -49,9 +52,11 @@ export type RiskEventType =
 export interface RiskEvent {
   type: RiskEventType;
   message: string;
-  penalty?: number;       // Fine amount if applicable
-  lockDays?: number;      // Days the market is locked
-  reputationLoss?: number; // Credibility loss
+  penalty?: number;           // Fine amount if applicable
+  lockDays?: number;          // Days the market is locked
+  reputationLoss?: number;    // Credibility loss
+  suspendHeatDecay?: boolean; // v3.6 [#31]: Suspend next-day heat decay
+  salePenalty?: number;       // v3.6 [#31]: Next-day sale price penalty (e.g., 0.05 = -5%)
 }
 
 // ============================================================================
@@ -79,6 +84,65 @@ export interface BlackmarketDailyState {
   // Sale track (player selling to market)
   saleMultiplierMin: number;  // 0.60 - 0.70
   saleMultiplierMax: number;  // 0.75 - 0.85
+
+  // v3.6 [BM-1]: Tag revealed to news system (100% accurate, 1 per day)
+  revealedTag: ItemTag | null;
+
+  // v3.6 [BM-4]: Undercover visit aftermath effects
+  salePenaltyPercent: number; // 0.05 = -5% on sale prices for the day
+}
+
+/**
+ * v3.6 [BM-8]: Protection fee state
+ */
+export interface ProtectionFeeState {
+  baseAmount: number;             // Starting amount ($200)
+  timesPaid: number;              // Number of times paid (drives inflation)
+  timesRefused: number;           // Number of times refused
+  cooldownUntilDay: number;       // Day when cooldown expires (0 = no cooldown)
+  lastRequestDay: number;         // Day of last request (0 = never requested)
+}
+
+/**
+ * v3.6 [BM-7]: Low heat reward state
+ */
+export interface LowHeatRewardState {
+  consecutiveSafeDays: number;    // Days heat has been in SAFE range
+  rewardActive: boolean;          // Whether reward is currently active
+  rewardType: LowHeatRewardType | null;
+}
+
+export type LowHeatRewardType =
+  | 'PRICE_BONUS'                 // Temporary +5% purchase price
+  | 'EXTRA_INTEL'                 // Reveal an extra tag for tomorrow
+  | 'CONTACT_FAVOR';             // Contact provides special dialogue
+
+/**
+ * v3.6 [BM-3]: Market indicator for UI
+ */
+export interface MarketIndicator {
+  tag: ItemTag;
+  trend: 'RISING' | 'STABLE' | 'FALLING';
+  confidence: number;             // 0-1 how reliable the trend is
+}
+
+/**
+ * v3.6 [BM-6]: Risk clue for dangerous tasks
+ */
+export interface RiskClue {
+  text: string;                   // The clue text shown to player
+  impliedRisk: 'LOW' | 'MEDIUM' | 'HIGH'; // Actual risk level (hidden)
+}
+
+/**
+ * v3.6 [BM-10]: Moral echo effect from black market actions
+ */
+export interface MoralEchoBlackmarketEffect {
+  type: 'HEAT_INCREASE' | 'RISK_ESCALATION' | 'REPUTATION_LEAK';
+  severity: number;               // 1-5 scale
+  delay: number;                  // Delay in days before effect triggers
+  sourceAction: string;           // What triggered this echo
+  day: number;                    // Day it was generated
 }
 
 /**
@@ -100,6 +164,24 @@ export interface BlackmarketState {
 
   // Last risk event (for display)
   lastRiskEvent: RiskEvent | null;
+
+  // v3.6 [BM-2]: Tag history for demand inertia
+  tagHistory: ItemTag[];          // Recent N days of purchase tags
+
+  // v3.6 [BM-2]: Lv3+ next day preview tag
+  nextDayPreviewTag: ItemTag | null;
+
+  // v3.6 [BM-4]: Whether heat decay is suspended for today
+  heatDecaySuspended: boolean;
+
+  // v3.6 [BM-7]: Low heat reward tracking
+  lowHeatReward: LowHeatRewardState;
+
+  // v3.6 [BM-8]: Protection fee state
+  protectionFee: ProtectionFeeState;
+
+  // v3.6 [BM-10]: Pending moral echo effects
+  pendingMoralEchoes: MoralEchoBlackmarketEffect[];
 }
 
 // ============================================================================
@@ -141,10 +223,28 @@ export const INITIAL_BLACKMARKET_STATE: BlackmarketState = {
   daily: {
     purchaseRequests: [],
     saleMultiplierMin: 0.60,
-    saleMultiplierMax: 0.85
+    saleMultiplierMax: 0.85,
+    revealedTag: null,
+    salePenaltyPercent: 0
   },
   todaySales: [],
-  lastRiskEvent: null
+  lastRiskEvent: null,
+  tagHistory: [],
+  nextDayPreviewTag: null,
+  heatDecaySuspended: false,
+  lowHeatReward: {
+    consecutiveSafeDays: 0,
+    rewardActive: false,
+    rewardType: null
+  },
+  protectionFee: {
+    baseAmount: 200,
+    timesPaid: 0,
+    timesRefused: 0,
+    cooldownUntilDay: 0,
+    lastRequestDay: 0
+  },
+  pendingMoralEchoes: []
 };
 
 // ============================================================================
