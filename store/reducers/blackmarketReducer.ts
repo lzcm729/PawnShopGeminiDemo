@@ -220,11 +220,29 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       // Get upgrade level for heat decay rate and daily limits
       const upgradeLevel = getBlackMarketContactLevel(state.shopUpgrades);
 
-      // Apply heat decay (rate depends on upgrade level)
-      const newHeat = applyHeatDecay(state.blackmarket.heat, upgradeLevel);
+      // v3.6 [BM-4]: Check if heat decay is suspended (from undercover visit)
+      let newHeat: number;
+      if (state.blackmarket.heatDecaySuspended) {
+        newHeat = state.blackmarket.heat;
+      } else {
+        newHeat = applyHeatDecay(state.blackmarket.heat, upgradeLevel);
+      }
 
-      // Generate new daily state with upgrade-based purchase limit
-      const newDaily = generateDailyBlackmarketState(upgradeLevel);
+      // v3.6 [BM-2]: Update tag history
+      const todayTags = state.blackmarket.daily.purchaseRequests.map(r => r.tag);
+      const newTagHistory = [...todayTags, ...state.blackmarket.tagHistory].slice(0, 24);
+
+      // v3.6 [BM-4]: Sale penalty from risk event
+      const salePenaltyPercent = riskEvent?.salePenalty ?? 0;
+      const nextHeatDecaySuspended = riskEvent?.suspendHeatDecay ?? false;
+
+      // Generate new daily state with demand inertia
+      const newDaily = generateDailyBlackmarketState(upgradeLevel, newTagHistory, salePenaltyPercent);
+
+      // v3.6 [BM-2]: Lv3+ next day preview
+      const nextDayPreviewTag = upgradeLevel >= 3 && newDaily.purchaseRequests.length > 0
+        ? newDaily.purchaseRequests[Math.floor(Math.random() * newDaily.purchaseRequests.length)].tag
+        : null;
 
       return {
         ...state,
@@ -233,7 +251,10 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
           heat: newHeat,
           daily: newDaily,
           todaySales: [],
-          lastRiskEvent: riskEvent
+          lastRiskEvent: riskEvent,
+          tagHistory: newTagHistory,
+          nextDayPreviewTag,
+          heatDecaySuspended: nextHeatDecaySuspended
         }
       };
     }
@@ -246,9 +267,10 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       const upgradeLevel = getBlackMarketContactLevel(state.shopUpgrades);
 
       // Generate new daily requests if not locked, with upgrade-based purchase limit
+      // v3.6 [BM-2]: Pass tagHistory for demand inertia
       const newDaily = updatedState.isLocked
         ? state.blackmarket.daily
-        : generateDailyBlackmarketState(upgradeLevel);
+        : generateDailyBlackmarketState(upgradeLevel, state.blackmarket.tagHistory);
 
       return {
         ...state,

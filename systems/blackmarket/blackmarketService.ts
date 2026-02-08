@@ -18,7 +18,14 @@ import {
   RiskEventType,
   INITIAL_BLACKMARKET_STATE,
   getHeatConfig,
-  getUnderworldCommission
+  getHeatLevel,
+  getUnderworldCommission,
+  MarketIndicator,
+  RiskClue,
+  LowHeatRewardState,
+  LowHeatRewardType,
+  ProtectionFeeState,
+  MoralEchoBlackmarketEffect
 } from './types';
 import { BlackMarketLevelConfig } from '../upgrades/types';
 import { BLACK_MARKET_LEVELS } from '../upgrades/config';
@@ -40,26 +47,54 @@ function getTradeableTags(): ItemTag[] {
 }
 
 /**
+ * v3.6 [BM-2]: Demand inertia constant
+ * Tags that appeared yesterday have this much extra probability of reappearing
+ */
+const DEMAND_INERTIA_BONUS = 0.30; // +30% chance for yesterday's tags
+
+/**
  * Generate random purchase requests for the day
- * Generates exactly `count` requests with different tags, each can be fulfilled once
+ * v3.6 [BM-2]: Supports demand inertia via tagHistory
  * @param count Number of purchase requests to generate (equals daily purchase limit)
+ * @param tagHistory Recent tag history for demand inertia (most recent first)
  * @returns Array of MarketPurchaseRequest, each with a unique tag and fulfilled: false
  */
-export function generateDailyPurchaseRequests(count: number): MarketPurchaseRequest[] {
+export function generateDailyPurchaseRequests(
+  count: number,
+  tagHistory: ItemTag[] = []
+): MarketPurchaseRequest[] {
   const tradeableTags = getTradeableTags();
 
   // Ensure we don't try to generate more requests than available tags
   const numRequests = Math.min(count, tradeableTags.length);
 
+  // v3.6 [BM-2]: Build weighted tag pool with demand inertia
+  // Yesterday's tags (last N entries where N = previous day's request count) get bonus probability
+  const yesterdayTags = new Set(tagHistory.slice(0, 8)); // Up to 8 tags from yesterday
+
   const selectedTags: ItemTag[] = [];
   const requests: MarketPurchaseRequest[] = [];
 
   for (let i = 0; i < numRequests; i++) {
-    // Avoid duplicates
-    let tag: ItemTag;
-    do {
-      tag = tradeableTags[Math.floor(Math.random() * tradeableTags.length)];
-    } while (selectedTags.includes(tag));
+    // Build weighted selection from remaining tags
+    const availableTags = tradeableTags.filter(t => !selectedTags.includes(t));
+    const weights = availableTags.map(tag => {
+      const base = 1.0;
+      const inertiaBonus = yesterdayTags.has(tag) ? DEMAND_INERTIA_BONUS : 0;
+      return base + inertiaBonus;
+    });
+
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    let roll = Math.random() * totalWeight;
+
+    let tag = availableTags[0]; // fallback
+    for (let j = 0; j < availableTags.length; j++) {
+      roll -= weights[j];
+      if (roll <= 0) {
+        tag = availableTags[j];
+        break;
+      }
+    }
 
     selectedTags.push(tag);
 
@@ -68,7 +103,7 @@ export function generateDailyPurchaseRequests(count: number): MarketPurchaseRequ
 
     requests.push({
       tag,
-      priceMultiplier: Math.round(priceMultiplier * 100) / 100,  // Round to 2 decimals
+      priceMultiplier: Math.round(priceMultiplier * 100) / 100,
       fulfilled: false
     });
   }
@@ -124,18 +159,33 @@ export function getHeatDecayRate(upgradeLevel: number): number {
 
 /**
  * Generate a fresh daily state
+ * v3.6: Now accepts tagHistory for demand inertia and lastRiskEvent for sale penalty
  * @param upgradeLevel Optional black market contact upgrade level (defaults to 1)
+ * @param tagHistory Recent tag history for demand inertia
+ * @param salePenaltyPercent Sale price penalty from previous risk event (e.g., undercover visit)
  */
-export function generateDailyBlackmarketState(upgradeLevel: number = 1): BlackmarketDailyState {
+export function generateDailyBlackmarketState(
+  upgradeLevel: number = 1,
+  tagHistory: ItemTag[] = [],
+  salePenaltyPercent: number = 0
+): BlackmarketDailyState {
   const { min, max } = generateDailySaleMultipliers();
   const purchaseLimit = getDailyPurchaseLimit(upgradeLevel);
 
+  // v3.6 [BM-2]: Pass tagHistory for demand inertia
+  const purchaseRequests = generateDailyPurchaseRequests(purchaseLimit, tagHistory);
+
+  // v3.6 [BM-1]: Select one tag to reveal to news system (100% accurate)
+  const revealedTag = purchaseRequests.length > 0
+    ? purchaseRequests[Math.floor(Math.random() * purchaseRequests.length)].tag
+    : null;
+
   return {
-    // Generate N purchase requests where N = purchaseLimit
-    // Each request has a different tag and can be fulfilled once
-    purchaseRequests: generateDailyPurchaseRequests(purchaseLimit),
+    purchaseRequests,
     saleMultiplierMin: min,
-    saleMultiplierMax: max
+    saleMultiplierMax: max,
+    revealedTag,
+    salePenaltyPercent
   };
 }
 
@@ -384,28 +434,32 @@ function selectRiskEventType(heat: number): RiskEventType {
 
 /**
  * Generate risk event details
+ * v3.6 [BM-4]: UNDERCOVER_VISIT now has "teeth" - sale penalty + suspended heat decay
  */
 function generateRiskEvent(type: RiskEventType): RiskEvent {
   switch (type) {
     case 'UNDERCOVER_VISIT':
       return {
         type: 'UNDERCOVER_VISIT',
-        message: '便衣警察在附近转悠，今晚黑市暂时关闭。'
+        message: '联系人发来消息："今晚有眼睛盯着，暂时别动。"',
+        suspendHeatDecay: true,  // v3.6 [#31]: Next day heat does not decay
+        salePenalty: 0.05        // v3.6 [#31]: Next day sale price -5%
       };
 
-    case 'SEARCH_WARNING':
+    case 'SEARCH_WARNING': {
       const penalty = 300 + Math.floor(Math.random() * 200);  // $300-500
       return {
         type: 'SEARCH_WARNING',
-        message: `警方发出搜查警告！支付 $${penalty} 打点关系，否则黑市将关闭3天。`,
+        message: `联系人发来消息："有人查到你头上了。要么破财消灾，要么躲一阵。"`,
         penalty,
         lockDays: 3
       };
+    }
 
     case 'FORMAL_INVESTIGATION':
       return {
         type: 'FORMAL_INVESTIGATION',
-        message: '正式调查启动！商誉受损，黑市关闭7天。',
+        message: '一封官方信函塞进了门缝："根据举报，您的店铺涉嫌参与非法交易。即日起，相关业务暂停接受调查。"',
         lockDays: 7,
         reputationLoss: 10
       };
@@ -428,9 +482,8 @@ export function createInitialBlackmarketState(): BlackmarketState {
 
 /**
  * Process end of day for blackmarket
- * - Apply heat decay (based on upgrade level)
- * - Check lock expiration
- * - Generate new daily state (with upgrade-based purchase limit)
+ * v3.6: Now handles demand inertia, heat decay suspension, low heat rewards,
+ *        undercover visit aftermath, moral echoes, and Lv3+ preview
  * @param state Current blackmarket state
  * @param currentDay Current game day
  * @param upgradeLevel Optional black market upgrade level (default 1)
@@ -440,8 +493,15 @@ export function processEndOfDay(
   currentDay: number,
   upgradeLevel: number = 1
 ): { newState: BlackmarketState; riskEvent: RiskEvent | null } {
-  // Apply heat decay (rate depends on upgrade level)
-  const newHeat = applyHeatDecay(state.heat, upgradeLevel);
+  // v3.6 [BM-4]: Check if heat decay is suspended (from undercover visit)
+  let newHeat: number;
+  if (state.heatDecaySuspended) {
+    // Skip heat decay for this day
+    newHeat = state.heat;
+  } else {
+    // Apply heat decay (rate depends on upgrade level)
+    newHeat = applyHeatDecay(state.heat, upgradeLevel);
+  }
 
   // Check if lock has expired
   const isStillLocked = state.isLocked && state.lockUntilDay > currentDay;
@@ -458,15 +518,46 @@ export function processEndOfDay(
     finalLockUntilDay = currentDay + riskEvent.lockDays;
   }
 
+  // v3.6 [BM-2]: Update tag history with today's purchase tags
+  const todayTags = state.daily.purchaseRequests.map(r => r.tag);
+  const newTagHistory = [...todayTags, ...state.tagHistory].slice(0, 24); // Keep ~3 days of history
+
+  // v3.6 [BM-4]: Determine next day sale penalty from risk event
+  const salePenaltyPercent = riskEvent?.salePenalty ?? 0;
+
+  // v3.6 [BM-4]: Determine if next day heat decay should be suspended
+  const nextHeatDecaySuspended = riskEvent?.suspendHeatDecay ?? false;
+
+  // Generate new daily state with demand inertia
+  const newDaily = generateDailyBlackmarketState(upgradeLevel, newTagHistory, salePenaltyPercent);
+
+  // v3.6 [BM-2]: Lv3+ next day preview tag
+  const nextDayPreviewTag = upgradeLevel >= 3 && newDaily.purchaseRequests.length > 0
+    ? newDaily.purchaseRequests[Math.floor(Math.random() * newDaily.purchaseRequests.length)].tag
+    : null;
+
+  // v3.6 [BM-7]: Track low heat reward
+  const newLowHeatReward = updateLowHeatReward(state.lowHeatReward, newHeat);
+
+  // v3.6 [BM-10]: Process pending moral echoes (remove expired ones)
+  const newMoralEchoes = state.pendingMoralEchoes.filter(
+    echo => echo.day + echo.delay > currentDay
+  );
+
   return {
     newState: {
       ...state,
       heat: newHeat,
       isLocked: finalLocked,
       lockUntilDay: finalLockUntilDay,
-      daily: generateDailyBlackmarketState(upgradeLevel),
+      daily: newDaily,
       todaySales: [],
-      lastRiskEvent: riskEvent
+      lastRiskEvent: riskEvent,
+      tagHistory: newTagHistory,
+      nextDayPreviewTag,
+      heatDecaySuspended: nextHeatDecaySuspended,
+      lowHeatReward: newLowHeatReward,
+      pendingMoralEchoes: newMoralEchoes
     },
     riskEvent
   };
@@ -489,4 +580,280 @@ export function processStartOfDay(
   }
 
   return state;
+}
+
+// ============================================================================
+// v3.6 [BM-3]: Market Indicator Calculation
+// ============================================================================
+
+/**
+ * Calculate market trend indicators based on tag history
+ * Shows RISING if a tag appeared more frequently in recent days,
+ * FALLING if less, STABLE otherwise
+ */
+export function calculateMarketIndicators(
+  currentTags: ItemTag[],
+  tagHistory: ItemTag[]
+): MarketIndicator[] {
+  return currentTags.map(tag => {
+    // Count recent appearances (last 2 days worth of tags)
+    const recentCount = tagHistory.slice(0, 16).filter(t => t === tag).length;
+    // Count older appearances
+    const olderCount = tagHistory.slice(16).filter(t => t === tag).length;
+
+    let trend: 'RISING' | 'STABLE' | 'FALLING';
+    if (recentCount > olderCount + 1) {
+      trend = 'RISING';
+    } else if (recentCount < olderCount) {
+      trend = 'FALLING';
+    } else {
+      trend = 'STABLE';
+    }
+
+    // Confidence based on data availability
+    const confidence = Math.min(1, tagHistory.length / 16);
+
+    return { tag, trend, confidence };
+  });
+}
+
+// ============================================================================
+// v3.6 [BM-5]: Narrative Risk Descriptions
+// ============================================================================
+
+/**
+ * Get narrative risk description for current heat level
+ * v3.6 [#34]: Replaces percentage display in UI
+ */
+export function getNarrativeRiskDescription(heat: number): {
+  narrativeDescription: string;
+  color: string;
+  displayName: string;
+} {
+  const config = getHeatConfig(heat);
+  return {
+    narrativeDescription: config.narrativeDescription,
+    color: config.color,
+    displayName: config.displayName
+  };
+}
+
+// ============================================================================
+// v3.6 [BM-6]: Risk Clue Generation
+// ============================================================================
+
+const RISK_CLUE_TEMPLATES: { risk: 'LOW' | 'MEDIUM' | 'HIGH'; clues: string[] }[] = [
+  {
+    risk: 'LOW',
+    clues: [
+      '有批货需要放几天。不急，随便什么时候都行。',
+      '老朋友托我带句话，顺便放个东西。',
+      '帮忙存个小包裹，过两天有人来取。'
+    ]
+  },
+  {
+    risk: 'MEDIUM',
+    clues: [
+      '老朋友托我转交。说是祖传的东西。',
+      '有个急活，今天之内帮忙处理一下。',
+      '这东西来路不太清楚，但应该没问题。'
+    ]
+  },
+  {
+    risk: 'HIGH',
+    clues: [
+      '这个包裹今晚必须到位。别问，别看。',
+      '有人盯上了一批货。你只管收着，什么都别说。',
+      '这事搞砸了后果很严重。你懂的。'
+    ]
+  }
+];
+
+/**
+ * Generate risk clues for a dangerous task
+ * v3.6 [#37]: Provides readable clues instead of binary info
+ */
+export function generateRiskClues(actualRisk: 'LOW' | 'MEDIUM' | 'HIGH'): RiskClue[] {
+  const template = RISK_CLUE_TEMPLATES.find(t => t.risk === actualRisk);
+  if (!template) return [];
+
+  // Pick 1-2 clues
+  const clueCount = actualRisk === 'HIGH' ? 2 : 1;
+  const shuffled = [...template.clues].sort(() => Math.random() - 0.5);
+
+  return shuffled.slice(0, clueCount).map(text => ({
+    text,
+    impliedRisk: actualRisk
+  }));
+}
+
+// ============================================================================
+// v3.6 [BM-7]: Low Heat Reward System
+// ============================================================================
+
+const LOW_HEAT_REWARD_THRESHOLD = 3; // Consecutive safe days needed
+
+/**
+ * Update low heat reward state based on current heat
+ */
+export function updateLowHeatReward(
+  current: LowHeatRewardState,
+  heat: number
+): LowHeatRewardState {
+  const level = getHeatLevel(heat);
+
+  if (level === 'SAFE') {
+    const newDays = current.consecutiveSafeDays + 1;
+    if (newDays >= LOW_HEAT_REWARD_THRESHOLD && !current.rewardActive) {
+      // Activate reward
+      const rewardTypes: LowHeatRewardType[] = ['PRICE_BONUS', 'EXTRA_INTEL', 'CONTACT_FAVOR'];
+      const rewardType = rewardTypes[Math.floor(Math.random() * rewardTypes.length)];
+      return {
+        consecutiveSafeDays: newDays,
+        rewardActive: true,
+        rewardType
+      };
+    }
+    return {
+      ...current,
+      consecutiveSafeDays: newDays
+    };
+  }
+
+  // Heat rose above safe -> reset
+  return {
+    consecutiveSafeDays: 0,
+    rewardActive: false,
+    rewardType: null
+  };
+}
+
+/**
+ * Get the purchase price bonus from low heat reward (if active)
+ */
+export function getLowHeatPriceBonus(reward: LowHeatRewardState): number {
+  if (reward.rewardActive && reward.rewardType === 'PRICE_BONUS') {
+    return 0.05; // +5% purchase price
+  }
+  return 0;
+}
+
+// ============================================================================
+// v3.6 [BM-8]: Protection Fee System
+// ============================================================================
+
+/**
+ * Calculate current protection fee amount
+ * Formula: baseAmount * (1 + 0.15 * timesPaid)
+ */
+export function calculateProtectionFee(feeState: ProtectionFeeState): number {
+  return Math.round(feeState.baseAmount * (1 + 0.15 * feeState.timesPaid));
+}
+
+/**
+ * Check if protection fee should be requested
+ * Triggers when innocence <= 40 and not in cooldown
+ */
+export function shouldRequestProtectionFee(
+  innocence: number,
+  feeState: ProtectionFeeState,
+  currentDay: number
+): boolean {
+  if (innocence > 40) return false;
+  if (feeState.cooldownUntilDay > currentDay) return false;
+  // Request every 5 days
+  if (feeState.lastRequestDay > 0 && currentDay - feeState.lastRequestDay < 5) return false;
+  return true;
+}
+
+/**
+ * Process protection fee payment
+ */
+export function payProtectionFee(feeState: ProtectionFeeState, currentDay: number): ProtectionFeeState {
+  return {
+    ...feeState,
+    timesPaid: feeState.timesPaid + 1,
+    lastRequestDay: currentDay
+  };
+}
+
+/**
+ * Process protection fee refusal
+ * v3.6 [#41]: Refusal triggers cooldown period with accelerated heat decay
+ */
+export function refuseProtectionFee(feeState: ProtectionFeeState, currentDay: number): ProtectionFeeState {
+  return {
+    ...feeState,
+    timesRefused: feeState.timesRefused + 1,
+    cooldownUntilDay: currentDay + 2, // 2-day cooldown
+    lastRequestDay: currentDay
+  };
+}
+
+/**
+ * Check if in protection fee cooldown period (post-refusal effects)
+ * During cooldown: purchase limit -1, heat decay +1/day
+ */
+export function isInProtectionCooldown(feeState: ProtectionFeeState, currentDay: number): boolean {
+  return feeState.cooldownUntilDay > currentDay;
+}
+
+/**
+ * Get extra search warning probability from consecutive refusals
+ */
+export function getRefusalRiskBonus(feeState: ProtectionFeeState): number {
+  // Each refusal adds 10% to search warning probability
+  return Math.min(0.3, feeState.timesRefused * 0.10); // Cap at 30%
+}
+
+// ============================================================================
+// v3.6 [BM-10]: Moral Echo System
+// ============================================================================
+
+/**
+ * Generate a moral echo effect from a black market transaction
+ */
+export function generateMoralEcho(
+  action: 'NORMAL_SALE' | 'STOLEN_GOODS' | 'BREACH_SALE',
+  innocence: number,
+  currentDay: number
+): MoralEchoBlackmarketEffect | null {
+  // Only generate echoes for significant actions
+  if (action === 'NORMAL_SALE' && innocence > 50) {
+    return null; // Too clean to trigger echo on normal sale
+  }
+
+  let severity: number;
+  let delay: number;
+
+  switch (action) {
+    case 'NORMAL_SALE':
+      severity = 1;
+      delay = 0; // Immediate (contact comment)
+      break;
+    case 'STOLEN_GOODS':
+      severity = 2;
+      delay = 1; // Next day news probability
+      break;
+    case 'BREACH_SALE':
+      severity = 3;
+      delay = 1; // Next day NPC mail
+      break;
+  }
+
+  // Scale severity inversely with innocence
+  // Low innocence = tone shifts from guilt to numbness
+  if (innocence < 50) {
+    severity = Math.max(1, severity - 1); // Reduced guilt, more numbness
+  }
+
+  return {
+    type: action === 'BREACH_SALE' ? 'REPUTATION_LEAK'
+      : action === 'STOLEN_GOODS' ? 'RISK_ESCALATION'
+      : 'HEAT_INCREASE',
+    severity,
+    delay,
+    sourceAction: action,
+    day: currentDay
+  };
 }

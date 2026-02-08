@@ -3,6 +3,8 @@
  *
  * React hook for black market operations.
  * Provides high-level transaction methods and state queries.
+ * v3.6: Added market indicators, narrative risk, low heat rewards,
+ *        protection fee, moral echo, and Lv3+ preview support.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -13,7 +15,9 @@ import {
   MarketPurchaseRequest,
   getHeatLevel,
   getHeatConfig,
-  getUnderworldCommission
+  getUnderworldCommission,
+  MarketIndicator,
+  LowHeatRewardState
 } from '../systems/blackmarket/types';
 import {
   calculatePurchasePrice,
@@ -28,7 +32,13 @@ import {
   getBreachCompensation,
   calculateSaleProfit,
   getHeatDecayRate,
-  getPurchasePriceBonus
+  getPurchasePriceBonus,
+  calculateMarketIndicators,
+  getNarrativeRiskDescription,
+  getLowHeatPriceBonus,
+  calculateProtectionFee,
+  shouldRequestProtectionFee,
+  isInProtectionCooldown
 } from '../systems/blackmarket/blackmarketService';
 import { getBlackMarketContactLevel, getActiveBlackMarketConfig } from '../systems/upgrades';
 
@@ -38,6 +48,7 @@ export const useBlackmarket = () => {
   // Black market trust is inversely proportional to innocence
   // Lower innocence = more trusted in the black market = better commission rates
   const blackMarketTrust = 100 - reputation[ReputationType.INNOCENCE];
+  const innocence = reputation[ReputationType.INNOCENCE];
   const blackMarketLevel = getBlackMarketContactLevel(shopUpgrades);
   const blackMarketConfig = getActiveBlackMarketConfig(shopUpgrades);
 
@@ -47,18 +58,23 @@ export const useBlackmarket = () => {
 
   /**
    * Current heat level info
+   * v3.6 [BM-5]: Now includes narrative description and color
    */
   const heatInfo = useMemo(() => {
     const level = getHeatLevel(blackmarket.heat);
     const config = getHeatConfig(blackmarket.heat);
+    const narrative = getNarrativeRiskDescription(blackmarket.heat);
     return {
       level,
       heat: blackmarket.heat,
-      riskPercent: config.riskPercent,
+      riskPercent: config.riskPercent, // Internal use only
       displayName: config.displayName,
-      description: config.description
+      description: config.description,
+      narrativeDescription: narrative.narrativeDescription,
+      color: narrative.color,
+      heatDecaySuspended: blackmarket.heatDecaySuspended
     };
-  }, [blackmarket.heat]);
+  }, [blackmarket.heat, blackmarket.heatDecaySuspended]);
 
   /**
    * Commission rate info based on reputation
@@ -123,12 +139,67 @@ export const useBlackmarket = () => {
     const priceBonus = getPurchasePriceBonus(blackMarketLevel);
     return {
       level: blackMarketLevel,
-      dailyLimit: totalPurchaseRequests, // Use request count as daily limit
+      dailyLimit: totalPurchaseRequests,
       heatDecay,
       priceBonus,
-      priceBonusPercent: Math.round(priceBonus * 100)
+      priceBonusPercent: Math.round(priceBonus * 100),
+      hasPreview: blackMarketLevel >= 3 // v3.6 [BM-2]: Lv3+ preview
     };
   }, [blackMarketLevel, totalPurchaseRequests]);
+
+  /**
+   * v3.6 [BM-1]: Tag revealed to news system (100% accurate)
+   */
+  const revealedTag = useMemo(() => {
+    return blackmarket.daily.revealedTag;
+  }, [blackmarket.daily.revealedTag]);
+
+  /**
+   * v3.6 [BM-2]: Next day preview tag (Lv3+)
+   */
+  const nextDayPreviewTag = useMemo(() => {
+    return blackMarketLevel >= 3 ? blackmarket.nextDayPreviewTag : null;
+  }, [blackMarketLevel, blackmarket.nextDayPreviewTag]);
+
+  /**
+   * v3.6 [BM-3]: Market trend indicators
+   */
+  const marketIndicators = useMemo((): MarketIndicator[] => {
+    const currentTags = blackmarket.daily.purchaseRequests.map(r => r.tag);
+    return calculateMarketIndicators(currentTags, blackmarket.tagHistory);
+  }, [blackmarket.daily.purchaseRequests, blackmarket.tagHistory]);
+
+  /**
+   * v3.6 [BM-7]: Low heat reward info
+   */
+  const lowHeatReward = useMemo((): LowHeatRewardState => {
+    return blackmarket.lowHeatReward;
+  }, [blackmarket.lowHeatReward]);
+
+  /**
+   * v3.6 [BM-8]: Protection fee info
+   */
+  const protectionFeeInfo = useMemo(() => {
+    const currentAmount = calculateProtectionFee(blackmarket.protectionFee);
+    const shouldRequest = shouldRequestProtectionFee(
+      innocence, blackmarket.protectionFee, state.stats.day
+    );
+    const inCooldown = isInProtectionCooldown(blackmarket.protectionFee, state.stats.day);
+    return {
+      currentAmount,
+      shouldRequest,
+      inCooldown,
+      timesPaid: blackmarket.protectionFee.timesPaid,
+      timesRefused: blackmarket.protectionFee.timesRefused
+    };
+  }, [innocence, blackmarket.protectionFee, state.stats.day]);
+
+  /**
+   * v3.6 [BM-4]: Today's sale penalty from undercover visit
+   */
+  const salePenaltyPercent = useMemo(() => {
+    return blackmarket.daily.salePenaltyPercent;
+  }, [blackmarket.daily.salePenaltyPercent]);
 
   // ========================================================================
   // Item Queries
@@ -202,31 +273,39 @@ export const useBlackmarket = () => {
 
   /**
    * Get price for selling item to market purchase request
-   * Includes upgrade-based price bonus
+   * v3.6 [BM-7]: Includes low heat reward bonus if active
    */
   const getPurchasePrice = useCallback((item: Item, request: MarketPurchaseRequest): number => {
-    return calculatePurchasePrice(item, request, blackMarketTrust, blackMarketLevel);
-  }, [blackMarketTrust, blackMarketLevel]);
+    const lowHeatBonus = getLowHeatPriceBonus(blackmarket.lowHeatReward);
+    // Apply low heat bonus on top of upgrade bonus
+    const adjustedRequest = lowHeatBonus > 0
+      ? { ...request, priceMultiplier: request.priceMultiplier + lowHeatBonus }
+      : request;
+    return calculatePurchasePrice(item, adjustedRequest, blackMarketTrust, blackMarketLevel);
+  }, [blackMarketTrust, blackMarketLevel, blackmarket.lowHeatReward]);
 
   /**
    * Get price for player-initiated sale
-   * Uses deterministic pricing based on item ID + current day
+   * v3.6 [BM-4]: Applies sale penalty from undercover visit
    */
   const getSalePrice = useCallback((item: Item): number => {
     const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
-    return calculateSalePrice(item, multiplier, blackMarketTrust);
+    // v3.6 [BM-4]: Apply sale penalty
+    const adjustedMultiplier = multiplier * (1 - blackmarket.daily.salePenaltyPercent);
+    return calculateSalePrice(item, adjustedMultiplier, blackMarketTrust);
   }, [blackmarket.daily, blackMarketTrust, state.stats.day]);
 
   /**
    * Get estimated sale price range
    */
   const getSalePriceRange = useCallback((item: Item): { min: number; max: number } => {
-    const { saleMultiplierMin, saleMultiplierMax } = blackmarket.daily;
+    const { saleMultiplierMin, saleMultiplierMax, salePenaltyPercent } = blackmarket.daily;
     const { commission } = getUnderworldCommission(blackMarketTrust);
+    const penaltyFactor = 1 - salePenaltyPercent;
 
     return {
-      min: Math.floor(item.realValue * saleMultiplierMin * (1 - commission)),
-      max: Math.floor(item.realValue * saleMultiplierMax * (1 - commission))
+      min: Math.floor(item.realValue * saleMultiplierMin * penaltyFactor * (1 - commission)),
+      max: Math.floor(item.realValue * saleMultiplierMax * penaltyFactor * (1 - commission))
     };
   }, [blackmarket.daily, blackMarketTrust]);
 
@@ -266,7 +345,8 @@ export const useBlackmarket = () => {
     if (!isEligibleForSale(item)) return;
 
     const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
-    const price = calculateSalePrice(item, multiplier, blackMarketTrust);
+    const adjustedMultiplier = multiplier * (1 - blackmarket.daily.salePenaltyPercent);
+    const price = calculateSalePrice(item, adjustedMultiplier, blackMarketTrust);
     const heatGain = getHeatGain(false);
 
     dispatch({
@@ -320,6 +400,14 @@ export const useBlackmarket = () => {
     fulfilledCount,
     totalPurchaseRequests,
     upgradeInfo,
+
+    // v3.6 new state
+    revealedTag,
+    nextDayPreviewTag,
+    marketIndicators,
+    lowHeatReward,
+    protectionFeeInfo,
+    salePenaltyPercent,
 
     // Item queries
     getEligibleItems,

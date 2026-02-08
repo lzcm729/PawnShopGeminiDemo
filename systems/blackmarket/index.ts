@@ -41,5 +41,29 @@ export {
 
   // State management
   processEndOfDay,
-  processStartOfDay
+  processStartOfDay,
+
+  // v3.6 [BM-3]: Market indicators
+  calculateMarketIndicators,
+
+  // v3.6 [BM-5]: Narrative risk descriptions
+  getNarrativeRiskDescription,
+
+  // v3.6 [BM-6]: Risk clue generation
+  generateRiskClues,
+
+  // v3.6 [BM-7]: Low heat rewards
+  updateLowHeatReward,
+  getLowHeatPriceBonus,
+
+  // v3.6 [BM-8]: Protection fee system
+  calculateProtectionFee,
+  shouldRequestProtectionFee,
+  payProtectionFee,
+  refuseProtectionFee,
+  isInProtectionCooldown,
+  getRefusalRiskBonus,
+
+  // v3.6 [BM-10]: Moral echo system
+  generateMoralEcho
 } from './blackmarketService';
