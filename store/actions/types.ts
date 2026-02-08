@@ -17,6 +17,7 @@ import { PhaseEvent } from '../../systems/core/phases';
 import { CustomerInsightResult } from '../../systems/customerInsight';
 import { DailyChallenge } from '../../systems/game/dailyChallenge';
 import { DailySchedule } from '../../systems/npc/customerScheduler';
+import { SkillId, MoralEchoEvent, AbilityState } from '../../systems/characterAbility/types';
 
 // === Action Type Union ===
 
@@ -195,6 +196,19 @@ export type Action =
     // Customer Schedule (出场顺序 v2.1)
     | { type: 'SET_DAILY_SCHEDULE'; payload: DailySchedule }
     | { type: 'ADVANCE_SCHEDULE_SLOT' }
+
+    // Character Ability System (人物能力升级系统)
+    | { type: 'UNLOCK_ABILITY_SKILL'; payload: { skillId: SkillId } }
+    | { type: 'MARK_SKILL_USED'; payload: { skillId: SkillId } }
+    | { type: 'RESET_NEGOTIATION_SKILLS' }
+    | { type: 'RESET_DEPARTURE_SKILLS' }
+    | { type: 'ENQUEUE_MORAL_ECHOES'; payload: MoralEchoEvent[] }
+    | { type: 'PROCESS_MORAL_ECHOES'; payload: { day: number } }
+    | { type: 'UPDATE_WORD_OF_MOUTH'; payload: { failStreak: number; pendingChecks: Array<{ checkDay: number; sourceDay: number }> } }
+    | { type: 'UPDATE_FORESIGHT_FATIGUE'; payload: { totalFlashes: number; fatigued: boolean } }
+    | { type: 'SET_EXTRA_CARE_USED' }
+    | { type: 'SET_ABILITY_STATE'; payload: AbilityState }
+    | { type: 'TOGGLE_ABILITY_PANEL' }
 
     // Debug flags
     | { type: 'DEBUG_TOGGLE_FLOOR' };
