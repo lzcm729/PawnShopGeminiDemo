@@ -1,15 +1,21 @@
 /**
  * 信息信道协议 (Information Channel Protocol)
  *
- * 定义事件链后果到新闻/邮件/回忆录/库存日志四个信道的分发规则。
- * 参考: 新闻系统 v1.2 维度G, 事件链系统 v1.5 章节J
+ * 定义事件链后果到五个信道的分发规则。
+ * 参考: 事件链系统 v1.6 章节J
+ *
+ * 前四个信道是正向信道（事件链向外分发后果）：
+ *   NEWS / MAIL / RETROSPECTIVE / ITEM_LOG
+ *
+ * 第五个信道是反向信道（暴露 NPC 内部状态给玩家）：
+ *   INSIGHT — 实时揭示，仅议价阶段可用，通过洞察技能触发
  */
 
 /** 后果严重程度 */
 export type ConsequenceSeverity = 'MINOR' | 'MODERATE' | 'SEVERE' | 'EXTREME';
 
 /** 信息信道类型 */
-export type InformationChannel = 'NEWS' | 'MAIL' | 'RETROSPECTIVE' | 'ITEM_LOG';
+export type InformationChannel = 'NEWS' | 'MAIL' | 'RETROSPECTIVE' | 'ITEM_LOG' | 'INSIGHT';
 
 /** 信道分配规则 */
 export interface ChannelAllocation {
@@ -19,7 +25,13 @@ export interface ChannelAllocation {
   rules: string[];  // 人类可读的分配规则描述
 }
 
-/** 信道分配矩阵 */
+/**
+ * 信道分配矩阵
+ *
+ * NOTE: INSIGHT channel does NOT participate in this matrix.
+ * Insight is a reverse channel driven by player action (not consequence dispatch).
+ * Its data comes from NPC real-time internal state, not from event chain outcomes.
+ */
 export const CHANNEL_ALLOCATION_MATRIX: ChannelAllocation[] = [
   {
     severity: 'MINOR',
@@ -57,7 +69,9 @@ export const CHANNEL_TIMING_RULES: ChannelTimingRule[] = [
   { rule: 'NEWS_BEFORE_MAIL', description: '同一事件，新闻先于邮件至少1天' },
   { rule: 'MAIL_NO_DUPLICATE_RETRO', description: '邮件不重复回忆录将要说的内容' },
   { rule: 'MAX_TWO_CHANNELS_PER_DAY', description: '同一事件最多在同一天激活两个信道' },
-  { rule: 'MINOR_NO_NEWS', description: '轻微后果不上新闻，避免信息噪音' }
+  { rule: 'MINOR_NO_NEWS', description: '轻微后果不上新闻，避免信息噪音' },
+  { rule: 'INSIGHT_INDEPENDENT', description: '洞察信道独立于分发流程，不受后果分发时序约束' },
+  { rule: 'INSIGHT_NEGOTIATION_ONLY', description: '洞察信道仅在议价阶段可用' }
 ];
 
 /** 后果分发请求 */
