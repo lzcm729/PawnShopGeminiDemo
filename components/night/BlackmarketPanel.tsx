@@ -34,8 +34,14 @@ import {
   CheckCircle2,
   XCircle,
   ChevronRight,
+  ArrowUp,
+  ArrowRight,
+  ArrowDown,
+  Gift,
+  Shield,
+  Minus as MinusIcon,
 } from 'lucide-react';
-import { UNDERWORLD_COMMISSION_TIERS } from '../../systems/blackmarket/types';
+import { UNDERWORLD_COMMISSION_TIERS, MarketIndicator, LowHeatRewardType } from '../../systems/blackmarket/types';
 
 interface BlackmarketPanelProps {
   isOpen: boolean;
@@ -55,6 +61,9 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
     fulfilledCount,
     totalPurchaseRequests,
     upgradeInfo,
+    marketIndicators,
+    lowHeatReward,
+    protectionFeeInfo,
     getEligibleItems,
     getSellableItems,
     hasUnfulfilledPurchaseMatch,
@@ -124,6 +133,17 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
     if (riskEvent?.lockDays) {
       setConfirmAction({ type: 'accept_lockdown' });
     }
+  };
+
+  // Protection fee handlers
+  const handlePayProtectionFee = () => {
+    if (protectionFeeInfo.currentAmount > 0 && state.stats.cash >= protectionFeeInfo.currentAmount) {
+      dispatch({ type: 'BLACKMARKET_PAY_PROTECTION_FEE', payload: { amount: protectionFeeInfo.currentAmount } });
+    }
+  };
+
+  const handleRefuseProtectionFee = () => {
+    dispatch({ type: 'BLACKMARKET_REFUSE_PROTECTION_FEE' });
   };
 
   const executeConfirmAction = () => {
@@ -202,6 +222,23 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
           <CommissionIndicator commissionInfo={commissionInfo} />
         </div>
 
+        {/* UI-6: Low Heat Reward Banner */}
+        {lowHeatReward.rewardActive && lowHeatReward.rewardType && (
+          <LowHeatRewardBanner rewardType={lowHeatReward.rewardType} consecutiveDays={lowHeatReward.consecutiveSafeDays} />
+        )}
+
+        {/* UI-5: Protection Fee Panel */}
+        {protectionFeeInfo.shouldRequest && (
+          <ProtectionFeePanel
+            currentAmount={protectionFeeInfo.currentAmount}
+            timesPaid={protectionFeeInfo.timesPaid}
+            inCooldown={protectionFeeInfo.inCooldown}
+            onPay={handlePayProtectionFee}
+            onRefuse={handleRefuseProtectionFee}
+            canAfford={state.stats.cash >= protectionFeeInfo.currentAmount}
+          />
+        )}
+
         {/* Upgrade Effects Display */}
         {upgradeInfo.level > 0 && (
           <div className="bg-purple-950/30 border border-purple-800 rounded p-3">
@@ -250,6 +287,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
                   onSell={handleSellToPurchase}
                   selectedItemId={selectedItemId}
                   onSelectItem={setSelectedItemId}
+                  marketIndicators={marketIndicators}
                 />
               </div>
             </div>
@@ -307,6 +345,8 @@ interface HeatIndicatorProps {
     riskPercent: number;
     displayName: string;
     description: string;
+    narrativeDescription?: string;
+    color?: string;
   };
   heatDecay?: number;
 }
@@ -319,6 +359,15 @@ const HeatIndicator: React.FC<HeatIndicatorProps> = ({ heatInfo, heatDecay = 1 }
     DANGER: 'text-red-500 border-red-700 bg-red-950/30',
   };
 
+  // UI-4: Color mapping for narrative description
+  const narrativeColorMap: Record<string, string> = {
+    green: 'text-green-400',
+    yellow: 'text-yellow-400',
+    orange: 'text-orange-400',
+    red: 'text-red-400',
+  };
+  const narrativeTextColor = narrativeColorMap[heatInfo.color ?? 'green'] ?? 'text-stone-400';
+
   return (
     <div className={cn('p-4 rounded border', levelColors[heatInfo.level])}>
       <div className="flex items-center gap-3">
@@ -328,16 +377,30 @@ const HeatIndicator: React.FC<HeatIndicatorProps> = ({ heatInfo, heatDecay = 1 }
           <div className="text-xl font-bold">{heatInfo.displayName}</div>
         </div>
       </div>
-      <div className="mt-2 text-sm opacity-70">{heatInfo.description}</div>
+      {/* UI-4: Narrative risk description replaces percentage display */}
+      {heatInfo.narrativeDescription ? (
+        <div className={cn('mt-2 text-sm font-serif italic', narrativeTextColor)}>
+          "{heatInfo.narrativeDescription}"
+        </div>
+      ) : (
+        <div className="mt-2 text-sm opacity-70">{heatInfo.description}</div>
+      )}
+      {/* Heat bar - retains visual gradient effect */}
+      <div className="mt-2 w-full h-1.5 bg-noir-400 rounded-full overflow-hidden">
+        <div
+          className={cn(
+            'h-full transition-all duration-500 rounded-full',
+            heatInfo.level === 'SAFE' && 'bg-green-500',
+            heatInfo.level === 'WATCHED' && 'bg-yellow-500',
+            heatInfo.level === 'WARNING' && 'bg-orange-500',
+            heatInfo.level === 'DANGER' && 'bg-red-500',
+          )}
+          style={{ width: `${Math.min(100, heatInfo.heat * 10)}%` }}
+        />
+      </div>
       <div className="mt-1 text-xs text-stone-500">
         每件出售 +2 热度 | 每日衰减 -{heatDecay}
       </div>
-      {heatInfo.riskPercent > 0 && (
-        <div className="mt-1 text-xs flex items-center gap-1">
-          <ShieldAlert className="w-3 h-3" />
-          每日风险: {heatInfo.riskPercent}%
-        </div>
-      )}
     </div>
   );
 };
@@ -613,6 +676,7 @@ interface PurchaseTabProps {
   onSell: (item: Item, request: MarketPurchaseRequest) => void;
   selectedItemId: string | null;
   onSelectItem: (id: string | null) => void;
+  marketIndicators?: MarketIndicator[];
 }
 
 const PurchaseTab: React.FC<PurchaseTabProps> = ({
@@ -624,6 +688,7 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
   onSell,
   selectedItemId,
   onSelectItem,
+  marketIndicators = [],
 }) => {
   if (requests.length === 0) {
     return (
@@ -665,11 +730,19 @@ const PurchaseTab: React.FC<PurchaseTabProps> = ({
                 )}
                 <div>
                   <div className={cn(
-                    'font-bold',
+                    'font-bold flex items-center gap-1.5',
                     isFulfilled ? 'text-stone-500' : 'text-green-400'
                   )}>
-                    收购: {tagDef?.displayName ?? request.tag}
-                    {isFulfilled && <span className="ml-2 text-xs">(已完成)</span>}
+                    <span>收购: {tagDef?.displayName ?? request.tag}</span>
+                    {/* UI-3: Market trend indicator arrow */}
+                    {!isFulfilled && (() => {
+                      const indicator = marketIndicators.find(m => m.tag === request.tag);
+                      if (!indicator) return null;
+                      if (indicator.trend === 'RISING') return <ArrowUp className="w-3.5 h-3.5 text-green-400" />;
+                      if (indicator.trend === 'FALLING') return <ArrowDown className="w-3.5 h-3.5 text-red-400" />;
+                      return <ArrowRight className="w-3.5 h-3.5 text-stone-500" />;
+                    })()}
+                    {isFulfilled && <span className="ml-1 text-xs">(已完成)</span>}
                   </div>
                   <div className={cn(
                     'text-xs',
@@ -902,6 +975,118 @@ const TodaySalesSummary: React.FC<TodaySalesSummaryProps> = ({ sales }) => {
     </div>
   );
 };
+
+// ============================================================================
+// UI-5: Protection Fee Panel
+// ============================================================================
+
+interface ProtectionFeePanelProps {
+  currentAmount: number;
+  timesPaid: number;
+  inCooldown: boolean;
+  onPay: () => void;
+  onRefuse: () => void;
+  canAfford: boolean;
+}
+
+const ProtectionFeePanel: React.FC<ProtectionFeePanelProps> = ({
+  currentAmount,
+  timesPaid,
+  inCooldown,
+  onPay,
+  onRefuse,
+  canAfford,
+}) => {
+  if (inCooldown) {
+    return (
+      <div className="bg-stone-900/50 border border-stone-700 p-4 rounded flex items-center gap-3">
+        <Shield className="w-5 h-5 text-stone-500" />
+        <div className="flex-1">
+          <div className="text-sm text-stone-400">联系人暂时不会来找你</div>
+          <div className="text-xs text-stone-500 mt-0.5">冷却中...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-amber-950/30 border border-amber-800 p-4 rounded">
+      <div className="flex items-start gap-3">
+        <Shield className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <div className="font-bold text-amber-400 text-sm">保护费</div>
+          <div className="text-xs text-amber-300/70 mt-1">
+            有人来收保护费了。
+          </div>
+          <div className="mt-2 flex items-center gap-4">
+            <span className="text-lg font-mono font-bold text-amber-400">${currentAmount}</span>
+            {timesPaid > 0 && (
+              <span className="text-xs text-stone-500">
+                已连续支付 {timesPaid} 次
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3 mt-3">
+            <Button
+              onClick={onPay}
+              disabled={!canAfford}
+              className="bg-amber-900 hover:bg-amber-800 border-amber-700 text-sm"
+            >
+              <Banknote className="w-4 h-4 mr-1" />
+              支付
+            </Button>
+            <Button
+              onClick={onRefuse}
+              className="bg-stone-800 hover:bg-stone-700 border-stone-600 text-sm"
+            >
+              <MinusIcon className="w-4 h-4 mr-1" />
+              拒绝
+            </Button>
+          </div>
+          {!canAfford && (
+            <div className="text-xs text-red-400 mt-1">现金不足</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// UI-6: Low Heat Reward Banner
+// ============================================================================
+
+const LOW_HEAT_REWARD_LABELS: Record<LowHeatRewardType, { label: string; description: string }> = {
+  PRICE_BONUS: { label: '收购溢价', description: '联系人很满意，今日收购价 +5%' },
+  EXTRA_INTEL: { label: '额外情报', description: '联系人透露了明日的一个收购方向' },
+  CONTACT_FAVOR: { label: '人情帐', description: '联系人欠你一个人情' },
+};
+
+interface LowHeatRewardBannerProps {
+  rewardType: LowHeatRewardType;
+  consecutiveDays: number;
+}
+
+const LowHeatRewardBanner: React.FC<LowHeatRewardBannerProps> = ({ rewardType, consecutiveDays }) => {
+  const info = LOW_HEAT_REWARD_LABELS[rewardType];
+
+  return (
+    <div className="bg-green-950/30 border border-green-700 p-3 rounded flex items-center gap-3">
+      <Gift className="w-5 h-5 text-green-400 shrink-0" />
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-green-400">{info.label}</span>
+          <span className="text-[10px] text-stone-500">连续安全 {consecutiveDays} 天</span>
+        </div>
+        <div className="text-xs text-green-300/70 mt-0.5">{info.description}</div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// Confirm Dialog
+// ============================================================================
 
 interface ConfirmDialogProps {
   action: {

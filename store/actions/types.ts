@@ -176,6 +176,8 @@ export type Action =
     | { type: 'BLACKMARKET_PROCESS_DAY_END'; payload: { riskEvent: RiskEvent | null } }
     | { type: 'BLACKMARKET_REFRESH_DAILY' }
     | { type: 'SET_BLACKMARKET_STATE'; payload: BlackmarketState }
+    | { type: 'BLACKMARKET_PAY_PROTECTION_FEE'; payload: { amount: number } }
+    | { type: 'BLACKMARKET_REFUSE_PROTECTION_FEE' }
 
     // Stolen goods & Police investigation (赃物收购 & 警方调查)
     | { type: 'STOLEN_ITEM_DECISION'; payload: { accept: boolean } }

@@ -9,7 +9,9 @@ import { Action } from '../actions/types';
 import {
   generateDailyBlackmarketState,
   processStartOfDay,
-  applyHeatDecay
+  applyHeatDecay,
+  payProtectionFee,
+  refuseProtectionFee
 } from '../../systems/blackmarket/blackmarketService';
 import { getBlackMarketContactLevel } from '../../systems/upgrades/utils';
 
@@ -286,6 +288,46 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       return {
         ...state,
         blackmarket: action.payload
+      };
+    }
+
+    case 'BLACKMARKET_PAY_PROTECTION_FEE': {
+      const { amount } = action.payload;
+      if (state.stats.cash < amount) return state;
+
+      const newFeeState = payProtectionFee(state.blackmarket.protectionFee, state.stats.day);
+
+      return {
+        ...state,
+        stats: {
+          ...state.stats,
+          cash: state.stats.cash - amount
+        },
+        blackmarket: {
+          ...state.blackmarket,
+          protectionFee: newFeeState
+        },
+        dayEvents: [
+          ...state.dayEvents,
+          `[黑市] 支付了 $${amount} 保护费`
+        ]
+      };
+    }
+
+    case 'BLACKMARKET_REFUSE_PROTECTION_FEE': {
+      const newFeeState = refuseProtectionFee(state.blackmarket.protectionFee, state.stats.day);
+
+      return {
+        ...state,
+        blackmarket: {
+          ...state.blackmarket,
+          heat: Math.min(10, state.blackmarket.heat + 1),
+          protectionFee: newFeeState
+        },
+        dayEvents: [
+          ...state.dayEvents,
+          `[黑市] 拒绝支付保护费，热度 +1`
+        ]
       };
     }
 

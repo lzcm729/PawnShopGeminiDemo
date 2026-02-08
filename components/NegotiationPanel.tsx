@@ -17,7 +17,7 @@ import { playSfx } from '../systems/game/audio';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { RollingNumber } from './ui/RollingNumber';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
-import { DISPOSITION_INFO } from '../systems/customerInsight';
+import { DISPOSITION_INFO, SHOW_DISPOSITION_LABEL_IN_NEGOTIATION } from '../systems/customerInsight';
 import { PushPullResult } from '../systems/negotiation/pushPull';
 import { useRateDisplay } from './ui/RateDisplayContext';
 
@@ -190,30 +190,38 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                     {/* Bottom: Insight Result Area */}
                     <div className="flex-1 flex items-stretch min-h-[94px]">
                         {insightResult ? (
-                            /* Insight Result - Two-column layout: Left=Type, Right=Details */
+                            /* Insight Result - behavioral descriptions (I-9: no explicit labels) */
                             <div className="flex-1 flex animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                {/* Left Column: Disposition Type (Icon + Label, vertically centered) */}
-                                <div className="flex flex-col items-center justify-center px-4 py-2 border-r border-noir-400/30 min-w-[80px]">
-                                    <span className="text-2xl mb-1">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
-                                    <span className={cn("text-xs font-bold text-center", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
-                                        {DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.label || insightResult.disposition}
-                                    </span>
-                                </div>
+                                {/* Left Column: Disposition Type - only show if labels are enabled */}
+                                {SHOW_DISPOSITION_LABEL_IN_NEGOTIATION && (
+                                    <div className="flex flex-col items-center justify-center px-4 py-2 border-r border-noir-400/30 min-w-[80px]">
+                                        <span className="text-2xl mb-1">{DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.icon || '?'}</span>
+                                        <span className={cn("text-xs font-bold text-center", DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.color || 'text-amber-400')}>
+                                            {DISPOSITION_INFO[insightResult.disposition as keyof typeof DISPOSITION_INFO]?.label || insightResult.disposition}
+                                        </span>
+                                    </div>
+                                )}
 
-                                {/* Right Column: Three rows of content */}
+                                {/* Right Column: Behavioral observations */}
                                 <div className="flex-1 flex flex-col">
-                                    {/* Row 1: Description (dispositionText) */}
+                                    {/* Row 1: Behavioral description (dispositionText) */}
                                     <div className="flex-1 px-3 py-1.5 border-b border-noir-400/20 flex items-center">
-                                        <p className="font-serif text-xs text-noir-txt-secondary leading-snug italic line-clamp-1" title={insightResult.dispositionText}>
-                                            "{insightResult.dispositionText}"
-                                        </p>
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <Eye className="w-3 h-3 text-amber-500/60 shrink-0" />
+                                            <p className="font-serif text-xs text-noir-txt-secondary leading-snug italic line-clamp-1 truncate" title={insightResult.dispositionText}>
+                                                "{insightResult.dispositionText}"
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    {/* Row 2: Floor hint */}
+                                    {/* Row 2: Floor hint behavioral description */}
                                     <div className="flex-1 px-3 py-1.5 border-b border-noir-400/20 flex items-center">
-                                        <p className="font-serif text-[11px] text-amber-500/90 leading-snug line-clamp-1" title={insightResult.floorHint}>
-                                            {insightResult.floorHint}
-                                        </p>
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <Eye className="w-3 h-3 text-purple-500/60 shrink-0" />
+                                            <p className="font-serif text-[11px] text-amber-500/90 leading-snug italic line-clamp-1 truncate" title={insightResult.floorHint}>
+                                                "{insightResult.floorHint}"
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {/* Row 3: Moral context (or empty placeholder) */}

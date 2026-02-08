@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
-import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, AlertTriangle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock, Shield, Briefcase, Skull } from 'lucide-react';
+import { Moon, Mail, Package, Calendar, Power, Activity, AlertCircle, AlertTriangle, Heart, Eye, Wrench, Store, ClipboardList, ToggleRight, Lock, Shield, Briefcase, Skull, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
@@ -13,12 +13,14 @@ import { InsightPanel } from './night/InsightPanel';
 import { WorkshopPanel } from './night/WorkshopPanel';
 import { AppointmentBoardPanel } from './night/AppointmentBoardPanel';
 import { BlackmarketPanel } from './night/BlackmarketPanel';
+import { AbilityPanel } from './night/AbilityPanel';
 import { UpgradeShopModal } from './UpgradeShopModal';
 import { FacilityControlModal } from './FacilityControlModal';
 import { getHeatLevel } from '../systems/blackmarket/types';
 import { useSettlementCeremony } from '../hooks/useFinancialProjection';
 import { Tooltip } from './ui/Tooltip';
 import { ReputationType } from '../systems/core/types';
+import { getNarrativeAnchor } from '../systems/reputation';
 import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost, hasBlackMarketContact, hasPrecisionBench, getUpgradeLevel, getEffectiveNightEnergy, getBlackMarketContactLevel } from '../systems/upgrades';
 import { GAME_CONFIG } from '../systems/game/config';
 
@@ -37,6 +39,7 @@ export const NightDashboard: React.FC = () => {
     // Use global state for Workshop and Insight panels
     const showInsightPanel = state.showInsight;
     const showWorkshopPanel = state.showWorkshop;
+    const showAbilityPanel = state.showAbilityPanel;
 
     // Check if appointment board is unlocked
     const hasBoardUnlocked = hasAppointmentBoard(state.shopUpgrades);
@@ -342,6 +345,22 @@ export const NightDashboard: React.FC = () => {
                                 </span>
                                 <span className="text-[9px] text-purple-500/70 mt-1">
                                     研究物品获取精魄
+                                </span>
+                            </div>
+                        </button>
+
+                        {/* Cultivation / 修行 Button */}
+                        <button
+                            onClick={() => { playSfx('CLICK'); dispatch({ type: 'TOGGLE_ABILITY_PANEL' }); }}
+                            className="h-32 border border-amber-900 bg-stone-900/50 hover:bg-amber-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group"
+                        >
+                            <Sparkles className="w-8 h-8 text-amber-500 group-hover:text-amber-300 group-hover:scale-110 transition-transform" />
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs uppercase tracking-widest group-hover:text-white">
+                                    修行 (Cultivation)
+                                </span>
+                                <span className="text-[9px] text-amber-500/70 mt-1">
+                                    学习技能提升能力
                                 </span>
                             </div>
                         </button>
@@ -656,33 +675,42 @@ export const NightDashboard: React.FC = () => {
                     <div className="flex flex-col gap-3 mb-6 w-full max-w-[200px]">
                         <div className="text-[10px] uppercase text-stone-600 tracking-[0.2em] text-center">Reputation</div>
 
-                        <Tooltip content={<div className="text-xs"><span className="font-bold">Humanity:</span> {reputation[ReputationType.HUMANITY]}%</div>}>
-                            <div className="flex items-center gap-3">
-                                <Heart className="w-4 h-4 text-red-400 shrink-0" />
-                                <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-red-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.HUMANITY]}%` }}></div>
+                        <Tooltip content={<div className="text-xs"><span className="font-bold">Humanity:</span> {reputation[ReputationType.HUMANITY]}%{(() => { const a = getNarrativeAnchor(ReputationType.HUMANITY, reputation[ReputationType.HUMANITY]); return a ? <><br/><span className="italic text-stone-400">{a.description}</span></> : null; })()}</div>}>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-3">
+                                    <Heart className="w-4 h-4 text-red-400 shrink-0" />
+                                    <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-red-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.HUMANITY]}%` }}></div>
+                                    </div>
+                                    <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.HUMANITY]}%</span>
                                 </div>
-                                <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.HUMANITY]}%</span>
+                                {(() => { const a = getNarrativeAnchor(ReputationType.HUMANITY, reputation[ReputationType.HUMANITY]); return a ? <div className="text-[9px] text-red-400/60 font-serif italic pl-7 truncate" title={a.description}>{a.tierLabel}: {a.description}</div> : null; })()}
                             </div>
                         </Tooltip>
 
-                        <Tooltip content={<div className="text-xs"><span className="font-bold">Credibility:</span> {reputation[ReputationType.CREDIBILITY]}%</div>}>
-                            <div className="flex items-center gap-3">
-                                <Briefcase className="w-4 h-4 text-amber-400 shrink-0" />
-                                <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.CREDIBILITY]}%` }}></div>
+                        <Tooltip content={<div className="text-xs"><span className="font-bold">Credibility:</span> {reputation[ReputationType.CREDIBILITY]}%{(() => { const a = getNarrativeAnchor(ReputationType.CREDIBILITY, reputation[ReputationType.CREDIBILITY]); return a ? <><br/><span className="italic text-stone-400">{a.description}</span></> : null; })()}</div>}>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-3">
+                                    <Briefcase className="w-4 h-4 text-amber-400 shrink-0" />
+                                    <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.CREDIBILITY]}%` }}></div>
+                                    </div>
+                                    <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.CREDIBILITY]}%</span>
                                 </div>
-                                <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.CREDIBILITY]}%</span>
+                                {(() => { const a = getNarrativeAnchor(ReputationType.CREDIBILITY, reputation[ReputationType.CREDIBILITY]); return a ? <div className="text-[9px] text-amber-400/60 font-serif italic pl-7 truncate" title={a.description}>{a.tierLabel}: {a.description}</div> : null; })()}
                             </div>
                         </Tooltip>
 
-                        <Tooltip content={<div className="text-xs"><span className="font-bold">Innocence:</span> {reputation[ReputationType.INNOCENCE]}%</div>}>
-                            <div className="flex items-center gap-3">
-                                <Shield className="w-4 h-4 text-blue-400 shrink-0" />
-                                <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-blue-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.INNOCENCE]}%` }}></div>
+                        <Tooltip content={<div className="text-xs"><span className="font-bold">Innocence:</span> {reputation[ReputationType.INNOCENCE]}%{(() => { const a = getNarrativeAnchor(ReputationType.INNOCENCE, reputation[ReputationType.INNOCENCE]); return a ? <><br/><span className="italic text-stone-400">{a.description}</span></> : null; })()}</div>}>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-3">
+                                    <Shield className="w-4 h-4 text-blue-400 shrink-0" />
+                                    <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-blue-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.INNOCENCE]}%` }}></div>
+                                    </div>
+                                    <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.INNOCENCE]}%</span>
                                 </div>
-                                <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.INNOCENCE]}%</span>
+                                {(() => { const a = getNarrativeAnchor(ReputationType.INNOCENCE, reputation[ReputationType.INNOCENCE]); return a ? <div className="text-[9px] text-blue-400/60 font-serif italic pl-7 truncate" title={a.description}>{a.tierLabel}: {a.description}</div> : null; })()}
                             </div>
                         </Tooltip>
                     </div>
@@ -733,6 +761,12 @@ export const NightDashboard: React.FC = () => {
             <BlackmarketPanel
                 isOpen={showBlackmarket}
                 onClose={() => setShowBlackmarket(false)}
+            />
+
+            {/* Ability Panel Modal */}
+            <AbilityPanel
+                isOpen={showAbilityPanel}
+                onClose={() => dispatch({ type: 'TOGGLE_ABILITY_PANEL' })}
             />
         </div>
     );

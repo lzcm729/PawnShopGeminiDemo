@@ -1,24 +1,30 @@
 /**
  * InsightModal - Displays customer insight results
  *
- * Shows the player's psychological reading of the current customer:
- * - Disposition (desperate/firm/bluffing/sincere) with icon
- * - Descriptive text about their mental state
- * - Floor hint about their price bottom line
+ * v1.4 (UI-2 refactored):
+ * - Removes explicit disposition labels (I-9: SHOW_DISPOSITION_LABEL_IN_NEGOTIATION = false)
+ * - Shows behavioral descriptions instead of labels
+ * - Floor hint uses behavioral description text (not direct price hints)
  * - Moral context (for story customers)
  */
 
 import React from 'react';
 import { X, Eye, Heart } from 'lucide-react';
 import { Button } from './ui/Button';
-import { CustomerInsightResult, DISPOSITION_INFO } from '../systems/customerInsight';
+import {
+  CustomerInsightResult,
+  DISPOSITION_INFO,
+  SHOW_DISPOSITION_LABEL_IN_NEGOTIATION,
+  ForesightInfo,
+} from '../systems/customerInsight';
 
 interface InsightModalProps {
   result: CustomerInsightResult;
   onClose: () => void;
+  foresight?: ForesightInfo | null;
 }
 
-export const InsightModal: React.FC<InsightModalProps> = ({ result, onClose }) => {
+export const InsightModal: React.FC<InsightModalProps> = ({ result, onClose, foresight }) => {
   const dispositionInfo = DISPOSITION_INFO[result.disposition];
 
   return (
@@ -42,38 +48,45 @@ export const InsightModal: React.FC<InsightModalProps> = ({ result, onClose }) =
         {/* Content */}
         <div className="p-6 space-y-5">
 
-          {/* Disposition */}
+          {/* Disposition - label only shown if SHOW_DISPOSITION_LABEL_IN_NEGOTIATION is true */}
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{dispositionInfo.icon}</span>
-              <div>
-                <div className="text-xs text-noir-txt-muted uppercase tracking-wider mb-0.5">心理倾向</div>
-                <div className={`text-xl font-bold ${dispositionInfo.color}`}>
-                  {dispositionInfo.label}
+            {SHOW_DISPOSITION_LABEL_IN_NEGOTIATION && (
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{dispositionInfo.icon}</span>
+                <div>
+                  <div className="text-xs text-noir-txt-muted uppercase tracking-wider mb-0.5">心理倾向</div>
+                  <div className={`text-xl font-bold ${dispositionInfo.color}`}>
+                    {dispositionInfo.label}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Disposition Description */}
-            <div className="bg-noir-100 border-l-2 border-noir-400 p-4">
-              <p className="font-serif text-sm text-noir-txt-secondary leading-relaxed italic">
-                "{result.dispositionText}"
-              </p>
+            {/* Behavioral Description (Layer 1) */}
+            <div className="space-y-1">
+              <div className="text-xs text-noir-txt-muted uppercase tracking-wider">行为观察</div>
+              <div className="bg-noir-100 border-l-2 border-amber-600/50 p-4">
+                <p className="font-serif text-sm text-noir-txt-secondary leading-relaxed italic">
+                  "{result.dispositionText}"
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Divider */}
           <div className="border-t border-noir-400" />
 
-          {/* Floor Hint */}
+          {/* Floor Hint - now uses behavioral description text (Layer 2) */}
           <div className="space-y-2">
-            <div className="text-xs text-noir-txt-muted uppercase tracking-wider">底线暗示</div>
-            <p className="font-serif text-sm text-amber-500/90 leading-relaxed">
-              {result.floorHint}
-            </p>
+            <div className="text-xs text-noir-txt-muted uppercase tracking-wider">底线观察</div>
+            <div className="bg-noir-100 border-l-2 border-purple-600/50 p-4">
+              <p className="font-serif text-sm text-amber-500/90 leading-relaxed italic">
+                "{result.floorHint}"
+              </p>
+            </div>
           </div>
 
-          {/* Moral Context (if available) */}
+          {/* Moral Context (Layer 3, if available) */}
           {result.moralContext && (
             <>
               <div className="border-t border-noir-400" />
@@ -88,6 +101,14 @@ export const InsightModal: React.FC<InsightModalProps> = ({ result, onClose }) =
             </>
           )}
 
+          {/* Foresight (Layer 4, UI-7) */}
+          {foresight && (
+            <>
+              <div className="border-t border-noir-400" />
+              <ForesightDisplay foresight={foresight} />
+            </>
+          )}
+
         </div>
 
         {/* Footer */}
@@ -98,6 +119,59 @@ export const InsightModal: React.FC<InsightModalProps> = ({ result, onClose }) =
         </div>
 
       </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// UI-7: Foresight Info Display (洞若观火)
+// ============================================================================
+
+const FORESIGHT_STYLES: Record<'low' | 'medium' | 'high', {
+  border: string;
+  bg: string;
+  text: string;
+  label: string;
+  icon: string;
+}> = {
+  high: {
+    border: 'border-amber-600/60',
+    bg: 'bg-amber-950/20',
+    text: 'text-amber-300',
+    label: '强烈直觉',
+    icon: '🔥',
+  },
+  medium: {
+    border: 'border-indigo-600/50',
+    bg: 'bg-indigo-950/20',
+    text: 'text-indigo-300',
+    label: '模糊预感',
+    icon: '🌊',
+  },
+  low: {
+    border: 'border-stone-600/50',
+    bg: 'bg-stone-900/20',
+    text: 'text-stone-400',
+    label: '一闪而过',
+    icon: '💨',
+  },
+};
+
+const ForesightDisplay: React.FC<{ foresight: ForesightInfo }> = ({ foresight }) => {
+  const style = FORESIGHT_STYLES[foresight.confidence];
+
+  return (
+    <div className={`${style.bg} border ${style.border} rounded p-4`}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-lg">{style.icon}</span>
+        <div className="text-xs uppercase tracking-wider text-noir-txt-muted">
+          洞若观火
+          <span className={`ml-2 ${style.text} font-bold`}>{style.label}</span>
+        </div>
+      </div>
+      <p className={`font-serif text-sm leading-relaxed italic ${style.text}`}>
+        {foresight.predictionText}
+      </p>
     </div>
   );
 };

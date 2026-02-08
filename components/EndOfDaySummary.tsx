@@ -7,6 +7,7 @@ import { Moon, TrendingUp, AlertOctagon, DollarSign, PackageX, Power, ArrowRight
 import { ReputationType, ItemStatus } from '../types';
 import { cn } from '../lib/utils';
 import { getDisplayName } from '../systems/items/tagUtils';
+import { getNarrativeAnchor } from '../systems/reputation';
 
 export const EndOfDaySummary: React.FC = () => {
   const { state } = useGame();
@@ -170,18 +171,26 @@ export const EndOfDaySummary: React.FC = () => {
            {/* REPUTATION MATRIX */}
            <div className="grid grid-cols-3 gap-4">
                {[
-                   { label: 'Humanity', value: reputation[ReputationType.HUMANITY], color: 'text-rose-500', bar: 'bg-rose-600' },
-                   { label: 'Credibility', value: reputation[ReputationType.CREDIBILITY], color: 'text-amber-500', bar: 'bg-amber-600' },
-                   { label: 'Innocence', value: reputation[ReputationType.INNOCENCE], color: 'text-blue-500', bar: 'bg-blue-600' },
-               ].map(rep => (
-                   <div key={rep.label} className="bg-noir-200 border border-noir-400 p-4 rounded flex flex-col items-center justify-center">
-                       <div className="text-2xl font-black text-white mb-1">{rep.value}</div>
-                       <div className={cn("text-[10px] uppercase font-bold tracking-widest mb-3", rep.color)}>{rep.label}</div>
-                       <div className="w-full h-1.5 bg-noir-400 rounded-full overflow-hidden">
-                           <div className={cn("h-full transition-all duration-1000", rep.bar)} style={{ width: `${rep.value}%` }}></div>
+                   { label: 'Humanity', type: ReputationType.HUMANITY, value: reputation[ReputationType.HUMANITY], color: 'text-rose-500', bar: 'bg-rose-600', anchorColor: 'text-rose-400/60' },
+                   { label: 'Credibility', type: ReputationType.CREDIBILITY, value: reputation[ReputationType.CREDIBILITY], color: 'text-amber-500', bar: 'bg-amber-600', anchorColor: 'text-amber-400/60' },
+                   { label: 'Innocence', type: ReputationType.INNOCENCE, value: reputation[ReputationType.INNOCENCE], color: 'text-blue-500', bar: 'bg-blue-600', anchorColor: 'text-blue-400/60' },
+               ].map(rep => {
+                   const anchor = getNarrativeAnchor(rep.type, rep.value);
+                   return (
+                       <div key={rep.label} className="bg-noir-200 border border-noir-400 p-4 rounded flex flex-col items-center justify-center">
+                           <div className="text-2xl font-black text-white mb-1">{rep.value}</div>
+                           <div className={cn("text-[10px] uppercase font-bold tracking-widest mb-1", rep.color)}>{rep.label}</div>
+                           {anchor && (
+                               <div className={cn("text-[9px] font-serif italic mb-2 text-center leading-tight", rep.anchorColor)}>
+                                   {anchor.description}
+                               </div>
+                           )}
+                           <div className="w-full h-1.5 bg-noir-400 rounded-full overflow-hidden">
+                               <div className={cn("h-full transition-all duration-1000", rep.bar)} style={{ width: `${rep.value}%` }}></div>
+                           </div>
                        </div>
-                   </div>
-               ))}
+                   );
+               })}
            </div>
 
            {/* BACKROOM INVENTORY (FORFEIT) */}
