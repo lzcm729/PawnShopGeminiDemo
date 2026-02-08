@@ -90,7 +90,11 @@ const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number) =
   return minPrincipal * threshold;
 };
 
-export const useNegotiation = (customer: Customer | null): UseNegotiationReturn => {
+/**
+ * @param insightConcessionModifier (I-7) Optional modifier from insight system
+ *   to NPC concession probability. Pass getInsightPushPullModifier result.
+ */
+export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0): UseNegotiationReturn => {
   // Logic State
   const [patience, setPatience] = useState<number>(3);
   const [mood, setMood] = useState<NegotiationMood>('Neutral');
@@ -314,7 +318,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
     let pushPullResult: PushPullResult | null = null;
 
     if (status !== 'ACCEPTED' && status !== 'INSULT') {
-        // Execute push-pull judgment
+        // Execute push-pull judgment (I-7: pass insight modifier)
         pushPullResult = executePushPull(
             customer.behaviorTags,
             offerPrincipal,
@@ -322,7 +326,8 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
             currentAskPrice,
             minPrincipal,
             persistCount,
-            npcConcessionCount
+            npcConcessionCount,
+            insightConcessionModifier
         );
 
         // Update persist count based on player move
@@ -380,7 +385,7 @@ export const useNegotiation = (customer: Customer | null): UseNegotiationReturn 
         patienceRemaining: remaining
     };
 
-  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount]);
+  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier]);
 
   return {
     patience,
