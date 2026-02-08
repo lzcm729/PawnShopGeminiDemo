@@ -182,6 +182,11 @@ export interface PushPullResult {
     patienceLossChance: number;     // 本轮耐心消耗概率（供 UI 显示/调试）
 }
 
+/**
+ * @param insightConcessionModifier (I-7) Optional modifier from insight system.
+ *   Added to concession chance after base calculation.
+ *   e.g. +0.20 for desperate, +0.15 for bluffing, etc.
+ */
 export const executePushPull = (
     behaviorTags: BehaviorTag[],
     currentOffer: number,
@@ -189,7 +194,8 @@ export const executePushPull = (
     currentAsk: number,
     minimumAmount: number,
     persistCount: number,
-    concessionCount: number
+    concessionCount: number,
+    insightConcessionModifier: number = 0
 ): PushPullResult => {
     const style = getPushPullStyle(behaviorTags);
     const playerMove = determinePlayerMove(currentOffer, lastOffer);
@@ -214,8 +220,11 @@ export const executePushPull = (
         };
     }
 
-    // 计算让步概率
-    const chance = calculateConcessionChance(style, playerMove, persistCount, concessionCount);
+    // 计算让步概率 (I-7: apply insight modifier)
+    let chance = calculateConcessionChance(style, playerMove, persistCount, concessionCount);
+    if (insightConcessionModifier !== 0) {
+        chance = Math.min(1.0, Math.max(0, chance + insightConcessionModifier));
+    }
 
     // 掷骰判定
     const roll = Math.random();

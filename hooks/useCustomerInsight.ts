@@ -1,8 +1,13 @@
 /**
- * Customer Insight Hook (洞察客户 Hook)
+ * Customer Insight Hook (洞察客户 Hook) v1.4
  *
  * Provides React interface for the customer insight ability.
  * Allows players to "read" customer psychology during negotiation.
+ *
+ * Changes from v1.0:
+ * - Uses probabilistic patience cost (I-3)
+ * - Returns patienceCostProbability instead of expectedPatienceCost
+ * - Exposes insight reward and push-pull modifier functions (I-4, I-7)
  *
  * Usage:
  * ```tsx
@@ -24,7 +29,11 @@ import {
   CustomerInsightStatus,
   InsightBlockReason,
   DISPOSITION_INFO,
-  calculatePatienceCost,
+  getPatienceCostProbability,
+  calculateInsightReward,
+  getInsightPushPullModifier,
+  InsightReward,
+  InsightPushPullModifier,
 } from '../systems/customerInsight';
 
 // ============================================================================
@@ -62,6 +71,12 @@ interface UseCustomerInsightReturn {
 
   /** Get disposition display info */
   getDispositionInfo: typeof DISPOSITION_INFO;
+
+  /** Get insight reward for the current insight (I-4) */
+  getInsightReward: () => InsightReward | null;
+
+  /** Get push-pull modifier based on current insight (I-7) */
+  getPushPullModifier: () => InsightPushPullModifier | null;
 }
 
 // ============================================================================
@@ -80,7 +95,7 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
         canUse: false,
         blockReason: 'NO_CUSTOMER',
         apCost: INSIGHT_AP_COST,
-        expectedPatienceCost: 0,
+        patienceCostProbability: 0,
       };
     }
 
@@ -90,7 +105,7 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
         canUse: false,
         blockReason: 'WRONG_PHASE',
         apCost: INSIGHT_AP_COST,
-        expectedPatienceCost: 0,
+        patienceCostProbability: 0,
       };
     }
 
@@ -100,7 +115,7 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
         canUse: false,
         blockReason: 'ALREADY_USED',
         apCost: INSIGHT_AP_COST,
-        expectedPatienceCost: 0,
+        patienceCostProbability: 0,
       };
     }
 
@@ -110,7 +125,7 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
         canUse: false,
         blockReason: 'NO_AP',
         apCost: INSIGHT_AP_COST,
-        expectedPatienceCost: calculatePatienceCost(currentCustomer.behaviorTags),
+        patienceCostProbability: getPatienceCostProbability(currentCustomer.behaviorTags),
       };
     }
 
@@ -118,7 +133,7 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
     return {
       canUse: true,
       apCost: INSIGHT_AP_COST,
-      expectedPatienceCost: calculatePatienceCost(currentCustomer.behaviorTags),
+      patienceCostProbability: getPatienceCostProbability(currentCustomer.behaviorTags),
     };
   }, [currentCustomer, currentCustomerInsight, phase, stats.actionPoints]);
 
@@ -133,13 +148,13 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
       return null;
     }
 
-    // Generate insight result
+    // Generate insight result (layer 1 for basic insight)
     const result = generateCustomerInsight(currentCustomer);
 
     // Consume AP
     dispatch({ type: 'CONSUME_AP', payload: INSIGHT_AP_COST });
 
-    // Apply patience cost if any
+    // Apply patience cost if triggered (I-3: probabilistic)
     if (result.patienceCost > 0) {
       dispatch({
         type: 'UPDATE_CUSTOMER_STATUS',
@@ -178,6 +193,22 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
     }
   }, []);
 
+  // Get insight reward (I-4)
+  const getInsightReward = useCallback((): InsightReward | null => {
+    if (!currentCustomerInsight) return null;
+    return calculateInsightReward(
+      currentCustomerInsight.disposition,
+      currentCustomerInsight.revealedLayer,
+      INSIGHT_AP_COST
+    );
+  }, [currentCustomerInsight]);
+
+  // Get push-pull modifier (I-7)
+  const getPushPullModifier = useCallback((): InsightPushPullModifier | null => {
+    if (!currentCustomerInsight) return null;
+    return getInsightPushPullModifier(currentCustomerInsight.disposition);
+  }, [currentCustomerInsight]);
+
   return {
     insightResult: currentCustomerInsight,
     status,
@@ -186,5 +217,7 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
     clearInsight,
     getBlockReasonText,
     getDispositionInfo: DISPOSITION_INFO,
+    getInsightReward,
+    getPushPullModifier,
   };
 };
