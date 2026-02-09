@@ -185,6 +185,36 @@ export function getNewsPriceModifier(activeNews: ActiveNewsInstance[], itemCateg
     return 1 + totalPercentage / 100;
 }
 
+/** Map news effect parameter names to G2 attribute tags */
+const PARAMETER_TO_TAG: Record<string, string> = {
+    gold_price: 'GOLD',
+    mechanical_price: 'MECHANICAL',
+    artistic_price: 'ARTISTIC',
+    vintage_price: 'VINTAGE_REAL',
+};
+
+/**
+ * Get the aggregate price modifier for an item's G2 attribute tags from active news.
+ * Returns a multiplier (e.g., 1.15 for +15%). Defaults to 1.0.
+ * Takes the best (highest absolute) matching modifier across all item tags.
+ */
+export function getNewsTagPriceModifier(activeNews: ActiveNewsInstance[], itemTags: string[]): number {
+    if (itemTags.length === 0) return 1.0;
+    const effects = getActiveModifiers(activeNews);
+    let bestPercentage = 0;
+    for (const e of effects) {
+        if (e.targetSystem !== 'appraisal') continue;
+        if (!e.parameter.endsWith('_price')) continue;
+        const mappedTag = PARAMETER_TO_TAG[e.parameter];
+        if (mappedTag && itemTags.includes(mappedTag) && e.modifierType === 'PERCENTAGE') {
+            if (Math.abs(e.modifier) > Math.abs(bestPercentage)) {
+                bestPercentage = e.modifier;
+            }
+        }
+    }
+    return 1 + bestPercentage / 100;
+}
+
 /**
  * Get aggregate stolen_risk modifier from active negotiation-targeted news effects.
  * Returns a flat value to add to risk calculations (0 if no effects).

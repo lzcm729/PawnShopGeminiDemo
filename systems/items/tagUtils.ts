@@ -120,6 +120,63 @@ export function getRemovableTagsOnItem(item: Item): ItemTag[] {
 }
 
 // ============================================================================
+// G2 标签发现 (Hidden Tag Discovery)
+// ============================================================================
+
+/**
+ * 揭示物品的一个隐藏 G2 标签
+ * 将 hiddenTags 中的第一个标签移动到 tags
+ *
+ * @returns 新的物品对象和被揭示的标签，如果没有隐藏标签则返回 null
+ */
+export function revealNextHiddenTag(item: Item): { item: Item; revealedTag: ItemTag } | null {
+  const hidden = item.hiddenTags || [];
+  if (hidden.length === 0) return null;
+
+  const tagToReveal = hidden[0];
+  const remainingHidden = hidden.slice(1);
+  const currentTags = item.tags || [];
+
+  return {
+    item: {
+      ...item,
+      tags: [...currentTags, tagToReveal],
+      hiddenTags: remainingHidden.length > 0 ? remainingHidden : undefined,
+    },
+    revealedTag: tagToReveal,
+  };
+}
+
+/**
+ * 揭示物品的所有隐藏 G2 标签
+ * 将 hiddenTags 中的所有标签移动到 tags
+ *
+ * @returns 新的物品对象和所有被揭示的标签
+ */
+export function revealAllHiddenTags(item: Item): { item: Item; revealedTags: ItemTag[] } {
+  const hidden = item.hiddenTags || [];
+  if (hidden.length === 0) return { item, revealedTags: [] };
+
+  const currentTags = item.tags || [];
+
+  return {
+    item: {
+      ...item,
+      tags: [...currentTags, ...hidden],
+      hiddenTags: undefined,
+    },
+    revealedTags: [...hidden],
+  };
+}
+
+/**
+ * 获取物品的未发现 G2 标签数量
+ */
+export function getHiddenTagCount(item: Item): number {
+  return (item.hiddenTags || []).length;
+}
+
+// ============================================================================
 // 价值计算
 // ============================================================================
 

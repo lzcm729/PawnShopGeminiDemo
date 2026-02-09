@@ -416,7 +416,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
         }
 
         case 'MARK_ITEM_INSIGHTED': {
-            const { itemId, knowledgePool, currentRange, perceivedValue, hiddenTraits, revealedTraits } = action.payload;
+            const { itemId, knowledgePool, currentRange, perceivedValue, hiddenTraits, revealedTraits, tags: insightTags, hiddenTags: insightHiddenTags } = action.payload;
             return {
                 ...state,
                 inventory: state.inventory.map(item =>
@@ -429,6 +429,8 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                             perceivedValue: perceivedValue,  // Can be undefined (locked/show real value)
                             hiddenTraits: hiddenTraits ?? item.hiddenTraits,
                             revealedTraits: revealedTraits ?? item.revealedTraits,
+                            tags: insightTags ?? item.tags,
+                            hiddenTags: insightHiddenTags !== undefined ? insightHiddenTags : item.hiddenTags,
                         }
                         : item
                 ),

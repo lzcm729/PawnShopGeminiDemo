@@ -115,6 +115,16 @@ export function customerReducer(state: GameState, action: Action): GameState {
             const prevLogs = state.currentCustomer.item.logs || [];
             const newLogs = action.payload.log ? [...prevLogs, action.payload.log] : prevLogs;
 
+            // Handle G2 hidden tag revelation: move tag from hiddenTags to tags
+            let updatedTags = state.currentCustomer.item.tags;
+            let updatedHiddenTags = state.currentCustomer.item.hiddenTags;
+            if (action.payload.revealedHiddenTag) {
+                const tag = action.payload.revealedHiddenTag;
+                updatedTags = [...(updatedTags || []), tag];
+                updatedHiddenTags = (updatedHiddenTags || []).filter(t => t !== tag);
+                if (updatedHiddenTags.length === 0) updatedHiddenTags = undefined;
+            }
+
             const updatedItem = {
                 ...state.currentCustomer.item,
                 currentRange: action.payload.newRange,
@@ -127,13 +137,25 @@ export function customerReducer(state: GameState, action: Action): GameState {
                 hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : prevNegative,
                 logs: newLogs,
                 // Update initialRange if provided (for FAKE/JACKPOT value jumps)
-                ...(action.payload.initialRange && { initialRange: action.payload.initialRange })
+                ...(action.payload.initialRange && { initialRange: action.payload.initialRange }),
+                // G2 hidden tag revelation
+                tags: updatedTags,
+                hiddenTags: updatedHiddenTags,
             };
 
             // Also update currentNode if it's a PawnNode
             let updatedNode = state.currentNode;
             if (state.currentNode && state.currentNode.type === 'PAWN') {
                 const pawnNode = state.currentNode as PawnNode;
+                // Handle G2 hidden tag revelation for PawnNode
+                let nodeTags = pawnNode.item.tags;
+                let nodeHiddenTags = pawnNode.item.hiddenTags;
+                if (action.payload.revealedHiddenTag) {
+                    const tag = action.payload.revealedHiddenTag;
+                    nodeTags = [...(nodeTags || []), tag];
+                    nodeHiddenTags = (nodeHiddenTags || []).filter(t => t !== tag);
+                    if (nodeHiddenTags.length === 0) nodeHiddenTags = undefined;
+                }
                 updatedNode = {
                     ...pawnNode,
                     item: {
@@ -148,7 +170,10 @@ export function customerReducer(state: GameState, action: Action): GameState {
                         hasNegativeAppraisalEvent: action.payload.hasNegativeEvent !== undefined ? action.payload.hasNegativeEvent : pawnNode.item.hasNegativeAppraisalEvent,
                         logs: action.payload.log ? [...pawnNode.item.logs, action.payload.log] : pawnNode.item.logs,
                         // Update initialRange if provided (for FAKE/JACKPOT value jumps)
-                        ...(action.payload.initialRange && { initialRange: action.payload.initialRange })
+                        ...(action.payload.initialRange && { initialRange: action.payload.initialRange }),
+                        // G2 hidden tag revelation
+                        tags: nodeTags,
+                        hiddenTags: nodeHiddenTags,
                     }
                 };
             }

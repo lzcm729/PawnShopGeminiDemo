@@ -11,7 +11,7 @@
  * - Data sources (narrative, filler, expiry) each create their own nodes
  */
 
-import { Item, ItemTrait, ItemStatus } from '../systems/items/types';
+import { Item, ItemTrait, ItemStatus, ItemTag } from '../systems/items/types';
 import { Mood } from '../systems/core/types';
 import { Customer } from '../systems/npc/types';
 import { BehaviorTag } from '../systems/core/types';
@@ -110,6 +110,8 @@ export interface ItemSnapshot {
     logs: any[];
     relatedChainId?: string;
     isVirtual?: boolean;
+    tags?: ItemTag[];
+    hiddenTags?: ItemTag[];
 }
 
 /**
@@ -209,7 +211,9 @@ export function createItemSnapshot(item: Item): ItemSnapshot {
         status: item.status,
         logs: [...(item.logs || [])],
         relatedChainId: item.relatedChainId,
-        isVirtual: item.isVirtual
+        isVirtual: item.isVirtual,
+        tags: item.tags ? [...item.tags] : undefined,
+        hiddenTags: item.hiddenTags ? [...item.hiddenTags] : undefined,
     };
 }
 
@@ -302,7 +306,9 @@ export function itemSnapshotToItem(snapshot: ItemSnapshot): Item {
         appraisalCount: snapshot.appraisalCount,
         hasNegativeAppraisalEvent: snapshot.hasNegativeAppraisalEvent,
         relatedChainId: snapshot.relatedChainId,
-        isVirtual: snapshot.isVirtual
+        isVirtual: snapshot.isVirtual,
+        tags: snapshot.tags ? [...snapshot.tags] : undefined,
+        hiddenTags: snapshot.hiddenTags ? [...snapshot.hiddenTags] : undefined,
     };
 }
 

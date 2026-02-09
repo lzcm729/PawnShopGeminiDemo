@@ -43,6 +43,22 @@ export function expiryReducer(state: GameState, action: Action): GameState {
             switch (choice) {
                 case 'redeem_accept': {
                     if (event) {
+                        // Gap #25: Reforge breach check — reforged items cannot be returned as-is
+                        // The item's identity has fundamentally changed, triggering auto-breach compensation
+                        if (item.workState === 'REFORGED') {
+                            const compensation = Math.ceil((item.pawnInfo?.principal || 0) * 2);
+                            cashDelta = -compensation;
+                            repDelta = {
+                                [ReputationType.HUMANITY]: -5,
+                                [ReputationType.CREDIBILITY]: -3,
+                            };
+                            log = `[重铸违约] ${item.name} 已被重铸，无法归还原物。支付赔偿金 $${compensation}`;
+                            departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
+                            satisfaction = 'DESPERATE';
+                            playSfx('FAIL');
+                            break;
+                        }
+
                         cashDelta = event.redemptionCost.total;
                         const redeemLog = generateRedeemLog(event.npcName, item, state.stats.day, cashDelta);
                         // S3-F1: Player choice log for expiry decision

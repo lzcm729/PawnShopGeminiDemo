@@ -126,7 +126,8 @@ export interface Item {
   isVirtual?: boolean; // If true, item is never added to inventory
 
   // --- TAG & VARIANT SYSTEM (夜间玩法) ---
-  tags?: ItemTag[];              // 当前标签列表
+  tags?: ItemTag[];              // 当前标签列表（已发现的标签）
+  hiddenTags?: ItemTag[];        // 未发现的 G2 属性标签（需通过鉴定/格物揭示）
   variants?: ItemVariant[];      // 变体配置（预设的名字+描述组合）
   baseValue?: number;            // 基础价值（用于标签系数计算）
 

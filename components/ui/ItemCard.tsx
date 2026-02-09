@@ -2,11 +2,12 @@
 import React from 'react';
 import { CategoryIcon } from './CategoryIcon';
 import { Item, ItemStatus } from '../../types';
-import { AlertTriangle, ShieldCheck, Heart, Skull, DollarSign, User } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Heart, Skull, DollarSign, User, HelpCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { getDisplayName } from '../../systems/items/tagUtils';
+import { getDisplayName, getItemTagsDisplay, getHiddenTagCount } from '../../systems/items/tagUtils';
 import { getItemIcon } from '../../systems/assets';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../../systems/assets';
+import { isStateTag } from '../../systems/items/tags';
 
 interface ItemCardProps {
   item: Item;
@@ -172,6 +173,32 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
               </span>
             )}
           </div>
+          {/* Item Tags (G1 State as warning, G2 Attribute as info) */}
+          {(getItemTagsDisplay(item).length > 0 || getHiddenTagCount(item) > 0) && (
+            <div className="flex flex-wrap justify-center gap-1 mt-0.5">
+              {getItemTagsDisplay(item).map(({ tag, name, icon, isNegative }) => (
+                <span
+                  key={tag}
+                  className={cn(
+                    "text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5",
+                    isNegative
+                      ? "border border-red-800/60 bg-red-950/30 text-red-400"
+                      : isStateTag(tag)
+                        ? "border border-stone-700 bg-stone-900/30 text-stone-400"
+                        : "border border-cyan-800/50 bg-cyan-950/20 text-cyan-400"
+                  )}
+                  title={name}
+                >
+                  <span>{icon}</span> {name}
+                </span>
+              ))}
+              {getHiddenTagCount(item) > 0 && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5 border border-stone-700/50 bg-stone-900/20 text-stone-500" title="未发现的隐藏属性">
+                  <HelpCircle className="w-3 h-3" /> ?x{getHiddenTagCount(item)}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Divider */}

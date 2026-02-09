@@ -346,8 +346,10 @@ export function createItemFromTemplate(
     }
   }
 
-  // Merge initial tags
-  const tags: ItemTag[] = [...template.initStateTags, ...template.attrTags];
+  // G1 (state) tags are visible immediately (physical defects are obvious)
+  // G2 (attribute) tags go into hiddenTags (must be discovered through appraisal/insight)
+  const tags: ItemTag[] = [...template.initStateTags];
+  const hiddenTags: ItemTag[] = [...template.attrTags];
 
   // Generate estimate range
   const anchor = template.visualValue || template.realValue;
@@ -402,6 +404,7 @@ export function createItemFromTemplate(
     usedTraitIds: [],
     logs: [],
     tags,
+    hiddenTags: hiddenTags.length > 0 ? hiddenTags : undefined,
     workState: 'DEFAULT',
     knowledgePool: {
       capacity: template.knowCap,

@@ -12,7 +12,9 @@ import {
 } from '../systems/characterAbility/abilityEngine';
 import { AbilityState } from '../systems/characterAbility/types';
 import { SKILL_DEFINITIONS } from '../systems/characterAbility/skillDefinitions';
-import { getNewsPriceModifier } from '../systems/news/engine';
+import { getNewsPriceModifier, getNewsTagPriceModifier } from '../systems/news/engine';
+import { revealNextHiddenTag } from '../systems/items/tagUtils';
+import type { ItemTag } from '../systems/items/tags';
 
 interface AppraisalResult {
     success: boolean;
@@ -25,6 +27,7 @@ interface AppraisalResult {
     isBreakthrough?: boolean;  // True when BREAKTHROUGH event fires (d100 roll 1-10)
     senseHiddenHint?: 'HAS_HIDDEN' | 'NO_HIDDEN';  // From SENSE_HIDDEN skill
     pierceIllusionTriggered?: boolean;  // True when PIERCE_ILLUSION auto-revealed a trait
+    revealedHiddenTag?: ItemTag;  // G2 tag revealed through appraisal
 }
 
 export const useAppraisal = () => {
@@ -291,12 +294,30 @@ export const useAppraisal = () => {
             newUncertainty = newUncertaintyForJump;
         }
 
+        // === G2 TAG DISCOVERY: Reveal hidden attribute tags through appraisal ===
+        // Each appraisal has a chance to reveal one hidden G2 tag
+        // Guaranteed on BREAKTHROUGH or when discovering FAKE/JACKPOT traits
+        let revealedHiddenTag: ItemTag | undefined;
+        if (isBreakthrough || discoveredFakeOrJackpot || (uniqueNewTraits.length > 0 && Math.random() < 0.5)) {
+            const tagResult = revealNextHiddenTag(item);
+            if (tagResult) {
+                revealedHiddenTag = tagResult.revealedTag;
+            }
+        }
+
         // === NEWS EFFECT: Apply active market modifiers to estimate range ===
+        // Category-based modifier (existing)
         const newsModifier = getNewsPriceModifier(state.dailyNews || [], item.category);
-        if (newsModifier !== 1.0) {
+        // G2 tag-based modifier (gap #35): use revealed tags for price correlation
+        const itemTags = item.tags || [];
+        const tagModifier = getNewsTagPriceModifier(state.dailyNews || [], itemTags as string[]);
+        // Combine: use the stronger of the two modifiers (don't stack)
+        const effectiveModifier = Math.abs(newsModifier - 1) >= Math.abs(tagModifier - 1)
+            ? newsModifier : tagModifier;
+        if (effectiveModifier !== 1.0) {
             finalRange = [
-                Math.max(0, Math.round(finalRange[0] * newsModifier)),
-                Math.max(0, Math.round(finalRange[1] * newsModifier))
+                Math.max(0, Math.round(finalRange[0] * effectiveModifier)),
+                Math.max(0, Math.round(finalRange[1] * effectiveModifier))
             ];
         }
 
@@ -333,7 +354,9 @@ export const useAppraisal = () => {
                 hasNegativeEvent: hasNegative ? true : undefined,
                 log,
                 // Pass initialRange when FAKE/JACKPOT discovered
-                ...(finalInitialRange && { initialRange: finalInitialRange })
+                ...(finalInitialRange && { initialRange: finalInitialRange }),
+                // G2 tag discovery
+                ...(revealedHiddenTag && { revealedHiddenTag }),
             }
         });
 
@@ -345,7 +368,8 @@ export const useAppraisal = () => {
             event,
             valueJump: discoveredFakeOrJackpot?.type as 'FAKE' | 'JACKPOT' | undefined,
             isBreakthrough,
-            pierceIllusionTriggered
+            pierceIllusionTriggered,
+            revealedHiddenTag,
         };
 
     }, [customer, state.stats.actionPoints, dispatch, abilityState]);

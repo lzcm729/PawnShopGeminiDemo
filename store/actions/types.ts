@@ -61,7 +61,7 @@ export type Action =
 
     // Appraisal & Item knowledge
     | { type: 'APPRAISE_ITEM' }
-    | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: ItemTrait[]; hiddenTraits?: ItemTrait[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry; initialRange?: [number, number] } }
+    | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: ItemTrait[]; hiddenTraits?: ItemTrait[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry; initialRange?: [number, number]; revealedHiddenTag?: ItemTag } }
     | { type: 'REALIZE_ITEM_TRUTH'; payload: { itemId: string } }
     | { type: 'MARK_TRAIT_USED'; payload: { traitId: string } }
     | { type: 'CONSUME_AP'; payload: number }
@@ -144,6 +144,8 @@ export type Action =
     perceivedValue?: number;  // undefined means locked (show real value)
     hiddenTraits?: ItemTrait[];
     revealedTraits?: ItemTrait[];
+    tags?: ItemTag[];           // Updated visible tags (after G2 reveal)
+    hiddenTags?: ItemTag[];     // Remaining hidden G2 tags
   } }
     | { type: 'RESET_NIGHTLY_INSIGHT_FLAGS' }
     | { type: 'RECORD_NIGHT_ACTION'; payload: string }

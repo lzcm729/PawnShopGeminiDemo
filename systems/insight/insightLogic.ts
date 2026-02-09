@@ -18,7 +18,7 @@
  * - 收益递减信息字段
  */
 
-import { Item, ItemStatus, ItemTrait } from '../items/types';
+import { Item, ItemStatus, ItemTrait, ItemTag } from '../items/types';
 import { KnowledgePool } from '../items/tags';
 import { EssenceCost } from '../economy/essence';
 import { NightState } from '../game/types';
@@ -37,6 +37,8 @@ import {
   getRemainingKnowledge,
   isKnowledgePoolDepleted,
   getAttributeTags,
+  revealNextHiddenTag,
+  revealAllHiddenTags,
 } from '../items/tagUtils';
 import { calculateEssenceGain } from '../economy/essenceUtils';
 import { createTextRegistry, TextRegistry } from '../utils/textRegistry';
@@ -548,6 +550,31 @@ export function performInsight(
   }
 
   // =========================================================================
+  // G2 hidden tag revelation (gap #30)
+  // Epiphany: reveal all hidden G2 tags
+  // Normal insight with trait discovery: reveal one hidden G2 tag
+  // =========================================================================
+  let revealedHiddenTags: ItemTag[] = [];
+  let updatedTags = workingItem.tags;
+  let updatedHiddenTagsList = workingItem.hiddenTags;
+
+  if (isEpiphany) {
+    const result = revealAllHiddenTags(workingItem);
+    if (result.revealedTags.length > 0) {
+      revealedHiddenTags = result.revealedTags;
+      updatedTags = result.item.tags;
+      updatedHiddenTagsList = result.item.hiddenTags;
+    }
+  } else if (traitDiscovered || discoveredFakeOrJackpot) {
+    const result = revealNextHiddenTag(workingItem);
+    if (result) {
+      revealedHiddenTags = [result.revealedTag];
+      updatedTags = result.item.tags;
+      updatedHiddenTagsList = result.item.hiddenTags;
+    }
+  }
+
+  // =========================================================================
   // S3-F4: 窥见事件
   // =========================================================================
   const glimpse = !isEpiphany ? tryGlimpse(workingItem) : undefined;
@@ -573,6 +600,8 @@ export function performInsight(
     perceivedValue: updatedPerceivedValue,
     hiddenTraits: updatedHiddenTraits,
     revealedTraits: updatedRevealedTraits,
+    tags: updatedTags,
+    hiddenTags: updatedHiddenTagsList,
   };
 
   const result: InsightResult = {
@@ -591,6 +620,8 @@ export function performInsight(
     unexpectedEvent,
     glimpse,
     resonance,
+    // G2 hidden tag revelation
+    revealedHiddenTags: revealedHiddenTags.length > 0 ? revealedHiddenTags : undefined,
   };
 
   return { result, updatedItem };

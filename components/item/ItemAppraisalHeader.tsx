@@ -15,12 +15,14 @@ import {
   CheckCircle2,
   Radio,
   Zap,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Item } from '../../types';
 import { getUncertaintyRisk } from '../../systems/items/utils';
-import { getDisplayName } from '../../systems/items/tagUtils';
+import { getDisplayName, getItemTagsDisplay, getHiddenTagCount } from '../../systems/items/tagUtils';
 import { getItemIcon } from '../../systems/assets';
+import { isStateTag } from '../../systems/items/tags';
 
 type AppraisalEffectType = 'none' | 'range_narrowed' | 'breakthrough' | 'fake' | 'jackpot' | 'mishap';
 
@@ -177,6 +179,31 @@ export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
                 </div>
             </div>
             <h3 className="text-xl font-bold text-stone-200 leading-tight text-center">{getDisplayName(item)}</h3>
+            {/* Item Tags Display */}
+            {(getItemTagsDisplay(item).length > 0 || getHiddenTagCount(item) > 0) && (
+              <div className="flex flex-wrap justify-center gap-1 mt-1">
+                {getItemTagsDisplay(item).map(({ tag, name, icon, isNegative }) => (
+                  <span
+                    key={tag}
+                    className={`text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
+                      isNegative
+                        ? "border border-red-800/60 bg-red-950/40 text-red-400"
+                        : isStateTag(tag)
+                          ? "border border-stone-700 bg-stone-800/40 text-stone-400"
+                          : "border border-cyan-800/50 bg-cyan-950/30 text-cyan-400"
+                    }`}
+                    title={name}
+                  >
+                    <span>{icon}</span> {name}
+                  </span>
+                ))}
+                {getHiddenTagCount(item) > 0 && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5 border border-stone-700/50 bg-stone-800/20 text-stone-500" title="未发现的隐藏属性">
+                    <HelpCircle className="w-3 h-3" /> ?x{getHiddenTagCount(item)}
+                  </span>
+                )}
+              </div>
+            )}
             <p className="text-xs text-stone-500 font-serif italic text-center max-w-[80%]">"{item.historySnippet}"</p>
         </div>
 
