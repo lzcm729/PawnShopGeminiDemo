@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { X, Eye, Heart } from 'lucide-react';
+import { X, Eye, Heart, Lock, AlertTriangle } from 'lucide-react';
 import { Button } from './ui/Button';
 import {
   CustomerInsightResult,
@@ -48,6 +48,16 @@ export const InsightModal: React.FC<InsightModalProps> = ({ result, onClose, for
         {/* Content */}
         <div className="p-6 space-y-5">
 
+          {/* Time-order warning */}
+          {result.timeOrderWarning && (
+            <div className="flex items-center gap-2 bg-yellow-900/30 border border-yellow-700/40 rounded p-3">
+              <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" />
+              <p className="text-xs text-yellow-400 font-mono leading-snug">
+                你已经动摇了他的底线。以下是对他最初状态的判断。
+              </p>
+            </div>
+          )}
+
           {/* Disposition - label only shown if SHOW_DISPOSITION_LABEL_IN_NEGOTIATION is true */}
           <div className="space-y-3">
             {SHOW_DISPOSITION_LABEL_IN_NEGOTIATION && (
@@ -62,13 +72,19 @@ export const InsightModal: React.FC<InsightModalProps> = ({ result, onClose, for
               </div>
             )}
 
-            {/* Behavioral Description (Layer 1) */}
+            {/* Behavioral Description (Layer 1) - always visible */}
             <div className="space-y-1">
               <div className="text-xs text-noir-txt-muted uppercase tracking-wider">行为观察</div>
               <div className="bg-noir-100 border-l-2 border-amber-600/50 p-4">
                 <p className="font-serif text-sm text-noir-txt-secondary leading-relaxed italic">
                   "{result.dispositionText}"
                 </p>
+                {/* Secondary disposition hint */}
+                {result.secondaryDisposition && (
+                  <p className="mt-2 text-xs text-purple-400/80 font-serif italic">
+                    矛盾信号：此人同时表现出{DISPOSITION_INFO[result.secondaryDisposition]?.label || result.secondaryDisposition}倾向
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -76,27 +92,44 @@ export const InsightModal: React.FC<InsightModalProps> = ({ result, onClose, for
           {/* Divider */}
           <div className="border-t border-noir-400" />
 
-          {/* Floor Hint - now uses behavioral description text (Layer 2) */}
-          <div className="space-y-2">
-            <div className="text-xs text-noir-txt-muted uppercase tracking-wider">底线观察</div>
-            <div className="bg-noir-100 border-l-2 border-purple-600/50 p-4">
-              <p className="font-serif text-sm text-amber-500/90 leading-relaxed italic">
-                "{result.floorHint}"
-              </p>
+          {/* Floor Hint (Layer 2) - gated by revealedLayer */}
+          {result.revealedLayer >= 2 ? (
+            <div className="space-y-2">
+              <div className="text-xs text-noir-txt-muted uppercase tracking-wider">底线观察</div>
+              <div className="bg-noir-100 border-l-2 border-purple-600/50 p-4">
+                <p className="font-serif text-sm text-amber-500/90 leading-relaxed italic">
+                  "{result.floorHint}"
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2 opacity-40 py-2">
+              <Lock className="w-4 h-4 text-noir-txt-muted" />
+              <span className="text-xs text-noir-txt-muted font-mono">需要深度洞察解锁底线观察</span>
+            </div>
+          )}
 
-          {/* Moral Context (Layer 3, if available) */}
-          {result.moralContext && (
+          {/* Moral Context (Layer 3) - gated by revealedLayer */}
+          {result.revealedLayer >= 3 ? (
+            result.moralContext && (
+              <>
+                <div className="border-t border-noir-400" />
+                <div className="bg-red-950/20 border border-red-900/30 rounded p-4">
+                  <div className="flex items-start gap-2">
+                    <Heart className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <p className="font-serif text-sm text-red-300/90 leading-relaxed italic">
+                      {result.moralContext}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )
+          ) : (
             <>
               <div className="border-t border-noir-400" />
-              <div className="bg-red-950/20 border border-red-900/30 rounded p-4">
-                <div className="flex items-start gap-2">
-                  <Heart className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                  <p className="font-serif text-sm text-red-300/90 leading-relaxed italic">
-                    {result.moralContext}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2 opacity-40 py-2">
+                <Lock className="w-4 h-4 text-noir-txt-muted" />
+                <span className="text-xs text-noir-txt-muted font-mono">需要共情技能解锁道德背景</span>
               </div>
             </>
           )}
