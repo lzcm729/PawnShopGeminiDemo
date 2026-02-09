@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow, checkCondition, resolveDialogue, checkRenewalRequests } from '../systems/narrative/engine';
 import { generateDailyNews } from '../systems/news/engine';
-import { generatePawnLog, generatePlayerChoiceLog } from '../systems/game/utils/logGenerator';
+import { generatePawnLog, generatePlayerChoiceLog, generateDecayLog } from '../systems/game/utils/logGenerator';
 import { detectEchoEntries } from '../systems/game/utils/echoDetector';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, ChainUpdateEffect, MotherCondition, ExpiryEvent, MoraleBuff } from '../types';
@@ -106,6 +106,32 @@ export const useGameEngine = () => {
             const dispatchActions = dispatchConsequence(consequence, timingState, nextDay);
             executeDispatchActions(dispatchActions, nextDay);
         }
+    }
+
+    // 1d. S3-D: Natural decay logs for items stored beyond threshold days
+    const decayThresholds = GAME_CONFIG.INVENTORY_DECAY.THRESHOLDS;
+    const decayLogEntries: { itemId: string; log: import('../types').ItemLogEntry }[] = [];
+    for (const item of state.inventory) {
+        if (item.status !== ItemStatus.ACTIVE) continue;
+        if (item.pawnDate === undefined || item.pawnDate === null) continue;
+        const daysStored = nextDay - item.pawnDate;
+        for (const threshold of decayThresholds) {
+            if (daysStored >= threshold) {
+                // Check if a decay log for this threshold already exists
+                const alreadyLogged = item.logs.some(
+                    log => log.type === 'DECAY' && log.metadata?.reason === `storage_day_${threshold}`
+                );
+                if (!alreadyLogged) {
+                    decayLogEntries.push({
+                        itemId: item.id,
+                        log: generateDecayLog(nextDay, threshold, item.category),
+                    });
+                }
+            }
+        }
+    }
+    if (decayLogEntries.length > 0) {
+        dispatch({ type: 'APPEND_ITEM_LOGS', payload: decayLogEntries });
     }
 
     // 2. News Generation (S3-F1~F6: v1.2 with priority algorithm, pending queue, violation detection)

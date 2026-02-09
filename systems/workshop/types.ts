@@ -15,6 +15,43 @@ import { EssenceCost } from '../economy/essence';
 import { ItemTag, StateTag, EssenceTag, AttributeTag } from '../items/tags';
 
 // ============================================================================
+// 重铸品质 (Reforge Quality)
+// ============================================================================
+
+/**
+ * 重铸品质等级
+ *
+ * 设计文档 8.2节：后期配方引入结果不确定性。
+ * - MASTERWORK: 精品，价值系数提升
+ * - NORMAL: 正常品质，无额外修正
+ * - FLAWED: 次品，价值系数降低
+ * - FAILED: 失败，材料消耗但物品未变化
+ */
+export type ReforgeQuality = 'MASTERWORK' | 'NORMAL' | 'FLAWED' | 'FAILED';
+
+/**
+ * 品质结果定义
+ */
+export interface QualityOutcome {
+  /** 品质等级 */
+  quality: ReforgeQuality;
+  /** 出现概率 (0-1)，所有 outcomes 的概率之和应为 1 */
+  probability: number;
+  /** 价值系数修正 (乘以最终价值系数，如 1.3 = +30%，0.7 = -30%) */
+  valueMultiplier: number;
+}
+
+/**
+ * 意外发现结果
+ */
+export interface SurpriseDiscovery {
+  /** 发现的标签 */
+  tag: ItemTag;
+  /** 发现描述 */
+  description: string;
+}
+
+// ============================================================================
 // 配方类型
 // ============================================================================
 
@@ -85,6 +122,20 @@ export interface ReforgeRecipe extends RecipeBase {
 
   /** 风险描述（用于UI显示） */
   riskNote?: string;
+
+  // --- PROBABILISTIC FIELDS (设计文档 8.2节) ---
+
+  /** 是否为概率配方（false/undefined = 确定性结果） */
+  probabilistic?: boolean;
+
+  /** 品质结果分布（仅当 probabilistic=true 时有效） */
+  qualityOutcomes?: QualityOutcome[];
+
+  /** 意外发现几率 (0-1)，如 0.05 = 5%。重铸时小概率发现隐藏特征 */
+  surpriseDiscoveryChance?: number;
+
+  /** 最低解锁日（0 = 初始可用） */
+  minDay?: number;
 }
 
 /**
@@ -129,6 +180,17 @@ export interface WorkshopResult {
 
   /** 叙事文本 */
   narrative: WorkshopNarrative;
+
+  // --- PROBABILISTIC RESULT FIELDS ---
+
+  /** 重铸品质结果（仅概率配方） */
+  reforgeQuality?: ReforgeQuality;
+
+  /** 品质对应的价值系数修正 */
+  qualityMultiplier?: number;
+
+  /** 意外发现（小概率触发） */
+  surpriseDiscovery?: SurpriseDiscovery;
 }
 
 /**
@@ -145,7 +207,8 @@ export type WorkshopBlockReason =
   | 'ALREADY_REFORGED'    // 已被重铸过
   | 'ITEM_ACTIVE'         // 物品仍在典当中（所有权冲突）
   | 'ITEM_REDEEMED'       // 物品已被赎回
-  | 'ITEM_SOLD';          // 物品已卖出
+  | 'ITEM_SOLD'           // 物品已卖出
+  | 'NOT_UNLOCKED';       // 配方未解锁（未达到最低天数）
 
 // ============================================================================
 // 状态检查
@@ -169,6 +232,12 @@ export interface RecipeStatus {
 
   /** 缺少的精魄 */
   deficit?: EssenceCost;
+
+  /** 是否为概率配方 */
+  isProbabilistic?: boolean;
+
+  /** 品质分布预览（供UI显示，仅概率配方） */
+  qualityOutcomes?: QualityOutcome[];
 }
 
 // ============================================================================

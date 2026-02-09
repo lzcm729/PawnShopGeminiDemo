@@ -24,6 +24,9 @@ import {
   WorkshopNarrative,
   WorkshopBlockReason,
   ViolationWarning,
+  ReforgeQuality,
+  QualityOutcome,
+  SurpriseDiscovery,
   isRestoreRecipe,
   isReforgeRecipe,
 } from './types';
@@ -50,12 +53,14 @@ function getTexts(): TextRegistry {
 
 /**
  * 检查配方是否可以应用于物品
+ * @param currentDay 当前天数（可选，用于检查 minDay 解锁条件）
  */
 export function getRecipeStatus(
   recipe: Recipe,
   item: Item,
   essenceBalance: EssenceBalance,
-  nightState: NightState
+  nightState: NightState,
+  currentDay?: number
 ): RecipeStatus {
   // 计算实际成本
   const actualCost = calculateActualCost(recipe, item);
@@ -63,7 +68,12 @@ export function getRecipeStatus(
   const deficit = affordable ? undefined : getDeficit(essenceBalance, actualCost);
 
   // 检查各种阻止条件
-  const blockReason = checkBlockReason(recipe, item, nightState);
+  const blockReason = checkBlockReason(recipe, item, nightState, currentDay);
+
+  // 提取概率信息（仅重铸配方）
+  const reforgeRecipe = isReforgeRecipe(recipe) ? recipe : null;
+  const isProbabilistic = reforgeRecipe?.probabilistic ?? false;
+  const qualityOutcomes = isProbabilistic ? reforgeRecipe?.qualityOutcomes : undefined;
 
   return {
     canApply: blockReason === null && affordable && nightState.energy >= recipe.energyCost,
@@ -71,6 +81,8 @@ export function getRecipeStatus(
     actualCost,
     canAfford: affordable,
     deficit,
+    isProbabilistic,
+    qualityOutcomes,
   };
 }
 
@@ -80,7 +92,8 @@ export function getRecipeStatus(
 function checkBlockReason(
   recipe: Recipe,
   item: Item,
-  nightState: NightState
+  nightState: NightState,
+  currentDay?: number
 ): WorkshopBlockReason | null {
   // 物品状态检查
   if (item.status === ItemStatus.REDEEMED) return 'ITEM_REDEEMED';
@@ -92,7 +105,7 @@ function checkBlockReason(
   if (isRestoreRecipe(recipe)) {
     return checkRestoreBlockReason(recipe, item);
   } else if (isReforgeRecipe(recipe)) {
-    return checkReforgeBlockReason(recipe, item);
+    return checkReforgeBlockReason(recipe, item, currentDay);
   }
 
   return null;
@@ -141,9 +154,13 @@ function checkRestoreBlockReason(
  */
 function checkReforgeBlockReason(
   recipe: ReforgeRecipe,
-  item: Item
+  item: Item,
+  currentDay?: number
 ): WorkshopBlockReason | null {
-  const tags = item.tags || [];
+  // 检查最低天数解锁条件
+  if (recipe.minDay != null && currentDay != null && currentDay < recipe.minDay) {
+    return 'NOT_UNLOCKED';
+  }
 
   // S2-F2: 互斥检查 - 已被修复的物品不能重铸
   if (item.workState === 'RESTORED') {
@@ -298,35 +315,91 @@ export function performRestore(
 
 /**
  * 执行重铸操作
+ * @param currentDay 当前天数（可选，用于 minDay 检查）
  */
 export function performReforge(
   recipe: ReforgeRecipe,
   item: Item,
   essenceBalance: EssenceBalance,
-  nightState: NightState
+  nightState: NightState,
+  currentDay?: number
 ): { result: WorkshopResult; updatedItem: Item; newBalance: EssenceBalance } | null {
-  const status = getRecipeStatus(recipe, item, essenceBalance, nightState);
+  const status = getRecipeStatus(recipe, item, essenceBalance, nightState, currentDay);
   if (!status.canApply) {
     return null;
   }
 
-  // 扣除精魄
+  // 扣除精魄（无论成功与否，精魄都会消耗）
   const newBalance = spendEssenceBatch(essenceBalance, status.actualCost);
   if (!newBalance) return null;
+
+  // 概率配方：先掷骰决定品质
+  let reforgeQuality: ReforgeQuality | undefined;
+  let qualityMultiplier: number | undefined;
+
+  if (recipe.probabilistic && recipe.qualityOutcomes) {
+    const outcome = rollQualityOutcome(recipe.qualityOutcomes);
+    reforgeQuality = outcome.quality;
+    qualityMultiplier = outcome.valueMultiplier;
+  }
+
+  // FAILED 结果：精魄消耗但物品不变
+  if (reforgeQuality === 'FAILED') {
+    const narrative = generateReforgeNarrative(recipe, item, reforgeQuality);
+
+    const result: WorkshopResult = {
+      success: false,
+      type: 'REFORGE',
+      recipeId: recipe.id,
+      essenceSpent: status.actualCost,
+      energySpent: recipe.energyCost,
+      narrative,
+      reforgeQuality,
+      qualityMultiplier: 0,
+    };
+
+    // Item is unchanged except we mark the failed attempt
+    // (wasReforged stays false so player can retry)
+    return { result, updatedItem: item, newBalance };
+  }
 
   // 添加结果标签
   let updatedItem = addTag(item, recipe.resultTag);
 
-  // 标记已重铸，设置加工状态
-  updatedItem = { ...updatedItem, wasReforged: true, workState: 'REFORGED' as WorkState };
+  // 标记已重铸，设置加工状态和品质
+  updatedItem = {
+    ...updatedItem,
+    wasReforged: true,
+    workState: 'REFORGED' as WorkState,
+    reforgeQuality,
+  };
 
-  // 计算价值变化
+  // 计算价值变化（考虑品质修正）
   const oldValue = calculateTaggedValue(item);
-  const newValue = calculateTaggedValue(updatedItem);
+  let newValue = calculateTaggedValue(updatedItem);
+
+  // 应用品质系数修正
+  if (qualityMultiplier != null && qualityMultiplier !== 1.0) {
+    const baseValue = updatedItem.baseValue ?? updatedItem.realValue;
+    const taggedValue = newValue;
+    const valueFromTags = taggedValue - baseValue;
+    // Apply quality multiplier to the tag-added value portion
+    newValue = Math.round(baseValue + valueFromTags * qualityMultiplier);
+  }
+
   const valueIncrease = newValue - oldValue;
 
+  // 意外发现检查
+  let surpriseDiscovery: SurpriseDiscovery | undefined;
+  if (recipe.surpriseDiscoveryChance && Math.random() < recipe.surpriseDiscoveryChance) {
+    surpriseDiscovery = rollSurpriseDiscovery(updatedItem);
+    if (surpriseDiscovery) {
+      updatedItem = addTag(updatedItem, surpriseDiscovery.tag);
+    }
+  }
+
   // 生成叙事
-  const narrative = generateReforgeNarrative(recipe, item);
+  const narrative = generateReforgeNarrative(recipe, item, reforgeQuality);
 
   const result: WorkshopResult = {
     success: true,
@@ -338,6 +411,9 @@ export function performReforge(
     newValue,
     valueIncrease,
     narrative,
+    reforgeQuality,
+    qualityMultiplier,
+    surpriseDiscovery,
   };
 
   return { result, updatedItem, newBalance };
@@ -345,12 +421,14 @@ export function performReforge(
 
 /**
  * 通用执行函数
+ * @param currentDay 当前天数（可选，用于 minDay 检查和概率配方）
  */
 export function performWorkshop(
   recipeId: string,
   item: Item,
   essenceBalance: EssenceBalance,
-  nightState: NightState
+  nightState: NightState,
+  currentDay?: number
 ): { result: WorkshopResult; updatedItem: Item; newBalance: EssenceBalance } | null {
   const recipe = getRecipeById(recipeId);
   if (!recipe) return null;
@@ -358,7 +436,7 @@ export function performWorkshop(
   if (isRestoreRecipe(recipe)) {
     return performRestore(recipe, item, essenceBalance, nightState);
   } else if (isReforgeRecipe(recipe)) {
-    return performReforge(recipe, item, essenceBalance, nightState);
+    return performReforge(recipe, item, essenceBalance, nightState, currentDay);
   }
 
   return null;
@@ -404,7 +482,7 @@ function generateRestoreNarrative(recipe: RestoreRecipe, item: Item): WorkshopNa
 /**
  * 生成重铸操作的叙事（含凝视时刻）
  */
-function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item): WorkshopNarrative {
+function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item, quality?: ReforgeQuality): WorkshopNarrative {
   const texts = getTexts();
   const vars = { item_name: item.name };
 
@@ -412,8 +490,17 @@ function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item): WorkshopNa
   const tag = recipe.resultTag;
   const actionText = texts.resolve([`narrative:reforge:${tag}:action`, 'narrative:reforge:_default:action'], vars)
     || `你开始为${item.name}注入新的故事...`;
-  const resultText = texts.resolve([`narrative:reforge:${tag}:result`, 'narrative:reforge:_default:result'])
-    || '物品被赋予了新的"身份"。';
+
+  // Quality-specific result text
+  let resultText: string;
+  if (quality) {
+    resultText = texts.resolve(
+      [`narrative:reforge:quality:${quality}`, `narrative:reforge:${tag}:result`, 'narrative:reforge:_default:result']
+    ) || getDefaultQualityText(quality);
+  } else {
+    resultText = texts.resolve([`narrative:reforge:${tag}:result`, 'narrative:reforge:_default:result'])
+      || '物品被赋予了新的"身份"。';
+  }
 
   // 微妙的道德提醒（不做评判）
   let moralNote: string | undefined;
@@ -425,6 +512,91 @@ function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item): WorkshopNa
   const gazeText = texts.getRandom('gaze:reforge') || '重铸完成。';
 
   return { actionText, resultText, moralNote, gazeText };
+}
+
+// ============================================================================
+// 概率系统 (Probabilistic Reforge - 设计文档 8.2节)
+// ============================================================================
+
+/**
+ * 根据品质分布掷骰，返回最终品质
+ *
+ * 使用加权随机：遍历 outcomes，累计概率，
+ * 当随机值落入某个区间时返回对应品质。
+ */
+export function rollQualityOutcome(outcomes: QualityOutcome[]): QualityOutcome {
+  const roll = Math.random();
+  let cumulative = 0;
+
+  for (const outcome of outcomes) {
+    cumulative += outcome.probability;
+    if (roll < cumulative) {
+      return outcome;
+    }
+  }
+
+  // Fallback: return last outcome (handles floating point rounding)
+  return outcomes[outcomes.length - 1];
+}
+
+/**
+ * 意外发现：小概率在重铸时发现隐藏属性标签
+ *
+ * 从物品尚未拥有的属性标签中随机选择一个。
+ * 如果物品已拥有所有属性标签，则不触发。
+ */
+function rollSurpriseDiscovery(item: Item): SurpriseDiscovery | null {
+  const currentTags = item.tags || [];
+
+  // 候选：物品尚未拥有的属性标签
+  const candidateTags: ItemTag[] = (
+    ['VINTAGE_REAL', 'ARTISTIC', 'SENTIMENTAL'] as ItemTag[]
+  ).filter(tag => !currentTags.includes(tag));
+
+  if (candidateTags.length === 0) {
+    return null;
+  }
+
+  const chosen = candidateTags[Math.floor(Math.random() * candidateTags.length)];
+
+  const descriptions: Record<string, string> = {
+    VINTAGE_REAL: '在重铸过程中，你发现了物品上被掩盖的年代痕迹——这是真正的古物。',
+    ARTISTIC: '重铸时，你注意到物品暗藏的精妙工艺——这出自名匠之手。',
+    SENTIMENTAL: '物品内侧隐约可见一段刻字——某人曾深深珍视它。',
+  };
+
+  return {
+    tag: chosen,
+    description: descriptions[chosen] || '你在重铸中意外发现了物品的隐藏属性。',
+  };
+}
+
+/**
+ * 品质等级的默认叙事文本
+ */
+function getDefaultQualityText(quality: ReforgeQuality): string {
+  switch (quality) {
+    case 'MASTERWORK':
+      return '超乎预期的杰作！每一处细节都浑然天成，连你自己都为之惊叹。';
+    case 'NORMAL':
+      return '物品被赋予了新的"身份"。';
+    case 'FLAWED':
+      return '成品有些瑕疵...仔细看还是能发现不自然的痕迹。但也许能骗过外行。';
+    case 'FAILED':
+      return '重铸失败了。精魄消散在空气中，物品纹丝未动。也许下次运气会好些。';
+  }
+}
+
+/**
+ * 获取品质等级的显示名称
+ */
+export function getQualityDisplayName(quality: ReforgeQuality): string {
+  switch (quality) {
+    case 'MASTERWORK': return '精品';
+    case 'NORMAL': return '普通';
+    case 'FLAWED': return '次品';
+    case 'FAILED': return '失败';
+  }
 }
 
 // ============================================================================

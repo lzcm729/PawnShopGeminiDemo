@@ -287,28 +287,24 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                        </button>
                    </div>
 
-                   {/* Quick Setters */}
-                   <div className="flex gap-2">
+                   {/* Quick-Deal Shortcuts (Chip Presets) */}
+                   <div className="flex gap-1.5">
                       <button
                           onClick={handleMatchAsk}
                           disabled={!canInteract}
-                          className="flex-1 bg-noir-300 border border-noir-400 hover:bg-noir-200 hover:border-noir-txt-primary hover:text-noir-txt-primary text-noir-txt-secondary transition-all p-2 rounded flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group"
+                          className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                       >
-                          <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider mb-0.5 opacity-80">
-                              <ArrowUpFromLine className="w-3 h-3"/> Match Ask
-                          </div>
-                          <span className="font-mono font-bold text-sm group-hover:text-pawn-accent transition-colors">${currentAskPrice}</span>
+                          <span className="text-stone-500 text-[9px]">对方出价</span>
+                          <span>${currentAskPrice}</span>
                       </button>
 
                       <button
                           onClick={handleQuickValuation}
                           disabled={!canInteract}
-                          className="flex-1 bg-noir-300 border border-noir-400 hover:bg-noir-200 hover:border-noir-txt-primary hover:text-noir-txt-primary text-noir-txt-secondary transition-all p-2 rounded flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group"
+                          className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                       >
-                          <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider mb-0.5 opacity-80">
-                              <Calculator className="w-3 h-3"/> Est. Value
-                          </div>
-                          <span className="font-mono font-bold text-sm group-hover:text-blue-400 transition-colors">${estimatedValue}</span>
+                          <span className="text-stone-500 text-[9px]">估值中位</span>
+                          <span>${estimatedValue}</span>
                       </button>
 
                       {(() => {
@@ -318,19 +314,15 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                                   onClick={floorRevealed ? handleQuickFloor : undefined}
                                   disabled={!floorRevealed || !canInteract}
                                   className={cn(
-                                      "flex-1 border transition-all p-2 rounded flex flex-col items-center justify-center disabled:cursor-not-allowed group",
+                                      "flex-1 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all flex items-center justify-center gap-1",
                                       floorRevealed
-                                          ? "bg-red-950/20 border-red-900/50 hover:bg-red-900/40 hover:border-red-500 text-red-500 disabled:opacity-50 animate-in fade-in"
-                                          : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-60"
+                                          ? "bg-red-950/30 border border-red-900/50 text-red-400 hover:bg-red-900/40 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed animate-in fade-in"
+                                          : "bg-stone-900 border border-stone-800 text-stone-600 cursor-not-allowed"
                                   )}
                               >
-                                  <div className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider mb-0.5">
-                                      {!floorRevealed && <Lock className="w-3 h-3" />}
-                                      <span>Floor</span>
-                                  </div>
-                                  <span className="font-mono font-bold text-sm">
-                                      {floorRevealed ? `$${currentCustomer.minimumAmount}` : '???'}
-                                  </span>
+                                  {!floorRevealed && <Lock className="w-2.5 h-2.5" />}
+                                  <span className={cn("text-[9px]", floorRevealed ? "text-red-500/70" : "text-stone-600")}>已知底价</span>
+                                  <span>{floorRevealed ? `$${currentCustomer.minimumAmount}` : '???'}</span>
                               </button>
                           );
                       })()}

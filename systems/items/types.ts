@@ -1,4 +1,5 @@
 import type { ItemTag, ItemVariant, KnowledgePool } from './tags';
+import type { ReforgeQuality } from '../workshop/types';
 export type { ItemTag, ItemVariant, KnowledgePool };
 
 // 物品加工状态（互斥）
@@ -41,7 +42,7 @@ export interface ItemLogEntry {
   id: string;
   day: number;
   content: string;
-  type: 'ENTRY' | 'REDEEM' | 'FORFEIT' | 'SOLD' | 'INFO' | 'APPRAISAL' | 'PLAYER_CHOICE' | 'ECHO';
+  type: 'ENTRY' | 'REDEEM' | 'FORFEIT' | 'SOLD' | 'INFO' | 'APPRAISAL' | 'PLAYER_CHOICE' | 'ECHO' | 'DECAY';
   metadata?: {
       visitCount?: number;
       visitTier?: VisitTier;
@@ -137,6 +138,7 @@ export interface Item {
   wasRestored?: boolean;         // 是否被修复过
   wasReforged?: boolean;         // 是否被重铸过（用于检测所有权冲突）
   workState?: WorkState;         // 加工状态（DEFAULT | RESTORED | REFORGED）
+  reforgeQuality?: ReforgeQuality;  // 重铸品质（概率配方的结果）
 
   // --- NAME & DESC VARIANTS (名称变体系统) ---
   nameDefault?: string;          // 默认名称（典当时）

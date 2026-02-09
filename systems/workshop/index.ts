@@ -9,6 +9,9 @@ export type {
   RestoreRecipe,
   ReforgeRecipe,
   Recipe,
+  ReforgeQuality,
+  QualityOutcome,
+  SurpriseDiscovery,
   WorkshopResult,
   WorkshopBlockReason,
   RecipeStatus,
@@ -38,4 +41,6 @@ export {
   performWorkshop,
   getBlockReasonText,
   getViolationWarning,
+  rollQualityOutcome,
+  getQualityDisplayName,
 } from './workshopLogic';

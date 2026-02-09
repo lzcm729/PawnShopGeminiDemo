@@ -68,6 +68,7 @@ export const RESTORE_RECIPES: RestoreRecipe[] = [
 // ============================================================================
 
 export const REFORGE_RECIPES: ReforgeRecipe[] = [
+  // ---- EARLY RECIPES (Day 1+): Deterministic, guaranteed results ----
   {
     id: 'reforge_fake_history',
     type: 'REFORGE',
@@ -81,18 +82,6 @@ export const REFORGE_RECIPES: ReforgeRecipe[] = [
     riskNote: '如果被识破，物品价值会大幅下降。',
   },
   {
-    id: 'reforge_imperial',
-    type: 'REFORGE',
-    name: '宫廷御制',
-    description: '为物品编造皇室或宫廷的出处。这是最高级的"故事"，也是最危险的。',
-    resultTag: 'IMPERIAL',
-    baseCost: { craft: 50, time: 60, vibe: 30 },
-    energyCost: 3,
-    requiredTags: ['VINTAGE_REAL', 'ARTISTIC'],
-    excludedTags: ['IMPERIAL', 'FAKE_HISTORY'],
-    riskNote: '宫廷物品有严格的档案记录，编造故事风险极高。',
-  },
-  {
     id: 'reforge_art_enhanced',
     type: 'REFORGE',
     name: '艺术升华',
@@ -103,6 +92,53 @@ export const REFORGE_RECIPES: ReforgeRecipe[] = [
     requiredTags: ['ARTISTIC'],
     excludedTags: ['ART_ENHANCED'],
     riskNote: '艺术品的价值高度主观，市场评价可能因人而异。',
+    surpriseDiscoveryChance: 0.05,
+  },
+
+  // ---- MID-GAME RECIPES (Day 15+): Probabilistic, quality variance ----
+  {
+    id: 'reforge_imperial',
+    type: 'REFORGE',
+    name: '宫廷御制',
+    description: '为物品编造皇室或宫廷的出处。这是最高级的"故事"，也是最危险的。需要Day 15后解锁。',
+    resultTag: 'IMPERIAL',
+    baseCost: { craft: 50, time: 60, vibe: 30 },
+    energyCost: 3,
+    requiredTags: ['VINTAGE_REAL', 'ARTISTIC'],
+    excludedTags: ['IMPERIAL', 'FAKE_HISTORY'],
+    riskNote: '宫廷物品有严格的档案记录，编造故事风险极高。品质可能浮动。',
+    minDay: 15,
+    probabilistic: true,
+    qualityOutcomes: [
+      { quality: 'MASTERWORK', probability: 0.15, valueMultiplier: 1.35 },
+      { quality: 'NORMAL',     probability: 0.55, valueMultiplier: 1.0  },
+      { quality: 'FLAWED',     probability: 0.20, valueMultiplier: 0.70 },
+      { quality: 'FAILED',     probability: 0.10, valueMultiplier: 0.0  },
+    ],
+    surpriseDiscoveryChance: 0.08,
+  },
+
+  // ---- LATE-GAME RECIPES (Day 22+): High risk, high reward ----
+  {
+    id: 'reforge_master_forgery',
+    type: 'REFORGE',
+    name: '大师级伪造',
+    description: '倾注全部技艺，打造足以欺骗专家的顶级赝品。极高收益，但失败风险不容忽视。',
+    resultTag: 'IMPERIAL',
+    baseCost: { craft: 80, time: 100, vibe: 60 },
+    energyCost: 3,
+    requiredTags: ['VINTAGE_REAL'],
+    excludedTags: ['IMPERIAL', 'FAKE_HISTORY'],
+    riskNote: '大师级伪造需要极高的精魄积累。成功则暴利，失败则血本无归。',
+    minDay: 22,
+    probabilistic: true,
+    qualityOutcomes: [
+      { quality: 'MASTERWORK', probability: 0.20, valueMultiplier: 1.40 },
+      { quality: 'NORMAL',     probability: 0.40, valueMultiplier: 1.0  },
+      { quality: 'FLAWED',     probability: 0.25, valueMultiplier: 0.65 },
+      { quality: 'FAILED',     probability: 0.15, valueMultiplier: 0.0  },
+    ],
+    surpriseDiscoveryChance: 0.12,
   },
 ];
 

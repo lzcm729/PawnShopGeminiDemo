@@ -150,6 +150,30 @@ export type MailDelay = 'immediate' | 'standard' | 'slow' | 'surprise';
 /** Non-monetary reward types for善行 mails (design doc H) */
 export type NonMonetaryRewardType = 'REFERRAL' | 'INTEL' | 'NPC_HELP';
 
+/**
+ * Mail tone — determines the emotional register of a mail's content.
+ * Design doc Section C: "语气反差" — NPCs show one face at the counter, another in mail.
+ * Tone is selected based on NPC circumstances, relationship with player, and story outcome.
+ */
+export type MailTone = 'FORMAL' | 'DESPERATE' | 'GRATEFUL' | 'BITTER' | 'THREATENING';
+
+/**
+ * Mail category — distinguishes standard narrative mails from special types.
+ * STANDARD: Normal story/system mails (default)
+ * THREAT: Underworld threat mails — cryptic, menacing, read-only (no reply buttons)
+ */
+export type MailCategory = 'STANDARD' | 'THREAT';
+
+/**
+ * A tone variant overrides the subject and body of a mail template.
+ * Used to provide different emotional registers for the same logical mail.
+ */
+export interface MailToneVariant {
+  tone: MailTone;
+  subject: string;
+  body: string;
+}
+
 export interface MailAttachment {
   cash?: number;
   item?: Item;
@@ -166,6 +190,12 @@ export interface MailTemplate {
   body: string;
   attachments?: MailAttachment;
   delay?: MailDelay;  // 投递延迟级别，默认 'standard'
+  /** Mail tone — emotional register of content (default: 'FORMAL') */
+  tone?: MailTone;
+  /** Mail category — 'STANDARD' (default) or 'THREAT' (underworld, read-only) */
+  category?: MailCategory;
+  /** Tone variants — alternative subject/body for different emotional states */
+  toneVariants?: MailToneVariant[];
 }
 
 export interface MailInstance {
@@ -181,6 +211,10 @@ export interface MailInstance {
   relatedEventId?: string;
   /** Source chain ID for channel protocol cross-reference */
   sourceChainId?: string;
+  /** Resolved tone at schedule time (captures the NPC's emotional state at that moment) */
+  resolvedTone?: MailTone;
+  /** Mail category snapshot (for UI rendering: THREAT mails show differently) */
+  category?: MailCategory;
 }
 
 // --- SIMULATION RULES ---

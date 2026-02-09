@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { DollarSign, Calendar, Heart, Briefcase, Shield, Package, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2, TrendingDown, TrendingUp, Info } from 'lucide-react';
+import { DollarSign, Calendar, Heart, Briefcase, Shield, Package, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2, TrendingDown, TrendingUp, Info, Sparkles } from 'lucide-react';
 import { ReputationType } from '../systems/core/types';
 import { PhaseIs } from '../systems/core/phases';
 import { Button } from './ui/Button';
@@ -129,6 +129,39 @@ export const Dashboard: React.FC = () => {
                 </div>
             </div>
         </div>
+
+        {/* MORALE BUFF INDICATOR */}
+        {state.moraleBuff && (
+            <Tooltip content={
+                <div className="text-xs max-w-[200px]">
+                    <div className="font-bold mb-1">
+                        {state.moraleBuff.type === 'MOTIVATED' ? '心态: 受鼓舞' :
+                         state.moraleBuff.type === 'CALM' ? '心态: 平静' : '心态: 焦虑'}
+                    </div>
+                    <div className="text-stone-400">
+                        鉴定: {state.moraleBuff.appraisalModifier > 1 ? '+' : ''}{Math.round((state.moraleBuff.appraisalModifier - 1) * 100)}%
+                        {' | '}
+                        谈判: {state.moraleBuff.negotiationModifier < 1 ? '' : '+'}{Math.round((state.moraleBuff.negotiationModifier - 1) * 100)}%
+                    </div>
+                    <div className="text-stone-500 mt-1">剩余 {Math.max(0, state.moraleBuff.expiresDay - stats.day)} 天</div>
+                </div>
+            }>
+                <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] uppercase font-bold tracking-wider shrink-0 z-10 transition-all",
+                    state.moraleBuff.type === 'MOTIVATED'
+                        ? "border-amber-600/50 bg-amber-950/30 text-amber-400"
+                        : state.moraleBuff.type === 'CALM'
+                        ? "border-blue-600/50 bg-blue-950/30 text-blue-400"
+                        : "border-red-600/50 bg-red-950/30 text-red-400"
+                )}>
+                    <Sparkles className="w-3 h-3" />
+                    <span>
+                        {state.moraleBuff.type === 'MOTIVATED' ? '受鼓舞' :
+                         state.moraleBuff.type === 'CALM' ? '平静' : '焦虑'}
+                    </span>
+                </div>
+            </Tooltip>
+        )}
 
         {/* CENTER: CASH & GOAL */}
         <div className="flex flex-col items-center justify-center max-w-md w-full px-4 md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-0">

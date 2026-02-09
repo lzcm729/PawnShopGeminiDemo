@@ -1,23 +1,46 @@
 
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../store/GameContext';
+import { useGameEngine } from '../hooks/useGameEngine';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { Activity, Heart, Stethoscope, User, LogOut, MessageCircle, Wallet, ArrowRight, Store, Hourglass, Brain } from 'lucide-react';
+import { Activity, Heart, Stethoscope, User, LogOut, MessageCircle, Wallet, ArrowRight, Store, Hourglass, Brain, ShieldPlus, Star, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { TypewriterText } from './ui/TextEffects';
 import { playSfx } from '../systems/game/audio';
 import { ReputationType } from '../types';
+import { GAME_CONFIG } from '../systems/game/config';
 
-type VisitView = 'MAIN' | 'TALK_MENU' | 'TALK_DISPLAY' | 'DOCTOR';
+type VisitView = 'MAIN' | 'TALK_MENU' | 'TALK_DISPLAY' | 'DOCTOR' | 'CARE';
 type Topic = 'SHOP' | 'MEMORIES' | 'FUTURE';
 
 export const HospitalVisitModal: React.FC = () => {
     const { state, dispatch } = useGame();
+    const { purchaseCare, getMotherVisitDialogue } = useGameEngine();
     const { motherStatus, visitedToday, medicalBill } = state.stats;
     const [view, setView] = useState<VisitView>('MAIN');
     const [currentDialogue, setCurrentDialogue] = useState("");
     const [actionTaken, setActionTaken] = useState(false);
+
+    // Mother dialogue (H-3)
+    const motherDialogue = getMotherVisitDialogue();
+
+    // Care purchase state
+    const currentCareLevel = motherStatus.purchasedCare?.level ?? null;
+    const careExpiresDay = motherStatus.purchasedCare?.expiresDay ?? 0;
+    const careRemainingDays = careExpiresDay > state.stats.day ? careExpiresDay - state.stats.day : 0;
+    const standardCost = GAME_CONFIG.MOTHER.CARE_STANDARD_COST;
+    const premiumCost = GAME_CONFIG.MOTHER.CARE_PREMIUM_COST;
+    const careDuration = GAME_CONFIG.MOTHER.CARE_DURATION;
+
+    const handlePurchaseCare = (level: 'Standard' | 'Premium') => {
+        const success = purchaseCare(level);
+        if (success) {
+            playSfx('SUCCESS');
+        } else {
+            playSfx('FAIL');
+        }
+    };
 
     // Reset view when modal opens
     useEffect(() => {
@@ -158,11 +181,33 @@ export const HospitalVisitModal: React.FC = () => {
                     <div className="w-full max-w-2xl bg-blue-950/10 border border-blue-900/30 p-6 rounded-lg min-h-[160px] flex flex-col items-center justify-center text-center shadow-inner relative overflow-hidden">
                         
                         {view === 'MAIN' && (
-                            <p className="text-lg italic text-blue-100 font-serif animate-in fade-in">
-                                {actionTaken 
-                                    ? "她在药物的作用下睡得很沉。监护仪发出有节奏的滴答声。" 
-                                    : "她醒着，眼神有些浑浊，正望着窗外的霓虹灯反光发呆。"}
-                            </p>
+                            <div className="animate-in fade-in w-full">
+                                {actionTaken ? (
+                                    <p className="text-lg italic text-blue-100 font-serif">
+                                        她在药物的作用下睡得很沉。监护仪发出有节奏的滴答声。
+                                    </p>
+                                ) : (
+                                    <div className="flex flex-col items-center gap-3">
+                                        <p className="text-xs uppercase tracking-wider text-blue-500/70 font-bold">
+                                            母亲说：
+                                        </p>
+                                        <p className={cn(
+                                            "text-lg font-serif leading-relaxed px-4 italic",
+                                            motherDialogue.mood === 'proud' ? "text-amber-200" :
+                                            motherDialogue.mood === 'concerned' ? "text-red-200" :
+                                            "text-blue-100"
+                                        )}>
+                                            "{motherDialogue.greeting}"
+                                        </p>
+                                        {motherDialogue.mood === 'proud' && (
+                                            <span className="text-[10px] text-amber-400/60 uppercase tracking-widest">[ 欣慰 ]</span>
+                                        )}
+                                        {motherDialogue.mood === 'concerned' && (
+                                            <span className="text-[10px] text-red-400/60 uppercase tracking-widest">[ 忧虑 ]</span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         )}
 
                         {view === 'TALK_MENU' && (
@@ -205,11 +250,11 @@ export const HospitalVisitModal: React.FC = () => {
                                 <p className="text-sm text-blue-200 leading-relaxed font-mono mb-4">
                                     <TypewriterText text={getDoctorReport()} speed={20} />
                                 </p>
-                                
+
                                 <div className="flex justify-end pt-2 border-t border-blue-800/30">
-                                    <Button 
-                                        size="sm" 
-                                        variant="primary" 
+                                    <Button
+                                        size="sm"
+                                        variant="primary"
                                         className="bg-teal-700 hover:bg-teal-600 border-none text-[10px] h-8"
                                         onClick={handleOpenMedical}
                                     >
@@ -218,20 +263,89 @@ export const HospitalVisitModal: React.FC = () => {
                                 </div>
                             </div>
                         )}
+
+                        {view === 'CARE' && (
+                            <div className="text-left w-full animate-in fade-in">
+                                <div className="text-xs uppercase text-blue-500 font-bold mb-3 flex items-center justify-between border-b border-blue-800/30 pb-2">
+                                    <span className="flex items-center gap-2"><ShieldPlus className="w-4 h-4"/> 护理服务</span>
+                                    <span className="text-[10px] text-stone-400">持续 {careDuration} 天</span>
+                                </div>
+
+                                {/* Current care status */}
+                                {currentCareLevel && careRemainingDays > 0 && (
+                                    <div className="mb-3 p-2 border border-teal-800/50 bg-teal-950/20 rounded flex items-center gap-2 text-xs">
+                                        <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+                                        <span className="text-teal-300">
+                                            当前：{currentCareLevel === 'Premium' ? '高级护理' : '标准护理'} | 剩余 {careRemainingDays} 天
+                                        </span>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    {/* Standard Care */}
+                                    <button
+                                        onClick={() => handlePurchaseCare('Standard')}
+                                        disabled={state.stats.cash < standardCost || currentCareLevel === 'Premium'}
+                                        className={cn(
+                                            "p-4 border rounded-lg flex flex-col items-center gap-2 transition-all",
+                                            currentCareLevel === 'Standard' && careRemainingDays > 0
+                                                ? "border-teal-700/60 bg-teal-950/30 cursor-default"
+                                                : state.stats.cash >= standardCost && currentCareLevel !== 'Premium'
+                                                ? "border-blue-800/50 bg-blue-900/10 hover:bg-blue-800/30 hover:scale-105"
+                                                : "border-blue-900/30 bg-blue-950/10 opacity-50 cursor-not-allowed"
+                                        )}
+                                    >
+                                        <ShieldPlus className="w-6 h-6 text-blue-400" />
+                                        <span className="text-xs font-bold uppercase tracking-wider text-blue-200">标准护理</span>
+                                        <span className="text-lg font-mono font-bold text-blue-300">${standardCost}</span>
+                                        <span className="text-[10px] text-stone-400">风险 -{GAME_CONFIG.MOTHER.CARE_STANDARD_RISK_REDUCTION}/天</span>
+                                        {currentCareLevel === 'Standard' && careRemainingDays > 0 && (
+                                            <span className="text-[10px] text-teal-400 font-bold">已购买</span>
+                                        )}
+                                    </button>
+
+                                    {/* Premium Care */}
+                                    <button
+                                        onClick={() => handlePurchaseCare('Premium')}
+                                        disabled={state.stats.cash < premiumCost}
+                                        className={cn(
+                                            "p-4 border rounded-lg flex flex-col items-center gap-2 transition-all",
+                                            currentCareLevel === 'Premium' && careRemainingDays > 0
+                                                ? "border-amber-700/60 bg-amber-950/30 cursor-default"
+                                                : state.stats.cash >= premiumCost
+                                                ? "border-amber-800/50 bg-amber-900/10 hover:bg-amber-800/30 hover:scale-105"
+                                                : "border-amber-900/30 bg-amber-950/10 opacity-50 cursor-not-allowed"
+                                        )}
+                                    >
+                                        <Star className="w-6 h-6 text-amber-400" />
+                                        <span className="text-xs font-bold uppercase tracking-wider text-amber-200">高级护理</span>
+                                        <span className="text-lg font-mono font-bold text-amber-300">${premiumCost}</span>
+                                        <span className="text-[10px] text-stone-400">风险 -{GAME_CONFIG.MOTHER.CARE_PREMIUM_RISK_REDUCTION}/天</span>
+                                        {currentCareLevel === 'Premium' && careRemainingDays > 0 && (
+                                            <span className="text-[10px] text-amber-400 font-bold">已购买</span>
+                                        )}
+                                    </button>
+                                </div>
+
+                                <p className="text-[10px] text-stone-500 mt-3 text-center">
+                                    购买后立即生效，降低并发症风险。高级护理可覆盖标准护理。
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Action Bar */}
                     {view === 'MAIN' && (
-                        <div className="mt-8 grid grid-cols-3 gap-4 w-full max-w-2xl animate-in slide-in-from-bottom-4">
-                            <Button 
+                        <div className="mt-8 grid grid-cols-4 gap-3 w-full max-w-2xl animate-in slide-in-from-bottom-4">
+                            <Button
                                 onClick={() => { setView('TALK_MENU'); playSfx('CLICK'); }}
                                 variant="secondary"
                                 className="border-blue-800 text-blue-300 hover:bg-blue-900/30"
                             >
-                                <MessageCircle className="w-4 h-4 mr-2" /> 说 话 (Talk)
+                                <MessageCircle className="w-4 h-4 mr-2" /> 说话
                             </Button>
 
-                            <Button 
+                            <Button
                                 onClick={handleComfort}
                                 variant="primary"
                                 className={cn(
@@ -240,16 +354,24 @@ export const HospitalVisitModal: React.FC = () => {
                                 )}
                                 disabled={actionTaken}
                             >
-                                <Heart className="w-4 h-4 mr-2" /> 
-                                {actionTaken ? "已陪伴 (Done)" : "陪 伴 (Comfort)"}
+                                <Heart className="w-4 h-4 mr-2" />
+                                {actionTaken ? "已陪伴" : "陪伴"}
                             </Button>
 
-                            <Button 
+                            <Button
+                                onClick={() => { setView('CARE'); playSfx('CLICK'); }}
+                                variant="secondary"
+                                className="border-blue-800 text-blue-300 hover:bg-blue-900/30"
+                            >
+                                <ShieldPlus className="w-4 h-4 mr-2" /> 护理
+                            </Button>
+
+                            <Button
                                 onClick={() => { setView('DOCTOR'); playSfx('CLICK'); }}
                                 variant="secondary"
                                 className="border-blue-800 text-blue-300 hover:bg-blue-900/30"
                             >
-                                <Stethoscope className="w-4 h-4 mr-2" /> 询问医生
+                                <Stethoscope className="w-4 h-4 mr-2" /> 医生
                             </Button>
                         </div>
                     )}

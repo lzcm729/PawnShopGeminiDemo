@@ -353,6 +353,32 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
             setPersistCount(0);
         }
 
+        // P2-8: Mercy mechanic — when patience <= 1 and NPC didn't concede naturally,
+        // guarantee a concession in the push-pull zone. This prevents deadlock and
+        // rewards persistence. Only fires when there's margin left to concede.
+        const MERCY_CONCESSION_RATE = 0.10;
+        if (
+            isPushPullZone &&
+            patience <= 1 &&
+            !pushPullResult.conceded &&
+            !pushPullResult.atLimit &&
+            currentAskPrice > minPrincipal
+        ) {
+            const remainingMargin = currentAskPrice - minPrincipal;
+            const mercyConcession = Math.max(1, Math.floor(remainingMargin * MERCY_CONCESSION_RATE));
+            const mercyNewAsk = Math.max(minPrincipal, currentAskPrice - mercyConcession);
+            // Only apply if it actually changes the price
+            if (mercyNewAsk < currentAskPrice) {
+                pushPullResult = {
+                    ...pushPullResult,
+                    conceded: true,
+                    newAskPrice: Math.max(mercyNewAsk, offerPrincipal), // Never concede below player's offer
+                    concessionAmount: currentAskPrice - Math.max(mercyNewAsk, offerPrincipal),
+                    atLimit: mercyNewAsk <= minPrincipal
+                };
+            }
+        }
+
         // If NPC conceded, update ask price and concession count
         if (pushPullResult.conceded) {
             setCurrentAskPrice(pushPullResult.newAskPrice);

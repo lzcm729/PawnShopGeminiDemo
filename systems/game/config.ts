@@ -310,6 +310,10 @@ interface TomlAppointment {
   mystery_visitor_chance: number;
 }
 
+interface TomlInventoryDecay {
+  thresholds: number[];
+}
+
 interface TomlInsight {
   ap_cost: number;
   base_efficiency: number;
@@ -337,6 +341,7 @@ interface GameConfigToml {
   news: TomlNews;
   narrative: TomlNarrative;
   appointment: TomlAppointment;
+  inventory_decay: TomlInventoryDecay;
   insight: TomlInsight;
   pawn_business: TomlPawnBusiness;
 }
@@ -678,6 +683,11 @@ export const GAME_CONFIG = {
     FAIR_THRESHOLD: tomlConfig.insight.fair_threshold,
     ACCURACY_HIGH_THRESHOLD: tomlConfig.insight.accuracy_high_threshold,
     ACCURACY_LOW_THRESHOLD: tomlConfig.insight.accuracy_low_threshold,
+  },
+
+  // --- INVENTORY DECAY (库存自然老化) ---
+  INVENTORY_DECAY: {
+    THRESHOLDS: tomlConfig.inventory_decay.thresholds,
   },
 
   // --- PAWN BUSINESS (典当业务) ---
