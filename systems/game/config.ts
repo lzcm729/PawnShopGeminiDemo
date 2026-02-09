@@ -223,6 +223,13 @@ interface TomlNegotiation {
     SLY: TomlPushPullStrategy;
     CALM: TomlPushPullStrategy;
   };
+  max_rounds: number;
+  insult_patience_loss_bonus: number;
+  mercy_threshold: number;
+  mercy_concession_bonus: number;
+  near_floor_ratio: number;
+  near_floor_concession_bonus: number;
+  heart_strike_concession_bonus: number;
 }
 
 interface TomlBlackmarket {
@@ -591,6 +598,13 @@ export const GAME_CONFIG = {
         BASE_PATIENCE_LOSS_CHANCE: tomlConfig.negotiation.push_pull.CALM.base_patience_loss_chance,
       },
     },
+    MAX_ROUNDS: tomlConfig.negotiation.max_rounds,
+    INSULT_PATIENCE_LOSS_BONUS: tomlConfig.negotiation.insult_patience_loss_bonus,
+    MERCY_THRESHOLD: tomlConfig.negotiation.mercy_threshold,
+    MERCY_CONCESSION_BONUS: tomlConfig.negotiation.mercy_concession_bonus,
+    NEAR_FLOOR_RATIO: tomlConfig.negotiation.near_floor_ratio,
+    NEAR_FLOOR_CONCESSION_BONUS: tomlConfig.negotiation.near_floor_concession_bonus,
+    HEART_STRIKE_CONCESSION_BONUS: tomlConfig.negotiation.heart_strike_concession_bonus,
   },
 
   // --- BLACKMARKET (黑市系统) ---

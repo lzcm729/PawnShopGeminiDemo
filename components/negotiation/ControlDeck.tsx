@@ -3,10 +3,11 @@ import React, { useMemo, useRef } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { RollingNumber } from '../ui/RollingNumber';
-import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack, HeartHandshake, ScanSearch } from 'lucide-react';
+import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack, HeartHandshake, ScanSearch, AlertTriangle, ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
 import { InterestRate, Customer, Item } from '../../types';
 import { ContractTierHint } from '../../systems/characterAbility/types';
 import { playSfx } from '../../systems/game/audio';
+import { GAME_CONFIG } from '../../systems/game/config';
 
 interface ControlDeckProps {
     // Customer/item data
@@ -67,6 +68,10 @@ interface ControlDeckProps {
     probeUsed?: boolean;
     onProbe?: () => void;
 
+    // Round tracking
+    roundCount: number;
+    isRoundLimitReached: boolean;
+
     // Handlers
     onOffer: () => void;
     onManualReject: () => void;
@@ -110,6 +115,8 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     canUseProbe,
     probeUsed,
     onProbe,
+    roundCount,
+    isRoundLimitReached,
     onOffer,
     onManualReject,
     onBinaryAccept,
@@ -119,6 +126,14 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     const repaymentAmount = Math.floor(offerPrincipal * (1 + selectedRate));
     const profit = repaymentAmount - offerPrincipal;
     const estimatedValue = Math.floor((item.currentRange[0] + item.currentRange[1]) / 2);
+
+    const maxRounds = GAME_CONFIG.NEGOTIATION.MAX_ROUNDS;
+    const gap = currentAskPrice - offerPrincipal;
+    // Trend: compare current gap to previous gap (using lastOfferAmount as proxy)
+    const prevGap = lastOfferAmount !== null ? (currentAskPrice - lastOfferAmount) : null;
+    const gapTrend: 'shrinking' | 'stable' | 'growing' | null = prevGap !== null
+        ? (gap < prevGap ? 'shrinking' : gap === prevGap ? 'stable' : 'growing')
+        : null;
 
     // Determine submit button text based on player's move
     const getSubmitButtonText = useMemo(() => {
@@ -269,240 +284,321 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                         </div>
                    </div>
 
-                   {/* Rate Selectors */}
-                   <div className="flex gap-2">
-                      <RateToggle rate={0} label="Charity" />
-                      <RateToggle rate={0.05} label="Std" />
-                      <RateToggle rate={0.10} label="High" />
-                      <RateToggle rate={0.20} label="Shark" />
+                   {/* Round Counter + Gap/Trend Row */}
+                   <div className="flex justify-between items-center text-xs font-mono bg-black/20 p-1.5 rounded border border-noir-300">
+                        {/* Round Counter */}
+                        <div className={cn(
+                            "flex items-center gap-1.5 px-2 py-0.5 rounded",
+                            roundCount >= maxRounds - 1 ? "text-red-400 bg-red-950/30" : roundCount >= maxRounds - 2 ? "text-amber-400" : "text-noir-txt-muted"
+                        )}>
+                            {roundCount >= maxRounds - 1 && <AlertTriangle className="w-3 h-3" />}
+                            <span>
+                                第 <span className="font-bold">{roundCount}</span>/<span>{maxRounds}</span> 回合
+                            </span>
+                            {roundCount >= maxRounds - 1 && !isRoundLimitReached && (
+                                <span className="text-[10px] text-red-400/80 ml-1">谈判即将结束</span>
+                            )}
+                        </div>
+
+                        {/* Gap + Trend */}
+                        {offerHistoryLength > 0 && gap > 0 && (
+                            <div className="flex items-center gap-1.5 text-noir-txt-muted">
+                                <span>差距:</span>
+                                <span className="font-bold text-noir-txt-primary">${gap}</span>
+                                {gapTrend === 'shrinking' && (
+                                    <span className="flex items-center gap-0.5 text-pawn-green">
+                                        <ArrowDown className="w-3 h-3" />
+                                        <span className="text-[10px]">收敛</span>
+                                    </span>
+                                )}
+                                {gapTrend === 'stable' && (
+                                    <span className="flex items-center gap-0.5 text-stone-500">
+                                        <ArrowRight className="w-3 h-3" />
+                                        <span className="text-[10px]">僵持</span>
+                                    </span>
+                                )}
+                                {gapTrend === 'growing' && (
+                                    <span className="flex items-center gap-0.5 text-red-400">
+                                        <ArrowUp className="w-3 h-3" />
+                                        <span className="text-[10px]">扩大</span>
+                                    </span>
+                                )}
+                            </div>
+                        )}
                    </div>
 
-                   {/* Principal Dial */}
-                   <div className="flex items-center gap-2">
-                       <button
-                           onMouseDown={() => startAdjusting(-100)}
-                           onMouseUp={stopAdjusting}
-                           onMouseLeave={stopAdjusting}
-                           className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
-                       >
-                           <ChevronsLeft className="w-4 h-4"/>
-                       </button>
-                       <button
-                           onMouseDown={() => startAdjusting(-10)}
-                           onMouseUp={stopAdjusting}
-                           onMouseLeave={stopAdjusting}
-                           className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
-                       >
-                           <ChevronLeft className="w-4 h-4"/>
-                       </button>
+                   {/* Round Limit Warning */}
+                   {isRoundLimitReached && (
+                       <div className="bg-red-950/40 border border-red-900/60 rounded p-3 text-center">
+                           <p className="text-red-300 font-serif text-sm italic">
+                               "对方失去耐心，给出最终报价"
+                           </p>
+                           <p className="text-xs text-red-400/70 font-mono mt-1">
+                               最终报价: <span className="font-bold text-red-300">${currentAskPrice}</span>
+                           </p>
+                       </div>
+                   )}
 
-                       <div className="flex-1 bg-black border border-noir-400 h-12 flex items-center justify-center relative rounded overflow-hidden">
-                           <div className="absolute inset-0 bg-amber-900/10 animate-pulse"></div>
-                           <span className="relative z-10 text-3xl font-mono font-bold text-amber-500 tracking-widest drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">
-                              <RollingNumber value={offerPrincipal} prefix="$" />
-                           </span>
+                   {isRoundLimitReached ? (
+                       /* Round Limit: Accept/Reject only */
+                       <div className="flex gap-3">
+                           <Button
+                               variant="danger"
+                               onClick={onManualReject}
+                               disabled={!canInteract}
+                               className="flex-1 h-14 text-lg tracking-widest"
+                           >
+                               <XCircle className="w-5 h-5 mr-2" />
+                               拒绝
+                           </Button>
+                           <Button
+                               variant="primary"
+                               onClick={onOffer}
+                               disabled={!canInteract || !canAfford}
+                               className="flex-[2] h-14 text-lg tracking-widest"
+                           >
+                               <Stamp className="w-5 h-5 mr-2" />
+                               接受 ${currentAskPrice}
+                           </Button>
+                       </div>
+                   ) : (
+                     <>
+                       {/* Rate Selectors */}
+                       <div className="flex gap-2">
+                          <RateToggle rate={0} label="Charity" />
+                          <RateToggle rate={0.05} label="Std" />
+                          <RateToggle rate={0.10} label="High" />
+                          <RateToggle rate={0.20} label="Shark" />
                        </div>
 
-                       <button
-                           onMouseDown={() => startAdjusting(10)}
-                           onMouseUp={stopAdjusting}
-                           onMouseLeave={stopAdjusting}
-                           className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
-                       >
-                           <ChevronRight className="w-4 h-4"/>
-                       </button>
-                       <button
-                           onMouseDown={() => startAdjusting(100)}
-                           onMouseUp={stopAdjusting}
-                           onMouseLeave={stopAdjusting}
-                           className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
-                       >
-                           <ChevronsRight className="w-4 h-4"/>
-                       </button>
-                   </div>
+                       {/* Principal Dial */}
+                       <div className="flex items-center gap-2">
+                           <button
+                               onMouseDown={() => startAdjusting(-100)}
+                               onMouseUp={stopAdjusting}
+                               onMouseLeave={stopAdjusting}
+                               className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
+                           >
+                               <ChevronsLeft className="w-4 h-4"/>
+                           </button>
+                           <button
+                               onMouseDown={() => startAdjusting(-10)}
+                               onMouseUp={stopAdjusting}
+                               onMouseLeave={stopAdjusting}
+                               className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
+                           >
+                               <ChevronLeft className="w-4 h-4"/>
+                           </button>
 
-                   {/* Quick-Deal Shortcuts (Chip Presets) */}
-                   <div className="flex gap-1.5">
-                      <button
-                          onClick={handleMatchAsk}
-                          disabled={!canInteract}
-                          className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                      >
-                          <span className="text-stone-500 text-[9px]">对方出价</span>
-                          <span>${currentAskPrice}</span>
-                      </button>
+                           <div className="flex-1 bg-black border border-noir-400 h-12 flex items-center justify-center relative rounded overflow-hidden">
+                               <div className="absolute inset-0 bg-amber-900/10 animate-pulse"></div>
+                               <span className="relative z-10 text-3xl font-mono font-bold text-amber-500 tracking-widest drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">
+                                  <RollingNumber value={offerPrincipal} prefix="$" />
+                               </span>
+                           </div>
 
-                      <button
-                          onClick={handleQuickValuation}
-                          disabled={!canInteract}
-                          className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                      >
-                          <span className="text-stone-500 text-[9px]">估值中位</span>
-                          <span>${estimatedValue}</span>
-                      </button>
+                           <button
+                               onMouseDown={() => startAdjusting(10)}
+                               onMouseUp={stopAdjusting}
+                               onMouseLeave={stopAdjusting}
+                               className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
+                           >
+                               <ChevronRight className="w-4 h-4"/>
+                           </button>
+                           <button
+                               onMouseDown={() => startAdjusting(100)}
+                               onMouseUp={stopAdjusting}
+                               onMouseLeave={stopAdjusting}
+                               className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-noir-txt-secondary active:scale-95"
+                           >
+                               <ChevronsRight className="w-4 h-4"/>
+                           </button>
+                       </div>
 
-                      {(() => {
-                          const floorRevealed = revealedMinimum || debugRevealFloor;
-                          return (
+                       {/* Quick-Deal Shortcuts (Chip Presets) */}
+                       <div className="flex gap-1.5">
+                          <button
+                              onClick={handleMatchAsk}
+                              disabled={!canInteract}
+                              className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                          >
+                              <span className="text-stone-500 text-[9px]">对方出价</span>
+                              <span>${currentAskPrice}</span>
+                          </button>
+
+                          <button
+                              onClick={handleQuickValuation}
+                              disabled={!canInteract}
+                              className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                          >
+                              <span className="text-stone-500 text-[9px]">估值中位</span>
+                              <span>${estimatedValue}</span>
+                          </button>
+
+                          {(() => {
+                              const floorRevealed = revealedMinimum || debugRevealFloor;
+                              return (
+                                  <button
+                                      onClick={floorRevealed ? handleQuickFloor : undefined}
+                                      disabled={!floorRevealed || !canInteract}
+                                      className={cn(
+                                          "flex-1 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all flex items-center justify-center gap-1",
+                                          floorRevealed
+                                              ? "bg-red-950/30 border border-red-900/50 text-red-400 hover:bg-red-900/40 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed animate-in fade-in"
+                                              : "bg-stone-900 border border-stone-800 text-stone-600 cursor-not-allowed"
+                                      )}
+                                  >
+                                      {!floorRevealed && <Lock className="w-2.5 h-2.5" />}
+                                      <span className={cn("text-[9px]", floorRevealed ? "text-red-500/70" : "text-stone-600")}>已知底价</span>
+                                      <span>{floorRevealed ? `$${currentCustomer.minimumAmount}` : '???'}</span>
+                                  </button>
+                              );
+                          })()}
+                       </div>
+
+                       {/* Main Action */}
+                       <div className="flex gap-3">
+                          <Button
+                            variant="danger"
+                            onClick={onManualReject}
+                            disabled={!canInteract}
+                            className="w-16 h-16 border-2 border-red-900/50 hover:bg-red-950/50 flex items-center justify-center"
+                            title="Reject"
+                          >
+                            <XCircle className="w-6 h-6"/>
+                          </Button>
+
+                          {/* Pressure Skill Button */}
+                          {onPressure && (
                               <button
-                                  onClick={floorRevealed ? handleQuickFloor : undefined}
-                                  disabled={!floorRevealed || !canInteract}
+                                  onClick={() => {
+                                      if (!pressureUsed && canUsePressure && canInteract) {
+                                          playSfx('CLICK');
+                                          onPressure();
+                                      }
+                                  }}
+                                  disabled={!canInteract || !canUsePressure || pressureUsed}
+                                  title={pressureUsed ? "已使用 - 每次议价限用一次" : "施压: 降低客户底价 8%，耐心 -1"}
                                   className={cn(
-                                      "flex-1 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all flex items-center justify-center gap-1",
-                                      floorRevealed
-                                          ? "bg-red-950/30 border border-red-900/50 text-red-400 hover:bg-red-900/40 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed animate-in fade-in"
-                                          : "bg-stone-900 border border-stone-800 text-stone-600 cursor-not-allowed"
+                                      "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
+                                      pressureUsed
+                                          ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                          : canUsePressure && canInteract
+                                          ? "bg-orange-950/40 border-orange-700/60 text-orange-400 hover:bg-orange-900/50 hover:border-orange-500 hover:shadow-[0_0_12px_rgba(234,88,12,0.3)] active:scale-95"
+                                          : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
                                   )}
                               >
-                                  {!floorRevealed && <Lock className="w-2.5 h-2.5" />}
-                                  <span className={cn("text-[9px]", floorRevealed ? "text-red-500/70" : "text-stone-600")}>已知底价</span>
-                                  <span>{floorRevealed ? `$${currentCustomer.minimumAmount}` : '???'}</span>
+                                  <Zap className={cn("w-5 h-5", pressureUsed && "opacity-40")} />
+                                  <span className="text-[9px] font-bold tracking-wider mt-0.5">
+                                      {pressureUsed ? "已用" : "施压"}
+                                  </span>
                               </button>
-                          );
-                      })()}
-                   </div>
+                          )}
 
-                   {/* Main Action */}
-                   <div className="flex gap-3">
-                      <Button
-                        variant="danger"
-                        onClick={onManualReject}
-                        disabled={!canInteract}
-                        className="w-16 h-16 border-2 border-red-900/50 hover:bg-red-950/50 flex items-center justify-center"
-                        title="Reject"
-                      >
-                        <XCircle className="w-6 h-6"/>
-                      </Button>
+                          {/* Heart Strike Skill Button */}
+                          {onHeartStrike && (
+                              <button
+                                  onClick={() => {
+                                      if (!heartStrikeUsed && canUseHeartStrike && canInteract) {
+                                          playSfx('CLICK');
+                                          onHeartStrike();
+                                      }
+                                  }}
+                                  disabled={!canInteract || !canUseHeartStrike || heartStrikeUsed}
+                                  title={heartStrikeUsed ? "已使用 - 每次议价限用一次" : "攻心: 动摇对方心防，更容易让步，不消耗耐心"}
+                                  className={cn(
+                                      "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
+                                      heartStrikeUsed
+                                          ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                          : canUseHeartStrike && canInteract
+                                          ? "bg-purple-950/40 border-purple-700/60 text-purple-400 hover:bg-purple-900/50 hover:border-purple-500 hover:shadow-[0_0_12px_rgba(147,51,234,0.3)] active:scale-95"
+                                          : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                  )}
+                              >
+                                  <HeartCrack className={cn("w-5 h-5", heartStrikeUsed && "opacity-40")} />
+                                  <span className="text-[9px] font-bold tracking-wider mt-0.5">
+                                      {heartStrikeUsed ? "已用" : "攻心"}
+                                  </span>
+                              </button>
+                          )}
 
-                      {/* Pressure Skill Button */}
-                      {onPressure && (
-                          <button
-                              onClick={() => {
-                                  if (!pressureUsed && canUsePressure && canInteract) {
-                                      playSfx('CLICK');
-                                      onPressure();
-                                  }
-                              }}
-                              disabled={!canInteract || !canUsePressure || pressureUsed}
-                              title={pressureUsed ? "已使用 - 每次议价限用一次" : "施压: 降低客户底价 8%，耐心 -1"}
-                              className={cn(
-                                  "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
-                                  pressureUsed
-                                      ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
-                                      : canUsePressure && canInteract
-                                      ? "bg-orange-950/40 border-orange-700/60 text-orange-400 hover:bg-orange-900/50 hover:border-orange-500 hover:shadow-[0_0_12px_rgba(234,88,12,0.3)] active:scale-95"
-                                      : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
-                              )}
+                          {/* Insight Interaction: Empathy Button */}
+                          {onEmpathy && (
+                              <button
+                                  onClick={() => {
+                                      if (!empathyUsed && canUseEmpathy && canInteract) {
+                                          playSfx('CLICK');
+                                          onEmpathy();
+                                      }
+                                  }}
+                                  disabled={!canInteract || !canUseEmpathy || empathyUsed}
+                                  title={empathyUsed ? "已使用 - 每次议价限用一次" : "共情: 对客户表达理解与关怀"}
+                                  className={cn(
+                                      "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
+                                      empathyUsed
+                                          ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                          : canUseEmpathy && canInteract
+                                          ? "bg-rose-950/40 border-rose-700/60 text-rose-400 hover:bg-rose-900/50 hover:border-rose-500 hover:shadow-[0_0_12px_rgba(244,63,94,0.3)] active:scale-95"
+                                          : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                  )}
+                              >
+                                  <HeartHandshake className={cn("w-5 h-5", empathyUsed && "opacity-40")} />
+                                  <span className="text-[9px] font-bold tracking-wider mt-0.5">
+                                      {empathyUsed ? "已用" : "共情"}
+                                  </span>
+                              </button>
+                          )}
+
+                          {/* Insight Interaction: Probe Button */}
+                          {onProbe && (
+                              <button
+                                  onClick={() => {
+                                      if (!probeUsed && canUseProbe && canInteract) {
+                                          playSfx('CLICK');
+                                          onProbe();
+                                      }
+                                  }}
+                                  disabled={!canInteract || !canUseProbe || probeUsed}
+                                  title={probeUsed ? "已使用 - 每次议价限用一次" : "试探: 试探客户的真实底线"}
+                                  className={cn(
+                                      "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
+                                      probeUsed
+                                          ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                          : canUseProbe && canInteract
+                                          ? "bg-cyan-950/40 border-cyan-700/60 text-cyan-400 hover:bg-cyan-900/50 hover:border-cyan-500 hover:shadow-[0_0_12px_rgba(6,182,212,0.3)] active:scale-95"
+                                          : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                  )}
+                              >
+                                  <ScanSearch className={cn("w-5 h-5", probeUsed && "opacity-40")} />
+                                  <span className="text-[9px] font-bold tracking-wider mt-0.5">
+                                      {probeUsed ? "已用" : "试探"}
+                                  </span>
+                              </button>
+                          )}
+
+                          <Button
+                            variant="primary"
+                            onClick={onOffer}
+                            disabled={!canInteract || !canAfford}
+                            className={cn(
+                              "flex-1 h-16 relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center gap-0.5",
+                              getSubmitButtonText === '坚持' && "bg-amber-700 hover:bg-amber-600",
+                              getSubmitButtonText === '让步' && "bg-emerald-700 hover:bg-emerald-600"
+                            )}
                           >
-                              <Zap className={cn("w-5 h-5", pressureUsed && "opacity-40")} />
-                              <span className="text-[9px] font-bold tracking-wider mt-0.5">
-                                  {pressureUsed ? "已用" : "施压"}
-                              </span>
-                          </button>
-                      )}
-
-                      {/* Heart Strike Skill Button */}
-                      {onHeartStrike && (
-                          <button
-                              onClick={() => {
-                                  if (!heartStrikeUsed && canUseHeartStrike && canInteract) {
-                                      playSfx('CLICK');
-                                      onHeartStrike();
-                                  }
-                              }}
-                              disabled={!canInteract || !canUseHeartStrike || heartStrikeUsed}
-                              title={heartStrikeUsed ? "已使用 - 每次议价限用一次" : "攻心: 利用心理弱点降低底价，不消耗耐心"}
-                              className={cn(
-                                  "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
-                                  heartStrikeUsed
-                                      ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
-                                      : canUseHeartStrike && canInteract
-                                      ? "bg-purple-950/40 border-purple-700/60 text-purple-400 hover:bg-purple-900/50 hover:border-purple-500 hover:shadow-[0_0_12px_rgba(147,51,234,0.3)] active:scale-95"
-                                      : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
-                              )}
-                          >
-                              <HeartCrack className={cn("w-5 h-5", heartStrikeUsed && "opacity-40")} />
-                              <span className="text-[9px] font-bold tracking-wider mt-0.5">
-                                  {heartStrikeUsed ? "已用" : "攻心"}
-                              </span>
-                          </button>
-                      )}
-
-                      {/* Insight Interaction: Empathy Button */}
-                      {onEmpathy && (
-                          <button
-                              onClick={() => {
-                                  if (!empathyUsed && canUseEmpathy && canInteract) {
-                                      playSfx('CLICK');
-                                      onEmpathy();
-                                  }
-                              }}
-                              disabled={!canInteract || !canUseEmpathy || empathyUsed}
-                              title={empathyUsed ? "已使用 - 每次议价限用一次" : "共情: 对客户表达理解与关怀"}
-                              className={cn(
-                                  "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
-                                  empathyUsed
-                                      ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
-                                      : canUseEmpathy && canInteract
-                                      ? "bg-rose-950/40 border-rose-700/60 text-rose-400 hover:bg-rose-900/50 hover:border-rose-500 hover:shadow-[0_0_12px_rgba(244,63,94,0.3)] active:scale-95"
-                                      : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
-                              )}
-                          >
-                              <HeartHandshake className={cn("w-5 h-5", empathyUsed && "opacity-40")} />
-                              <span className="text-[9px] font-bold tracking-wider mt-0.5">
-                                  {empathyUsed ? "已用" : "共情"}
-                              </span>
-                          </button>
-                      )}
-
-                      {/* Insight Interaction: Probe Button */}
-                      {onProbe && (
-                          <button
-                              onClick={() => {
-                                  if (!probeUsed && canUseProbe && canInteract) {
-                                      playSfx('CLICK');
-                                      onProbe();
-                                  }
-                              }}
-                              disabled={!canInteract || !canUseProbe || probeUsed}
-                              title={probeUsed ? "已使用 - 每次议价限用一次" : "试探: 试探客户的真实底线"}
-                              className={cn(
-                                  "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
-                                  probeUsed
-                                      ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
-                                      : canUseProbe && canInteract
-                                      ? "bg-cyan-950/40 border-cyan-700/60 text-cyan-400 hover:bg-cyan-900/50 hover:border-cyan-500 hover:shadow-[0_0_12px_rgba(6,182,212,0.3)] active:scale-95"
-                                      : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
-                              )}
-                          >
-                              <ScanSearch className={cn("w-5 h-5", probeUsed && "opacity-40")} />
-                              <span className="text-[9px] font-bold tracking-wider mt-0.5">
-                                  {probeUsed ? "已用" : "试探"}
-                              </span>
-                          </button>
-                      )}
-
-                      <Button
-                        variant="primary"
-                        onClick={onOffer}
-                        disabled={!canInteract || !canAfford}
-                        className={cn(
-                          "flex-1 h-16 relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center gap-0.5",
-                          getSubmitButtonText === '坚持' && "bg-amber-700 hover:bg-amber-600",
-                          getSubmitButtonText === '让步' && "bg-emerald-700 hover:bg-emerald-600"
-                        )}
-                      >
-                         <div className="flex items-center gap-2">
-                             <Stamp className="w-4 h-4" />
-                             <span className="text-sm font-bold tracking-[0.2em]">{getSubmitButtonText}</span>
-                         </div>
-                         {instinct.text && (
-                             <span className="text-[10px] font-serif italic text-black/80 font-bold max-w-[95%] truncate px-2">
-                                 "{instinct.text}"
-                             </span>
-                         )}
-                      </Button>
-                   </div>
+                             <div className="flex items-center gap-2">
+                                 <Stamp className="w-4 h-4" />
+                                 <span className="text-sm font-bold tracking-[0.2em]">{getSubmitButtonText}</span>
+                             </div>
+                             {instinct.text && (
+                                 <span className="text-[10px] font-serif italic text-black/80 font-bold max-w-[95%] truncate px-2">
+                                     "{instinct.text}"
+                                 </span>
+                             )}
+                          </Button>
+                       </div>
+                     </>
+                   )}
                </div>
            )}
         </div>

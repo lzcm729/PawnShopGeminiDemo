@@ -384,24 +384,41 @@ base_patience_loss_chance = 0.45
 
 # 推拉策略：强硬
 [negotiation.push_pull.HARD]
-base_concession_chance = 0.25
-concession_ratio = 0.08
-max_concessions = 2
-base_patience_loss_chance = 0.70
+base_concession_chance = 0.15
+concession_ratio = 0.10
+max_concessions = 1
+base_patience_loss_chance = 0.75
 
 # 推拉策略：狡猾
 [negotiation.push_pull.SLY]
-base_concession_chance = 0.40
-concession_ratio = 0.12
+base_concession_chance = 0.30
+concession_ratio = 0.10
 max_concessions = 2
-base_patience_loss_chance = 0.55
+base_patience_loss_chance = 0.65
 
 # 推拉策略：沉稳
 [negotiation.push_pull.CALM]
-base_concession_chance = 0.35
+base_concession_chance = 0.25
 concession_ratio = 0.10
 max_concessions = 2
-base_patience_loss_chance = 0.50
+base_patience_loss_chance = 0.60
+
+# 回合上限（防止拖沓）
+max_rounds = 5
+
+# 侮辱惩罚：侮辱不固定扣耐心，而是增加 push-pull 耐心流失概率
+insult_patience_loss_bonus = 0.25
+
+# Mercy 机制：耐心低时给予让步概率加成
+mercy_threshold = 2
+mercy_concession_bonus = 0.20
+
+# 近底线加成：出价接近底价时增加让步概率
+near_floor_ratio = 0.90
+near_floor_concession_bonus = 0.20
+
+# 攻心让步概率加成
+heart_strike_concession_bonus = 0.30
 
 # ------------------------------------------------------------
 # 黑市系统 (Black Market)

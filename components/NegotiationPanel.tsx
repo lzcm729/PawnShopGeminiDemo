@@ -42,6 +42,9 @@ interface NegotiationStateProps {
         lastPushPullResult: PushPullResult | null;
         // Insight-aware NPC response
         insightAwareText: string | null;
+        // Round tracking
+        roundCount: number;
+        isRoundLimitReached: boolean;
     };
     appraisalFeedbacks?: AppraisalFeedback[];
 }
@@ -129,7 +132,10 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     npcConcessionCount,
     lastPushPullResult,
     // Insight-aware NPC response
-    insightAwareText
+    insightAwareText,
+    // Round tracking
+    roundCount,
+    isRoundLimitReached,
   } = negotiation;
 
   const [chatLog, setChatLog] = useState<LogEntry[]>([]);
@@ -474,7 +480,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           id: `heartstrike-${Date.now()}`,
           sender: 'player' as const,
           text: `[攻心] 你抓住了对方的心理弱点，轻描淡写地提了一句。${bonusText}`,
-          subtext: `底价 -$${reductionAmount} | 不消耗耐心`,
+          subtext: `对方心防动摇，更容易让步 | 不消耗耐心`,
           sentiment: 'neutral' as const,
           type: 'INNER_MONOLOGUE' as const,
       }]);
@@ -570,6 +576,13 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
       playSfx('CLICK');
   };
+
+  // Auto-set offerPrincipal to currentAskPrice when round limit is reached
+  useEffect(() => {
+    if (isRoundLimitReached) {
+      setOfferPrincipal(currentAskPrice);
+    }
+  }, [isRoundLimitReached, currentAskPrice, setOfferPrincipal]);
 
   const handleOffer = () => {
     if (isWalkedAway || isSubmitting) return;
@@ -777,6 +790,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           canUseProbe={hasProbeInteraction && !probeUsed}
           probeUsed={probeUsed}
           onProbe={hasProbeInteraction ? handleProbe : undefined}
+          roundCount={roundCount}
+          isRoundLimitReached={isRoundLimitReached}
           onOffer={handleOffer}
           onManualReject={handleManualReject}
           onBinaryAccept={handleBinaryAccept}

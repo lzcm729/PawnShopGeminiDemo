@@ -69,6 +69,14 @@ interface UseNegotiationReturn {
 
   /** Insight-aware NPC response text (null if insight not used) */
   insightAwareText: string | null;
+
+  // Round tracking
+  roundCount: number;
+  isRoundLimitReached: boolean;
+
+  // Heart strike concession bonus
+  heartStrikeConcessionBonus: number;
+  setHeartStrikeConcessionBonus: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number, insultPrecisionModifier: number = 1.0) => {
@@ -151,6 +159,15 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
   const [npcConcessionCount, setNpcConcessionCount] = useState<number>(0);
   const [lastPushPullResult, setLastPushPullResult] = useState<PushPullResult | null>(null);
 
+  // Round tracking
+  const [roundCount, setRoundCount] = useState<number>(0);
+
+  // Heart strike concession bonus (set by ability system)
+  const [heartStrikeConcessionBonus, setHeartStrikeConcessionBonus] = useState<number>(0);
+
+  // Insult flag for probability-based patience loss
+  const [isInsult, setIsInsult] = useState<boolean>(false);
+
   const lastCustomerId = useRef<string | undefined>(undefined);
   // Lock uncertainty at negotiation start (A1/A2: one-time calculation)
   const lockedUncertaintyRef = useRef<number>(0.3);
@@ -168,6 +185,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         setPersistCount(0);
         setNpcConcessionCount(0);
         setLastPushPullResult(null);
+        setRoundCount(0);
+        setHeartStrikeConcessionBonus(0);
+        setIsInsult(false);
         return;
     }
 
@@ -196,6 +216,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       setPersistCount(0);
       setNpcConcessionCount(0);
       setLastPushPullResult(null);
+      setRoundCount(0);
+      setHeartStrikeConcessionBonus(0);
+      setIsInsult(false);
     }
   }, [customer, itemUncertainty]);
 
@@ -221,6 +244,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       setPersistCount(0);
       setNpcConcessionCount(0);
       setLastPushPullResult(null);
+      setRoundCount(0);
+      setHeartStrikeConcessionBonus(0);
+      setIsInsult(false);
     }
   }, [customer, itemUncertainty]);
 
@@ -298,6 +324,31 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       return { status: 'WALK_AWAY', message: "客户已经离开了。", patienceRemaining: 0 };
     }
 
+    // #3: Round limit check — at max rounds, player can only accept or reject
+    const maxRounds = GAME_CONFIG.NEGOTIATION.MAX_ROUNDS;
+    if (roundCount >= maxRounds) {
+        // At round limit: auto-accept if offer >= currentAskPrice, else final take-or-leave
+        if (offerPrincipal >= currentAskPrice) {
+            let acceptMsg = customer.dialogue.accepted.fair;
+            const ratio = offerPrincipal / customer.desiredAmount;
+            if (ratio < 0.85) acceptMsg = customer.dialogue.accepted.fleeced;
+            else if (ratio > 1.05) acceptMsg = customer.dialogue.accepted.premium;
+            setMood('Happy');
+            setOfferHistory(prev => [
+                { amount: offerPrincipal, rate: selectedRate, status: 'ACCEPTED', patienceCost: 0, timestamp: Date.now() },
+                ...prev.slice(0, 2)
+            ]);
+            return { status: 'ACCEPTED', message: acceptMsg, patienceRemaining: patience };
+        }
+        // Cannot continue negotiating — walk away
+        setIsWalkedAway(true);
+        return {
+            status: 'WALK_AWAY',
+            message: "谈了这么久还没结果，我不等了。",
+            patienceRemaining: 0
+        };
+    }
+
     // P0-7: Apply behavior tag floor modifiers to NPC minimum amount
     const minPrincipal = getFloorWithBehaviorMods(customer.behaviorTags, customer.minimumAmount);
     const maxRepayment = customer.maxRepayment || (minPrincipal * 1.2);
@@ -311,6 +362,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     let message = "";
     let nextMood: NegotiationMood = mood;
     let isPushPullZone = false;
+    let currentIsInsult = false;
 
     // --- LOGIC GATES (hit-and-return priority) ---
     // 1. INSULT — offer far below floor
@@ -326,8 +378,10 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         : minPrincipal;
 
     if (offerPrincipal < insultThreshold) {
+        // #4: Insult is now probability-based, not fixed -2 patience
         status = 'INSULT';
-        costPatience = 2;
+        costPatience = 0; // No fixed patience cost; insult adds to patience loss probability
+        currentIsInsult = true;
         nextMood = 'Angry';
         message = "你这是在打发叫花子吗？太离谱了！";
     }
@@ -338,8 +392,6 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         message = selectedRate === 0
             ? "这点钱...真的不够我活命的..."
             : "这点钱不够应急啊，再加点吧。";
-        // TODO: 底价揭示功能暂时禁用，之后可能通过其他机制（如洞察技能）解锁
-        // setRevealedMinimum(true);
     }
     else if (selectedRate > 0 && totalRepayment > maxRepayment) {
         status = 'TOTAL_REPAYMENT_EXCEEDED';
@@ -361,29 +413,44 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     }
     else {
         // Offer is between effectiveFloor and currentAskPrice — enter push-pull phase
-        // Patience cost is probabilistic, determined by push-pull result below
         isPushPullZone = true;
-        status = 'COUNTER'; // NPC countering, negotiation in progress
+        status = 'COUNTER';
         costPatience = 0; // Will be set by push-pull result below
-        nextMood = mood; // Mood unchanged until push-pull resolves
+        nextMood = mood;
         message = "再考虑考虑吧...";
     }
 
-    // --- PUSH-PULL LOGIC (after non-accepted, non-insult offers) ---
+    // --- PUSH-PULL LOGIC (after non-accepted offers) ---
     let pushPullResult: PushPullResult | null = null;
 
-    if (status !== 'ACCEPTED' && status !== 'INSULT') {
-        // Execute push-pull judgment (I-7: pass insight modifier, D: precision multiplier)
+    if (status !== 'ACCEPTED') {
+        // Execute push-pull judgment (I-7: pass combined modifier, D: precision multiplier)
         const concessionMult = getConcessionMultiplier(lockedUncertaintyRef.current);
 
+        // Combine all concession modifiers: insight + reputation + heart strike + mercy
+        let totalConcessionMod = insightConcessionModifier;
+
         // #33: Reputation-based concession bonus
-        // High Humanity makes customers more willing to accept lower prices
         const repMods = GAME_CONFIG.NEGOTIATION.REPUTATION_MODIFIERS;
-        let reputationConcessionBonus = 0;
         if (reputationHumanity > 70) {
-            reputationConcessionBonus = repMods.HUMANITY_70_CONCESSION_BONUS;
+            totalConcessionMod += repMods.HUMANITY_70_CONCESSION_BONUS;
         } else if (reputationHumanity > 60) {
-            reputationConcessionBonus = repMods.HUMANITY_60_CONCESSION_BONUS;
+            totalConcessionMod += repMods.HUMANITY_60_CONCESSION_BONUS;
+        }
+
+        // #2: Heart strike concession bonus
+        if (heartStrikeConcessionBonus > 0) {
+            totalConcessionMod += heartStrikeConcessionBonus;
+        }
+
+        // #5: Mercy mechanic — patience < mercy_threshold → concession chance + bonus
+        if (patience < GAME_CONFIG.NEGOTIATION.MERCY_THRESHOLD) {
+            totalConcessionMod += GAME_CONFIG.NEGOTIATION.MERCY_CONCESSION_BONUS;
+        }
+
+        // #47: Insult = 0% concession (NPC won't concede on insulting offers)
+        if (currentIsInsult) {
+            totalConcessionMod = -10;
         }
 
         pushPullResult = executePushPull(
@@ -394,7 +461,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
             minPrincipal,
             persistCount,
             npcConcessionCount,
-            insightConcessionModifier + reputationConcessionBonus,
+            totalConcessionMod,
             concessionMult
         );
 
@@ -405,68 +472,58 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
             setPersistCount(0);
         }
 
-        // P2-8: Mercy mechanic — when patience <= 1 and NPC didn't concede naturally,
-        // guarantee a concession in the push-pull zone. This prevents deadlock and
-        // rewards persistence. Only fires when there's margin left to concede.
-        const MERCY_CONCESSION_RATE = 0.10;
-        if (
-            isPushPullZone &&
-            patience <= 1 &&
-            !pushPullResult.conceded &&
-            !pushPullResult.atLimit &&
-            currentAskPrice > minPrincipal
-        ) {
-            const remainingMargin = currentAskPrice - minPrincipal;
-            const mercyConcession = Math.max(1, Math.floor(remainingMargin * MERCY_CONCESSION_RATE));
-            const mercyNewAsk = Math.max(minPrincipal, currentAskPrice - mercyConcession);
-            // Only apply if it actually changes the price
-            if (mercyNewAsk < currentAskPrice) {
-                pushPullResult = {
-                    ...pushPullResult,
-                    conceded: true,
-                    newAskPrice: Math.max(mercyNewAsk, offerPrincipal), // Never concede below player's offer
-                    concessionAmount: currentAskPrice - Math.max(mercyNewAsk, offerPrincipal),
-                    atLimit: mercyNewAsk <= minPrincipal
-                };
-            }
-        }
-
         // If NPC conceded, update ask price and concession count
         if (pushPullResult.conceded) {
             setCurrentAskPrice(pushPullResult.newAskPrice);
             setNpcConcessionCount(prev => prev + 1);
         }
 
-        // Apply probabilistic patience cost only in push-pull zone
-        // Hard rejections (INSULT, below-floor PRINCIPAL_TOO_LOW, TOTAL_REPAYMENT_EXCEEDED)
-        // keep their fixed costPatience values
-        if (isPushPullZone && pushPullResult.patienceLost) {
-            costPatience = 1;
+        // Apply probabilistic patience cost
+        // #4: If insult, add insult_patience_loss_bonus to the patience loss chance
+        if (isPushPullZone || currentIsInsult) {
+            let effectivePatienceLossChance = pushPullResult.patienceLossChance;
+
+            // #4: Insult adds +25% to patience loss probability
+            if (currentIsInsult) {
+                effectivePatienceLossChance = Math.min(1.0, effectivePatienceLossChance + GAME_CONFIG.NEGOTIATION.INSULT_PATIENCE_LOSS_BONUS);
+            }
+
+            // Re-roll patience with adjusted chance (for insult case; push-pull zone uses original roll)
+            if (currentIsInsult) {
+                const insultPatienceLost = Math.random() < effectivePatienceLossChance;
+                if (insultPatienceLost) {
+                    costPatience = 1;
+                }
+            } else if (pushPullResult.patienceLost) {
+                costPatience = 1;
+            }
         }
 
         setLastPushPullResult(pushPullResult);
     } else {
-        // Reset persist count on accept or insult
+        // Reset persist count on accept
         setPersistCount(0);
         setLastPushPullResult(null);
     }
+
+    // #3: Increment round count (all offer types count as a round)
+    setRoundCount(prev => prev + 1);
+
+    // Track insult state for subsequent push-pull interactions
+    setIsInsult(currentIsInsult);
 
     // Update last offer amount
     setLastOfferAmount(offerPrincipal);
 
     // H-1: Apply morale negotiation modifier to patience cost
-    // modifier < 1 (good morale): chance to avoid 1 patience loss
-    // modifier > 1 (bad morale): chance to lose extra patience
     let adjustedCostPatience = costPatience;
     if (costPatience > 0 && moraleNegotiationModifier !== 1.0) {
         if (moraleNegotiationModifier < 1.0) {
-            // Good morale: chance to save 1 patience (e.g., 0.90 => 10% chance to save)
             const saveChance = 1.0 - moraleNegotiationModifier;
             if (Math.random() < saveChance) {
                 adjustedCostPatience = Math.max(0, costPatience - 1);
             }
         } else {
-            // Bad morale: chance to lose extra patience (e.g., 1.10 => 10% chance to lose extra)
             const extraChance = moraleNegotiationModifier - 1.0;
             if (Math.random() < extraChance) {
                 adjustedCostPatience = costPatience + 1;
@@ -474,11 +531,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         }
     }
 
-    // P0-2: News stolen_risk effect — when police crackdown news is active and
-    // the item is stolen, the NPC becomes extra cautious. Each point of
-    // stolen_risk adds 1% chance of an extra patience cost per offer round.
+    // P0-2: News stolen_risk effect
     if (newsStolenRisk > 0 && customer.item.isStolen && adjustedCostPatience > 0) {
-        const extraRiskChance = Math.min(newsStolenRisk / 100, 0.5); // Cap at 50%
+        const extraRiskChance = Math.min(newsStolenRisk / 100, 0.5);
         if (Math.random() < extraRiskChance) {
             adjustedCostPatience += 1;
         }
@@ -499,7 +554,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
 
     // Add to History
     setOfferHistory(prev => [
-        { amount: offerPrincipal, rate: selectedRate, status, patienceCost: costPatience, timestamp: Date.now() },
+        { amount: offerPrincipal, rate: selectedRate, status, patienceCost: adjustedCostPatience, timestamp: Date.now() },
         ...prev.slice(0, 2)
     ]);
 
@@ -518,7 +573,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         patienceRemaining: remaining
     };
 
-  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier, moraleNegotiationModifier, newsStolenRisk]);
+  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier, moraleNegotiationModifier, newsStolenRisk, roundCount, heartStrikeConcessionBonus]);
 
   // Allow external systems (ability skills) to deduct patience from the hook's local state.
   // This keeps the hook's patience in sync when skills like "施压" cost patience.
@@ -580,6 +635,12 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     persistCount,
     npcConcessionCount,
     lastPushPullResult,
-    insightAwareText
+    insightAwareText,
+    // Round tracking
+    roundCount,
+    isRoundLimitReached: roundCount >= GAME_CONFIG.NEGOTIATION.MAX_ROUNDS,
+    // Heart strike concession bonus
+    heartStrikeConcessionBonus,
+    setHeartStrikeConcessionBonus,
   };
 };

@@ -28,6 +28,7 @@ import {
   canUseSkillInNegotiation,
   calculatePressureEffect,
   calculateHeartStrikeEffect,
+  calculateHeartStrikeFloorEffect,
   calculateSharpScrutinyEffect,
   isFloorCapReached,
   generateForesightResult,
@@ -43,6 +44,7 @@ import {
   getPierceIllusionEffect,
   hasEmpathyBonus,
   canUnlockSkill,
+  HeartStrikeResult,
 } from '../systems/characterAbility/abilityEngine';
 import { generatePanelData } from '../systems/characterAbility/panelData';
 import {
@@ -71,6 +73,7 @@ interface UseCharacterAbilityReturn {
   canUseInNegotiation: (skillId: SkillId) => boolean;
   applyPressure: (originalFloor: number, currentFloor: number, afterConcession: boolean, existingReduction: number) => FloorReductionResult;
   applyHeartStrike: (originalFloor: number, currentFloor: number, behaviorTags: BehaviorTag[], afterConcession: boolean, existingReduction: number) => FloorReductionResult;
+  getHeartStrikeConcessionBonus: () => HeartStrikeResult;
   getSharpScrutinyReduction: (originalFloor: number, currentFloor: number, flawCount: number, existingReduction: number) => FloorReductionResult;
   isCapReached: (existingReduction: number) => boolean;
 
@@ -184,9 +187,16 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
     [reputation]
   );
 
+  // Legacy floor-based interface for backward compatibility with components
   const applyHeartStrike = useCallback(
     (originalFloor: number, currentFloor: number, behaviorTags: BehaviorTag[], afterConcession: boolean, existingReduction: number) =>
-      calculateHeartStrikeEffect(originalFloor, currentFloor, reputation, behaviorTags, afterConcession, existingReduction),
+      calculateHeartStrikeFloorEffect(originalFloor, currentFloor, reputation, behaviorTags, afterConcession, existingReduction),
+    [reputation]
+  );
+
+  // New concession bonus interface (used by useNegotiation)
+  const getHeartStrikeConcessionBonus = useCallback(
+    () => calculateHeartStrikeEffect(reputation),
     [reputation]
   );
 
@@ -331,6 +341,7 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
     canUseInNegotiation,
     applyPressure,
     applyHeartStrike,
+    getHeartStrikeConcessionBonus,
     getSharpScrutinyReduction,
     isCapReached,
     hasSenseHidden,
