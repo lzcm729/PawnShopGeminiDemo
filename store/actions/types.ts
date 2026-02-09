@@ -85,6 +85,14 @@ export type Action =
     | { type: 'REJECT_RENEWAL'; payload: { itemId: string; name: string } }
     | { type: 'RESOLVE_POST_FORFEIT'; payload: { itemId: string; action: 'SELL_LOW' | 'GIFT' | 'REFUSE'; name: string; value: number } }
 
+    // Cancel Pawn (#35: Customer withdraws contract during holding period)
+    | { type: 'CANCEL_PAWN'; payload: { itemId: string; refundAmount: number; fee: number; name: string } }
+
+    // Holding Period Events (#32, #33, #34)
+    | { type: 'TRIGGER_HOLDING_PERIOD_EVENT'; payload: { type: import('../../systems/npc/types').HoldingPeriodEventType; itemId: string; itemName: string; chainId?: string } }
+    | { type: 'RESOLVE_HOLDING_PERIOD_EVENT'; payload: { eventType: import('../../systems/npc/types').HoldingPeriodEventType; itemId: string; decision: 'SURRENDER' | 'REFUSE' } }
+    | { type: 'CLEAR_HOLDING_PERIOD_EVENT' }
+
     // Financial
     | { type: 'PAY_MEDICAL_BILL' }
     | { type: 'ROTATE_MEDICAL_BILL' }

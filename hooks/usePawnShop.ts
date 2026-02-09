@@ -400,12 +400,33 @@ export const usePawnShop = () => {
         });
     }, [dispatch]);
 
+    // #35: Process Cancel Pawn — customer withdraws contract during holding period
+    // Refunds the principal minus a small cancellation fee (5% of principal)
+    const processCancelPawn = useCallback((item: Item) => {
+        if (!item.pawnInfo || item.status !== ItemStatus.ACTIVE) return;
+
+        const principal = item.pawnInfo.principal;
+        const fee = Math.ceil(principal * GAME_CONFIG.ECONOMY.CANCEL_FEE_RATE);
+        const refundAmount = principal;
+
+        dispatch({
+            type: 'CANCEL_PAWN',
+            payload: {
+                itemId: item.id,
+                refundAmount,
+                fee,
+                name: item.name
+            }
+        });
+    }, [dispatch]);
+
     return {
         calculateRedemptionCost,
         calculatePenalty,
         processRedemption,
         processExtension,
         processRefuseExtension,
+        processCancelPawn,
         checkDailyExpirations,
         checkOverdueItems,
         handleLateRedemption,

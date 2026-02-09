@@ -368,6 +368,124 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
             };
         }
 
+        // #35: Cancel Pawn — customer withdraws contract during holding period
+        case 'CANCEL_PAWN': {
+            const { itemId, refundAmount, fee, name } = action.payload;
+            playSfx('CASH');
+
+            // Remove item from inventory (customer takes it back)
+            const cancelInventory = state.inventory.map(item => {
+                if (item.id === itemId) {
+                    return { ...item, status: ItemStatus.REDEEMED };
+                }
+                return item;
+            });
+
+            // Net cash: player refunds principal but keeps the cancellation fee
+            const netCash = fee - refundAmount;
+
+            const cancelRecord: TransactionRecord = {
+                id: crypto.randomUUID(),
+                description: `取消典当: ${name} (退还 $${refundAmount}, 手续费 $${fee})`,
+                amount: netCash,
+                type: netCash >= 0 ? 'REDEEM' : 'PENALTY'
+            };
+
+            // Credibility +1: honoring cancellation shows professionalism
+            const cancelRep = { ...state.reputation };
+            cancelRep[ReputationType.CREDIBILITY] = Math.min(100, cancelRep[ReputationType.CREDIBILITY] + 1);
+
+            return {
+                ...state,
+                stats: { ...state.stats, cash: state.stats.cash + netCash },
+                reputation: cancelRep,
+                inventory: cancelInventory,
+                todayTransactions: [...state.todayTransactions, cancelRecord],
+                dayEvents: [...state.dayEvents, `客户取消典当: ${name} (退还 $${refundAmount}, 手续费 $${fee}, 商誉 +1)`]
+            };
+        }
+
+        // #32, #33: Holding Period Risk Events — trigger
+        case 'TRIGGER_HOLDING_PERIOD_EVENT': {
+            const { type: eventType, itemId, itemName, chainId } = action.payload;
+            playSfx('FAIL');
+            const triggerDay = state.stats.day;
+            return {
+                ...state,
+                currentHoldingPeriodEvent: { type: eventType, itemId, itemName, chainId, triggerDay },
+                dayEvents: [
+                    ...state.dayEvents,
+                    eventType === 'THIEF_REGRET'
+                        ? `[持有期事件] 有人声称 ${itemName} 是自己偷来的，请求归还...`
+                        : `[持有期事件] 有人声称自己是 ${itemName} 的原主人，要求归还...`
+                ]
+            };
+        }
+
+        // #32, #33: Holding Period Risk Events — resolve
+        case 'RESOLVE_HOLDING_PERIOD_EVENT': {
+            const { eventType, itemId, decision } = action.payload;
+            const holdItem = state.inventory.find(i => i.id === itemId);
+            if (!holdItem) {
+                return { ...state, currentHoldingPeriodEvent: null };
+            }
+
+            const holdRep = { ...state.reputation };
+            let holdLog = '';
+
+            if (decision === 'SURRENDER') {
+                // Return item to claimant
+                const surrenderInventory = state.inventory.map(i => {
+                    if (i.id === itemId) {
+                        return { ...i, status: ItemStatus.REDEEMED };
+                    }
+                    return i;
+                });
+
+                if (eventType === 'THIEF_REGRET') {
+                    // Surrendering stolen goods to the thief: morally ambiguous
+                    holdRep[ReputationType.HUMANITY] = Math.min(100, holdRep[ReputationType.HUMANITY] + 2);
+                    holdLog = `[持有期事件] 归还 ${holdItem.name} 给声称者 (人情 +2)`;
+                } else {
+                    // Surrendering to original owner: strong moral action
+                    holdRep[ReputationType.HUMANITY] = Math.min(100, holdRep[ReputationType.HUMANITY] + 5);
+                    holdRep[ReputationType.CREDIBILITY] = Math.min(100, holdRep[ReputationType.CREDIBILITY] + 2);
+                    holdLog = `[持有期事件] 归还 ${holdItem.name} 给原主人 (人情 +5, 商誉 +2)`;
+                }
+
+                return {
+                    ...state,
+                    inventory: surrenderInventory,
+                    reputation: holdRep,
+                    currentHoldingPeriodEvent: null,
+                    dayEvents: [...state.dayEvents, holdLog]
+                };
+            } else {
+                // Refuse to return
+                if (eventType === 'THIEF_REGRET') {
+                    // Refusing thief: relatively neutral, slight innocence concern
+                    holdRep[ReputationType.INNOCENCE] = Math.max(0, holdRep[ReputationType.INNOCENCE] - 1);
+                    holdLog = `[持有期事件] 拒绝归还 ${holdItem.name} (清白 -1)`;
+                } else {
+                    // Refusing original owner: loss of humanity and credibility
+                    holdRep[ReputationType.HUMANITY] = Math.max(0, holdRep[ReputationType.HUMANITY] - 3);
+                    holdRep[ReputationType.CREDIBILITY] = Math.max(0, holdRep[ReputationType.CREDIBILITY] - 2);
+                    holdLog = `[持有期事件] 拒绝归还 ${holdItem.name} 给原主人 (人情 -3, 商誉 -2)`;
+                }
+
+                return {
+                    ...state,
+                    reputation: holdRep,
+                    currentHoldingPeriodEvent: null,
+                    dayEvents: [...state.dayEvents, holdLog]
+                };
+            }
+        }
+
+        case 'CLEAR_HOLDING_PERIOD_EVENT': {
+            return { ...state, currentHoldingPeriodEvent: null };
+        }
+
         case 'APPEND_ITEM_LOGS': {
             // S3-F1/F2: Append log entries to specific items (player choices, echo entries)
             const logEntries = action.payload;

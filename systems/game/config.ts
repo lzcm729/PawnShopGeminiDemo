@@ -391,6 +391,8 @@ export const GAME_CONFIG = {
     SALE_DISCOUNT: tomlConfig.economy.sale_discount,
     DEFAULT_PAWN_TERM_DAYS: tomlConfig.economy.default_pawn_term_days,
     RENEWAL_DAYS: tomlConfig.economy.renewal_days,
+    // #35: Cancel pawn fee rate (5% of principal)
+    CANCEL_FEE_RATE: 0.05,
   },
 
   // --- NIGHT PHASE (夜间玩法) ---

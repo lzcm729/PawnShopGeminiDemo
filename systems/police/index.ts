@@ -88,3 +88,50 @@ export function checkForPoliceInvestigation(
 export function isItemStolen(item: Item | undefined | null): boolean {
     return item?.isStolen === true;
 }
+
+// ============================================================================
+// HOLDING PERIOD RISK EVENTS (#32, #33)
+// ============================================================================
+
+import { HoldingPeriodEventType } from '../npc/types';
+
+export const HOLDING_PERIOD_CONFIG = {
+    // #32: Chance per day that a thief regrets and comes back (per stolen item)
+    THIEF_REGRET_CHANCE: 0.05,
+    // #33: Chance per day that original owner appears (any active item)
+    ORIGINAL_OWNER_CHANCE: 0.02,
+    // Minimum days held before events can trigger
+    MIN_HOLDING_DAYS: 3,
+};
+
+/**
+ * Check if a holding period risk event should occur.
+ * #32: Thief regret — stolen item's thief comes back to reclaim
+ * #33: Original owner — legitimate owner discovers their item in the shop
+ * @returns The event to trigger, or null
+ */
+export function checkForHoldingPeriodEvent(
+    inventory: Item[],
+    currentDay: number
+): { type: HoldingPeriodEventType; item: Item } | null {
+    const activeItems = inventory.filter(
+        item => item.status === ItemStatus.ACTIVE && item.pawnInfo
+    );
+
+    for (const item of activeItems) {
+        const daysHeld = currentDay - (item.pawnInfo?.startDate || currentDay);
+        if (daysHeld < HOLDING_PERIOD_CONFIG.MIN_HOLDING_DAYS) continue;
+
+        // #32: Thief regret — only for stolen items
+        if (item.isStolen && Math.random() < HOLDING_PERIOD_CONFIG.THIEF_REGRET_CHANCE) {
+            return { type: 'THIEF_REGRET', item };
+        }
+
+        // #33: Original owner appears — any item (not stolen, since stolen has thief regret)
+        if (!item.isStolen && Math.random() < HOLDING_PERIOD_CONFIG.ORIGINAL_OWNER_CHANCE) {
+            return { type: 'ORIGINAL_OWNER', item };
+        }
+    }
+
+    return null;
+}

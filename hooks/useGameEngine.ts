@@ -19,7 +19,7 @@ import { generateDailyChallenge, checkChallengeCompletion } from '../systems/gam
 import type { DayChallengeContext } from '../systems/game/dailyChallenge';
 import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
 import { PhaseEvent } from '../systems/core/phases/types';
-import { checkForPoliceInvestigation } from '../systems/police';
+import { checkForPoliceInvestigation, checkForHoldingPeriodEvent } from '../systems/police';
 import { calculateRedemptionTotal } from '../systems/economy/interest';
 import { resolveMailDelay } from '../systems/narrative/mailUtils';
 import { getMailTemplate } from '../systems/narrative/mailRegistry';
@@ -710,14 +710,31 @@ export const useGameEngine = () => {
         // Police investigation doesn't block expiry events - they can happen same day
     }
 
+    // 1.6. Check for holding period risk events (#32, #33)
+    if (!stolenItemToInvestigate) {  // Don't stack with police investigation
+        const holdingEvent = checkForHoldingPeriodEvent(state.inventory, currentDay);
+        if (holdingEvent) {
+            dispatch({
+                type: 'TRIGGER_HOLDING_PERIOD_EVENT',
+                payload: {
+                    type: holdingEvent.type,
+                    itemId: holdingEvent.item.id,
+                    itemName: holdingEvent.item.name,
+                    chainId: holdingEvent.item.relatedChainId
+                }
+            });
+        }
+    }
+
     // 2. Check for expiry events (REDEEM/RENEW only, NO_SHOW auto-forfeits)
     const { expiryEvents, noShowForfeits } = checkDailyExpirations();
 
     // 3. Apply expiryFlows.noShow.keep effects for auto-forfeited items
-    noShowForfeits.forEach(({ itemId, chainId }) => {
+    noShowForfeits.forEach(({ itemId, chainId, itemName }) => {
         const storyEvent = ALL_STORY_EVENTS.find(e =>
             e.coreItemId === itemId || e.item?.id === itemId
         );
+        let hasMailEffect = false;
         if (storyEvent?.expiryFlows?.noShow?.keep) {
             storyEvent.expiryFlows.noShow.keep.forEach(effect => {
                 if (effect.type === 'MODIFY_VAR' && effect.variable && effect.value !== undefined) {
@@ -726,6 +743,7 @@ export const useGameEngine = () => {
                         payload: { chainId, variable: effect.variable, value: effect.value }
                     });
                 } else if (effect.type === 'SCHEDULE_MAIL' && effect.templateId) {
+                    hasMailEffect = true;
                     const effectDelay = effect.delayDays || 0;
                     const tpl = getMailTemplate(effect.templateId);
                     const finalDelay = effectDelay > 0 ? effectDelay : resolveMailDelay(tpl?.delay);
@@ -733,6 +751,18 @@ export const useGameEngine = () => {
                         type: 'SCHEDULE_MAIL',
                         payload: { templateId: effect.templateId, delayDays: finalDelay, sourceChainId: chainId }
                     });
+                }
+            });
+        }
+        // #17: Generate system mail for NO_SHOW forfeits that lack story-specific mail
+        if (!hasMailEffect) {
+            dispatch({
+                type: 'SCHEDULE_MAIL',
+                payload: {
+                    templateId: 'mail_generic_plea',
+                    delayDays: 1,
+                    metadata: { relatedItemName: itemName },
+                    sourceChainId: chainId
                 }
             });
         }
@@ -894,9 +924,19 @@ export const useGameEngine = () => {
               const realItem = state.inventory.find(i => i.id === targetId);
               if (realItem) {
                   storyCustomer.item = { ...realItem };
-                  storyCustomer.interactionType = 'REDEEM'; 
-                  storyCustomer.redemptionIntent = 'REDEEM'; 
-                  storyCustomer.allowFreeRedeem = true; 
+                  storyCustomer.interactionType = 'REDEEM';
+                  storyCustomer.redemptionIntent = 'REDEEM';
+                  storyCustomer.allowFreeRedeem = true;
+                  // #23: Assign post-forfeit variant based on NPC emotional state
+                  const hope = chainState?.variables?.hope as number | undefined;
+                  const funds = chainState?.variables?.funds as number | undefined;
+                  if (hope !== undefined && hope <= 20) {
+                      storyCustomer.postForfeitVariant = 'resigned';
+                  } else if (funds !== undefined && funds <= 0) {
+                      storyCustomer.postForfeitVariant = 'angry';
+                  } else {
+                      storyCustomer.postForfeitVariant = 'pleading';
+                  }
               }
           }
 

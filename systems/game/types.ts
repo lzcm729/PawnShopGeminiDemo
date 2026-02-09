@@ -11,6 +11,7 @@ import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '.
 import { GameNode } from '../../types/node';
 import { BlackmarketState } from '../blackmarket/types';
 import { CustomerInsightResult, InsightTrainingResult } from '../customerInsight';
+import { HoldingPeriodEvent } from '../npc/types';
 import { DailyChallenge } from './dailyChallenge';
 import { DailySchedule } from '../npc/customerScheduler';
 import { AbilityState, ConsequenceFlashResult } from '../characterAbility/types';
@@ -118,6 +119,9 @@ export interface GameState {
 
   // === POLICE INVESTIGATION (警方调查) ===
   currentPoliceInvestigation: PoliceInvestigationEvent | null;  // 当前警方调查事件
+
+  // === HOLDING PERIOD EVENTS (#32, #33: 持有期风险事件) ===
+  currentHoldingPeriodEvent: HoldingPeriodEvent | null;
 
   // === DAILY CHALLENGE (每日挑战 v2.1) ===
   dailyChallenge: DailyChallenge | null;

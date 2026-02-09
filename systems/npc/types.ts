@@ -6,6 +6,20 @@ import { Dialogue, SimLogEntry, CustomerPortraits, ChainUpdateEffect } from '../
 // Re-export BehaviorTag for backward compatibility
 export type { BehaviorTag };
 
+// === POST-FORFEIT NPC VARIANTS (#23) ===
+export type PostForfeitVariant = 'pleading' | 'angry' | 'resigned';
+
+// === HOLDING PERIOD EVENTS (#32, #33) ===
+export type HoldingPeriodEventType = 'THIEF_REGRET' | 'ORIGINAL_OWNER';
+
+export interface HoldingPeriodEvent {
+    type: HoldingPeriodEventType;
+    itemId: string;
+    itemName: string;
+    chainId?: string;
+    triggerDay: number;
+}
+
 export interface RenewalProposal {
     itemId: string;
     itemName: string;
@@ -55,6 +69,9 @@ export interface Customer {
   pawnTermDays?: number;  // 自定义典当期限（默认7天）
 
   observation?: string; // Narrative observation/hint
+
+  /** #23: Post-forfeit NPC emotional variant */
+  postForfeitVariant?: PostForfeitVariant;
 
   /** Dynamic chain effects injected during story customer generation */
   _dynamicEffects?: ChainUpdateEffect[];
