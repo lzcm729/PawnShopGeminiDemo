@@ -8,6 +8,7 @@ import { ReputationType, ItemStatus } from '../types';
 import { cn } from '../lib/utils';
 import { getDisplayName } from '../systems/items/tagUtils';
 import { getNarrativeAnchor } from '../systems/reputation';
+import { GAME_CONFIG } from '../systems/game/config';
 
 export const EndOfDaySummary: React.FC = () => {
   const { state } = useGame();
@@ -222,7 +223,7 @@ export const EndOfDaySummary: React.FC = () => {
                                    onClick={() => liquidateItem(item)}
                                    className="text-[10px] h-8 border-stone-600 hover:bg-pawn-accent hover:text-black hover:border-pawn-accent"
                                >
-                                   <DollarSign className="w-3 h-3 mr-1"/> SELL (+${Math.floor(item.realValue * 0.8)})
+                                   <DollarSign className="w-3 h-3 mr-1"/> SELL (+${Math.floor(item.realValue * GAME_CONFIG.ECONOMY.SALE_DISCOUNT)})
                                </Button>
                            </div>
                        ))

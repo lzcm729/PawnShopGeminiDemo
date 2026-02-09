@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { ExpiryEvent, ExpiryChoice } from '../types';
+import { GAME_CONFIG } from '../systems/game/config';
 
 interface ExpiryEventModalProps {
     event: ExpiryEvent;
@@ -13,7 +14,7 @@ export const ExpiryEventModal: React.FC<ExpiryEventModalProps> = ({ event, onRes
     const { behavior, itemName, npcName, redemptionCost, isCoreItem, valuation, interestRate } = event;
 
     // 计算金额
-    const compensationAmount = Math.ceil(valuation * 2);  // 200% 赔偿金
+    const compensationAmount = Math.ceil(valuation * GAME_CONFIG.ECONOMY.COMPENSATION_MULTIPLIER);
     const renewalInterest = Math.ceil(redemptionCost.principal * interestRate);  // 续当利息
 
     const renderSceneDescription = (): React.ReactNode => {
@@ -98,7 +99,7 @@ export const ExpiryEventModal: React.FC<ExpiryEventModalProps> = ({ event, onRes
                     onClick={() => onResolve('renew_accept')}
                 >
                     <div className="font-semibold">同意续当</div>
-                    <div className="text-sm text-pawn-green/70">收取利息 ${renewalInterest}，延长 7 天</div>
+                    <div className="text-sm text-pawn-green/70">收取利息 ${renewalInterest}，延长 {GAME_CONFIG.ECONOMY.RENEWAL_DAYS} 天</div>
                 </button>
                 <button
                     className="w-full py-3 px-4 bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 rounded-lg text-red-400 transition-colors text-left"

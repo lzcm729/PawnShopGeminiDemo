@@ -7,6 +7,7 @@
 
 import { AppointmentCandidate, AppointmentPreference, AppointmentBoardLevelConfig } from '../upgrades/types';
 import { ActiveNewsInstance } from '../news/types';
+import { GAME_CONFIG } from '../game/config';
 
 // ============================================================================
 // Candidate Generation Data
@@ -210,7 +211,7 @@ const MYSTERY_VISITOR_TEMPLATE: CandidateTemplate = {
 };
 
 /** Probability of a mystery visitor appearing in the candidate pool (per generation) */
-const MYSTERY_VISITOR_CHANCE = 0.15;
+const MYSTERY_VISITOR_CHANCE = GAME_CONFIG.APPOINTMENT.MYSTERY_VISITOR_CHANCE;
 
 /**
  * Generate a mystery visitor candidate.

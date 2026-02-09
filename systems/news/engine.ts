@@ -6,6 +6,7 @@ import {
 } from './types';
 import { ConsequenceSeverity, CHANNEL_ALLOCATION_MATRIX } from '../narrative/channelProtocol';
 import { ALL_NEWS_DATA, getViolationNewsTemplate } from './registry';
+import { GAME_CONFIG } from '../game/config';
 
 // ============================================================================
 // Condition Checking (unchanged from v1.0)
@@ -227,8 +228,8 @@ function processViolations(
     for (const flag of violationFlags) {
         const severity = classifyViolation(flag);
 
-        // S3-F4: 60-80% detection probability
-        const detectionChance = 0.6 + Math.random() * 0.2;
+        // S3-F4: Detection probability from config
+        const detectionChance = GAME_CONFIG.NEWS.VIOLATION_DETECTION_MIN + Math.random() * GAME_CONFIG.NEWS.VIOLATION_DETECTION_RANGE;
         if (Math.random() > detectionChance) continue;
 
         // S3-F4: Delay 1-3 days
@@ -271,8 +272,8 @@ function processViolations(
 // S3-F2: Priority Algorithm with Guaranteed Slots
 // ============================================================================
 
-const MAX_DISPLAY_SLOTS = 3;  // Design doc 3.C: 固定 3 条版面
-const MAX_NARRATIVE_SLOTS = 2; // 后果上限：NARRATIVE_ECHO 最多 2 条
+const MAX_DISPLAY_SLOTS = GAME_CONFIG.NEWS.MAX_DISPLAY_SLOTS;
+const MAX_NARRATIVE_SLOTS = GAME_CONFIG.NEWS.MAX_NARRATIVE_SLOTS;
 
 /**
  * S3-F2: Select news for display following priority algorithm.

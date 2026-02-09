@@ -94,7 +94,7 @@ export const useAppraisal = () => {
 
         if (event.type !== 'MISHAP') {
             undiscoveredCandidates.forEach(trait => {
-                const baseChance = 0.5 - (trait.discoveryDifficulty * 0.3);
+                const baseChance = GAME_CONFIG.APPRAISAL.BASE_DISCOVERY_CHANCE - (trait.discoveryDifficulty * GAME_CONFIG.APPRAISAL.DISCOVERY_DIFFICULTY_FACTOR);
 
                 let effectiveChance = baseChance;
 
@@ -139,16 +139,16 @@ export const useAppraisal = () => {
             );
 
             if (discoveredFakeOrJackpotTrait) {
-                // FAKE/JACKPOT discovery: uncertainty drops to 0.10
+                // FAKE/JACKPOT discovery: uncertainty drops to configured value
                 // If BREAKTHROUGH also fired, it does NOT stack — trait discovery takes priority
-                newUncertainty = 0.10;
+                newUncertainty = GAME_CONFIG.APPRAISAL.TRAIT_DISCOVERY_UNCERTAINTY;
             } else if (isBreakthrough) {
                 // S1-F2: BREAKTHROUGH event: uncertainty ×0.60 (from config)
                 const breakthroughMultiplier = GAME_CONFIG.APPRAISAL_EVENTS.BREAKTHROUGH_UNCERTAINTY_MULTIPLIER;
                 newUncertainty = Math.max(0.05, newUncertainty * breakthroughMultiplier);
             } else {
-                // Normal shrink: ×0.85
-                newUncertainty = Math.max(0.05, newUncertainty * 0.85);
+                // Normal shrink
+                newUncertainty = Math.max(0.05, newUncertainty * GAME_CONFIG.APPRAISAL.NORMAL_SHRINK_RATE);
             }
         }
 
@@ -169,15 +169,15 @@ export const useAppraisal = () => {
             // S1-F2 / S1-F4: Breakthrough uses faster convergence (0.30 vs 0.15)
             // For non-jump traits (FLAW/STORY), breakthrough ×0.60 already applied above
             const breakthroughRangeShrink = GAME_CONFIG.APPRAISAL_EVENTS.BREAKTHROUGH_RANGE_SHRINK;
-            const CONVERGENCE_SPEED = isBreakthrough ? breakthroughRangeShrink : 0.15;
+            const CONVERGENCE_SPEED = isBreakthrough ? breakthroughRangeShrink : GAME_CONFIG.APPRAISAL.NORMAL_CONVERGENCE_SPEED;
             const anchor = item.perceivedValue ?? item.realValue;
 
             let calcMin = currentMin + (anchor - currentMin) * CONVERGENCE_SPEED;
             let calcMax = currentMax - (currentMax - anchor) * CONVERGENCE_SPEED;
 
             if (event.type === 'MISHAP') {
-                 calcMin = currentMin - (anchor * 0.05);
-                 calcMax = currentMax + (anchor * 0.05);
+                 calcMin = currentMin - (anchor * GAME_CONFIG.APPRAISAL.MISHAP_RANGE_EXPANSION);
+                 calcMax = currentMax + (anchor * GAME_CONFIG.APPRAISAL.MISHAP_RANGE_EXPANSION);
             }
 
             const roundToHuman = (val: number) => Math.round(val);

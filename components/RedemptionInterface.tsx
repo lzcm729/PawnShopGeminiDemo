@@ -10,6 +10,7 @@ import { Wallet, Package, FileText, Stamp, RefreshCw, LogOut, CheckCircle2, Shie
 import { SettlementCustomerView } from './SettlementCustomerView';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { playSfx } from '../systems/game/audio';
+import { GAME_CONFIG } from '../systems/game/config';
 
 const TicketPanel: React.FC<{ items: Item[], cost: any, penalty: number, isBundle: boolean }> = ({ items, cost, penalty, isBundle }) => {
     const primaryItem = items[0];
@@ -401,7 +402,7 @@ export const SettlementInterface: React.FC = () => {
                 success: true,
                 message: "支付赔偿金。",
                 cashDelta: -totalPenalty,
-                reputationDelta: { Humanity: -15, Credibility: -10, Innocence: -5 },
+                reputationDelta: { Humanity: GAME_CONFIG.REPUTATION_DELTAS.COMPENSATION_HUMANITY, Credibility: GAME_CONFIG.REPUTATION_DELTAS.COMPENSATION_CREDIBILITY, Innocence: GAME_CONFIG.REPUTATION_DELTAS.COMPENSATION_INNOCENCE },
                 dealQuality: 'fair' as const
             };
             commitTransaction(res);
@@ -424,7 +425,7 @@ export const SettlementInterface: React.FC = () => {
                 success: true,
                 message: customer.dialogue.accepted.fair || "赎回成功。",
                 cashDelta: 0, // Cash already handled by REDEEM_ITEM
-                reputationDelta: { Credibility: 2 },
+                reputationDelta: { Credibility: GAME_CONFIG.REPUTATION_DELTAS.REDEMPTION_SUCCESS_CREDIBILITY },
                 dealQuality: 'fair' as const
             };
             commitTransaction(res);
@@ -440,7 +441,7 @@ export const SettlementInterface: React.FC = () => {
             success: true,
             message: "你是个好人。(Charity)",
             cashDelta: 0,
-            reputationDelta: { Humanity: 15 },
+            reputationDelta: { Humanity: GAME_CONFIG.REPUTATION_DELTAS.CHARITY_RETURN_HUMANITY },
             dealQuality: 'premium' as const,
             terms: { principal: 0, rate: 0 }
         };

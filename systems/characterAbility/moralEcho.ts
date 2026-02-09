@@ -14,6 +14,7 @@
  */
 
 import { MoralEchoEvent } from './types';
+import { GAME_CONFIG } from '../game/config';
 
 // ============================================================================
 // Echo Generation
@@ -24,8 +25,8 @@ import { MoralEchoEvent } from './types';
  * Lower innocence = more intense echoes (accumulated weight).
  */
 function getEchoSeverity(innocence: number): 'LOW' | 'MEDIUM' | 'HIGH' {
-  if (innocence >= 50) return 'LOW';
-  if (innocence >= 30) return 'MEDIUM';
+  if (innocence >= GAME_CONFIG.ABILITY.MORAL_ECHO.LOW_THRESHOLD) return 'LOW';
+  if (innocence >= GAME_CONFIG.ABILITY.MORAL_ECHO.MEDIUM_THRESHOLD) return 'MEDIUM';
   return 'HIGH';
 }
 

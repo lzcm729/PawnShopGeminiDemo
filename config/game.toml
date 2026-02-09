@@ -30,6 +30,21 @@ weekly_rent = 0
 # 租金缴纳周期（天数）
 rent_cycle = 7
 
+# 清算价格比例（realValue * 此值）
+liquidation_rate = 0.80
+# 财务警告阈值
+warning_threshold = 500
+# 赔偿金倍率
+compensation_multiplier = 2.0
+# 回售溢价率
+resale_premium = 1.1
+# 变卖折扣率
+sale_discount = 0.8
+# 默认典当期限（天）
+default_pawn_term_days = 7
+# 续当延长天数
+renewal_days = 7
+
 # ------------------------------------------------------------
 # 夜间玩法 (Night Phase)
 # ------------------------------------------------------------
@@ -106,6 +121,14 @@ health_decay_rate = 15          # 欠费状态每天衰减 -15%
 emergency_treatment_cost = 200  # 紧急治疗费用
 emergency_treatment_heal = 5    # 紧急治疗恢复量 +5%
 
+# 健康状态阈值
+health_stable_threshold = 70          # 健康>=此值为Stable
+health_declining_threshold = 40       # 健康>=此值为Declining（<此值为Critical）
+# 断缴影响
+overdue_health_decay = 15             # 断缴时健康衰减
+complication_health_loss = 10         # 并发症健康损失
+overdue_risk_increase = 10            # 断缴时风险增加
+
 # ------------------------------------------------------------
 # 游戏玩法 (Gameplay)
 # ------------------------------------------------------------
@@ -116,6 +139,13 @@ initial_action_points = 10
 # 每日营业接待顾客数量上限
 # 设计配比：1 叙事顾客 : 3 填充顾客
 max_customers_per_day = 4
+
+# 每日挑战概率
+daily_challenge_probability = 0.80
+# 挑战利润目标
+challenge_profit_target = 500
+# 基础库存容量
+base_inventory_capacity = 5
 
 # ------------------------------------------------------------
 # 声誉系统初始值 (Reputation)
@@ -155,3 +185,270 @@ lucky_find_max = 30
 fake_pity_multiplier_2 = 1.5   # 第2次鉴定概率倍率
 fake_pity_multiplier_3 = 2.0   # 第3次鉴定概率倍率
 fake_pity_guaranteed = 4        # 第N次强制发现
+
+# ------------------------------------------------------------
+# 鉴定系统参数 (Appraisal)
+# ------------------------------------------------------------
+[appraisal]
+# 基础发现概率
+base_discovery_chance = 0.5
+# 难度系数
+discovery_difficulty_factor = 0.3
+# 正常收窄率
+normal_shrink_rate = 0.85
+# 正常收敛速度
+normal_convergence_speed = 0.15
+# 特征发现后不确定性
+trait_discovery_uncertainty = 0.10
+# 失误范围扩张
+mishap_range_expansion = 0.05
+# 估价非对称偏斜最小值
+skew_min = 0.2
+# 估价非对称偏斜范围
+skew_range = 0.6
+
+# ------------------------------------------------------------
+# 声誉增减表 (Reputation Deltas)
+# ------------------------------------------------------------
+[reputation_deltas]
+# 慈善档(0%)
+charity_generous_humanity = 2         # 大额慈善 +人情
+charity_normal_humanity = 1           # 普通慈善 +人情
+# 援助档(5%)
+aid_credibility = 1                   # 援助 +商誉
+aid_generous_humanity = 1             # 大额援助 +人情
+# 标准档(10%)
+standard_credibility = 1              # 标准 +商誉
+# 高利贷档(20%)
+shark_humanity = -1                   # 高利贷 -人情
+# 赃物相关
+stolen_known_leverage_innocence = -3  # 已知赃物+压价 -清白
+stolen_known_no_leverage_innocence = -2 # 已知赃物未压价 -清白
+# 违禁品
+contraband_innocence = -3             # 违禁品 -清白
+contraband_credibility = -2           # 违禁品 -商誉
+# 严打
+crackdown_credibility = -20           # 严打 -商誉
+crackdown_innocence = -5              # 严打 -清白
+# 赝品
+fake_credibility = -5                 # 赝品 -商誉
+# 赎回/赔偿
+redemption_success_credibility = 2    # 赎回成功 +商誉
+charity_return_humanity = 15          # 慈善归还 +人情
+compensation_humanity = -15           # 赔偿 -人情
+compensation_credibility = -10        # 赔偿 -商誉
+compensation_innocence = -5           # 赔偿 -清白
+# 高级交易
+premium_threshold = 2000              # 高级交易金额阈值
+premium_value_ratio = 1.5             # 高级交易价值比
+
+# ------------------------------------------------------------
+# 议价系统 (Negotiation)
+# ------------------------------------------------------------
+[negotiation]
+# 基础侮辱阈值
+base_insult_threshold = 0.70
+# 侮辱阈值下限
+insult_clamp_min = 0.50
+# 侮辱阈值上限
+insult_clamp_max = 0.90
+# 首次报价修正系数
+first_offer_multiplier = 0.3
+# 坚持报价修正系数
+persist_multiplier = 0.5
+# 每次坚持的额外加成
+persist_bonus_per_count = 0.10
+# 坚持加成上限
+persist_bonus_cap = 0.30
+
+# 行为侮辱修正
+[negotiation.behavior_insult_modifiers]
+DESPERATE = -0.10
+STUBBORN = 0.0
+SUSPICIOUS = 0.10
+NAIVE = -0.05
+SAVVY = 0.05
+SENTIMENTAL = 0.05
+
+# 推拉策略：温和
+[negotiation.push_pull.SOFT]
+base_concession_chance = 0.50
+concession_ratio = 0.15
+max_concessions = 3
+base_patience_loss_chance = 0.45
+
+# 推拉策略：强硬
+[negotiation.push_pull.HARD]
+base_concession_chance = 0.25
+concession_ratio = 0.08
+max_concessions = 2
+base_patience_loss_chance = 0.70
+
+# 推拉策略：狡猾
+[negotiation.push_pull.SLY]
+base_concession_chance = 0.40
+concession_ratio = 0.12
+max_concessions = 2
+base_patience_loss_chance = 0.55
+
+# 推拉策略：沉稳
+[negotiation.push_pull.CALM]
+base_concession_chance = 0.35
+concession_ratio = 0.10
+max_concessions = 2
+base_patience_loss_chance = 0.50
+
+# ------------------------------------------------------------
+# 黑市系统 (Black Market)
+# ------------------------------------------------------------
+[blackmarket]
+# 需求惯性加成
+demand_inertia_bonus = 0.30
+# 购买价格最低倍率
+purchase_price_min = 1.10
+# 购买价格随机范围
+purchase_price_range = 0.30
+# 出售最低倍率基础
+sale_multiplier_min_base = 0.60
+# 出售最低倍率范围
+sale_multiplier_min_range = 0.10
+# 出售最高倍率基础
+sale_multiplier_max_base = 0.75
+# 出售最高倍率范围
+sale_multiplier_max_range = 0.10
+# 搜查罚款基础
+search_penalty_base = 300
+# 搜查罚款范围
+search_penalty_range = 200
+# 搜查锁定天数
+search_lock_days = 3
+# 调查锁定天数
+investigation_lock_days = 7
+# 调查声誉损失
+investigation_rep_loss = 10
+# 保护费触发清白阈值
+protection_fee_innocence_threshold = 40
+# 保护费增长率
+protection_fee_growth_rate = 0.15
+# 保护费请求间隔（天）
+protection_fee_request_interval = 5
+# 拒绝冷却（天）
+protection_fee_refusal_cooldown = 2
+# 每次拒绝风险增加
+refusal_risk_per_time = 0.10
+# 拒绝风险上限
+refusal_risk_cap = 0.30
+# 低热度安全天数
+low_heat_safe_days = 3
+# 低热度价格加成
+low_heat_price_bonus = 0.05
+# 卧底出售惩罚
+undercover_sale_penalty = 0.05
+
+# ------------------------------------------------------------
+# 角色能力系统 (Ability)
+# ------------------------------------------------------------
+[ability]
+# 全局底价压缩上限
+global_floor_reduction_cap = 0.20
+# 施压基础压缩量
+pressure_base_reduction = 0.08
+# 攻心-绝望压缩量
+heart_strike_desperate = 0.12
+# 攻心-强硬压缩量
+heart_strike_hard = 0.06
+# 攻心-默认压缩量
+heart_strike_default = 0.10
+# 明察秋毫-每缺陷压缩量
+sharp_scrutiny_per_flaw = 0.03
+# 时机加成倍率
+timing_bonus_multiplier = 1.20
+# 口碑基础概率
+wom_base_chance = 0.25
+# 口碑增长步长
+wom_increment = 0.15
+# 口碑保底连续次数
+wom_guarantee_streak = 5
+# 远见-疲劳值阈值
+foresight_fatigue_threshold = 10
+# 远见-希望值阈值
+foresight_hope_threshold = 10
+
+# 道德回响
+[ability.moral_echo]
+low_threshold = 50                    # 低severity阈值
+medium_threshold = 30                 # 中severity阈值
+
+# 镜像法则
+[ability.mirror_law]
+level1_threshold = 40                 # 一级警告清白阈值
+level2_threshold = 35                 # 二级警告清白阈值
+level3_threshold = 30                 # 三级警告清白阈值
+cooldown_days = 2                     # 警告冷却天数
+
+# ------------------------------------------------------------
+# NPC 填充参数 (NPC Filler)
+# ------------------------------------------------------------
+[npc.filler]
+# 期望价比例
+desired_ratio = 0.70
+# 底价比例
+minimum_ratio = 0.50
+# 侮辱阈值比例
+insult_ratio = 0.70
+# 基础耐心
+base_patience = 3
+# 稀有遭遇概率
+rare_encounter_chance = 0.075
+
+# ------------------------------------------------------------
+# 新闻系统 (News)
+# ------------------------------------------------------------
+[news]
+# 最大新闻显示位
+max_display_slots = 3
+# 最大叙事新闻位
+max_narrative_slots = 2
+# 违规检测最低概率
+violation_detection_min = 0.60
+# 违规检测随机范围
+violation_detection_range = 0.20
+
+# ------------------------------------------------------------
+# 叙事参数 (Narrative)
+# ------------------------------------------------------------
+[narrative]
+# 赎回希望阈值
+redeem_hope_threshold = 40
+# 续当希望阈值
+renew_hope_threshold = 30
+# 希望崩塌阈值
+hope_collapse_threshold = 15
+
+# ------------------------------------------------------------
+# 预约系统 (Appointment)
+# ------------------------------------------------------------
+[appointment]
+# 神秘访客概率
+mystery_visitor_chance = 0.15
+
+# ------------------------------------------------------------
+# 洞察参数 (Insight)
+# ------------------------------------------------------------
+[insight]
+# 洞察AP消耗
+ap_cost = 1
+# 基础效率
+base_efficiency = 0.05
+# 每层加成
+layer_bonus = 0.10
+# 最大效率
+max_efficiency = 0.25
+# 慷慨判定阈值
+generous_threshold = 0.9
+# 公平判定阈值
+fair_threshold = 0.7
+# 准确度高阈值
+accuracy_high_threshold = 1.2
+# 准确度低阈值
+accuracy_low_threshold = 1.8

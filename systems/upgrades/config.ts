@@ -3,6 +3,7 @@
 // Defines all available upgrades, their costs, and effects
 
 import { UpgradeConfig, AppointmentBoardLevelConfig, BlackMarketLevelConfig } from './types';
+import { GAME_CONFIG } from '../game/config';
 
 /**
  * Storage Expansion (Backroom)
@@ -216,7 +217,7 @@ export function getUpgradeLevelConfig(upgradeId: string, level: number) {
 /**
  * Base inventory capacity (before upgrades)
  */
-export const BASE_INVENTORY_CAPACITY = 5;
+export const BASE_INVENTORY_CAPACITY = GAME_CONFIG.GAMEPLAY.BASE_INVENTORY_CAPACITY;
 
 /**
  * Default shop upgrade state for new games

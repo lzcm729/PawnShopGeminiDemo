@@ -1,5 +1,6 @@
 
 import { Item, ItemTrait } from './types';
+import { GAME_CONFIG } from '../game/config';
 
 // ==========================================
 // Valuation Logic
@@ -13,8 +14,8 @@ export const generateValuationRange = (
     const anchor = perceivedValue !== undefined ? perceivedValue : realValue;
     const width = anchor * uncertainty;
     
-    // Asymmetric Skew (0.2 to 0.8)
-    const skewFactor = 0.2 + (Math.random() * 0.6);
+    // Asymmetric Skew
+    const skewFactor = GAME_CONFIG.APPRAISAL.SKEW_MIN + (Math.random() * GAME_CONFIG.APPRAISAL.SKEW_RANGE);
 
     let min = anchor - (width * skewFactor);
     let max = anchor + (width * (1 - skewFactor));

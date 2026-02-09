@@ -211,8 +211,8 @@ export const useGameEngine = () => {
         // logMessage handled by payment action
     } else if (isBillOverdue) {
         newCareLevel = 'None';
-        newHealth -= 15;  // Rapid decay -15%
-        newRisk = Math.min(100, newRisk + 10);
+        newHealth -= GAME_CONFIG.MOTHER.OVERDUE_HEALTH_DECAY;  // Rapid decay
+        newRisk = Math.min(100, newRisk + GAME_CONFIG.MOTHER.OVERDUE_RISK_INCREASE);
         newStatus = 'Declining';
         logMessage = "警告：医药费断缴！药物已停供，母亲病情急剧恶化。";
     } else {
@@ -223,7 +223,7 @@ export const useGameEngine = () => {
 
     const complicationRoll = Math.random() * 100;
     if (complicationRoll < newRisk) {
-        newHealth -= 10;
+        newHealth -= GAME_CONFIG.MOTHER.COMPLICATION_HEALTH_LOSS;
         newStatus = 'Critical';
         logMessage += " 深夜突发并发症！医生进行了紧急抢救。";
         dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: 0, reputationDelta: {}, item: null, log: logMessage, customerName: "Hospital" } });
@@ -234,8 +234,8 @@ export const useGameEngine = () => {
     newHealth = Math.max(0, Math.min(100, newHealth));
 
     // Map status based on health thresholds per design doc
-    if (newHealth >= 70) newStatus = 'Stable';
-    else if (newHealth >= 40) newStatus = 'Declining';
+    if (newHealth >= GAME_CONFIG.MOTHER.HEALTH_STABLE_THRESHOLD) newStatus = 'Stable';
+    else if (newHealth >= GAME_CONFIG.MOTHER.HEALTH_DECLINING_THRESHOLD) newStatus = 'Declining';
     else newStatus = 'Critical';
 
     const updatedMother: MotherCondition = {
@@ -699,20 +699,20 @@ export const useGameEngine = () => {
     // Only ≤5% rates get humanity bonus for generous offers
     const isGenerous = offer > desiredAmount;
     if (rate === 0) {
-        // 0% Charity: Humanity +1 (normal) or +2 (generous)
-        repDelta[ReputationType.HUMANITY] += isGenerous ? 2 : 1;
+        // 0% Charity: Humanity +normal or +generous
+        repDelta[ReputationType.HUMANITY] += isGenerous ? GAME_CONFIG.REPUTATION_DELTAS.CHARITY_GENEROUS_HUMANITY : GAME_CONFIG.REPUTATION_DELTAS.CHARITY_NORMAL_HUMANITY;
     } else if (rate > 0 && rate < 0.10) {
-        // 5% Aid: Credibility +1 always; Humanity +1 if generous
-        repDelta[ReputationType.CREDIBILITY] += 1;
+        // 5% Aid: Credibility always; Humanity if generous
+        repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.AID_CREDIBILITY;
         if (isGenerous) {
-            repDelta[ReputationType.HUMANITY] += 1;
+            repDelta[ReputationType.HUMANITY] += GAME_CONFIG.REPUTATION_DELTAS.AID_GENEROUS_HUMANITY;
         }
     } else if (rate >= 0.10 && rate < 0.20) {
-        // 10% Standard: Credibility +1 (no humanity bonus even if generous)
-        repDelta[ReputationType.CREDIBILITY] += 1;
+        // 10% Standard: Credibility (no humanity bonus even if generous)
+        repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.STANDARD_CREDIBILITY;
     } else if (rate >= 0.20) {
-        // ≥20% Shark: Humanity -1 (generous doesn't help)
-        repDelta[ReputationType.HUMANITY] -= 1;
+        // >=20% Shark: Humanity penalty (generous doesn't help)
+        repDelta[ReputationType.HUMANITY] += GAME_CONFIG.REPUTATION_DELTAS.SHARK_HUMANITY;
     }
 
     const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
@@ -732,11 +732,11 @@ export const useGameEngine = () => {
         const usedStolenLeverage = stolenTrait && (item.usedTraitIds?.includes(stolenTrait.id) ?? false);
 
         if (usedStolenLeverage) {
-          // 知情收赃 + 压价: -3 Innocence (明知 + 趁火打劫)
-          repDelta[ReputationType.INNOCENCE] -= 3;
+          // 知情收赃 + 压价 (明知 + 趁火打劫)
+          repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.STOLEN_KNOWN_LEVERAGE_INNOCENCE;
         } else {
-          // 知情收赃 (未压价): -2 Innocence (明知故犯)
-          repDelta[ReputationType.INNOCENCE] -= 2;
+          // 知情收赃 (未压价, 明知故犯)
+          repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.STOLEN_KNOWN_NO_LEVERAGE_INNOCENCE;
         }
       }
       // 不知情收赃: 0 Innocence (but item is still stolen - risk deferred to police investigation)
@@ -744,21 +744,21 @@ export const useGameEngine = () => {
 
     // Other illicit goods (contraband but not stolen): reduce INNOCENCE
     if (!item.isStolen && item.category === '违禁品' && !item.isSuspicious) {
-      repDelta[ReputationType.INNOCENCE] -= 3;  // Accepting contraband: -3 Innocence
-      repDelta[ReputationType.CREDIBILITY] -= 2;
+      repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.CONTRABAND_INNOCENCE;
+      repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.CONTRABAND_CREDIBILITY;
     }
 
     // During crackdown, additional penalties for any illicit goods
     if ((item.isStolen || (item.category === '违禁品' && !item.isSuspicious)) && currentRisk > 0) {
         // Additional immediate rep penalty for risk taking during crackdown
-        repDelta[ReputationType.CREDIBILITY] -= 20;
-        repDelta[ReputationType.INNOCENCE] -= 5;  // Additional innocence loss during crackdown
+        repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.CRACKDOWN_CREDIBILITY;
+        repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.CRACKDOWN_INNOCENCE;
     }
     
-    if (item.isFake) repDelta[ReputationType.CREDIBILITY] -= 5; 
+    if (item.isFake) repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.FAKE_CREDIBILITY;
 
     const valuationBasis = item.perceivedValue !== undefined ? item.perceivedValue : item.realValue;
-    const termDays = customer.pawnTermDays || 7;
+    const termDays = customer.pawnTermDays || GAME_CONFIG.ECONOMY.DEFAULT_PAWN_TERM_DAYS;
     const pawnInfo = {
         principal: offer,
         interestRate: rate,
@@ -966,7 +966,7 @@ export const useGameEngine = () => {
 
                  effectsToRun = chainEvent.outcomes[outcomeKey] || chainEvent.outcomes['deal_standard'] || [];
                  const realValue = result.item?.realValue || 0;
-                 const isPremium = principal >= 2000 || (realValue > 0 && principal >= realValue * 1.5);
+                 const isPremium = principal >= GAME_CONFIG.REPUTATION_DELTAS.PREMIUM_THRESHOLD || (realValue > 0 && principal >= realValue * GAME_CONFIG.REPUTATION_DELTAS.PREMIUM_VALUE_RATIO);
                  if (isPremium) effectsToRun = [...effectsToRun, { type: 'MODIFY_VAR', variable: 'job_chance', value: 100 }];
              }
              if (effectsToRun.length === 0 && chainEvent.onComplete) effectsToRun = chainEvent.onComplete;
@@ -1029,7 +1029,7 @@ export const useGameEngine = () => {
   
   const liquidateItem = (item: Item) => {
       const multiplier = state.activeMarketEffects.filter(mod => mod.categoryTarget === item.category || mod.categoryTarget === 'All').reduce((acc, mod) => acc * (mod.priceMultiplier || 1.0), 1.0);
-      const amount = Math.floor(item.realValue * 0.8 * multiplier);
+      const amount = Math.floor(item.realValue * GAME_CONFIG.ECONOMY.LIQUIDATION_RATE * multiplier);
       dispatch({ type: 'LIQUIDATE_ITEM', payload: { itemId: item.id, amount, name: item.name } });
   };
 

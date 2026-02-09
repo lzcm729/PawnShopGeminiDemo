@@ -29,6 +29,7 @@
 
 import { parseCSV, CSVSchema, stringCol } from '../utils/csvReader';
 import mirrorWarningsCSV from '@/assets/data/texts/mirror_warnings.csv?raw';
+import { GAME_CONFIG } from '../game/config';
 
 // ============================================================================
 // Types
@@ -67,16 +68,14 @@ const MIRROR_WARNING_SCHEMA: CSVSchema = {
 };
 
 /** Warning level thresholds (upper bounds, inclusive) */
-// TODO: Migrate to TOML config in a future batch
 const LEVEL_THRESHOLDS: Record<WarningLevel, number> = {
-  1: 40,
-  2: 35,
-  3: 30,
+  1: GAME_CONFIG.ABILITY.MIRROR_LAW.LEVEL1_THRESHOLD,
+  2: GAME_CONFIG.ABILITY.MIRROR_LAW.LEVEL2_THRESHOLD,
+  3: GAME_CONFIG.ABILITY.MIRROR_LAW.LEVEL3_THRESHOLD,
 };
 
 /** Minimum days between consecutive warnings */
-// TODO: Migrate to TOML config in a future batch
-const WARNING_COOLDOWN_DAYS = 2;
+const WARNING_COOLDOWN_DAYS = GAME_CONFIG.ABILITY.MIRROR_LAW.COOLDOWN_DAYS;
 
 /** Lazily initialized warning pool */
 let warningPool: MirrorLawWarning[] | null = null;

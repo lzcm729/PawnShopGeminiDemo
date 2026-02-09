@@ -6,6 +6,7 @@ import { Customer } from '../systems/npc/types';
 import { Button } from './ui/Button';
 import { Heart, DollarSign, XCircle, HandHeart } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
+import { GAME_CONFIG } from '../systems/game/config';
 
 interface PostForfeitPanelProps {
     customer: Customer;
@@ -19,7 +20,7 @@ export const PostForfeitPanel: React.FC<PostForfeitPanelProps> = ({ customer }) 
     // Calculate values
     // Sell Low: Break even (real value or principal)
     const principal = item.pawnInfo?.principal || 0;
-    const lowPrice = Math.floor(principal * 1.1); // Small profit to cover ops
+    const lowPrice = Math.floor(principal * GAME_CONFIG.ECONOMY.RESALE_PREMIUM); // Small profit to cover ops
 
     const handleSellLow = () => {
         // Send state machine event for phase2 sync (transaction complete)

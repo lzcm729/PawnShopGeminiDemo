@@ -313,7 +313,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
       if (trait.type === 'STOLEN') {
           // Use 25% reduction (stronger than the trait's valueImpact which may be -50%)
           // to balance gameplay - discovering stolen goods is risky but gives real leverage
-          const stolenPower = 0.25;
+          const stolenPower = 0.25; // TODO: move to config
 
           // Apply the leverage (updates ask price in negotiation hook)
           applyStolenLeverage(stolenPower, trait.name);
@@ -329,7 +329,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
       } else if (trait.type === 'FAKE') {
           // FAKE is a "handle-level" discovery (like STOLEN) — reduces BOTH ask price AND floor
           // Use fixed 25% reduction (same as STOLEN) to avoid valueImpact (0.8~0.92) causing price to hit zero
-          const fakePower = 0.25;
+          const fakePower = 0.25; // TODO: move to config
 
           applyStolenLeverage(fakePower, trait.name, '赝品压价');
           dispatch({ type: 'APPLY_STOLEN_LEVERAGE', payload: { reductionPercent: fakePower } });

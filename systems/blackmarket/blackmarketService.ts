@@ -29,6 +29,7 @@ import {
 } from './types';
 import { BlackMarketLevelConfig } from '../upgrades/types';
 import { BLACK_MARKET_LEVELS } from '../upgrades/config';
+import { GAME_CONFIG } from '../game/config';
 
 // ============================================================================
 // Daily Market Generation
@@ -50,7 +51,7 @@ function getTradeableTags(): ItemTag[] {
  * v3.6 [BM-2]: Demand inertia constant
  * Tags that appeared yesterday have this much extra probability of reappearing
  */
-const DEMAND_INERTIA_BONUS = 0.30; // +30% chance for yesterday's tags
+const DEMAND_INERTIA_BONUS = GAME_CONFIG.BLACKMARKET.DEMAND_INERTIA_BONUS;
 
 /**
  * Generate random purchase requests for the day
@@ -98,8 +99,8 @@ export function generateDailyPurchaseRequests(
 
     selectedTags.push(tag);
 
-    // Random multiplier between 1.10 and 1.40
-    const priceMultiplier = 1.10 + Math.random() * 0.30;
+    // Random multiplier between PURCHASE_PRICE_MIN and PURCHASE_PRICE_MIN + PURCHASE_PRICE_RANGE
+    const priceMultiplier = GAME_CONFIG.BLACKMARKET.PURCHASE_PRICE_MIN + Math.random() * GAME_CONFIG.BLACKMARKET.PURCHASE_PRICE_RANGE;
 
     requests.push({
       tag,
@@ -116,9 +117,9 @@ export function generateDailyPurchaseRequests(
  * Returns { min, max } in range 0.60-0.85
  */
 export function generateDailySaleMultipliers(): { min: number; max: number } {
-  // Min is 0.60-0.70, Max is 0.75-0.85
-  const min = 0.60 + Math.random() * 0.10;
-  const max = 0.75 + Math.random() * 0.10;
+  // Min is SALE_MULTIPLIER_MIN_BASE +/- range, Max is SALE_MULTIPLIER_MAX_BASE +/- range
+  const min = GAME_CONFIG.BLACKMARKET.SALE_MULTIPLIER_MIN_BASE + Math.random() * GAME_CONFIG.BLACKMARKET.SALE_MULTIPLIER_MIN_RANGE;
+  const max = GAME_CONFIG.BLACKMARKET.SALE_MULTIPLIER_MAX_BASE + Math.random() * GAME_CONFIG.BLACKMARKET.SALE_MULTIPLIER_MAX_RANGE;
 
   return {
     min: Math.round(min * 100) / 100,
@@ -443,16 +444,16 @@ function generateRiskEvent(type: RiskEventType): RiskEvent {
         type: 'UNDERCOVER_VISIT',
         message: '联系人发来消息："今晚有眼睛盯着，暂时别动。"',
         suspendHeatDecay: true,  // v3.6 [#31]: Next day heat does not decay
-        salePenalty: 0.05        // v3.6 [#31]: Next day sale price -5%
+        salePenalty: GAME_CONFIG.BLACKMARKET.UNDERCOVER_SALE_PENALTY  // v3.6 [#31]: Next day sale price penalty
       };
 
     case 'SEARCH_WARNING': {
-      const penalty = 300 + Math.floor(Math.random() * 200);  // $300-500
+      const penalty = GAME_CONFIG.BLACKMARKET.SEARCH_PENALTY_BASE + Math.floor(Math.random() * GAME_CONFIG.BLACKMARKET.SEARCH_PENALTY_RANGE);
       return {
         type: 'SEARCH_WARNING',
         message: `联系人发来消息："有人查到你头上了。要么破财消灾，要么躲一阵。"`,
         penalty,
-        lockDays: 3
+        lockDays: GAME_CONFIG.BLACKMARKET.SEARCH_LOCK_DAYS
       };
     }
 
@@ -460,8 +461,8 @@ function generateRiskEvent(type: RiskEventType): RiskEvent {
       return {
         type: 'FORMAL_INVESTIGATION',
         message: '一封官方信函塞进了门缝："根据举报，您的店铺涉嫌参与非法交易。即日起，相关业务暂停接受调查。"',
-        lockDays: 7,
-        reputationLoss: 10
+        lockDays: GAME_CONFIG.BLACKMARKET.INVESTIGATION_LOCK_DAYS,
+        reputationLoss: Math.abs(GAME_CONFIG.BLACKMARKET.INVESTIGATION_REP_LOSS)
       };
   }
 }
@@ -691,7 +692,7 @@ export function generateRiskClues(actualRisk: 'LOW' | 'MEDIUM' | 'HIGH'): RiskCl
 // v3.6 [BM-7]: Low Heat Reward System
 // ============================================================================
 
-const LOW_HEAT_REWARD_THRESHOLD = 3; // Consecutive safe days needed
+const LOW_HEAT_REWARD_THRESHOLD = GAME_CONFIG.BLACKMARKET.LOW_HEAT_SAFE_DAYS; // Consecutive safe days needed
 
 /**
  * Update low heat reward state based on current heat
@@ -733,7 +734,7 @@ export function updateLowHeatReward(
  */
 export function getLowHeatPriceBonus(reward: LowHeatRewardState): number {
   if (reward.rewardActive && reward.rewardType === 'PRICE_BONUS') {
-    return 0.05; // +5% purchase price
+    return GAME_CONFIG.BLACKMARKET.LOW_HEAT_PRICE_BONUS; // purchase price bonus
   }
   return 0;
 }
@@ -747,7 +748,7 @@ export function getLowHeatPriceBonus(reward: LowHeatRewardState): number {
  * Formula: baseAmount * (1 + 0.15 * timesPaid)
  */
 export function calculateProtectionFee(feeState: ProtectionFeeState): number {
-  return Math.round(feeState.baseAmount * (1 + 0.15 * feeState.timesPaid));
+  return Math.round(feeState.baseAmount * (1 + GAME_CONFIG.BLACKMARKET.PROTECTION_FEE_GROWTH_RATE * feeState.timesPaid));
 }
 
 /**
@@ -759,10 +760,10 @@ export function shouldRequestProtectionFee(
   feeState: ProtectionFeeState,
   currentDay: number
 ): boolean {
-  if (innocence > 40) return false;
+  if (innocence > GAME_CONFIG.BLACKMARKET.PROTECTION_FEE_INNOCENCE_THRESHOLD) return false;
   if (feeState.cooldownUntilDay > currentDay) return false;
-  // Request every 5 days
-  if (feeState.lastRequestDay > 0 && currentDay - feeState.lastRequestDay < 5) return false;
+  // Request every N days
+  if (feeState.lastRequestDay > 0 && currentDay - feeState.lastRequestDay < GAME_CONFIG.BLACKMARKET.PROTECTION_FEE_REQUEST_INTERVAL) return false;
   return true;
 }
 
@@ -785,7 +786,7 @@ export function refuseProtectionFee(feeState: ProtectionFeeState, currentDay: nu
   return {
     ...feeState,
     timesRefused: feeState.timesRefused + 1,
-    cooldownUntilDay: currentDay + 2, // 2-day cooldown
+    cooldownUntilDay: currentDay + GAME_CONFIG.BLACKMARKET.PROTECTION_FEE_REFUSAL_COOLDOWN,
     lastRequestDay: currentDay
   };
 }
@@ -802,8 +803,8 @@ export function isInProtectionCooldown(feeState: ProtectionFeeState, currentDay:
  * Get extra search warning probability from consecutive refusals
  */
 export function getRefusalRiskBonus(feeState: ProtectionFeeState): number {
-  // Each refusal adds 10% to search warning probability
-  return Math.min(0.3, feeState.timesRefused * 0.10); // Cap at 30%
+  // Each refusal adds to search warning probability, capped
+  return Math.min(GAME_CONFIG.BLACKMARKET.REFUSAL_RISK_CAP, feeState.timesRefused * GAME_CONFIG.BLACKMARKET.REFUSAL_RISK_PER_TIME);
 }
 
 // ============================================================================

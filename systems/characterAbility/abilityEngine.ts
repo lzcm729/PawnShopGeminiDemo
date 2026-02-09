@@ -30,41 +30,42 @@ import {
 } from './types';
 import { SKILL_DEFINITIONS } from './skillDefinitions';
 import { getSkillModifier } from './modulation';
+import { GAME_CONFIG } from '../game/config';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 /** Global cap on total floor reduction from all skills */
-const GLOBAL_FLOOR_REDUCTION_CAP = 0.20;
+const GLOBAL_FLOOR_REDUCTION_CAP = GAME_CONFIG.ABILITY.GLOBAL_FLOOR_REDUCTION_CAP;
 
 /** Base floor reduction for Apply Pressure */
-const PRESSURE_BASE_REDUCTION = 0.08;
+const PRESSURE_BASE_REDUCTION = GAME_CONFIG.ABILITY.PRESSURE_BASE_REDUCTION;
 
 /** Base floor reduction for Heart Strike by NPC type */
 const HEART_STRIKE_BASE_REDUCTION: Record<string, number> = {
-  DESPERATE: 0.12,
-  HARD: 0.06,
-  DEFAULT: 0.10,
+  DESPERATE: GAME_CONFIG.ABILITY.HEART_STRIKE_DESPERATE,
+  HARD: GAME_CONFIG.ABILITY.HEART_STRIKE_HARD,
+  DEFAULT: GAME_CONFIG.ABILITY.HEART_STRIKE_DEFAULT,
 };
 
 /** Per-flaw floor reduction for Sharp Scrutiny */
-const SHARP_SCRUTINY_PER_FLAW = 0.03;
+const SHARP_SCRUTINY_PER_FLAW = GAME_CONFIG.ABILITY.SHARP_SCRUTINY_PER_FLAW;
 
 /** Timing bonus when skill is used right after NPC concession */
-const TIMING_BONUS_MULTIPLIER = 1.20;
+const TIMING_BONUS_MULTIPLIER = GAME_CONFIG.ABILITY.TIMING_BONUS_MULTIPLIER;
 
 /** Word of mouth: base referral chance */
-const WOM_BASE_CHANCE = 0.25;
+const WOM_BASE_CHANCE = GAME_CONFIG.ABILITY.WOM_BASE_CHANCE;
 /** Word of mouth: increment per fail */
-const WOM_INCREMENT = 0.15;
+const WOM_INCREMENT = GAME_CONFIG.ABILITY.WOM_INCREMENT;
 /** Word of mouth: guaranteed trigger at this many consecutive fails */
-const WOM_GUARANTEE_STREAK = 5;
+const WOM_GUARANTEE_STREAK = GAME_CONFIG.ABILITY.WOM_GUARANTEE_STREAK;
 
 /** Foresight fatigue: flash count before fatigue kicks in */
-const FORESIGHT_FATIGUE_THRESHOLD = 10;
+const FORESIGHT_FATIGUE_THRESHOLD = GAME_CONFIG.ABILITY.FORESIGHT_FATIGUE_THRESHOLD;
 /** Foresight fatigue: minimum hope change to trigger flash after fatigue */
-const FORESIGHT_FATIGUE_HOPE_THRESHOLD = 10;
+const FORESIGHT_FATIGUE_HOPE_THRESHOLD = GAME_CONFIG.ABILITY.FORESIGHT_HOPE_THRESHOLD;
 
 // ============================================================================
 // Initial State Factory

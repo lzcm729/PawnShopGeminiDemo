@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Customer, InterestRate, BehaviorTag } from '../types';
 import { executePushPull, PushPullResult, PlayerMoveType } from '../systems/negotiation/pushPull';
+import { GAME_CONFIG } from '../systems/game/config';
 
 export type NegotiationMood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
 
@@ -62,30 +63,17 @@ interface UseNegotiationReturn {
   lastPushPullResult: PushPullResult | null;
 }
 
-/**
- * Insult threshold modifiers by behavior tag
- * These define how tolerant each customer type is to lowball offers
- */
-const BEHAVIOR_INSULT_MODIFIERS: Record<BehaviorTag, number> = {
-  DESPERATE: -0.10,    // Very tolerant - needs money badly
-  STUBBORN: 0.0,       // Standard tolerance
-  SUSPICIOUS: 0.10,    // Less tolerant - easily insulted
-  NAIVE: -0.05,        // Slightly more tolerant
-  SAVVY: 0.05,         // Slightly less tolerant
-  SENTIMENTAL: 0.05,   // Slightly less tolerant
-};
-
 const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number) => {
-  // Base threshold is 0.7 (70% of minimum)
-  let threshold = 0.7;
+  let threshold = GAME_CONFIG.NEGOTIATION.BASE_INSULT_THRESHOLD;
 
   // Apply modifiers from all behavior tags
+  const modifiers = GAME_CONFIG.NEGOTIATION.BEHAVIOR_INSULT_MODIFIERS;
   for (const tag of behaviorTags) {
-    threshold += BEHAVIOR_INSULT_MODIFIERS[tag] || 0;
+    threshold += modifiers[tag] || 0;
   }
 
-  // Clamp threshold between 0.5 and 0.9
-  threshold = Math.max(0.5, Math.min(0.9, threshold));
+  // Clamp threshold
+  threshold = Math.max(GAME_CONFIG.NEGOTIATION.INSULT_CLAMP_MIN, Math.min(GAME_CONFIG.NEGOTIATION.INSULT_CLAMP_MAX, threshold));
 
   return minPrincipal * threshold;
 };

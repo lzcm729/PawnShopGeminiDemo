@@ -1,5 +1,6 @@
 
 import { BehaviorTag } from '../../types';
+import { GAME_CONFIG } from '../game/config';
 
 // === NPC 推拉风格类型 ===
 export type NpcPushPullStyle = 'SOFT' | 'HARD' | 'SLY' | 'CALM';
@@ -15,30 +16,31 @@ export interface PushPullConfig {
     basePatienceLossChance: number; // 推拉区耐心消耗基础概率 (0-1)
 }
 
+const ppCfg = GAME_CONFIG.NEGOTIATION.PUSH_PULL;
 export const PUSH_PULL_CONFIG: Record<NpcPushPullStyle, PushPullConfig> = {
     SOFT: {
-        baseConcessionChance: 0.50,   // 50% 基础概率
-        concessionRatio: 0.15,        // 让步15%剩余空间
-        maxConcessions: 3,
-        basePatienceLossChance: 0.45
+        baseConcessionChance: ppCfg.SOFT.BASE_CONCESSION_CHANCE,
+        concessionRatio: ppCfg.SOFT.CONCESSION_RATIO,
+        maxConcessions: ppCfg.SOFT.MAX_CONCESSIONS,
+        basePatienceLossChance: ppCfg.SOFT.BASE_PATIENCE_LOSS_CHANCE
     },
     HARD: {
-        baseConcessionChance: 0.15,   // 15% 基础概率
-        concessionRatio: 0.10,        // 让步10%剩余空间
-        maxConcessions: 1,
-        basePatienceLossChance: 0.75
+        baseConcessionChance: ppCfg.HARD.BASE_CONCESSION_CHANCE,
+        concessionRatio: ppCfg.HARD.CONCESSION_RATIO,
+        maxConcessions: ppCfg.HARD.MAX_CONCESSIONS,
+        basePatienceLossChance: ppCfg.HARD.BASE_PATIENCE_LOSS_CHANCE
     },
     SLY: {
-        baseConcessionChance: 0.30,   // 30% 基础概率
-        concessionRatio: 0.10,        // 让步10%剩余空间
-        maxConcessions: 2,
-        basePatienceLossChance: 0.65
+        baseConcessionChance: ppCfg.SLY.BASE_CONCESSION_CHANCE,
+        concessionRatio: ppCfg.SLY.CONCESSION_RATIO,
+        maxConcessions: ppCfg.SLY.MAX_CONCESSIONS,
+        basePatienceLossChance: ppCfg.SLY.BASE_PATIENCE_LOSS_CHANCE
     },
     CALM: {
-        baseConcessionChance: 0.25,   // 25% 基础概率
-        concessionRatio: 0.10,        // 让步10%剩余空间
-        maxConcessions: 2,
-        basePatienceLossChance: 0.60
+        baseConcessionChance: ppCfg.CALM.BASE_CONCESSION_CHANCE,
+        concessionRatio: ppCfg.CALM.CONCESSION_RATIO,
+        maxConcessions: ppCfg.CALM.MAX_CONCESSIONS,
+        basePatienceLossChance: ppCfg.CALM.BASE_PATIENCE_LOSS_CHANCE
     }
 };
 
@@ -90,16 +92,16 @@ export const calculateConcessionChance = (
     // 根据玩家行为调整概率
     switch (playerMove) {
         case 'FIRST_OFFER':
-            // 首次出价：基础 × 0.3
-            chance *= 0.3;
+            // 首次出价：基础 × first_offer_multiplier
+            chance *= GAME_CONFIG.NEGOTIATION.FIRST_OFFER_MULTIPLIER;
             break;
         case 'YIELD':
             // 玩家让步：使用基础概率
             break;
         case 'PERSIST':
-            // 玩家坚持：基础 × 0.5 + 连续坚持加成（+10%/次，最高+30%）
-            chance *= 0.5;
-            const persistBonus = Math.min(persistCount * 0.10, 0.30);
+            // 玩家坚持：基础 × persist_multiplier + 连续坚持加成
+            chance *= GAME_CONFIG.NEGOTIATION.PERSIST_MULTIPLIER;
+            const persistBonus = Math.min(persistCount * GAME_CONFIG.NEGOTIATION.PERSIST_BONUS_PER_COUNT, GAME_CONFIG.NEGOTIATION.PERSIST_BONUS_CAP);
             chance += persistBonus;
             break;
     }

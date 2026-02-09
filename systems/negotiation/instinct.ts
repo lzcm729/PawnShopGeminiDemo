@@ -2,6 +2,7 @@
 import { Customer, Item, InterestRate, BehaviorTag } from '../../types';
 import { INSTINCT_MATRIX, getMatrixKey, getRandomText, InstinctRateZone, InstinctPriceZone, InstinctNpcStyle } from './data';
 import { getUncertaintyRisk } from '../items/utils';
+import { GAME_CONFIG } from '../game/config';
 
 /**
  * Map behaviorTags to the legacy InstinctNpcStyle for flavor text selection
@@ -17,18 +18,16 @@ const mapBehaviorTagsToStyle = (behaviorTags: BehaviorTag[]): InstinctNpcStyle =
 };
 
 const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number) => {
-    // Base threshold is 0.7 (70% of minimum)
-    let threshold = 0.7;
+    let threshold = GAME_CONFIG.NEGOTIATION.BASE_INSULT_THRESHOLD;
 
     // Behavior-based modifiers
-    if (behaviorTags.includes('STUBBORN')) threshold += 0.1;
-    if (behaviorTags.includes('DESPERATE')) threshold -= 0.1;
-    if (behaviorTags.includes('SUSPICIOUS')) threshold += 0.05;
-    if (behaviorTags.includes('NAIVE')) threshold -= 0.05;
-    if (behaviorTags.includes('SAVVY')) threshold += 0.05;
+    const modifiers = GAME_CONFIG.NEGOTIATION.BEHAVIOR_INSULT_MODIFIERS;
+    for (const tag of behaviorTags) {
+        threshold += modifiers[tag] || 0;
+    }
 
-    // Clamp threshold between 0.5 and 0.9
-    threshold = Math.max(0.5, Math.min(0.9, threshold));
+    // Clamp threshold
+    threshold = Math.max(GAME_CONFIG.NEGOTIATION.INSULT_CLAMP_MIN, Math.min(GAME_CONFIG.NEGOTIATION.INSULT_CLAMP_MAX, threshold));
 
     return minPrincipal * threshold;
 };

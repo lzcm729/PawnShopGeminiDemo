@@ -28,6 +28,7 @@ import {
   isReasonsLoaded,
   getMatchingReason,
 } from './fillerReasonLoader';
+import { GAME_CONFIG } from '../game/config';
 
 // ============================================================================
 // TYPES
@@ -1255,8 +1256,8 @@ function getGenericPortraitId(profile: FillerCustomerProfile): string {
 // Design doc Section 11.2
 // ============================================================================
 
-/** Rare encounter probability: 5-10% per filler customer */
-const RARE_ENCOUNTER_PROBABILITY = 0.075; // 7.5% average
+/** Rare encounter probability per filler customer */
+const RARE_ENCOUNTER_PROBABILITY = GAME_CONFIG.NPC_FILLER.RARE_ENCOUNTER_CHANCE;
 
 export type RareEncounterType = 'HIDDEN_VALUE' | 'CONTRADICTORY_BEHAVIOR' | 'UNUSUAL_ITEM';
 
@@ -1374,10 +1375,10 @@ export function generateFillerCustomer(
     // This makes jump-trait items work as intended: bargains are underpriced by the customer,
     // and mistakes are overpriced -- the player discovers the truth through appraisal.
     const customerPerceivedValue = item.perceivedValue ?? item.realValue;
-    const baseDesired = Math.floor(customerPerceivedValue * 0.70);
-    const baseMinimum = Math.floor(customerPerceivedValue * 0.50);
-    const basePatience = 3;
-    const baseInsultThreshold = baseMinimum * 0.70;
+    const baseDesired = Math.floor(customerPerceivedValue * GAME_CONFIG.NPC_FILLER.DESIRED_RATIO);
+    const baseMinimum = Math.floor(customerPerceivedValue * GAME_CONFIG.NPC_FILLER.MINIMUM_RATIO);
+    const basePatience = GAME_CONFIG.NPC_FILLER.BASE_PATIENCE;
+    const baseInsultThreshold = baseMinimum * GAME_CONFIG.NPC_FILLER.INSULT_RATIO;
 
     const { floor, patience, insultThreshold } = applyBehaviorTagEffects(
         behaviorTags,

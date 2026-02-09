@@ -35,13 +35,14 @@ import {
   InsightReward,
   InsightPushPullModifier,
 } from '../systems/customerInsight';
+import { GAME_CONFIG } from '../systems/game/config';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 /** AP cost for using customer insight */
-const INSIGHT_AP_COST = 1;
+const INSIGHT_AP_COST = GAME_CONFIG.INSIGHT.AP_COST;
 
 // ============================================================================
 // Hook Return Type

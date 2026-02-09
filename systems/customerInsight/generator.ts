@@ -34,6 +34,7 @@ import { parseCSVRaw } from '../utils/csvReader';
 import insightHintsCSV from '@/assets/data/InsightHints.csv?raw';
 import { createTextRegistry, TextRegistry } from '../utils/textRegistry';
 import insightFeedbackCSV from '@/assets/data/texts/insight_feedback.csv?raw';
+import { GAME_CONFIG } from '../game/config';
 
 // ============================================================================
 // 文本注册表 (从 CSV 加载叙事文本)
@@ -113,10 +114,9 @@ export function calculateInsightReward(
   }
 
   // AP efficiency: higher layers per AP = higher efficiency
-  // Range: [5%, 25%] per design
-  const baseEfficiency = 0.05;
-  const layerBonus = (revealedLayer - 1) * 0.10;
-  const apEfficiency = Math.min(baseEfficiency + layerBonus, 0.25);
+  const baseEfficiency = GAME_CONFIG.INSIGHT.BASE_EFFICIENCY;
+  const layerBonus = (revealedLayer - 1) * GAME_CONFIG.INSIGHT.LAYER_BONUS;
+  const apEfficiency = Math.min(baseEfficiency + layerBonus, GAME_CONFIG.INSIGHT.MAX_EFFICIENCY);
 
   return {
     narrativeReward: true,
@@ -172,9 +172,9 @@ export function generateTrainingResult(
   // Determine deal position (3-tier)
   const ratio = pawnAmount / desiredAmount;
   let dealPosition: 'generous' | 'fair' | 'harsh';
-  if (ratio > 0.9) {
+  if (ratio > GAME_CONFIG.INSIGHT.GENEROUS_THRESHOLD) {
     dealPosition = 'generous';
-  } else if (ratio > 0.7) {
+  } else if (ratio > GAME_CONFIG.INSIGHT.FAIR_THRESHOLD) {
     dealPosition = 'fair';
   } else {
     dealPosition = 'harsh';
@@ -207,8 +207,8 @@ function generateInsightAccuracyHint(
 ): string {
   const texts = getTexts();
   // Narrative hints about whether the player's insight judgment was accurate
-  const wasCloseToFloor = pawnAmount < minimumAmount * 1.2;
-  const wasFarFromFloor = pawnAmount > minimumAmount * 1.8;
+  const wasCloseToFloor = pawnAmount < minimumAmount * GAME_CONFIG.INSIGHT.ACCURACY_HIGH_THRESHOLD;
+  const wasFarFromFloor = pawnAmount > minimumAmount * GAME_CONFIG.INSIGHT.ACCURACY_LOW_THRESHOLD;
 
   if (disposition === 'desperate' && wasFarFromFloor) {
     return texts.get('accuracy:desperate:far') || '你当时觉得她会接受任何价格。回想起来，也许你给得太多了。';

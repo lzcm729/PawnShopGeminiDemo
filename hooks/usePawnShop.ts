@@ -4,6 +4,7 @@ import { useGame } from '../store/GameContext';
 import { Item, ItemStatus, ExpiryEvent, ExpiryBehavior, EventChainState, StoryEvent } from '../types';
 import { isTransientChain, determineTransientExpiryBehavior } from '../systems/npc/fillerGenerator';
 import { calculateInterest } from '../systems/economy/interest';
+import { GAME_CONFIG } from '../systems/game/config';
 
 export const usePawnShop = () => {
     const { state, dispatch } = useGame();
@@ -128,12 +129,12 @@ export const usePawnShop = () => {
         const hope = (chain.variables.hope as number) ?? 50;
 
         // 有钱且有希望 → 来赎回
-        if (funds >= redemptionTotal && hope >= 40) {
+        if (funds >= redemptionTotal && hope >= GAME_CONFIG.NARRATIVE.REDEEM_HOPE_THRESHOLD) {
             return 'REDEEM';
         }
 
         // 没钱但有希望 → 来续当
-        if (funds < redemptionTotal && hope > 30) {
+        if (funds < redemptionTotal && hope > GAME_CONFIG.NARRATIVE.RENEW_HOPE_THRESHOLD) {
             return 'RENEW';
         }
 
@@ -330,7 +331,7 @@ export const usePawnShop = () => {
         if (item.status !== ItemStatus.ACTIVE) return;
 
         // Sell for real value (Liquidate price logic - 80%)
-        const amount = Math.floor(item.realValue * 0.8);
+        const amount = Math.floor(item.realValue * GAME_CONFIG.ECONOMY.LIQUIDATION_RATE);
 
         dispatch({
             type: 'DEFAULT_SELL_ITEM',

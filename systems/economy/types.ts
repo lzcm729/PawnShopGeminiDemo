@@ -1,6 +1,7 @@
 
 import { ReputationProfile } from '../core/types';
 import { Item } from '../items/types';
+import { GAME_CONFIG } from '../game/config';
 
 export type InterestRate = 0 | 0.05 | 0.10 | 0.20;
 
@@ -52,8 +53,8 @@ export interface CalendarEvent {
 // CRITICAL: balance < 0 (red warning + shortfall amount)
 export type RiskLevel = 'SAFE' | 'WARNING' | 'CRITICAL';
 
-// 500 buffer threshold: covers max random small expense (300) + safety margin
-export const WARNING_THRESHOLD = 500;
+// Buffer threshold: covers max random small expense + safety margin
+export const WARNING_THRESHOLD = GAME_CONFIG.ECONOMY.WARNING_THRESHOLD;
 
 export interface CalendarDayData {
   dayId: number;
