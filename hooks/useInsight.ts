@@ -170,6 +170,8 @@ export const useInsight = (): UseInsightReturn => {
           perceivedValue: updatedItem.perceivedValue,
           hiddenTraits: updatedItem.hiddenTraits,
           revealedTraits: updatedItem.revealedTraits,
+          tags: updatedItem.tags,
+          hiddenTags: updatedItem.hiddenTags,
         },
       });
 

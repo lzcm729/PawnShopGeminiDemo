@@ -331,6 +331,12 @@ interface TomlInventoryDecay {
   thresholds: number[];
 }
 
+interface TomlInventoryOverflow {
+  damage_chance: number;
+  loss_threshold: number;
+  loss_chance: number;
+}
+
 interface TomlInsight {
   ap_cost: number;
   base_efficiency: number;
@@ -370,6 +376,7 @@ interface GameConfigToml {
   narrative: TomlNarrative;
   appointment: TomlAppointment;
   inventory_decay: TomlInventoryDecay;
+  inventory_overflow: TomlInventoryOverflow;
   insight: TomlInsight;
   pawn_business: TomlPawnBusiness;
   workshop: TomlWorkshop;
@@ -733,6 +740,13 @@ export const GAME_CONFIG = {
   // --- INVENTORY DECAY (库存自然老化) ---
   INVENTORY_DECAY: {
     THRESHOLDS: tomlConfig.inventory_decay.thresholds,
+  },
+
+  // --- INVENTORY OVERFLOW (库存溢出伤害) ---
+  INVENTORY_OVERFLOW: {
+    DAMAGE_CHANCE: tomlConfig.inventory_overflow.damage_chance,
+    LOSS_THRESHOLD: tomlConfig.inventory_overflow.loss_threshold,
+    LOSS_CHANCE: tomlConfig.inventory_overflow.loss_chance,
   },
 
   // --- PAWN BUSINESS (典当业务) ---

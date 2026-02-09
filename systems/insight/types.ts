@@ -11,7 +11,7 @@
  */
 
 import { EssenceCost } from '../economy/essence';
-import { Item, ItemTrait } from '../items/types';
+import { Item, ItemTrait, ItemTag } from '../items/types';
 
 // ============================================================================
 // 格物意外事件类型
@@ -81,6 +81,9 @@ export interface InsightResult {
     pairedItemId: string;
     pairedItemName: string;
   };
+
+  /** G2 hidden tags revealed during insight */
+  revealedHiddenTags?: ItemTag[];
 }
 
 // ============================================================================

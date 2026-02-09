@@ -7,6 +7,7 @@ import { generatePawnLog, generatePlayerChoiceLog, generateDecayLog } from '../s
 import { detectEchoEntries } from '../systems/game/utils/echoDetector';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, ChainUpdateEffect, MotherCondition, ExpiryEvent, MoraleBuff } from '../types';
+import type { ItemTag } from '../systems/items/types';
 import { usePawnShop } from './usePawnShop';
 import { GAME_CONFIG } from '../systems/game/config';
 import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
@@ -33,6 +34,7 @@ import { calculateTransactionEssenceGain, calculateStolenGoodsEssenceGain } from
 import { generateTrainingResult, determineDisposition } from '../systems/customerInsight';
 import { registerRuntimeMailTemplate } from '../systems/narrative/mailRegistry';
 import { NewsCategory } from '../systems/news/types';
+import { getEffectiveInventoryCapacity } from '../systems/upgrades/utils';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -292,6 +294,65 @@ export const useGameEngine = () => {
                  type: 'UPDATE_MOTHER_STATUS',
                  payload: { ...mother, health: Math.min(100, Math.max(0, mother.health + evt.health)) }
              });
+        }
+    }
+
+    // 3b. Inventory Overflow Damage (gap #37)
+    // When inventory exceeds capacity, excess items risk damage (BROKEN/DIRTY) or loss
+    {
+        const capacity = getEffectiveInventoryCapacity(state.shopUpgrades);
+        const activeItems = state.inventory.filter(i => i.status === ItemStatus.ACTIVE || i.status === ItemStatus.FORFEIT);
+        const overflow = activeItems.length - capacity;
+
+        if (overflow > 0) {
+            const overflowConfig = GAME_CONFIG.INVENTORY_OVERFLOW;
+            // Sort by value ascending — cheapest items are most vulnerable
+            const sortedItems = [...activeItems].sort((a, b) => a.realValue - b.realValue);
+            const vulnerableItems = sortedItems.slice(0, overflow);
+            const damageTags: ItemTag[] = ['BROKEN', 'DIRTY'];
+
+            for (let i = 0; i < vulnerableItems.length; i++) {
+                const vulnItem = vulnerableItems[i];
+                const existingTags = vulnItem.tags || [];
+
+                // Items beyond loss_threshold may be lost entirely
+                if (i >= overflowConfig.LOSS_THRESHOLD && Math.random() < overflowConfig.LOSS_CHANCE) {
+                    dispatch({
+                        type: 'RESOLVE_TRANSACTION',
+                        payload: {
+                            cashDelta: 0,
+                            reputationDelta: {},
+                            item: null,
+                            log: `[库存溢出] ${vulnItem.name} 因存储空间不足而遗失。`,
+                            customerName: 'System',
+                        },
+                    });
+                    dispatch({ type: 'EXPIRE_ITEMS', payload: { expiredItemIds: [vulnItem.id], logs: [`库存溢出遗失: ${vulnItem.name}`] } });
+                } else if (Math.random() < overflowConfig.DAMAGE_CHANCE) {
+                    // Add a random damage tag (BROKEN or DIRTY) if not already present
+                    const candidateTags = damageTags.filter(t => !existingTags.includes(t));
+                    if (candidateTags.length > 0) {
+                        const tagToAdd = candidateTags[Math.floor(Math.random() * candidateTags.length)];
+                        dispatch({
+                            type: 'UPDATE_ITEM_TAGS',
+                            payload: {
+                                itemId: vulnItem.id,
+                                tags: [...existingTags, tagToAdd],
+                            },
+                        });
+                        dispatch({
+                            type: 'RESOLVE_TRANSACTION',
+                            payload: {
+                                cashDelta: 0,
+                                reputationDelta: {},
+                                item: null,
+                                log: `[库存溢出] ${vulnItem.name} 因存储拥挤而受损 (${tagToAdd})。`,
+                                customerName: 'System',
+                            },
+                        });
+                    }
+                }
+            }
         }
     }
 

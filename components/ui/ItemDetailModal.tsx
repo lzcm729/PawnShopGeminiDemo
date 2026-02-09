@@ -27,12 +27,14 @@ import {
     Waves,
     ChevronDown,
     ChevronUp,
+    HelpCircle,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { getDisplayName } from '../../systems/items/tagUtils';
+import { getDisplayName, getItemTagsDisplay, getHiddenTagCount } from '../../systems/items/tagUtils';
 import { getItemIcon } from '../../systems/assets';
 import { RateValue } from './RateDisplayContext';
 import { playSfx } from '../../systems/game/audio';
+import { isStateTag, isEssenceTag } from '../../systems/items/tags';
 
 interface ItemDetailModalProps {
     item: Item;
@@ -354,6 +356,27 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                             {workStateInfo && (
                                 <span className={cn("text-xs border border-noir-400 px-1.5 py-0.5 rounded flex items-center gap-1", workStateInfo.color)}>
                                     <workStateInfo.icon className="w-3 h-3" /> {workStateInfo.label}
+                                </span>
+                            )}
+                            {/* Item Tags (G1/G2/G3) */}
+                            {getItemTagsDisplay(item).map(({ tag, name, icon, isNegative }) => (
+                                <span
+                                    key={tag}
+                                    className={cn(
+                                        "text-xs px-1.5 py-0.5 rounded flex items-center gap-1",
+                                        isNegative
+                                            ? "border border-red-800/60 bg-red-950/30 text-red-400"
+                                            : isEssenceTag(tag)
+                                                ? "border border-purple-800/50 bg-purple-950/20 text-purple-400"
+                                                : "border border-cyan-800/50 bg-cyan-950/20 text-cyan-400"
+                                    )}
+                                >
+                                    <span>{icon}</span> {name}
+                                </span>
+                            ))}
+                            {getHiddenTagCount(item) > 0 && (
+                                <span className="text-xs px-1.5 py-0.5 rounded flex items-center gap-1 border border-stone-700/50 bg-stone-900/20 text-stone-500" title="未发现的隐藏属性">
+                                    <HelpCircle className="w-3 h-3" /> ?x{getHiddenTagCount(item)}
                                 </span>
                             )}
                         </div>

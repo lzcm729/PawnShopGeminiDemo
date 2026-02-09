@@ -9,12 +9,15 @@ import {
   Star,
   CloudFog,
   Flame,
+  Tag,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { Modal } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { InsightResult, InsightNarrative } from '../../../systems/insight/types';
 import { EssenceBadge } from './EssenceBadge';
+import { getTagDisplayInfo } from '../../../systems/items/tagUtils';
+import { isStateTag } from '../../../systems/items/tags';
 
 export interface InsightResultModalProps {
   result: {
@@ -62,7 +65,7 @@ export const InsightResultModal: React.FC<InsightResultModalProps> = ({ result, 
   if (!result) return null;
 
   const isEpiphany = result.result.isEpiphany;
-  const { rangeNarrowed, newRange, valueLocked, traitDiscovered, unexpectedEvent, glimpse, resonance } = result.result;
+  const { rangeNarrowed, newRange, valueLocked, traitDiscovered, unexpectedEvent, glimpse, resonance, revealedHiddenTags } = result.result;
   const oldRange = result.oldRange;
 
   const handleClose = () => {
@@ -236,6 +239,32 @@ export const InsightResultModal: React.FC<InsightResultModalProps> = ({ result, 
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Revealed Hidden Tags (G2 Discovery) */}
+        {revealedHiddenTags && revealedHiddenTags.length > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag className="w-4 h-4 text-cyan-400" />
+              <span className="text-sm text-stone-400">
+                {isEpiphany ? '揭示全部隐藏属性:' : '发现隐藏属性:'}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {revealedHiddenTags.map(tag => {
+                const info = getTagDisplayInfo(tag);
+                return (
+                  <div
+                    key={tag}
+                    className="px-2.5 py-1.5 rounded border border-cyan-700/50 bg-cyan-950/30 text-cyan-300 text-xs flex items-center gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-500"
+                  >
+                    <span className="text-sm">{info.icon}</span>
+                    <span className="font-medium">{info.name}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
