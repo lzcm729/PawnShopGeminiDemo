@@ -292,7 +292,7 @@ export const useBlackmarket = () => {
     const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
     // v3.6 [BM-4]: Apply sale penalty
     const adjustedMultiplier = multiplier * (1 - blackmarket.daily.salePenaltyPercent);
-    return calculateSalePrice(item, adjustedMultiplier, blackMarketTrust);
+    return calculateSalePrice(item, adjustedMultiplier, blackMarketTrust, state.stats.day);
   }, [blackmarket.daily, blackMarketTrust, state.stats.day]);
 
   /**
@@ -346,7 +346,7 @@ export const useBlackmarket = () => {
 
     const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
     const adjustedMultiplier = multiplier * (1 - blackmarket.daily.salePenaltyPercent);
-    const price = calculateSalePrice(item, adjustedMultiplier, blackMarketTrust);
+    const price = calculateSalePrice(item, adjustedMultiplier, blackMarketTrust, state.stats.day);
     const heatGain = getHeatGain(false);
 
     dispatch({

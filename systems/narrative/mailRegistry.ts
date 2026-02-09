@@ -68,5 +68,21 @@ export const MAIL_TEMPLATES: Record<string, MailTemplate> = new Proxy({} as Reco
 });
 
 export const getMailTemplate = (id: string): MailTemplate | null => {
+  // Check runtime templates first
+  if (_runtimeTemplates[id]) return _runtimeTemplates[id];
   return getAllMailTemplates()[id] || null;
 };
+
+// ============================================================================
+// Runtime Template Registration (for dynamic echo mails)
+// ============================================================================
+
+const _runtimeTemplates: Record<string, MailTemplate> = {};
+
+/**
+ * Register a mail template at runtime (e.g., for moral echo mails).
+ * These are transient and won't persist across page reloads.
+ */
+export function registerRuntimeMailTemplate(template: MailTemplate): void {
+  _runtimeTemplates[template.id] = template;
+}

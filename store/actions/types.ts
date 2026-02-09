@@ -114,6 +114,7 @@ export type Action =
 
     // News & Market
     | { type: 'UPDATE_NEWS'; payload: { news: ActiveNewsInstance[], modifiers: MarketModifier[], deferredNews?: PendingNewsItem[] } }
+    | { type: 'ADD_PENDING_NEWS'; payload: PendingNewsItem }
     | { type: 'ADD_VIOLATION'; payload: string }
     | { type: 'CLEAR_VIOLATIONS' }
 
@@ -208,6 +209,8 @@ export type Action =
     | { type: 'RESET_DEPARTURE_SKILLS' }
     | { type: 'ENQUEUE_MORAL_ECHOES'; payload: MoralEchoEvent[] }
     | { type: 'PROCESS_MORAL_ECHOES'; payload: { day: number } }
+    | { type: 'SET_ECHO_TEXTS'; payload: { channel: 'MONOLOGUE' | 'NPC_REACTION'; text: string }[] }
+    | { type: 'CLEAR_ECHO_TEXTS' }
     | { type: 'UPDATE_WORD_OF_MOUTH'; payload: { failStreak: number; pendingChecks: Array<{ checkDay: number; sourceDay: number }> } }
     | { type: 'UPDATE_FORESIGHT_FATIGUE'; payload: { totalFlashes: number; fatigued: boolean } }
     | { type: 'SET_EXTRA_CARE_USED' }

@@ -207,6 +207,28 @@ skew_min = 0.2
 # 估价非对称偏斜范围
 skew_range = 0.6
 
+# --- 鉴定精度收益参数 (Appraisal Precision Payoff) ---
+# uncertainty 有效范围: [precision_u_min, precision_u_max]
+precision_u_min = 0.05
+precision_u_max = 0.30
+# 方向 A1: NPC 开价修正系数 [最优, 最差]
+precision_ask_best = 0.92
+precision_ask_worst = 1.08
+# 方向 A2: 侮辱阈值修正系数 [最优, 最差]
+precision_insult_best = 0.85
+precision_insult_worst = 1.10
+# 方向 D: 推拉让步幅度乘数 [最优, 最差]
+precision_concession_best = 1.30
+precision_concession_worst = 0.70
+# 方向 C': 黑市出售波动偏移 [最优下限, 最优上限, 最差下限, 最差上限]
+precision_bm_offset_low_best = -0.02
+precision_bm_offset_high_best = 0.02
+precision_bm_offset_low_worst = -0.30
+precision_bm_offset_high_worst = 0.10
+# 方向 C': 黑市收购精度修正 [最优, 最差]
+precision_bm_purchase_best = 1.00
+precision_bm_purchase_worst = 0.85
+
 # ------------------------------------------------------------
 # 声誉增减表 (Reputation Deltas)
 # ------------------------------------------------------------

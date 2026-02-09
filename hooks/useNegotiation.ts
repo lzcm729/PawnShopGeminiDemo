@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Customer, InterestRate, BehaviorTag } from '../types';
 import { executePushPull, PushPullResult, PlayerMoveType } from '../systems/negotiation/pushPull';
 import { GAME_CONFIG } from '../systems/game/config';
+import { getAskPriceModifier, getInsultModifier, getConcessionMultiplier } from '../systems/appraisal/precision';
 
 export type NegotiationMood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
 
@@ -66,7 +67,7 @@ interface UseNegotiationReturn {
   lastPushPullResult: PushPullResult | null;
 }
 
-const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number) => {
+const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number, insultPrecisionModifier: number = 1.0) => {
   let threshold = GAME_CONFIG.NEGOTIATION.BASE_INSULT_THRESHOLD;
 
   // Apply modifiers from all behavior tags
@@ -78,14 +79,17 @@ const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number) =
   // Clamp threshold
   threshold = Math.max(GAME_CONFIG.NEGOTIATION.INSULT_CLAMP_MIN, Math.min(GAME_CONFIG.NEGOTIATION.INSULT_CLAMP_MAX, threshold));
 
-  return minPrincipal * threshold;
+  // A2: Apply precision modifier (low uncertainty = lower insult line)
+  return minPrincipal * threshold * insultPrecisionModifier;
 };
 
 /**
  * @param insightConcessionModifier (I-7) Optional modifier from insight system
  *   to NPC concession probability. Pass getInsightPushPullModifier result.
+ * @param itemUncertainty Current item uncertainty (0.05-0.30). Used for precision payoff modifiers.
+ *   Locked at negotiation start — later appraisals don't change the already-reported ask price.
  */
-export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0): UseNegotiationReturn => {
+export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0, itemUncertainty: number = 0.3): UseNegotiationReturn => {
   // Logic State
   const [patience, setPatience] = useState<number>(3);
   const [mood, setMood] = useState<NegotiationMood>('Neutral');
@@ -108,6 +112,8 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
   const [lastPushPullResult, setLastPushPullResult] = useState<PushPullResult | null>(null);
 
   const lastCustomerId = useRef<string | undefined>(undefined);
+  // Lock uncertainty at negotiation start (A1/A2: one-time calculation)
+  const lockedUncertaintyRef = useRef<number>(0.3);
 
   // Initialize
   useEffect(() => {
@@ -127,6 +133,8 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
 
     if (customer.id !== lastCustomerId.current) {
       lastCustomerId.current = customer.id;
+      // A1: Lock uncertainty at negotiation start
+      lockedUncertaintyRef.current = itemUncertainty;
 
       setPatience(customer.patience);
       setMood('Neutral');
@@ -134,35 +142,45 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       setLastAction(null);
       setOfferHistory([]);
       setRevealedMinimum(false);
-      setOfferPrincipal(customer.currentAskPrice ?? customer.desiredAmount);
+
+      // A1: Apply ask price precision modifier
+      const baseAsk = customer.currentAskPrice ?? customer.desiredAmount;
+      const askModifier = getAskPriceModifier(itemUncertainty);
+      const adjustedAsk = Math.round(baseAsk * askModifier);
+      setOfferPrincipal(adjustedAsk);
       setSelectedRate(0.05);
-      setCurrentAskPrice(customer.currentAskPrice ?? customer.desiredAmount);
+      setCurrentAskPrice(adjustedAsk);
       // Reset push-pull state
       setLastOfferAmount(null);
       setPersistCount(0);
       setNpcConcessionCount(0);
       setLastPushPullResult(null);
     }
-  }, [customer]);
+  }, [customer, itemUncertainty]);
 
   const resetNegotiation = useCallback(() => {
     if (customer) {
+      lockedUncertaintyRef.current = itemUncertainty;
       setPatience(customer.patience);
       setMood('Neutral');
       setIsWalkedAway(false);
       setLastAction(null);
       setOfferHistory([]);
       setRevealedMinimum(false);
-      setOfferPrincipal(customer.currentAskPrice ?? customer.desiredAmount);
+      // A1: Apply ask price precision modifier on reset too
+      const baseAsk = customer.currentAskPrice ?? customer.desiredAmount;
+      const askModifier = getAskPriceModifier(itemUncertainty);
+      const adjustedAsk = Math.round(baseAsk * askModifier);
+      setOfferPrincipal(adjustedAsk);
       setSelectedRate(0.05);
-      setCurrentAskPrice(customer.currentAskPrice ?? customer.desiredAmount);
+      setCurrentAskPrice(adjustedAsk);
       // Reset push-pull state
       setLastOfferAmount(null);
       setPersistCount(0);
       setNpcConcessionCount(0);
       setLastPushPullResult(null);
     }
-  }, [customer]);
+  }, [customer, itemUncertainty]);
 
   // FIX: Use functional state update to avoid stale closure bugs
   const reducePrice = useCallback((power: number): number => {
@@ -241,7 +259,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     const minPrincipal = customer.minimumAmount;
     const maxRepayment = customer.maxRepayment || (minPrincipal * 1.2);
     const totalRepayment = offerPrincipal * (1 + selectedRate);
-    const insultThreshold = getInsultThreshold(customer.behaviorTags, minPrincipal);
+    // A2: Apply precision-based insult modifier (locked at negotiation start)
+    const insultPrecisionMod = getInsultModifier(lockedUncertaintyRef.current);
+    const insultThreshold = getInsultThreshold(customer.behaviorTags, minPrincipal, insultPrecisionMod);
 
     let status: NegotiationStatus;
     let costPatience = 0;
@@ -309,7 +329,8 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     let pushPullResult: PushPullResult | null = null;
 
     if (status !== 'ACCEPTED' && status !== 'INSULT') {
-        // Execute push-pull judgment (I-7: pass insight modifier)
+        // Execute push-pull judgment (I-7: pass insight modifier, D: precision multiplier)
+        const concessionMult = getConcessionMultiplier(lockedUncertaintyRef.current);
         pushPullResult = executePushPull(
             customer.behaviorTags,
             offerPrincipal,
@@ -318,7 +339,8 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
             minPrincipal,
             persistCount,
             npcConcessionCount,
-            insightConcessionModifier
+            insightConcessionModifier,
+            concessionMult
         );
 
         // Update persist count based on player move

@@ -131,6 +131,10 @@ export interface GameState {
   abilityState: AbilityState;               // 修行系统状态
   showAbilityPanel: boolean;                // 修行面板显示状态
 
+  // === MORAL ECHO (道德回声) ===
+  /** Pending monologue/NPC reaction echo texts from moral echo delivery */
+  pendingEchoTexts: { channel: 'MONOLOGUE' | 'NPC_REACTION'; text: string }[];
+
   // === DEBUG FLAGS ===
   debugRevealFloor: boolean;  // 调试：显示客户底价
 }

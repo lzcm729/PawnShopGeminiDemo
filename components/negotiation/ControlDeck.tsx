@@ -3,7 +3,7 @@ import React, { useMemo, useRef } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { RollingNumber } from '../ui/RollingNumber';
-import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap } from 'lucide-react';
+import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack } from 'lucide-react';
 import { InterestRate, Customer, Item } from '../../types';
 import { playSfx } from '../../systems/game/audio';
 
@@ -50,6 +50,11 @@ interface ControlDeckProps {
     pressureUsed?: boolean;
     onPressure?: () => void;
 
+    // Character Ability: Heart Strike skill
+    canUseHeartStrike?: boolean;
+    heartStrikeUsed?: boolean;
+    onHeartStrike?: () => void;
+
     // Handlers
     onOffer: () => void;
     onManualReject: () => void;
@@ -83,6 +88,9 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     canUsePressure,
     pressureUsed,
     onPressure,
+    canUseHeartStrike,
+    heartStrikeUsed,
+    onHeartStrike,
     onOffer,
     onManualReject,
     onBinaryAccept,
@@ -349,6 +357,33 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                               <Zap className={cn("w-5 h-5", pressureUsed && "opacity-40")} />
                               <span className="text-[9px] font-bold tracking-wider mt-0.5">
                                   {pressureUsed ? "已用" : "施压"}
+                              </span>
+                          </button>
+                      )}
+
+                      {/* Heart Strike Skill Button */}
+                      {onHeartStrike && (
+                          <button
+                              onClick={() => {
+                                  if (!heartStrikeUsed && canUseHeartStrike && canInteract) {
+                                      playSfx('CLICK');
+                                      onHeartStrike();
+                                  }
+                              }}
+                              disabled={!canInteract || !canUseHeartStrike || heartStrikeUsed}
+                              title={heartStrikeUsed ? "已使用 - 每次议价限用一次" : "攻心: 利用心理弱点降低底价，不消耗耐心"}
+                              className={cn(
+                                  "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
+                                  heartStrikeUsed
+                                      ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                      : canUseHeartStrike && canInteract
+                                      ? "bg-purple-950/40 border-purple-700/60 text-purple-400 hover:bg-purple-900/50 hover:border-purple-500 hover:shadow-[0_0_12px_rgba(147,51,234,0.3)] active:scale-95"
+                                      : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                              )}
+                          >
+                              <HeartCrack className={cn("w-5 h-5", heartStrikeUsed && "opacity-40")} />
+                              <span className="text-[9px] font-bold tracking-wider mt-0.5">
+                                  {heartStrikeUsed ? "已用" : "攻心"}
                               </span>
                           </button>
                       )}

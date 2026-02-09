@@ -5,6 +5,13 @@ import { ItemTrait } from '../types';
 import { rollAppraisalEvent, AppraisalEvent, generateValuationRange } from '../systems/items/utils';
 import { generateAppraisalLog } from '../systems/game/utils/logGenerator';
 import { GAME_CONFIG } from '../systems/game/config';
+import {
+    isSkillUnlocked,
+    getSenseHiddenHint,
+    getPierceIllusionEffect,
+} from '../systems/characterAbility/abilityEngine';
+import { AbilityState } from '../systems/characterAbility/types';
+import { SKILL_DEFINITIONS } from '../systems/characterAbility/skillDefinitions';
 
 interface AppraisalResult {
     success: boolean;
@@ -15,11 +22,25 @@ interface AppraisalResult {
     event?: AppraisalEvent;
     valueJump?: 'FAKE' | 'JACKPOT';  // Indicates value changed dramatically
     isBreakthrough?: boolean;  // True when BREAKTHROUGH event fires (d100 roll 1-10)
+    senseHiddenHint?: 'HAS_HIDDEN' | 'NO_HIDDEN';  // From SENSE_HIDDEN skill
+    pierceIllusionTriggered?: boolean;  // True when PIERCE_ILLUSION auto-revealed a trait
 }
 
 export const useAppraisal = () => {
     const { state, dispatch } = useGame();
     const customer = state.currentCustomer;
+
+    // Get ability state (safe fallback for old saves)
+    const abilityState: AbilityState = state.abilityState ?? {
+        skills: Object.fromEntries(
+            Object.keys(SKILL_DEFINITIONS).map(id => [id, { unlocked: false, useCount: 0 }])
+        ),
+        moralEchoQueue: [],
+        wordOfMouth: { failStreak: 0, pendingChecks: [] },
+        foresightFatigue: { totalFlashes: 0, fatigued: false },
+        skillsUsedThisNegotiation: [],
+        extraCareUsedThisDeparture: false,
+    } as AbilityState;
 
     const performAppraisal = useCallback((): AppraisalResult => {
         if (!customer) {
@@ -45,6 +66,29 @@ export const useAppraisal = () => {
 
         const appraisalCount = item.appraisalCount || 0;
 
+        // === PIERCE_ILLUSION: On first appraisal, auto-reveal FAKE or guarantee a trait ===
+        let pierceIllusionTriggered = false;
+        let pierceRevealedTrait: ItemTrait | null = null;
+        const hasPierceIllusion = isSkillUnlocked('PIERCE_ILLUSION', abilityState);
+
+        if (hasPierceIllusion && appraisalCount === 0 && undiscoveredCandidates.length > 0) {
+            const effect = getPierceIllusionEffect(item.isFake);
+            if (effect === 'REVEAL_FAKE') {
+                const fakeTrait = undiscoveredCandidates.find(t => t.type === 'FAKE');
+                if (fakeTrait) {
+                    const idx = undiscoveredCandidates.indexOf(fakeTrait);
+                    undiscoveredCandidates.splice(idx, 1);
+                    pierceIllusionTriggered = true;
+                    pierceRevealedTrait = fakeTrait;
+                }
+            } else if (effect === 'GUARANTEE_TRAIT') {
+                const guaranteedTrait = undiscoveredCandidates[0];
+                undiscoveredCandidates.splice(0, 1);
+                pierceIllusionTriggered = true;
+                pierceRevealedTrait = guaranteedTrait;
+            }
+        }
+
         // S1-F1: d100 single-die mutually exclusive event roll
         // S1-F3: Filter rules (first appraisal, max 1 negative, no mishap on fake)
         const event = rollAppraisalEvent(
@@ -61,6 +105,11 @@ export const useAppraisal = () => {
         let extraPatienceCost = 0;
         let uncertaintyBoost = 0;
         let bonusTraits: ItemTrait[] = [];
+
+        // Add pierce illusion revealed trait as a bonus trait
+        if (pierceRevealedTrait) {
+            bonusTraits.push(pierceRevealedTrait);
+        }
 
         if (event.type === 'MISHAP') {
             uncertaintyBoost = GAME_CONFIG.APPRAISAL_EVENTS.MISHAP_UNCERTAINTY_INCREASE;
@@ -263,10 +312,26 @@ export const useAppraisal = () => {
             newRange: finalRange,
             event,
             valueJump: discoveredFakeOrJackpot?.type as 'FAKE' | 'JACKPOT' | undefined,
-            isBreakthrough
+            isBreakthrough,
+            pierceIllusionTriggered
         };
 
-    }, [customer, state.stats.actionPoints, dispatch]);
+    }, [customer, state.stats.actionPoints, dispatch, abilityState]);
 
-    return { performAppraisal };
+    // SENSE_HIDDEN: Query whether current item has hidden traits
+    const getSenseHiddenResult = useCallback((): 'HAS_HIDDEN' | 'NO_HIDDEN' | null => {
+        if (!isSkillUnlocked('SENSE_HIDDEN', abilityState)) return null;
+        if (!customer) return null;
+
+        const item = customer.item;
+        const hiddenTraits = item.hiddenTraits || [];
+        const revealedTraits = item.revealedTraits || [];
+        const hasUndiscovered = hiddenTraits.some(
+            h => !revealedTraits.some(r => r.id === h.id)
+        );
+
+        return getSenseHiddenHint(hasUndiscovered);
+    }, [customer, abilityState]);
+
+    return { performAppraisal, getSenseHiddenResult };
 };

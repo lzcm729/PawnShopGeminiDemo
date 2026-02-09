@@ -36,8 +36,7 @@ function getEchoSeverity(innocence: number): 'LOW' | 'MEDIUM' | 'HIGH' {
  * Immediate: monologue tail sentence change
  * Delayed: none
  */
-// Dead code - no consumers yet, kept for future moral echo integration
-function createPressureEcho(
+export function createPressureEcho(
   currentDay: number,
   innocence: number
 ): MoralEchoEvent {
@@ -55,7 +54,7 @@ function createPressureEcho(
  * Immediate: monologue + NPC reaction intensified
  * Delayed (next day): possible community discussion in news (if target was DESPERATE)
  */
-function createHeartStrikeEchoes(
+export function createHeartStrikeEchoes(
   currentDay: number,
   innocence: number,
   targetIsDesperateTag: boolean
@@ -98,7 +97,7 @@ function createHeartStrikeEchoes(
  * Immediate: monologue change
  * Delayed: possible anonymous warning mail next day
  */
-function createSharkDealEchoes(
+export function createSharkDealEchoes(
   currentDay: number,
   innocence: number
 ): MoralEchoEvent[] {
@@ -130,7 +129,7 @@ function createSharkDealEchoes(
  * Immediate: contact commentary
  * Delayed: possible theft report in news
  */
-function createStolenGoodsEchoes(
+export function createStolenGoodsEchoes(
   currentDay: number,
   innocence: number
 ): MoralEchoEvent[] {
@@ -155,7 +154,7 @@ function createStolenGoodsEchoes(
  *
  * Immediate: contact commentary
  */
-function createBlackmarketSellEcho(
+export function createBlackmarketSellEcho(
   currentDay: number,
   innocence: number
 ): MoralEchoEvent {
@@ -172,13 +171,13 @@ function createBlackmarketSellEcho(
 // ============================================================================
 
 /**
- * Get echoes that should be delivered on the given day.
+ * Get echoes that should be delivered on or before the given day.
  */
-function getEchoesForDay(
+export function getEchoesForDay(
   queue: MoralEchoEvent[],
   day: number
 ): MoralEchoEvent[] {
-  return queue.filter(e => e.deliveryDay === day);
+  return queue.filter(e => e.deliveryDay <= day);
 }
 
 /**

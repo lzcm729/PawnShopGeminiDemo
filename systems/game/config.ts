@@ -99,6 +99,21 @@ interface TomlAppraisal {
   mishap_range_expansion: number;
   skew_min: number;
   skew_range: number;
+  // Precision payoff parameters
+  precision_u_min: number;
+  precision_u_max: number;
+  precision_ask_best: number;
+  precision_ask_worst: number;
+  precision_insult_best: number;
+  precision_insult_worst: number;
+  precision_concession_best: number;
+  precision_concession_worst: number;
+  precision_bm_offset_low_best: number;
+  precision_bm_offset_high_best: number;
+  precision_bm_offset_low_worst: number;
+  precision_bm_offset_high_worst: number;
+  precision_bm_purchase_best: number;
+  precision_bm_purchase_worst: number;
 }
 
 interface TomlReputationDeltas {
@@ -381,6 +396,21 @@ export const GAME_CONFIG = {
     MISHAP_RANGE_EXPANSION: tomlConfig.appraisal.mishap_range_expansion,
     SKEW_MIN: tomlConfig.appraisal.skew_min,
     SKEW_RANGE: tomlConfig.appraisal.skew_range,
+    // Precision payoff
+    PRECISION_U_MIN: tomlConfig.appraisal.precision_u_min,
+    PRECISION_U_MAX: tomlConfig.appraisal.precision_u_max,
+    PRECISION_ASK_BEST: tomlConfig.appraisal.precision_ask_best,
+    PRECISION_ASK_WORST: tomlConfig.appraisal.precision_ask_worst,
+    PRECISION_INSULT_BEST: tomlConfig.appraisal.precision_insult_best,
+    PRECISION_INSULT_WORST: tomlConfig.appraisal.precision_insult_worst,
+    PRECISION_CONCESSION_BEST: tomlConfig.appraisal.precision_concession_best,
+    PRECISION_CONCESSION_WORST: tomlConfig.appraisal.precision_concession_worst,
+    PRECISION_BM_OFFSET_LOW_BEST: tomlConfig.appraisal.precision_bm_offset_low_best,
+    PRECISION_BM_OFFSET_HIGH_BEST: tomlConfig.appraisal.precision_bm_offset_high_best,
+    PRECISION_BM_OFFSET_LOW_WORST: tomlConfig.appraisal.precision_bm_offset_low_worst,
+    PRECISION_BM_OFFSET_HIGH_WORST: tomlConfig.appraisal.precision_bm_offset_high_worst,
+    PRECISION_BM_PURCHASE_BEST: tomlConfig.appraisal.precision_bm_purchase_best,
+    PRECISION_BM_PURCHASE_WORST: tomlConfig.appraisal.precision_bm_purchase_worst,
   },
 
   // --- REPUTATION DELTAS (声誉增减表) ---

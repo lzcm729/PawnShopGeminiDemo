@@ -30,6 +30,7 @@ import {
 import { BlackMarketLevelConfig } from '../upgrades/types';
 import { BLACK_MARKET_LEVELS } from '../upgrades/config';
 import { GAME_CONFIG } from '../game/config';
+import { getBlackmarketVolatilityRange, getBlackmarketPurchaseModifier } from '../appraisal/precision';
 
 // ============================================================================
 // Daily Market Generation
@@ -196,6 +197,7 @@ export function generateDailyBlackmarketState(
 
 /**
  * Calculate price for selling to market purchase (high price track)
+ * C': Item uncertainty affects purchase precision modifier.
  * @param item The item being sold
  * @param purchaseRequest The market's purchase request
  * @param underworldRep Player's Underworld reputation
@@ -212,31 +214,44 @@ export function calculatePurchasePrice(
   const { commission } = getUnderworldCommission(underworldRep);
   const priceBonus = getPurchasePriceBonus(upgradeLevel);
 
-  // Final price = realValue * marketMultiplier * (1 + priceBonus) * (1 - commission)
-  // priceBonus: upgrade bonus (0%, 5%, 10%)
-  // commission: reputation-based fee (0-20%), higher reputation = lower commission
-  const finalPrice = basePrice * marketMultiplier * (1 + priceBonus) * (1 - commission);
+  // C': Apply precision modifier (buyer penalizes high uncertainty)
+  const uncertainty = item.uncertainty ?? 0.3;
+  const precisionMod = getBlackmarketPurchaseModifier(uncertainty);
+
+  // Final price = realValue * marketMultiplier * (1 + priceBonus) * (1 - commission) * precisionMod
+  const finalPrice = basePrice * marketMultiplier * (1 + priceBonus) * (1 - commission) * precisionMod;
 
   return Math.floor(finalPrice);
 }
 
 /**
  * Calculate price for player-initiated sale (low price track)
+ * C': Item uncertainty affects price volatility via per-item offset.
  * @param item The item being sold
  * @param saleMultiplier The day's sale multiplier (random within min-max range)
  * @param underworldRep Player's Underworld reputation
+ * @param day Optional current game day (for deterministic per-item volatility)
  */
 export function calculateSalePrice(
   item: Item,
   saleMultiplier: number,
-  underworldRep: number
+  underworldRep: number,
+  day?: number
 ): number {
   const basePrice = item.realValue;
   const { commission } = getUnderworldCommission(underworldRep);
 
-  // Final price = realValue * saleMultiplier * (1 - commission)
-  // Higher reputation = lower commission (0-20%), player keeps more
-  const finalPrice = basePrice * saleMultiplier * (1 - commission);
+  // C': Apply per-item volatility offset based on uncertainty
+  const uncertainty = item.uncertainty ?? 0.3;
+  const [offsetLow, offsetHigh] = getBlackmarketVolatilityRange(uncertainty);
+  // Deterministic random offset per item+day
+  const seed = `bm-volatility-${item.id}-${day ?? 0}`;
+  const rand = seededRandom(seed);
+  const volatilityOffset = offsetLow + rand * (offsetHigh - offsetLow);
+
+  // Final price = realValue * (saleMultiplier + volatilityOffset) * (1 - commission)
+  const effectiveMultiplier = Math.max(0.1, saleMultiplier + volatilityOffset);
+  const finalPrice = basePrice * effectiveMultiplier * (1 - commission);
 
   return Math.floor(finalPrice);
 }

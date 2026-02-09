@@ -150,6 +150,20 @@ export function abilityReducer(state: GameState, action: Action): GameState {
             };
         }
 
+        case 'SET_ECHO_TEXTS': {
+            return {
+                ...state,
+                pendingEchoTexts: action.payload,
+            };
+        }
+
+        case 'CLEAR_ECHO_TEXTS': {
+            return {
+                ...state,
+                pendingEchoTexts: [],
+            };
+        }
+
         case 'APPLY_EXTRA_CARE': {
             const { hopeChange, humanityChange, chainId } = action.payload;
 

@@ -85,12 +85,19 @@ export type { ContractTier } from './essenceSystem';
 
 // === Moral Echo ===
 export {
+  getEchoesForDay,
   removeDeliveredEchoes,
   enqueueEchoes,
+  createPressureEcho,
+  createHeartStrikeEchoes,
+  createSharkDealEchoes,
+  createStolenGoodsEchoes,
+  createBlackmarketSellEcho,
 } from './moralEcho';
 
 // === Moral Echo Texts ===
 export type { EchoText } from './moralEchoTexts';
+export { getEchoText } from './moralEchoTexts';
 
 // === Panel Data ===
 export { generatePanelData } from './panelData';

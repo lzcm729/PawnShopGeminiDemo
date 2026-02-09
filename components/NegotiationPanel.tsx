@@ -58,7 +58,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const { evaluateTransaction, commitTransaction, rejectCustomer, isCurrentItemStolen, handleStolenItemDecision } = useGameEngine();
   const { send } = useGameMachine();
   const { formatRate, unitLabel } = useRateDisplay();
-  const { canUseInNegotiation, applyPressure, isUnlocked } = useCharacterAbility();
+  const { canUseInNegotiation, applyPressure, applyHeartStrike, isUnlocked } = useCharacterAbility();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
 
@@ -70,6 +70,11 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const [pressureUsed, setPressureUsed] = useState(false);
   const pressureSkillAvailable = isUnlocked('APPLY_PRESSURE');
   const canUsePressureNow = pressureSkillAvailable && !pressureUsed && canUseInNegotiation('APPLY_PRESSURE');
+
+  // Heart Strike skill state
+  const [heartStrikeUsed, setHeartStrikeUsed] = useState(false);
+  const heartStrikeSkillAvailable = isUnlocked('HEART_STRIKE');
+  const canUseHeartStrikeNow = heartStrikeSkillAvailable && !heartStrikeUsed && canUseInNegotiation('HEART_STRIKE');
 
   // Customer Insight hook
   const {
@@ -278,6 +283,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       setShowStolenWarning(false);
       setStolenDecisionMade(false);
       setPressureUsed(false);
+      setHeartStrikeUsed(false);
   }, [currentCustomer?.id]);
 
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
@@ -381,6 +387,41 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       if (result.patienceCost > 0) {
           negotiation.applyExternalPatienceCost(result.patienceCost);
       }
+
+      playSfx('CLICK');
+  };
+
+  // Handle heart strike skill activation
+  const handleHeartStrike = () => {
+      if (!currentCustomer || heartStrikeUsed || !canUseHeartStrikeNow) return;
+
+      const afterConcession = lastPushPullResult?.conceded ?? false;
+      const originalFloor = currentCustomer.minimumAmount;
+      const currentFloor = currentCustomer.minimumAmount;
+      const existingReduction = 0;
+
+      const result = applyHeartStrike(originalFloor, currentFloor, currentCustomer.behaviorTags, afterConcession, existingReduction);
+
+      setHeartStrikeUsed(true);
+      dispatch({ type: 'MARK_SKILL_USED', payload: { skillId: 'HEART_STRIKE' } });
+
+      const bonusText = result.timingBonusApplied ? " (时机加成!)" : "";
+      const reductionAmount = currentFloor - result.newFloor;
+
+      setChatLog(prev => [...prev, {
+          id: `heartstrike-${Date.now()}`,
+          sender: 'player' as const,
+          text: `[攻心] 你抓住了对方的心理弱点，轻描淡写地提了一句。${bonusText}`,
+          subtext: `底价 -$${reductionAmount} | 不消耗耐心`,
+          sentiment: 'neutral' as const,
+          type: 'INNER_MONOLOGUE' as const,
+      }]);
+
+      if (reductionAmount > 0) {
+          dispatch({ type: 'APPLY_SKILL_FLOOR_REDUCTION', payload: { newFloor: result.newFloor } });
+      }
+
+      // Heart strike does NOT cost patience (patienceCost = 0)
 
       playSfx('CLICK');
   };
@@ -577,6 +618,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           canUsePressure={canUsePressureNow}
           pressureUsed={pressureUsed}
           onPressure={pressureSkillAvailable ? handlePressure : undefined}
+          canUseHeartStrike={canUseHeartStrikeNow}
+          heartStrikeUsed={heartStrikeUsed}
+          onHeartStrike={heartStrikeSkillAvailable ? handleHeartStrike : undefined}
           onOffer={handleOffer}
           onManualReject={handleManualReject}
           onBinaryAccept={handleBinaryAccept}

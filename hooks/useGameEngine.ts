@@ -24,6 +24,11 @@ import { detectSimConsequences, dispatchConsequence, createChannelTimingState } 
 import type { DispatchAction } from '../systems/narrative/consequenceDispatcher';
 import { processExternalTrigger } from '../systems/narrative/externalTrigger';
 import type { ExternalChainTrigger } from '../systems/narrative/externalTrigger';
+import { getEchoesForDay } from '../systems/characterAbility/moralEcho';
+import { getEchoText } from '../systems/characterAbility/moralEchoTexts';
+import { calculateTransactionEssenceGain, calculateStolenGoodsEssenceGain } from '../systems/characterAbility/essenceSystem';
+import { registerRuntimeMailTemplate } from '../systems/narrative/mailRegistry';
+import { NewsCategory } from '../systems/news/types';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -358,6 +363,66 @@ export const useGameEngine = () => {
 
     // 1. Process daily mail
     dispatch({ type: 'PROCESS_DAILY_MAIL' });
+
+    // 1.2. Deliver moral echoes (道德回声投递)
+    // Check queue for echoes that should be delivered today
+    const echoQueue = state.abilityState.moralEchoQueue;
+    const currentDay = state.stats.day;
+    const dueEchoes = getEchoesForDay(echoQueue, currentDay);
+    if (dueEchoes.length > 0) {
+        const echoTexts: { channel: 'MONOLOGUE' | 'NPC_REACTION'; text: string }[] = [];
+
+        for (const echo of dueEchoes) {
+            const resolved = getEchoText(echo);
+            if (!resolved.text || resolved.text === '......') continue;
+
+            switch (echo.channel) {
+                case 'MONOLOGUE':
+                case 'NPC_REACTION':
+                    echoTexts.push({ channel: echo.channel, text: resolved.text });
+                    break;
+                case 'NEWS':
+                    dispatch({
+                        type: 'ADD_PENDING_NEWS',
+                        payload: {
+                            headline: resolved.newsHeadline || '社区消息',
+                            body: resolved.text,
+                            category: NewsCategory.NARRATIVE_ECHO,
+                            priority: echo.severity === 'HIGH' ? 90 : echo.severity === 'MEDIUM' ? 70 : 50,
+                            sourceLabel: '[道德回声]',
+                            tags: ['moral_echo', echo.source.toLowerCase()],
+                            effects: [],
+                            displayDay: currentDay,
+                            duration: 1,
+                        },
+                    });
+                    break;
+                case 'MAIL': {
+                    // Register a runtime mail template and schedule delivery
+                    const echoMailId = `_echo_${echo.source.toLowerCase()}_${currentDay}_${Math.random().toString(36).slice(2, 6)}`;
+                    registerRuntimeMailTemplate({
+                        id: echoMailId,
+                        sender: resolved.mailSender || '匿名',
+                        subject: resolved.mailSubject || '一封信',
+                        body: resolved.text,
+                        attachments: { cash: 0 },
+                    });
+                    dispatch({
+                        type: 'SCHEDULE_MAIL',
+                        payload: { templateId: echoMailId, delayDays: 0 },
+                    });
+                    break;
+                }
+            }
+        }
+
+        if (echoTexts.length > 0) {
+            dispatch({ type: 'SET_ECHO_TEXTS', payload: echoTexts });
+        }
+
+        // Remove delivered echoes from queue
+        dispatch({ type: 'PROCESS_MORAL_ECHOES', payload: { day: currentDay } });
+    }
 
     // 1.5. Check for police investigation (if stolen items in inventory)
     const stolenItemToInvestigate = checkForPoliceInvestigation(
@@ -1009,6 +1074,25 @@ export const useGameEngine = () => {
         [ReputationType.INNOCENCE]: currentRep[ReputationType.INNOCENCE] + (result.reputationDelta[ReputationType.INNOCENCE] || 0)
     };
     checkMilestones(projectedRep);
+
+    // P0-5: Essence gain from transaction (道德精魄获取)
+    // Interest rate is stored as decimal fraction (0, 0.05, 0.10, 0.20)
+    // but essenceSystem expects percentage integer (0, 5, 10, 20)
+    if (result.success && result.terms) {
+        const ratePercent = result.terms.rate * 100;
+        const essenceGain = calculateTransactionEssenceGain(ratePercent);
+        if (essenceGain.craft > 0 || essenceGain.time > 0 || essenceGain.vibe > 0) {
+            dispatch({ type: 'ADD_ESSENCE_BATCH', payload: { craft: essenceGain.craft, time: essenceGain.time, vibe: essenceGain.vibe } });
+        }
+
+        // Stolen goods bonus essence
+        if (result.item?.isStolen) {
+            const stolenGain = calculateStolenGoodsEssenceGain();
+            if (stolenGain.craft > 0 || stolenGain.time > 0 || stolenGain.vibe > 0) {
+                dispatch({ type: 'ADD_ESSENCE_BATCH', payload: { craft: stolenGain.craft, time: stolenGain.time, vibe: stolenGain.vibe } });
+            }
+        }
+    }
   };
 
   const rejectCustomer = (satisfaction: SatisfactionLevel = 'DESPERATE') => {

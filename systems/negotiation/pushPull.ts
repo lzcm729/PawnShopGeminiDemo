@@ -114,12 +114,14 @@ export const calculateConcessionChance = (
  * @param style NPC 推拉风格
  * @param currentAsk 当前 Ask 价格
  * @param minimumAmount NPC 底价
+ * @param precisionMultiplier D: Appraisal precision multiplier (1.30 at best, 0.70 at worst)
  * @returns 让步后的新 Ask 价格
  */
 export const calculateConcessionAmount = (
     style: NpcPushPullStyle,
     currentAsk: number,
-    minimumAmount: number
+    minimumAmount: number,
+    precisionMultiplier: number = 1.0
 ): number => {
     const config = PUSH_PULL_CONFIG[style];
 
@@ -127,8 +129,8 @@ export const calculateConcessionAmount = (
     const remainingMargin = currentAsk - minimumAmount;
     if (remainingMargin <= 0) return currentAsk;
 
-    // 让步金额 = 剩余空间 × 让步幅度
-    const concessionAmount = Math.floor(remainingMargin * config.concessionRatio);
+    // D: 让步金额 = 剩余空间 × 让步幅度 × 精度乘数
+    const concessionAmount = Math.floor(remainingMargin * config.concessionRatio * precisionMultiplier);
 
     // 确保让步后不低于底价
     const newAsk = Math.max(currentAsk - concessionAmount, minimumAmount);
@@ -188,6 +190,8 @@ export interface PushPullResult {
  * @param insightConcessionModifier (I-7) Optional modifier from insight system.
  *   Added to concession chance after base calculation.
  *   e.g. +0.20 for desperate, +0.15 for bluffing, etc.
+ * @param precisionConcessionMultiplier (D) Appraisal precision multiplier for concession amount.
+ *   Low uncertainty = higher multiplier (NPC concedes more). Default 1.0.
  */
 export const executePushPull = (
     behaviorTags: BehaviorTag[],
@@ -197,7 +201,8 @@ export const executePushPull = (
     minimumAmount: number,
     persistCount: number,
     concessionCount: number,
-    insightConcessionModifier: number = 0
+    insightConcessionModifier: number = 0,
+    precisionConcessionMultiplier: number = 1.0
 ): PushPullResult => {
     const style = getPushPullStyle(behaviorTags);
     const playerMove = determinePlayerMove(currentOffer, lastOffer);
@@ -233,7 +238,7 @@ export const executePushPull = (
     const conceded = roll < chance;
 
     if (conceded) {
-        let newAskPrice = calculateConcessionAmount(style, currentAsk, minimumAmount);
+        let newAskPrice = calculateConcessionAmount(style, currentAsk, minimumAmount, precisionConcessionMultiplier);
 
         // Never concede below the player's current offer — it's illogical
         // for the customer to ask for less than what's already on the table
