@@ -15,7 +15,8 @@ const bufferCache = new Map<string, AudioBuffer>();
 
 type BaseSoundType =
     | 'CLICK' | 'HOVER' | 'SUCCESS' | 'FAIL' | 'TYPE' | 'WARNING'
-    | 'BOOT' | 'CASH' | 'STAMP' | 'GLITCH' | 'SHUTTER' | 'DOORBELL' | 'FOOTSTEP';
+    | 'BOOT' | 'CASH' | 'STAMP' | 'GLITCH' | 'SHUTTER' | 'DOORBELL' | 'FOOTSTEP'
+    | 'EPIPHANY';
 
 type ExtendedSoundType =
     | 'JINGLE_SUCCESS' | 'JINGLE_FAIL'
@@ -76,6 +77,10 @@ const SOUND_DEFS: Record<SoundType, SoundDef> = {
     TYPE: {
         files: [],  // Uses synthesized sound (see playSynthType)
         gain: 0.3,
+    },
+    EPIPHANY: {
+        files: [],  // Uses synthesized sound (see playSynthEpiphany)
+        gain: 0.4,
     },
     BOOT: {
         files: ['/audio/sfx/maximize_008.ogg'],
@@ -269,14 +274,206 @@ const preloadAllBuffers = async () => {
     await Promise.allSettled([...allFiles].map(loadBuffer));
 };
 
-// --- Ambience stubs (kept for API compatibility) ---
+// =============================================================================
+// Ambience System - Web Audio API synthesized environmental sounds
+// =============================================================================
 
-export const startAmbience = () => {
-    // Ambience disabled
+let ambienceGain: GainNode | null = null;
+let ambienceNodes: AudioNode[] = [];
+let ambienceTimers: ReturnType<typeof setTimeout>[] = [];
+let currentAmbiencePhase: 'DAY' | 'NIGHT' | null = null;
+
+const createBrownNoiseBuffer = (ctx: AudioContext, durationSec: number): AudioBuffer => {
+    const sampleRate = ctx.sampleRate;
+    const bufferSize = Math.floor(sampleRate * durationSec);
+    const buffer = ctx.createBuffer(1, bufferSize, sampleRate);
+    const data = buffer.getChannelData(0);
+    let lastOut = 0;
+    for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        lastOut = (lastOut + 0.02 * white) / 1.02;
+        data[i] = lastOut * 3.5;
+    }
+    return buffer;
 };
 
+const createPinkNoiseBuffer = (ctx: AudioContext, durationSec: number): AudioBuffer => {
+    const sampleRate = ctx.sampleRate;
+    const bufferSize = Math.floor(sampleRate * durationSec);
+    const buffer = ctx.createBuffer(1, bufferSize, sampleRate);
+    const data = buffer.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+        b6 = white * 0.115926;
+    }
+    return buffer;
+};
+
+const scheduleBirdChirp = (ctx: AudioContext, dest: AudioNode) => {
+    const chirp = () => {
+        if (!audioCtx || currentAmbiencePhase !== 'DAY') return;
+        const t = ctx.currentTime;
+        const baseFreq = 2000 + Math.random() * 2000;
+        const osc = ctx.createOscillator();
+        const chirpGain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(baseFreq, t);
+        osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.3, t + 0.05);
+        osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.9, t + 0.1);
+        chirpGain.gain.setValueAtTime(0, t);
+        chirpGain.gain.linearRampToValueAtTime(0.015, t + 0.01);
+        chirpGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        osc.connect(chirpGain);
+        chirpGain.connect(dest);
+        osc.start(t);
+        osc.stop(t + 0.15);
+        if (Math.random() > 0.4) {
+            const osc2 = ctx.createOscillator();
+            const chirpGain2 = ctx.createGain();
+            osc2.type = 'sine';
+            const freq2 = baseFreq * (1.1 + Math.random() * 0.3);
+            osc2.frequency.setValueAtTime(freq2, t + 0.15);
+            osc2.frequency.exponentialRampToValueAtTime(freq2 * 1.2, t + 0.2);
+            chirpGain2.gain.setValueAtTime(0, t + 0.15);
+            chirpGain2.gain.linearRampToValueAtTime(0.012, t + 0.16);
+            chirpGain2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+            osc2.connect(chirpGain2);
+            chirpGain2.connect(dest);
+            osc2.start(t + 0.15);
+            osc2.stop(t + 0.28);
+        }
+        ambienceTimers.push(setTimeout(chirp, 5000 + Math.random() * 10000));
+    };
+    ambienceTimers.push(setTimeout(chirp, 2000 + Math.random() * 5000));
+};
+
+const createDayAmbience = (ctx: AudioContext, dest: AudioNode) => {
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = createBrownNoiseBuffer(ctx, 4);
+    noiseSource.loop = true;
+    const lpFilter = ctx.createBiquadFilter();
+    lpFilter.type = 'lowpass';
+    lpFilter.frequency.value = 200;
+    lpFilter.Q.value = 0.7;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.value = 0.8;
+    noiseSource.connect(lpFilter);
+    lpFilter.connect(noiseGain);
+    noiseGain.connect(dest);
+    noiseSource.start();
+    ambienceNodes.push(noiseSource, lpFilter, noiseGain);
+    scheduleBirdChirp(ctx, dest);
+};
+
+const createNightJazzHint = (ctx: AudioContext, dest: AudioNode) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = 55;
+    const bpFilter = ctx.createBiquadFilter();
+    bpFilter.type = 'bandpass';
+    bpFilter.Q.value = 5;
+    bpFilter.frequency.value = 150;
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.3;
+    lfoGain.gain.value = 60;
+    lfo.connect(lfoGain);
+    lfoGain.connect(bpFilter.frequency);
+    const jazzGain = ctx.createGain();
+    jazzGain.gain.value = 0.4;
+    osc.connect(bpFilter);
+    bpFilter.connect(jazzGain);
+    jazzGain.connect(dest);
+    osc.start();
+    lfo.start();
+    ambienceNodes.push(osc, bpFilter, lfo, lfoGain, jazzGain);
+};
+
+const createNightAmbience = (ctx: AudioContext, dest: AudioNode) => {
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = createPinkNoiseBuffer(ctx, 4);
+    noiseSource.loop = true;
+    const lpFilter = ctx.createBiquadFilter();
+    lpFilter.type = 'lowpass';
+    lpFilter.frequency.value = 800;
+    lpFilter.Q.value = 0.5;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.value = 0.6;
+    noiseSource.connect(lpFilter);
+    lpFilter.connect(noiseGain);
+    noiseGain.connect(dest);
+    noiseSource.start();
+    ambienceNodes.push(noiseSource, lpFilter, noiseGain);
+    createNightJazzHint(ctx, dest);
+};
+
+/**
+ * Start ambient sound for the given phase.
+ * When called without arguments (backwards compat), defaults to 'DAY'.
+ */
+export const startAmbience = (phase?: 'DAY' | 'NIGHT') => {
+    const targetPhase = phase ?? 'DAY';
+    if (isMuted) return;
+    if (currentAmbiencePhase === targetPhase && ambienceGain) return;
+    const ctx = initAudio();
+    if (!ctx || !masterGain) return;
+    cleanupAmbienceNodes(ctx, 0.5);
+    currentAmbiencePhase = targetPhase;
+    ambienceGain = ctx.createGain();
+    ambienceGain.gain.setValueAtTime(0, ctx.currentTime);
+    ambienceGain.gain.linearRampToValueAtTime(
+        targetPhase === 'DAY' ? 0.04 : 0.035,
+        ctx.currentTime + 2
+    );
+    ambienceGain.connect(masterGain);
+    if (targetPhase === 'DAY') {
+        createDayAmbience(ctx, ambienceGain);
+    } else {
+        createNightAmbience(ctx, ambienceGain);
+    }
+};
+
+/** Stop ambience with a smooth fade-out. */
 export const stopAmbience = () => {
-    // Ambience disabled
+    if (!audioCtx) {
+        currentAmbiencePhase = null;
+        return;
+    }
+    cleanupAmbienceNodes(audioCtx, 1.5);
+    currentAmbiencePhase = null;
+};
+
+const cleanupAmbienceNodes = (ctx: AudioContext, fadeOutSec: number) => {
+    for (const timer of ambienceTimers) clearTimeout(timer);
+    ambienceTimers = [];
+    if (ambienceGain) {
+        const t = ctx.currentTime;
+        ambienceGain.gain.cancelScheduledValues(t);
+        ambienceGain.gain.setValueAtTime(ambienceGain.gain.value, t);
+        ambienceGain.gain.linearRampToValueAtTime(0, t + fadeOutSec);
+        const nodesToClean = [...ambienceNodes];
+        const gainToClean = ambienceGain;
+        setTimeout(() => {
+            for (const node of nodesToClean) {
+                try {
+                    if (node instanceof AudioScheduledSourceNode) node.stop();
+                    node.disconnect();
+                } catch { /* already stopped/disconnected */ }
+            }
+            try { gainToClean.disconnect(); } catch { /* ignore */ }
+        }, fadeOutSec * 1000 + 100);
+    }
+    ambienceNodes = [];
+    ambienceGain = null;
 };
 
 // --- Mute controls ---
@@ -286,6 +483,9 @@ export const toggleMute = () => {
     localStorage.setItem('pawn_audio_muted', String(isMuted));
     if (masterGain && audioCtx) {
         masterGain.gain.setTargetAtTime(isMuted ? 0 : 1.0, audioCtx.currentTime, 0.1);
+    }
+    if (isMuted) {
+        stopAmbience();
     }
     return isMuted;
 };
@@ -326,6 +526,55 @@ const playSynthType = (ctx: AudioContext, master: GainNode) => {
     noise.start(t);
 };
 
+// --- Synthesized EPIPHANY sound (ascending clarity tone) ---
+
+const playSynthEpiphany = (ctx: AudioContext, master: GainNode) => {
+    const t = ctx.currentTime;
+
+    // Layer 1: Rising sine sweep (200Hz -> 800Hz over 0.3s)
+    const sweep = ctx.createOscillator();
+    const sweepGain = ctx.createGain();
+    sweep.type = 'sine';
+    sweep.frequency.setValueAtTime(200, t);
+    sweep.frequency.exponentialRampToValueAtTime(800, t + 0.3);
+    sweepGain.gain.setValueAtTime(0.12, t);
+    sweepGain.gain.setValueAtTime(0.12, t + 0.2);
+    sweepGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    sweep.connect(sweepGain);
+    sweepGain.connect(master);
+    sweep.start(t);
+    sweep.stop(t + 0.5);
+
+    // Layer 2: Shimmer (high-frequency granular texture)
+    const shimmerFreqs = [3200, 4800, 6400];
+    for (let i = 0; i < shimmerFreqs.length; i++) {
+        const osc = ctx.createOscillator();
+        const oscGain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(shimmerFreqs[i], t + 0.1 + i * 0.04);
+        oscGain.gain.setValueAtTime(0, t);
+        oscGain.gain.linearRampToValueAtTime(0.04, t + 0.12 + i * 0.04);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4 + i * 0.05);
+        osc.connect(oscGain);
+        oscGain.connect(master);
+        osc.start(t + 0.1 + i * 0.04);
+        osc.stop(t + 0.45 + i * 0.05);
+    }
+
+    // Layer 3: Resonant ring at the peak (harmonic fifth)
+    const ring = ctx.createOscillator();
+    const ringGain = ctx.createGain();
+    ring.type = 'sine';
+    ring.frequency.setValueAtTime(1200, t + 0.25);
+    ringGain.gain.setValueAtTime(0, t);
+    ringGain.gain.linearRampToValueAtTime(0.08, t + 0.28);
+    ringGain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+    ring.connect(ringGain);
+    ringGain.connect(master);
+    ring.start(t + 0.25);
+    ring.stop(t + 0.75);
+};
+
 // --- SFX playback ---
 
 export const playSfx = (type: SoundType) => {
@@ -337,6 +586,12 @@ export const playSfx = (type: SoundType) => {
     // TYPE uses original synthesized sound
     if (type === 'TYPE') {
         playSynthType(ctx, masterGain);
+        return;
+    }
+
+    // EPIPHANY uses synthesized ascending clarity tone
+    if (type === 'EPIPHANY') {
+        playSynthEpiphany(ctx, masterGain);
         return;
     }
 

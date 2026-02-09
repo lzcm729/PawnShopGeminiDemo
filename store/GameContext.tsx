@@ -139,6 +139,8 @@ const initialState: GameState = {
     moraleBuff: null,
     // === MORAL ECHO ===
     pendingEchoTexts: [],
+    // === NPC FATE LOG (Victory Screen: Bitter Victory) ===
+    npcFateLog: [],
     // === DEBUG FLAGS ===
     debugRevealFloor: false
 };

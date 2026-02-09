@@ -5,13 +5,33 @@
 
 import { GameState, ReputationType, ItemStatus, TransactionRecord, SatisfactionLevel, ReputationProfile } from '../../types';
 import { clampReputation } from '../../systems/core/reputationUtils';
-import { DepartureSatisfaction } from '../../systems/narrative/types';
+import { DepartureSatisfaction, NpcFateEntry } from '../../systems/narrative/types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog, generatePlayerChoiceLog, generateEchoLog } from '../../systems/game/utils/logGenerator';
 import { evaluateRedeemSatisfaction, evaluateRenewalSatisfaction, evaluatePostForfeitSatisfaction, mapToBaseSatisfaction } from '../../systems/game/utils/satisfaction';
 import { getRenewalRefusalPenalty } from '../../systems/economy/renewalPenalty';
 import { GAME_CONFIG } from '../../systems/game/config';
+
+/** Helper: merge a fate entry into the npcFateLog (upsert by npcId) */
+function mergeFateEntry(log: NpcFateEntry[], entry: NpcFateEntry): NpcFateEntry[] {
+    const idx = log.findIndex(e => e.npcId === entry.npcId);
+    if (idx >= 0) {
+        const existing = log[idx];
+        const merged: NpcFateEntry = {
+            ...existing,
+            wasRedeemed: existing.wasRedeemed || entry.wasRedeemed,
+            wasForfeited: existing.wasForfeited || entry.wasForfeited,
+            wasReforged: existing.wasReforged || entry.wasReforged,
+            wasSoldBlackmarket: existing.wasSoldBlackmarket || entry.wasSoldBlackmarket,
+            finalVariables: entry.finalVariables ?? existing.finalVariables,
+        };
+        const updated = [...log];
+        updated[idx] = merged;
+        return updated;
+    }
+    return [...log, entry];
+}
 
 export function expiryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -289,6 +309,34 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 }
             }
 
+            // === NPC FATE TRACKING ===
+            // Record fate for narrative NPCs (chains with a name) on terminal expiry outcomes
+            let updatedFateLog = state.npcFateLog;
+            if (event && item.relatedChainId) {
+                const chain = state.activeChains.find(c => c.id === item.relatedChainId);
+                if (chain) {
+                    const isTerminal = choice === 'redeem_accept' || choice === 'renew_refuse' ||
+                        choice === 'noshow_sell' || choice === 'noshow_keep' || choice === 'breach_discovered';
+                    if (isTerminal) {
+                        const numVars = chain.variables
+                            ? Object.fromEntries(Object.entries(chain.variables).filter(([, v]) => typeof v === 'number')) as Record<string, number>
+                            : undefined;
+                        const fateEntry: NpcFateEntry = {
+                            npcId: chain.id,
+                            npcName: chain.npcName || event.npcName,
+                            principalGiven: item.pawnInfo?.principal || 0,
+                            interestRate: item.pawnInfo?.interestRate || 0,
+                            wasRedeemed: choice === 'redeem_accept',
+                            wasForfeited: choice === 'renew_refuse' || choice === 'noshow_keep',
+                            wasReforged: item.wasReforged || item.workState === 'REFORGED',
+                            wasSoldBlackmarket: choice === 'breach_discovered' || choice === 'noshow_sell',
+                            finalVariables: numVars,
+                        };
+                        updatedFateLog = mergeFateEntry(state.npcFateLog, fateEntry);
+                    }
+                }
+            }
+
             // Phase transition handled by state machine (SETTLEMENT_COMPLETE or appropriate event)
             return {
                 ...state,
@@ -300,7 +348,8 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
                 dayEvents: [...state.dayEvents, log],
                 lastSatisfaction: satisfaction,
-                lastDepartureSatisfaction: departureSatisfaction
+                lastDepartureSatisfaction: departureSatisfaction,
+                npcFateLog: updatedFateLog,
                 // phase transition removed - handled by state machine
             };
         }

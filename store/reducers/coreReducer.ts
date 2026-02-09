@@ -116,6 +116,8 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 scheduleSlotIndex: action.payload.scheduleSlotIndex ?? 0,
                 // P1-6 / H-1 migration: moraleBuff and purchasedCare
                 moraleBuff: action.payload.moraleBuff ?? null,
+                // NPC fate log migration
+                npcFateLog: action.payload.npcFateLog ?? [],
                 stats: {
                     ...action.payload.stats,
                     motherStatus: {
