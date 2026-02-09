@@ -173,15 +173,21 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
       isOpen={isOpen}
       onClose={onClose}
       title={
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-2 font-mono text-[#00ff41] animate-crt-flicker">
           <Skull className="w-5 h-5" />
-          黑市 (Black Market)
+          <span className="tracking-wider">{'>'} BLACK_MARKET_v2.1</span>
           <HelpTooltip text="出售绝当物品获取现金。满足收购订单获得高价，直售价格较低。交易产生热度，热度过高会引来警方行动。" />
         </span>
       }
       size="xl"
+      noPadding
+      className="border-[#00ff41]/30 shadow-[0_0_50px_rgba(0,255,65,0.1)]"
     >
-      <div className="flex flex-col gap-6">
+      {/* CRT Scanline Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.04),rgba(0,255,0,0.02),rgba(0,0,255,0.04))] bg-[length:100%_3px,6px_100%] pointer-events-none z-40 opacity-15 rounded" />
+      {/* CRT Vignette */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_60%,rgba(0,0,0,0.4)_100%)] pointer-events-none z-40 rounded" />
+      <div className="flex flex-col gap-6 p-6 bg-[#0a0f0a] font-mono text-[#00ff41] relative animate-crt-flicker selection:bg-green-900 selection:text-white">
         {/* Risk Event Banner */}
         {hasRiskEvent && riskEvent && (
           <RiskEventBanner
@@ -193,12 +199,12 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
 
         {/* Market Locked Banner */}
         {!isMarketOpen && !hasRiskEvent && (
-          <div className="bg-red-950/30 border border-red-800 p-4 rounded flex items-center gap-3">
+          <div className="bg-red-950/20 border border-red-800/50 p-4 rounded flex items-center gap-3">
             <Lock className="w-6 h-6 text-red-500" />
             <div>
-              <div className="font-bold text-red-400">黑市已关闭</div>
+              <div className="font-bold text-red-400">{'>'} CHANNEL_LOCKED</div>
               <div className="text-sm text-red-300/70">
-                {daysUntilReopen} 天后重新开放
+                REOPEN_IN: {daysUntilReopen} CYCLES
               </div>
             </div>
           </div>
@@ -229,26 +235,26 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
 
         {/* Upgrade Effects Display */}
         {upgradeInfo.level > 0 && (
-          <div className="bg-purple-950/30 border border-purple-800 rounded p-3">
-            <div className="flex items-center gap-2 text-xs text-purple-300">
+          <div className="bg-[#0a100a] border border-[#00ff41]/20 rounded p-3">
+            <div className="flex items-center gap-2 text-xs text-[#00ff41]/80">
               <Skull className="w-4 h-4" />
-              <span className="font-bold">黑市联络网 Lv{upgradeInfo.level}</span>
+              <span className="font-bold tracking-wider">NETWORK_LVL_{upgradeInfo.level}</span>
             </div>
             <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
               <div className="text-center">
-                <div className="text-stone-500">每日收购</div>
-                <div className="font-mono text-purple-400">{upgradeInfo.dailyLimit} 件</div>
+                <div className="text-[#00ff41]/40">DAILY_CAP</div>
+                <div className="text-[#00ff41]">{upgradeInfo.dailyLimit}</div>
               </div>
               <div className="text-center">
-                <div className="text-stone-500">热度衰减</div>
-                <div className="font-mono text-purple-400">-{upgradeInfo.heatDecay}/天</div>
+                <div className="text-[#00ff41]/40">HEAT_DECAY</div>
+                <div className="text-[#00ff41]">-{upgradeInfo.heatDecay}/d</div>
               </div>
               <div className="text-center">
-                <div className="text-stone-500">收购价加成</div>
+                <div className="text-[#00ff41]/40">PRICE_MOD</div>
                 <div className={
-                  upgradeInfo.priceBonusPercent > 0 ? "font-mono text-green-400" : "font-mono text-stone-500"
+                  upgradeInfo.priceBonusPercent > 0 ? "text-[#00ff41]" : "text-[#00ff41]/30"
                 }>
-                  {upgradeInfo.priceBonusPercent > 0 ? `+${upgradeInfo.priceBonusPercent}%` : '-'}
+                  {upgradeInfo.priceBonusPercent > 0 ? `+${upgradeInfo.priceBonusPercent}%` : '--'}
                 </div>
               </div>
             </div>
@@ -260,11 +266,11 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
           <div className="grid grid-cols-2 gap-4">
             {/* Left Column */}
             <div className="flex flex-col">
-              <div className="px-4 py-2 bg-green-900/50 text-green-400 border border-green-700 rounded-t text-sm font-bold">
+              <div className="px-4 py-2 bg-[#002200] text-[#00ff41] border border-[#00ff41]/30 rounded-t text-sm font-bold tracking-wider">
                 <TrendingUp className="w-4 h-4 inline mr-2" />
-                今日收购 ({fulfilledCount}/{totalPurchaseRequests})
+                {'>'} PURCHASE_ORD [{fulfilledCount}/{totalPurchaseRequests}]
               </div>
-              <div className="flex-1 border border-t-0 border-green-900 rounded-b p-3 overflow-y-auto max-h-[500px]">
+              <div className="flex-1 border border-t-0 border-[#00ff41]/20 bg-[#050a05] rounded-b p-3 overflow-y-auto max-h-[500px]">
                 <PurchaseTab
                   requests={blackmarket.daily.purchaseRequests}
                   getEligibleItems={getEligibleItems}
@@ -281,11 +287,11 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
 
             {/* Right Column */}
             <div className="flex flex-col">
-              <div className="px-4 py-2 bg-amber-900/50 text-amber-400 border border-amber-700 rounded-t text-sm font-bold">
+              <div className="px-4 py-2 bg-[#1a1200] text-amber-400 border border-amber-700/40 rounded-t text-sm font-bold tracking-wider">
                 <TrendingDown className="w-4 h-4 inline mr-2" />
-                自由出售 ({sellableItems.length})
+                {'>'} DIRECT_SALE [{sellableItems.length}]
               </div>
-              <div className="flex-1 border border-t-0 border-amber-900 rounded-b p-3 overflow-y-auto max-h-[500px]">
+              <div className="flex-1 border border-t-0 border-amber-700/20 bg-[#0a0800] rounded-b p-3 overflow-y-auto max-h-[500px]">
                 <SaleTab
                   items={sellableItems}
                   getSalePrice={getSalePrice}
