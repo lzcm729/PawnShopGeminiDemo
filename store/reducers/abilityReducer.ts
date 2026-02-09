@@ -3,11 +3,12 @@
  * Handles character ability system actions (skill unlock, usage tracking, moral echoes)
  */
 
-import { GameState } from '../../types';
+import { GameState, ReputationType } from '../../types';
 import { Action } from '../actions/types';
 import { SkillId } from '../../systems/characterAbility/types';
 import { SKILL_DEFINITIONS } from '../../systems/characterAbility/skillDefinitions';
 import { removeDeliveredEchoes, enqueueEchoes } from '../../systems/characterAbility/moralEcho';
+import { clampReputation } from '../../systems/core/reputationUtils';
 
 export function abilityReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -146,6 +147,39 @@ export function abilityReducer(state: GameState, action: Action): GameState {
             return {
                 ...state,
                 showAbilityPanel: !state.showAbilityPanel,
+            };
+        }
+
+        case 'APPLY_EXTRA_CARE': {
+            const { hopeChange, humanityChange, chainId } = action.payload;
+
+            // 1. Update reputation (humanity)
+            const newRep = { ...state.reputation };
+            newRep[ReputationType.HUMANITY] += humanityChange;
+            clampReputation(newRep);
+
+            // 2. Update hope on the active chain (if chainId provided and chain exists)
+            let updatedChains = state.activeChains;
+            if (chainId) {
+                updatedChains = state.activeChains.map(chain => {
+                    if (chain.id === chainId) {
+                        const currentHope = chain.variables?.hope ?? 50;
+                        return {
+                            ...chain,
+                            variables: {
+                                ...chain.variables,
+                                hope: Math.min(100, Math.max(0, currentHope + hopeChange)),
+                            },
+                        };
+                    }
+                    return chain;
+                });
+            }
+
+            return {
+                ...state,
+                reputation: newRep,
+                activeChains: updatedChains,
             };
         }
 

@@ -3,7 +3,7 @@ import React, { useMemo, useRef } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { RollingNumber } from '../ui/RollingNumber';
-import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock } from 'lucide-react';
+import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap } from 'lucide-react';
 import { InterestRate, Customer, Item } from '../../types';
 import { playSfx } from '../../systems/game/audio';
 
@@ -45,6 +45,11 @@ interface ControlDeckProps {
     formatRate: (rate: number) => string;
     unitLabel: string;
 
+    // Character Ability: Pressure skill
+    canUsePressure?: boolean;
+    pressureUsed?: boolean;
+    onPressure?: () => void;
+
     // Handlers
     onOffer: () => void;
     onManualReject: () => void;
@@ -75,6 +80,9 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     fulfillmentError,
     formatRate,
     unitLabel,
+    canUsePressure,
+    pressureUsed,
+    onPressure,
     onOffer,
     onManualReject,
     onBinaryAccept,
@@ -317,6 +325,33 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                       >
                         <XCircle className="w-6 h-6"/>
                       </Button>
+
+                      {/* Pressure Skill Button */}
+                      {onPressure && (
+                          <button
+                              onClick={() => {
+                                  if (!pressureUsed && canUsePressure && canInteract) {
+                                      playSfx('CLICK');
+                                      onPressure();
+                                  }
+                              }}
+                              disabled={!canInteract || !canUsePressure || pressureUsed}
+                              title={pressureUsed ? "已使用 - 每次议价限用一次" : "施压: 降低客户底价 8%，耐心 -1"}
+                              className={cn(
+                                  "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
+                                  pressureUsed
+                                      ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                      : canUsePressure && canInteract
+                                      ? "bg-orange-950/40 border-orange-700/60 text-orange-400 hover:bg-orange-900/50 hover:border-orange-500 hover:shadow-[0_0_12px_rgba(234,88,12,0.3)] active:scale-95"
+                                      : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                              )}
+                          >
+                              <Zap className={cn("w-5 h-5", pressureUsed && "opacity-40")} />
+                              <span className="text-[9px] font-bold tracking-wider mt-0.5">
+                                  {pressureUsed ? "已用" : "施压"}
+                              </span>
+                          </button>
+                      )}
 
                       <Button
                         variant="primary"

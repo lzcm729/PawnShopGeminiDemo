@@ -234,12 +234,14 @@ export function coreReducer(state: GameState, action: Action): GameState {
             const newCompletedIds = (completedId && !completedId.startsWith('proc-')) ? [...state.completedScenarioIds, completedId] : state.completedScenarioIds;
 
             // Build deal summary for departure view
+            const interestRate = action.payload.interestRate ?? 0.05;
             const newDealSummary = item ? {
                 cashDelta,
                 reputationDelta,
                 itemName: item.name,
                 itemCategory: item.category,
-                dealQuality: dealQuality || 'fair'
+                dealQuality: dealQuality || 'fair',
+                interestRate,
             } : null;
 
             // Phase transition handled by state machine (TRANSACTION_COMPLETE event)

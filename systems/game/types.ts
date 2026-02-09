@@ -38,6 +38,7 @@ export interface DealSummary {
   itemName: string;
   itemCategory: string;
   dealQuality: 'fleeced' | 'fair' | 'premium';
+  interestRate: number;  // Decimal fraction (0, 0.05, 0.10, 0.20) for skill eligibility checks
 }
 
 export interface GameState {

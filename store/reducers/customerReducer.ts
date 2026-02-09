@@ -93,6 +93,21 @@ export function customerReducer(state: GameState, action: Action): GameState {
             };
         }
 
+        case 'APPLY_SKILL_FLOOR_REDUCTION': {
+            // Skill-based floor reduction: set customer minimumAmount to exact computed value
+            // Used by ability skills (施压, 攻心, etc.) which calculate newFloor via abilityEngine
+            if (!state.currentCustomer) return state;
+
+            const { newFloor } = action.payload;
+            return {
+                ...state,
+                currentCustomer: {
+                    ...state.currentCustomer,
+                    minimumAmount: newFloor,
+                },
+            };
+        }
+
         case 'UPDATE_ITEM_KNOWLEDGE': {
             if (!state.currentCustomer || state.currentCustomer.item.id !== action.payload.itemId) return state;
             const prevCount = state.currentCustomer.item.appraisalCount || 0;

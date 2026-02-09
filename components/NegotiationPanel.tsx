@@ -4,6 +4,7 @@ import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { useCustomerInsight } from '../hooks/useCustomerInsight';
+import { useCharacterAbility } from '../hooks/useCharacterAbility';
 import { Button } from './ui/Button';
 import { XCircle } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
@@ -32,6 +33,8 @@ interface NegotiationStateProps {
         currentAskPrice: number;
         offerHistory: OfferRecord[];
         revealedMinimum: boolean;
+        // Skill integration
+        applyExternalPatienceCost: (cost: number) => void;
         // Push-Pull fields
         lastOfferAmount: number | null;
         persistCount: number;
@@ -51,16 +54,22 @@ export interface AppraisalFeedback {
 }
 
 export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation, appraisalFeedbacks = [] }) => {
-  const { state } = useGame();
+  const { state, dispatch } = useGame();
   const { evaluateTransaction, commitTransaction, rejectCustomer, isCurrentItemStolen, handleStolenItemDecision } = useGameEngine();
   const { send } = useGameMachine();
   const { formatRate, unitLabel } = useRateDisplay();
+  const { canUseInNegotiation, applyPressure, isUnlocked } = useCharacterAbility();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
 
   // Stolen goods decision UI state
   const [showStolenWarning, setShowStolenWarning] = useState(false);
   const [stolenDecisionMade, setStolenDecisionMade] = useState(false);
+
+  // Pressure skill state
+  const [pressureUsed, setPressureUsed] = useState(false);
+  const pressureSkillAvailable = isUnlocked('APPLY_PRESSURE');
+  const canUsePressureNow = pressureSkillAvailable && !pressureUsed && canUseInNegotiation('APPLY_PRESSURE');
 
   // Customer Insight hook
   const {
@@ -268,6 +277,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       processedCountRef.current = 0;
       setShowStolenWarning(false);
       setStolenDecisionMade(false);
+      setPressureUsed(false);
   }, [currentCustomer?.id]);
 
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
@@ -329,6 +339,51 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           sentiment: counterSentiment
       }]);
   }, [lastPushPullResult]);
+
+  // Handle pressure skill activation
+  const handlePressure = () => {
+      if (!currentCustomer || pressureUsed || !canUsePressureNow) return;
+
+      // Determine if customer has just conceded (for timing bonus)
+      const afterConcession = lastPushPullResult?.conceded ?? false;
+
+      // Calculate existing floor reduction (difference from original minimumAmount)
+      // Note: originalFloor is approximated as current minimumAmount since we don't track original separately
+      const originalFloor = currentCustomer.minimumAmount;
+      const currentFloor = currentCustomer.minimumAmount;
+      const existingReduction = 0; // First use in this negotiation
+
+      const result = applyPressure(originalFloor, currentFloor, afterConcession, existingReduction);
+
+      // Mark as used
+      setPressureUsed(true);
+      dispatch({ type: 'MARK_SKILL_USED', payload: { skillId: 'APPLY_PRESSURE' } });
+
+      // Add feedback to chat log
+      const bonusText = result.timingBonusApplied ? " (时机加成!)" : "";
+      const reductionAmount = currentFloor - result.newFloor;
+
+      setChatLog(prev => [...prev, {
+          id: `pressure-${Date.now()}`,
+          sender: 'player' as const,
+          text: `[施压] 你施加了心理压力，迫使对方降低底线。${bonusText}`,
+          subtext: `底价 -$${reductionAmount} | 耐心 -${result.patienceCost}`,
+          sentiment: 'neutral' as const,
+          type: 'INNER_MONOLOGUE' as const,
+      }]);
+
+      // Apply floor reduction via dedicated action (sets exact newFloor value)
+      if (reductionAmount > 0) {
+          dispatch({ type: 'APPLY_SKILL_FLOOR_REDUCTION', payload: { newFloor: result.newFloor } });
+      }
+
+      // Sync patience cost to the hook's local state (which then auto-syncs to global state via App.tsx effect)
+      if (result.patienceCost > 0) {
+          negotiation.applyExternalPatienceCost(result.patienceCost);
+      }
+
+      playSfx('CLICK');
+  };
 
   const handleOffer = () => {
     if (isWalkedAway || isSubmitting) return;
@@ -519,6 +574,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           fulfillmentError={fulfillmentError}
           formatRate={formatRate}
           unitLabel={unitLabel}
+          canUsePressure={canUsePressureNow}
+          pressureUsed={pressureUsed}
+          onPressure={pressureSkillAvailable ? handlePressure : undefined}
           onOffer={handleOffer}
           onManualReject={handleManualReject}
           onBinaryAccept={handleBinaryAccept}

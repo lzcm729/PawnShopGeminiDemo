@@ -52,6 +52,9 @@ interface UseNegotiationReturn {
   lastAction: ActionLog | null;
   currentAskPrice: number;
 
+  // Skill integration
+  applyExternalPatienceCost: (cost: number) => void;
+
   // New Fields
   offerHistory: OfferRecord[];
   revealedMinimum: boolean;
@@ -375,6 +378,19 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
 
   }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier]);
 
+  // Allow external systems (ability skills) to deduct patience from the hook's local state.
+  // This keeps the hook's patience in sync when skills like "施压" cost patience.
+  const applyExternalPatienceCost = useCallback((cost: number) => {
+    if (cost <= 0) return;
+    setPatience(prev => {
+      const remaining = Math.max(0, prev - cost);
+      if (remaining <= 0) {
+        setIsWalkedAway(true);
+      }
+      return remaining;
+    });
+  }, []);
+
   return {
     patience,
     mood,
@@ -390,6 +406,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     resetNegotiation,
     lastAction,
     currentAskPrice,
+    applyExternalPatienceCost,
     offerHistory,
     revealedMinimum,
     // Push-Pull exports

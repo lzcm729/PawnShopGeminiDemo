@@ -42,6 +42,7 @@ export type Action =
     | { type: 'CLEAR_CUSTOMER' }
     | { type: 'UPDATE_CUSTOMER_STATUS'; payload: { patience: number; mood: Mood; currentAskPrice: number } }
     | { type: 'APPLY_STOLEN_LEVERAGE'; payload: { reductionPercent: number } }  // Reduce both ask price and minimum
+    | { type: 'APPLY_SKILL_FLOOR_REDUCTION'; payload: { newFloor: number } }  // Set customer floor to exact value (from ability skills)
     | { type: 'MANUAL_CLOSE_SHOP' }
     | { type: 'MARK_NO_MORE_CUSTOMERS' }
     | { type: 'INCREMENT_NARRATIVE_CUSTOMER' }  // Track narrative customer served (no limit)
@@ -65,7 +66,7 @@ export type Action =
     | { type: 'CONSUME_AP'; payload: number }
 
     // Transaction & Deal
-    | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string; dealQuality?: 'fleeced' | 'fair' | 'premium' } }
+    | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string; dealQuality?: 'fleeced' | 'fair' | 'premium'; interestRate?: number } }
     | { type: 'LIQUIDATE_ITEM'; payload: { itemId: string; amount: number; name: string } }
     | { type: 'REJECT_DEAL' }
 
@@ -210,6 +211,7 @@ export type Action =
     | { type: 'UPDATE_WORD_OF_MOUTH'; payload: { failStreak: number; pendingChecks: Array<{ checkDay: number; sourceDay: number }> } }
     | { type: 'UPDATE_FORESIGHT_FATIGUE'; payload: { totalFlashes: number; fatigued: boolean } }
     | { type: 'SET_EXTRA_CARE_USED' }
+    | { type: 'APPLY_EXTRA_CARE'; payload: { hopeChange: number; humanityChange: number; chainId?: string } }
     | { type: 'SET_ABILITY_STATE'; payload: AbilityState }
     | { type: 'TOGGLE_ABILITY_PANEL' }
 

@@ -3,8 +3,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
+import { useCharacterAbility } from '../hooks/useCharacterAbility';
 import { Button } from './ui/Button';
-import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull, XCircle } from 'lucide-react';
+import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull, XCircle, HandHeart } from 'lucide-react';
 import { SatisfactionLevel } from '../systems/narrative/types';
 import { ReputationType } from '../types';
 import { TypewriterText } from './ui/TextEffects';
@@ -33,11 +34,17 @@ export const DepartureView: React.FC = () => {
   const { state, dispatch } = useGame();
   const { processNextExpiryEvent } = useGameEngine();
   const { send, can } = useGameMachine();
+  const { canExtraCare, applyExtraCare, isUnlocked } = useCharacterAbility();
   const { currentCustomer, lastSatisfaction, lastDepartureSatisfaction, lastDealSummary, expiryQueue } = state;
 
   const [textComplete, setTextComplete] = useState(false);
   const [showInnerVoice, setShowInnerVoice] = useState(false);
   const [innerVoiceText, setInnerVoiceText] = useState("");
+
+  // Extra Care (额外关照) state
+  const [extraCareUsed, setExtraCareUsed] = useState(false);
+  const [extraCareNarrative, setExtraCareNarrative] = useState<string | null>(null);
+  const [extraCareEffects, setExtraCareEffects] = useState<{ hopeChange: number; humanityChange: number } | null>(null);
 
   const satisfaction = lastSatisfaction || 'NEUTRAL';
   const isNarrativeNPC = !!currentCustomer?.chainId;
@@ -98,6 +105,38 @@ export const DepartureView: React.FC = () => {
           }
       }
   }, [isSilentAction, currentCustomer?.id, timingConfig]);
+
+  // Extra Care availability check using actual interestRate from DealSummary
+  const extraCareAvailable = useMemo(() => {
+      if (!lastDealSummary || extraCareUsed) return false;
+      if (!isUnlocked('CHERISH_ALL')) return false;
+      return canExtraCare(lastDealSummary.interestRate);
+  }, [lastDealSummary, extraCareUsed, isUnlocked, canExtraCare]);
+
+  const handleExtraCare = () => {
+      if (!extraCareAvailable) return;
+
+      const result = applyExtraCare();
+      setExtraCareUsed(true);
+      setExtraCareNarrative(result.narrativeText);
+      setExtraCareEffects({ hopeChange: result.hopeChange, humanityChange: result.humanityChange });
+
+      // Mark skill as used in state
+      dispatch({ type: 'SET_EXTRA_CARE_USED' });
+      dispatch({ type: 'MARK_SKILL_USED', payload: { skillId: 'CHERISH_ALL' } });
+
+      // Persist effects: update hope on chain + humanity reputation
+      dispatch({
+          type: 'APPLY_EXTRA_CARE',
+          payload: {
+              hopeChange: result.hopeChange,
+              humanityChange: result.humanityChange,
+              chainId: currentCustomer?.chainId,
+          }
+      });
+
+      playSfx('CLICK');
+  };
 
   const handleNext = () => {
       playSfx('FOOTSTEP');
@@ -257,9 +296,47 @@ export const DepartureView: React.FC = () => {
               </div>
           )}
 
-          {/* Action */}
-          <div className={`transition-opacity duration-1000 ${textComplete || isSilentAction ? 'opacity-100' : 'opacity-0'}`}>
-              <Button 
+          {/* Extra Care Narrative (shown after using skill) */}
+          {extraCareNarrative && (
+              <div className="w-full bg-amber-950/20 border border-amber-800/40 rounded p-4 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <p className="text-amber-200/90 font-serif italic text-sm text-center leading-relaxed">
+                      {extraCareNarrative}
+                  </p>
+                  {extraCareEffects && (
+                      <div className="flex items-center justify-center gap-4 mt-3">
+                          {extraCareEffects.hopeChange !== 0 && (
+                              <span className="flex items-center gap-1 text-xs font-mono font-bold text-amber-400">
+                                  <Brain className="w-3 h-3" />
+                                  Hope {extraCareEffects.hopeChange > 0 ? '+' : ''}{extraCareEffects.hopeChange}
+                              </span>
+                          )}
+                          {extraCareEffects.humanityChange !== 0 && (
+                              <span className="flex items-center gap-1 text-xs font-mono font-bold text-rose-400">
+                                  <Heart className="w-3 h-3" />
+                                  {extraCareEffects.humanityChange > 0 ? '+' : ''}{extraCareEffects.humanityChange}
+                              </span>
+                          )}
+                      </div>
+                  )}
+              </div>
+          )}
+
+          {/* Actions */}
+          <div className={`transition-opacity duration-1000 flex flex-col items-center gap-3 ${textComplete || isSilentAction ? 'opacity-100' : 'opacity-0'}`}>
+              {/* Extra Care Button (above Dismiss) */}
+              {extraCareAvailable && !extraCareUsed && (
+                  <button
+                      onClick={handleExtraCare}
+                      title="额外关照: 仔细包裹物品并附上保管说明。Hope +3, 人情 +1"
+                      className="h-11 px-8 flex items-center gap-3 rounded border border-amber-700/50 bg-amber-950/30 text-amber-300 font-mono font-bold text-sm tracking-wider transition-all duration-300 hover:bg-amber-900/40 hover:border-amber-500 hover:shadow-[0_0_20px_rgba(217,119,6,0.2)] hover:text-amber-200 active:scale-[0.98]"
+                  >
+                      <HandHeart className="w-4 h-4" />
+                      额外关照
+                  </button>
+              )}
+
+              {/* Dismiss Button */}
+              <Button
                 onClick={handleNext}
                 className="h-14 px-10 text-base tracking-[0.3em] border-stone-600 hover:bg-stone-800 hover:border-white shadow-[0_0_30px_rgba(0,0,0,0.5)] bg-black text-stone-300"
                 variant="outline"

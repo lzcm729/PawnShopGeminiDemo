@@ -507,7 +507,9 @@ export function calculateComfortEffect(
 export function canUseExtraCare(
   interestRate: number
 ): boolean {
-  return interestRate <= 5;
+  // InterestRate is a decimal fraction (0, 0.05, 0.10, 0.20)
+  // Extra care only available for charity (0%) and aid (5%) tiers
+  return interestRate <= 0.05;
 }
 
 /**
