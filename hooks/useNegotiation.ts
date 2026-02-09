@@ -16,10 +16,10 @@ export interface NegotiationResult {
 }
 
 export interface ActionLog {
-    type: 'LEVERAGE' | 'NARRATIVE'; 
+    type: 'LEVERAGE' | 'NARRATIVE';
     text: string;
     subtext?: string;
-    customerResponse?: string; 
+    customerResponse?: string;
     id: number;
 }
 
@@ -84,6 +84,33 @@ const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number, i
 };
 
 /**
+ * P0-7: Apply behavior tag floor modifiers to NPC minimum amount.
+ * Multiplicative: effectiveFloor = base * (1 + sum(modifiers)), clamped to [0.70, 1.20] of base.
+ */
+const getFloorWithBehaviorMods = (behaviorTags: BehaviorTag[], baseMinimum: number): number => {
+  const modifiers = GAME_CONFIG.NEGOTIATION.BEHAVIOR_FLOOR_MODIFIERS;
+  let totalMod = 0;
+  for (const tag of behaviorTags) {
+    totalMod += modifiers[tag] || 0;
+  }
+  const multiplier = Math.max(0.70, Math.min(1.20, 1 + totalMod));
+  return Math.floor(baseMinimum * multiplier);
+};
+
+/**
+ * P0-7: Apply behavior tag patience modifiers to NPC base patience.
+ * Additive: finalPatience = base + sum(modifiers), clamped to [1, 5].
+ */
+const getPatienceWithBehaviorMods = (behaviorTags: BehaviorTag[], basePatience: number): number => {
+  const modifiers = GAME_CONFIG.NEGOTIATION.BEHAVIOR_PATIENCE_MODIFIERS;
+  let totalMod = 0;
+  for (const tag of behaviorTags) {
+    totalMod += modifiers[tag] || 0;
+  }
+  return Math.max(1, Math.min(5, basePatience + totalMod));
+};
+
+/**
  * @param insightConcessionModifier (I-7) Optional modifier from insight system
  *   to NPC concession probability. Pass getInsightPushPullModifier result.
  * @param itemUncertainty Current item uncertainty (0.05-0.30). Used for precision payoff modifiers.
@@ -91,19 +118,21 @@ const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number, i
  * @param moraleNegotiationModifier (H-1) Optional modifier from morale buff.
  *   Values < 1.0 reduce patience cost (good morale), > 1.0 increase it (bad morale).
  *   Applied probabilistically: modifier > 1 = higher chance of losing patience.
+ * @param newsStolenRisk (P0-2) Aggregate stolen_risk modifier from active news effects.
+ *   When > 0, stolen items have a chance to cost extra patience per offer round.
  */
-export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0, itemUncertainty: number = 0.3, moraleNegotiationModifier: number = 1.0): UseNegotiationReturn => {
+export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0, itemUncertainty: number = 0.3, moraleNegotiationModifier: number = 1.0, newsStolenRisk: number = 0): UseNegotiationReturn => {
   // Logic State
   const [patience, setPatience] = useState<number>(3);
   const [mood, setMood] = useState<NegotiationMood>('Neutral');
   const [isWalkedAway, setIsWalkedAway] = useState(false);
   const [lastAction, setLastAction] = useState<ActionLog | null>(null);
-  
+
   // UI State
   const [offerPrincipal, setOfferPrincipal] = useState(0);
   const [selectedRate, setSelectedRate] = useState<InterestRate>(0.05);
   const [currentAskPrice, setCurrentAskPrice] = useState<number>(0);
-  
+
   // History & Intel
   const [offerHistory, setOfferHistory] = useState<OfferRecord[]>([]);
   const [revealedMinimum, setRevealedMinimum] = useState(false);
@@ -139,7 +168,8 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       // A1: Lock uncertainty at negotiation start
       lockedUncertaintyRef.current = itemUncertainty;
 
-      setPatience(customer.patience);
+      // P0-7: Apply behavior tag patience modifiers at initialization
+      setPatience(getPatienceWithBehaviorMods(customer.behaviorTags, customer.patience));
       setMood('Neutral');
       setIsWalkedAway(false);
       setLastAction(null);
@@ -164,7 +194,8 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
   const resetNegotiation = useCallback(() => {
     if (customer) {
       lockedUncertaintyRef.current = itemUncertainty;
-      setPatience(customer.patience);
+      // P0-7: Apply behavior tag patience modifiers on reset too
+      setPatience(getPatienceWithBehaviorMods(customer.behaviorTags, customer.patience));
       setMood('Neutral');
       setIsWalkedAway(false);
       setLastAction(null);
@@ -259,7 +290,8 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       return { status: 'WALK_AWAY', message: "客户已经离开了。", patienceRemaining: 0 };
     }
 
-    const minPrincipal = customer.minimumAmount;
+    // P0-7: Apply behavior tag floor modifiers to NPC minimum amount
+    const minPrincipal = getFloorWithBehaviorMods(customer.behaviorTags, customer.minimumAmount);
     const maxRepayment = customer.maxRepayment || (minPrincipal * 1.2);
     const totalRepayment = offerPrincipal * (1 + selectedRate);
     // A2: Apply precision-based insult modifier (locked at negotiation start)
@@ -280,8 +312,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     // 5. Otherwise — triggers push-pull negotiation
 
     // For 0% charity rate, use survivalMinimum as the effective floor (lower than minimumAmount)
+    // P0-7: survivalMinimum also gets floor modifier applied
     const effectiveFloor = selectedRate === 0
-        ? (customer.survivalMinimum ?? minPrincipal)
+        ? getFloorWithBehaviorMods(customer.behaviorTags, customer.survivalMinimum ?? customer.minimumAmount)
         : minPrincipal;
 
     if (offerPrincipal < insultThreshold) {
@@ -422,6 +455,16 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         }
     }
 
+    // P0-2: News stolen_risk effect — when police crackdown news is active and
+    // the item is stolen, the NPC becomes extra cautious. Each point of
+    // stolen_risk adds 1% chance of an extra patience cost per offer round.
+    if (newsStolenRisk > 0 && customer.item.isStolen && adjustedCostPatience > 0) {
+        const extraRiskChance = Math.min(newsStolenRisk / 100, 0.5); // Cap at 50%
+        if (Math.random() < extraRiskChance) {
+            adjustedCostPatience += 1;
+        }
+    }
+
     const remaining = Math.max(0, patience - adjustedCostPatience);
     setPatience(remaining);
     setMood(nextMood);
@@ -447,7 +490,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         patienceRemaining: remaining
     };
 
-  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier, moraleNegotiationModifier]);
+  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier, moraleNegotiationModifier, newsStolenRisk]);
 
   // Allow external systems (ability skills) to deduct patience from the hook's local state.
   // This keeps the hook's patience in sync when skills like "施压" cost patience.

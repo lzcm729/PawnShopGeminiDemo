@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
@@ -58,7 +58,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const { evaluateTransaction, commitTransaction, rejectCustomer, isCurrentItemStolen, handleStolenItemDecision } = useGameEngine();
   const { send } = useGameMachine();
   const { formatRate, unitLabel } = useRateDisplay();
-  const { canUseInNegotiation, applyPressure, applyHeartStrike, isUnlocked } = useCharacterAbility();
+  const { canUseInNegotiation, applyPressure, applyHeartStrike, isUnlocked, hasSeeConsequence, getContractHints } = useCharacterAbility();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
 
@@ -92,6 +92,17 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const insightReward = getInsightReward();
   const hasEmpathyInteraction = insightReward?.unlockedInteractions.includes('EMPATHY') ?? false;
   const hasProbeInteraction = insightReward?.unlockedInteractions.includes('PROBE') ?? false;
+
+  // Contract tier hints (因果自见 skill)
+  const contractTierHints = useMemo(() => {
+      if (!hasSeeConsequence() || !currentCustomer) return undefined;
+      const chain = currentCustomer.chainId
+          ? state.activeChains.find(c => c.id === currentCustomer.chainId)
+          : undefined;
+      const npcHope = chain?.variables.hope as number | undefined;
+      const isDesperateTag = currentCustomer.behaviorTags.includes('DESPERATE');
+      return getContractHints(npcHope, isDesperateTag);
+  }, [hasSeeConsequence, currentCustomer, state.activeChains, getContractHints]);
 
   const {
     offerPrincipal,
@@ -708,6 +719,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           fulfillmentError={fulfillmentError}
           formatRate={formatRate}
           unitLabel={unitLabel}
+          contractTierHints={contractTierHints}
           canUsePressure={canUsePressureNow}
           pressureUsed={pressureUsed}
           onPressure={pressureSkillAvailable ? handlePressure : undefined}

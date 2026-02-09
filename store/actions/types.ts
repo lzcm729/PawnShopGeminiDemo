@@ -18,7 +18,7 @@ import { ActiveNewsInstance, MarketModifier, PendingNewsItem } from '../../syste
 import { CustomerInsightResult } from '../../systems/customerInsight';
 import { DailyChallenge } from '../../systems/game/dailyChallenge';
 import { DailySchedule } from '../../systems/npc/customerScheduler';
-import { SkillId, MoralEchoEvent, AbilityState } from '../../systems/characterAbility/types';
+import { SkillId, MoralEchoEvent, AbilityState, ConsequenceFlashResult } from '../../systems/characterAbility/types';
 
 // === Action Type Union ===
 
@@ -66,7 +66,7 @@ export type Action =
     | { type: 'CONSUME_AP'; payload: number }
 
     // Transaction & Deal
-    | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string; dealQuality?: 'fleeced' | 'fair' | 'premium'; interestRate?: number } }
+    | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string; dealQuality?: 'fleeced' | 'fair' | 'premium'; interestRate?: number; merchantMonologue?: string } }
     | { type: 'LIQUIDATE_ITEM'; payload: { itemId: string; amount: number; name: string } }
     | { type: 'REJECT_DEAL' }
 
@@ -213,8 +213,12 @@ export type Action =
     | { type: 'CLEAR_ECHO_TEXTS' }
     | { type: 'UPDATE_WORD_OF_MOUTH'; payload: { failStreak: number; pendingChecks: Array<{ checkDay: number; sourceDay: number }> } }
     | { type: 'UPDATE_FORESIGHT_FATIGUE'; payload: { totalFlashes: number; fatigued: boolean } }
+    | { type: 'SET_CONSEQUENCE_FLASH'; payload: ConsequenceFlashResult }
+    | { type: 'CLEAR_CONSEQUENCE_FLASH' }
     | { type: 'SET_EXTRA_CARE_USED' }
     | { type: 'APPLY_EXTRA_CARE'; payload: { hopeChange: number; humanityChange: number; chainId?: string } }
+    | { type: 'SET_COMFORT_USED' }
+    | { type: 'APPLY_COMFORT'; payload: { hopeChange: number; humanityChange: number; chainId?: string } }
     | { type: 'SET_ABILITY_STATE'; payload: AbilityState }
     | { type: 'TOGGLE_ABILITY_PANEL' }
     | { type: 'RECORD_EPIPHANY' }

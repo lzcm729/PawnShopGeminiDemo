@@ -346,6 +346,24 @@ NAIVE = -0.05
 SAVVY = 0.05
 SENTIMENTAL = 0.05
 
+# 行为底价修正（乘性：NPC底价 × (1 + sum(modifiers))，clamp [0.70, 1.20]）
+[negotiation.behavior_floor_modifiers]
+DESPERATE = -0.15
+NAIVE = -0.10
+SAVVY = 0.10
+SUSPICIOUS = 0.05
+STUBBORN = 0.0
+SENTIMENTAL = 0.0
+
+# 行为耐心修正（加性：patience += sum(modifiers)，clamp [1, 5]）
+[negotiation.behavior_patience_modifiers]
+DESPERATE = -1
+STUBBORN = 1
+SUSPICIOUS = -1
+SENTIMENTAL = 1
+NAIVE = 0
+SAVVY = 0
+
 # 推拉策略：温和
 [negotiation.push_pull.SOFT]
 base_concession_chance = 0.50

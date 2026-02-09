@@ -207,6 +207,8 @@ interface TomlNegotiation {
   persist_bonus_per_count: number;
   persist_bonus_cap: number;
   behavior_insult_modifiers: Record<string, number>;
+  behavior_floor_modifiers: Record<string, number>;
+  behavior_patience_modifiers: Record<string, number>;
   push_pull: {
     SOFT: TomlPushPullStrategy;
     HARD: TomlPushPullStrategy;
@@ -548,6 +550,8 @@ export const GAME_CONFIG = {
     PERSIST_BONUS_PER_COUNT: tomlConfig.negotiation.persist_bonus_per_count,
     PERSIST_BONUS_CAP: tomlConfig.negotiation.persist_bonus_cap,
     BEHAVIOR_INSULT_MODIFIERS: tomlConfig.negotiation.behavior_insult_modifiers,
+    BEHAVIOR_FLOOR_MODIFIERS: tomlConfig.negotiation.behavior_floor_modifiers,
+    BEHAVIOR_PATIENCE_MODIFIERS: tomlConfig.negotiation.behavior_patience_modifiers,
     PUSH_PULL: {
       SOFT: {
         BASE_CONCESSION_CHANCE: tomlConfig.negotiation.push_pull.SOFT.base_concession_chance,

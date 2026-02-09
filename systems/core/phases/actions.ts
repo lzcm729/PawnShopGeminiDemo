@@ -237,7 +237,13 @@ export function resetDailyCounters(state: GameState, _event: PhaseEvent): Partia
         inventory: state.inventory.map(item => ({
             ...item,
             insightedTonight: false
-        }))
+        })),
+        // Reset daily challenge tracking (v2.1)
+        rejectedCustomersToday: 0,
+        hadMistakeToday: false,
+        hadHighRiskItemToday: false,
+        dailyCustomerSchedule: null,
+        scheduleSlotIndex: 0
     };
 }
 

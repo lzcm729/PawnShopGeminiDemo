@@ -93,6 +93,7 @@ export function createInitialAbilityState(): AbilityState {
     },
     skillsUsedThisNegotiation: [],
     extraCareUsedThisDeparture: false,
+    comfortUsedThisDeparture: false,
     totalEpiphanies: 0,
     gewuLevel: 1,
   };

@@ -13,7 +13,10 @@ import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
 import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
 import { Dialogue, SatisfactionLevel } from '../systems/narrative/types';
 import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
-import { createTransientChain, getContractTypeFromRate, generateFillerCustomer } from '../systems/npc/fillerGenerator';
+import { createTransientChain, getContractTypeFromRate, generateFillerCustomer, generateRedemptionVisitDialogue, getFillerMerchantMonologue, isTransientChain } from '../systems/npc/fillerGenerator';
+import type { CustomerAppearance, CustomerMood, CustomerAge, CustomerGender } from '../systems/npc/fillerGenerator';
+import { generateDailyChallenge, checkChallengeCompletion } from '../systems/game/dailyChallenge';
+import type { DayChallengeContext } from '../systems/game/dailyChallenge';
 import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
 import { PhaseEvent } from '../systems/core/phases/types';
 import { checkForPoliceInvestigation } from '../systems/police';
@@ -147,8 +150,35 @@ export const useGameEngine = () => {
     });
 
     // S3-F5: External chain triggers from violation detection
-    // Collected but not executed here — event chain system (S4-F2) will consume these
-    // Future: dispatch({ type: 'PROCESS_EXTERNAL_TRIGGERS', payload: newsResult.externalTriggers });
+    // Convert news triggers to narrative ExternalChainTrigger format and execute
+    if (newsResult.externalTriggers.length > 0) {
+        for (const newsTrigger of newsResult.externalTriggers) {
+            // Map ViolationSeverity (LOW/MEDIUM/HIGH) → penaltyType for narrative system
+            const penaltyTypeMap: Record<string, 'STOLEN_GOODS' | 'COUNTERFEIT' | 'REGULATION'> = {
+                'HIGH': 'STOLEN_GOODS',
+                'MEDIUM': 'STOLEN_GOODS',
+                'LOW': 'REGULATION',
+            };
+            // Map ConsequenceSeverity → narrative severity (MINOR/MAJOR)
+            const severityMap: Record<string, 'MINOR' | 'MAJOR'> = {
+                'MINOR': 'MINOR',
+                'MODERATE': 'MINOR',
+                'SEVERE': 'MAJOR',
+                'EXTREME': 'MAJOR',
+            };
+
+            const narrativeTrigger: ExternalChainTrigger = {
+                type: 'NEWS_VERIFICATION',
+                payload: {
+                    type: 'NEWS_VERIFICATION',
+                    newsId: newsTrigger.payload.newsId,
+                    penaltyType: penaltyTypeMap[newsTrigger.payload.penaltyType] || 'REGULATION',
+                    severity: severityMap[newsTrigger.payload.severity] || 'MINOR',
+                },
+            };
+            handleExternalTrigger(narrativeTrigger);
+        }
+    }
 
     // 3. Random Night Events
     const rollEvent = Math.random();
@@ -361,7 +391,64 @@ export const useGameEngine = () => {
     const blackmarketRiskEvent = checkRiskEvent(state.blackmarket?.heat ?? 0);
     dispatch({ type: 'BLACKMARKET_PROCESS_DAY_END', payload: { riskEvent: blackmarketRiskEvent } });
 
-    // 9. Night cycle complete - transition to EVALUATING via state machine
+    // 9. Daily Challenge Completion Check (v2.1 Section 11.3)
+    // Check if today's challenge was completed before generating tomorrow's
+    if (state.dailyChallenge && !state.dailyChallenge.isCompleted) {
+        // Calculate AP used today: maxAP - remaining AP
+        const maxAP = state.stats.maxActionPoints;
+        const remainingAP = state.stats.actionPoints;
+        const apUsed = maxAP - remainingAP;
+
+        // Approximate total profit from today's transactions
+        const totalProfit = state.todayTransactions
+            .filter(t => t.type === 'PAWN')
+            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+        const challengeContext: DayChallengeContext = {
+            totalProfit,
+            hadMistake: state.hadMistakeToday,
+            rejectedCustomers: state.rejectedCustomersToday,
+            apUsed,
+            hadHighRiskItem: state.hadHighRiskItemToday
+        };
+
+        const completed = checkChallengeCompletion(state.dailyChallenge, challengeContext);
+        if (completed) {
+            dispatch({ type: 'COMPLETE_DAILY_CHALLENGE' });
+            // Apply challenge reward
+            const reward = state.dailyChallenge.reward;
+            if (reward.cash) {
+                dispatch({
+                    type: 'RESOLVE_TRANSACTION',
+                    payload: {
+                        cashDelta: reward.cash,
+                        reputationDelta: {},
+                        item: null,
+                        log: `[每日挑战] "${state.dailyChallenge.title}" 完成！奖励 +$${reward.cash}`,
+                        customerName: 'System'
+                    }
+                });
+            }
+            if (reward.reputation) {
+                dispatch({
+                    type: 'RESOLVE_TRANSACTION',
+                    payload: {
+                        cashDelta: 0,
+                        reputationDelta: { [reward.reputation.axis as ReputationType]: reward.reputation.amount },
+                        item: null,
+                        log: `[每日挑战] "${state.dailyChallenge.title}" 完成！声誉 +${reward.reputation.amount}`,
+                        customerName: 'System'
+                    }
+                });
+            }
+        }
+    }
+
+    // 10. Generate Daily Challenge for Tomorrow (v2.1 Section 11.3)
+    const tomorrowChallenge = generateDailyChallenge();
+    dispatch({ type: 'SET_DAILY_CHALLENGE', payload: tomorrowChallenge });
+
+    // 11. Night cycle complete - transition to EVALUATING via state machine
     // Note: END_DAY was already sent by NightDashboard.completeNight() to enter PROCESSING
     send({ type: 'NIGHT_CYCLE_DONE' });
   };
@@ -396,6 +483,18 @@ export const useGameEngine = () => {
           greeting = `老板，我来赎东西了。钱都在这，连本带利。`;
       } else {
           greeting = `老板，我... 现在还凑不够赎金。能不能再宽限几天？利息我先付着。`;
+      }
+
+      // For TRANSIENT chains (filler customers), generate a richer redemption dialogue
+      // using stored customer metadata from the original pawn transaction
+      if (chain && isTransientChain(chain) && event.behavior === 'REDEEM') {
+          const appearance = (chain.variables?.customerAppearance as CustomerAppearance) || 'plain';
+          const mood = (chain.variables?.customerMood as CustomerMood) || 'calm';
+          const age = (chain.variables?.customerAge as CustomerAge) || 'middle';
+          const gender = (chain.variables?.customerGender as CustomerGender) || 'male';
+          const itemName = item.name;
+          const itemCategory = item.category;
+          greeting = generateRedemptionVisitDialogue(appearance, mood, age, gender, itemName, itemCategory);
       }
 
       // If there's a dedicated redemption event with a greeting, use it
@@ -1144,23 +1243,39 @@ export const useGameEngine = () => {
         if (result.item) {
              // Create TRANSIENT chain for filler customers (no existing chainId)
              // This enables probability-based expiry behavior tracking
+             let isFillerDeal = false;
              if (!currentCust?.chainId && result.terms && !result.item.isVirtual) {
+                 isFillerDeal = true;
                  const contractType = getContractTypeFromRate(result.terms.rate);
                  const transientChain = createTransientChain(
                      currentCust!,
                      result.item,
                      contractType
                  );
+                 // Store age/gender in chain variables for redemption visit dialogue
+                 const ageTag = currentCust!.identityTags?.find(t => ['young', 'middle', 'elderly'].includes(t));
+                 const genderTag = currentCust!.id.includes('filler_')
+                     ? (currentCust!.description.includes('男性') ? 'male' : currentCust!.description.includes('女性') ? 'female' : 'male')
+                     : 'male';
+                 transientChain.variables.customerAge = ageTag || 'middle';
+                 transientChain.variables.customerGender = genderTag;
                  // Link item to the transient chain
                  result.item.relatedChainId = transientChain.id;
                  // Add chain to active chains
                  dispatch({ type: 'UPDATE_CHAINS', payload: [...state.activeChains, transientChain] });
              }
 
+             // Generate merchant monologue for filler customer deals (v2.1 Section 10)
+             let fillerMonologue: string | undefined;
+             if (isFillerDeal && result.terms) {
+                 const contractType = getContractTypeFromRate(result.terms.rate);
+                 fillerMonologue = getFillerMerchantMonologue('contract', contractType);
+             }
+
              if (result.item.isVirtual) {
-                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: null, log: `交易完成: ${result.item.name}。`, customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality, interestRate: result.terms?.rate } });
+                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: null, log: `交易完成: ${result.item.name}。`, customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality, interestRate: result.terms?.rate, merchantMonologue: fillerMonologue } });
              } else {
-                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: result.item, log: `收购了 ${result.item.name} (支出 $${Math.abs(result.cashDelta)})。`, customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality, interestRate: result.terms?.rate } });
+                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: result.item, log: `收购了 ${result.item.name} (支出 $${Math.abs(result.cashDelta)})。`, customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality, interestRate: result.terms?.rate, merchantMonologue: fillerMonologue } });
              }
         } else {
              dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: null, log: result.message || "交易完成", customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality, interestRate: result.terms?.rate } });

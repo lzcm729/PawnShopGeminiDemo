@@ -7,8 +7,10 @@ import { GameState, MailInstance, MailAttachment, TransactionRecord } from '../.
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { getMailTemplate } from '../../systems/narrative/mailRegistry';
-import { resolveMailReward } from '../../systems/narrative/mailUtils';
+import { resolveMailReward, selectMailTone } from '../../systems/narrative/mailUtils';
+import type { NpcEmotionalContext, PlayerReputationContext } from '../../systems/narrative/mailUtils';
 import { checkMailChannelTiming } from '../../systems/narrative/channelProtocol';
+import { ReputationType } from '../../systems/core/types';
 
 export function narrativeReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -41,6 +43,27 @@ export function narrativeReducer(state: GameState, action: Action): GameState {
             const template = getMailTemplate(templateId);
             const resolvedAttachment = template ? resolveMailReward(template) : undefined;
 
+            // P0-6: Resolve mail tone at schedule time based on NPC emotional context
+            let resolvedTone = template?.tone;
+            const mailCategory = template?.category;
+            if (template && sourceChainId) {
+                const chain = state.activeChains.find(c => c.id === sourceChainId);
+                if (chain) {
+                    const npcContext: NpcEmotionalContext = {
+                        hope: chain.variables.hope as number | undefined,
+                        funds: chain.variables.funds as number | undefined,
+                        dailyCost: chain.variables.dailyCost as number | undefined,
+                        contractType: chain.contractType as NpcEmotionalContext['contractType'],
+                    };
+                    const playerRep: PlayerReputationContext = {
+                        humanity: state.reputation[ReputationType.HUMANITY],
+                        credibility: state.reputation[ReputationType.CREDIBILITY],
+                        innocence: state.reputation[ReputationType.INNOCENCE],
+                    };
+                    resolvedTone = selectMailTone(npcContext, playerRep);
+                }
+            }
+
             const newMail: MailInstance = {
                 uniqueId: crypto.randomUUID(),
                 templateId,
@@ -50,7 +73,9 @@ export function narrativeReducer(state: GameState, action: Action): GameState {
                 metadata,
                 resolvedAttachment,
                 sourceChainId,
-                relatedEventId
+                relatedEventId,
+                resolvedTone,
+                category: mailCategory,
             };
             // delayDays: 0 means immediate delivery (same-day reaction), goes directly to inbox
             // delayDays > 0 means future delivery, goes to pendingMails

@@ -13,7 +13,7 @@ import { BlackmarketState } from '../blackmarket/types';
 import { CustomerInsightResult } from '../customerInsight';
 import { DailyChallenge } from './dailyChallenge';
 import { DailySchedule } from '../npc/customerScheduler';
-import { AbilityState } from '../characterAbility/types';
+import { AbilityState, ConsequenceFlashResult } from '../characterAbility/types';
 
 // === NIGHT PHASE TYPES ===
 export interface NightState {
@@ -39,6 +39,7 @@ export interface DealSummary {
   itemCategory: string;
   dealQuality: 'fleeced' | 'fair' | 'premium';
   interestRate: number;  // Decimal fraction (0, 0.05, 0.10, 0.20) for skill eligibility checks
+  merchantMonologue?: string;  // Filler customer merchant monologue (v2.1 Section 10)
 }
 
 export interface GameState {
@@ -130,6 +131,7 @@ export interface GameState {
   // === CHARACTER ABILITY (人物能力升级系统) ===
   abilityState: AbilityState;               // 修行系统状态
   showAbilityPanel: boolean;                // 修行面板显示状态
+  lastConsequenceFlash: ConsequenceFlashResult | null;  // 因果自见：上次交易后的后果闪念
 
   // === MORALE BUFF (探望 → 次日心态) ===
   moraleBuff: MoraleBuff | null;

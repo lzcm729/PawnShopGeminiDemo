@@ -147,6 +147,8 @@ export interface AbilityState {
   skillsUsedThisNegotiation: SkillId[];
   /** Whether "extra care" was used this departure */
   extraCareUsedThisDeparture: boolean;
+  /** Whether "comfort" was used this departure */
+  comfortUsedThisDeparture: boolean;
   /** Total epiphanies achieved (for gewu level calculation) */
   totalEpiphanies: number;
   /** Current gewu level (1-3), determines extraction rates and energy cap */

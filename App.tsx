@@ -34,8 +34,10 @@ import { Button } from './components/ui/Button';
 import { Moon } from 'lucide-react';
 import { DayToNightTransition } from './components/transitions/DayToNightTransition';
 import { NightToDayTransition } from './components/transitions/NightToDayTransition';
+import { ConsequenceFlash } from './components/ConsequenceFlash';
 import { ReputationType } from './types';
 import { RateDisplayProvider } from './components/ui/RateDisplayContext';
+import { getNewsStolenRiskModifier } from './systems/news/engine';
 
 const GameContent: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -49,7 +51,8 @@ const GameContent: React.FC = () => {
   }, [insight.getPushPullModifier]);
   const itemUncertainty = state.currentCustomer?.item.uncertainty ?? 0.3;
   const moraleNegotiationModifier = state.moraleBuff?.negotiationModifier ?? 1.0;
-  const negotiation = useNegotiation(state.currentCustomer, insightConcessionModifier, itemUncertainty, moraleNegotiationModifier);
+  const newsStolenRisk = useMemo(() => getNewsStolenRiskModifier(state.dailyNews || []), [state.dailyNews]);
+  const negotiation = useNegotiation(state.currentCustomer, insightConcessionModifier, itemUncertainty, moraleNegotiationModifier, newsStolenRisk);
   
   // Transition State
   const prevPhaseType = useRef<string>(state.phase.type);
@@ -401,6 +404,9 @@ const GameContent: React.FC = () => {
             </main>
         </>
       )}
+
+      {/* Consequence Flash - 因果自见效果 */}
+      <ConsequenceFlash />
 
       {/* Debug Panel - 始终渲染在最顶层 */}
       <DebugPanel />

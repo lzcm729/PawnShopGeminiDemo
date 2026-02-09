@@ -77,6 +77,17 @@ export function abilityReducer(state: GameState, action: Action): GameState {
                 abilityState: {
                     ...state.abilityState,
                     extraCareUsedThisDeparture: false,
+                    comfortUsedThisDeparture: false,
+                },
+            };
+        }
+
+        case 'SET_COMFORT_USED': {
+            return {
+                ...state,
+                abilityState: {
+                    ...state.abilityState,
+                    comfortUsedThisDeparture: true,
                 },
             };
         }
@@ -203,6 +214,53 @@ export function abilityReducer(state: GameState, action: Action): GameState {
             return {
                 ...state,
                 abilityState: updatedAbility,
+            };
+        }
+
+        case 'APPLY_COMFORT': {
+            const { hopeChange, humanityChange, chainId } = action.payload;
+
+            // 1. Update reputation (humanity)
+            const comfortRep = { ...state.reputation };
+            comfortRep[ReputationType.HUMANITY] += humanityChange;
+            clampReputation(comfortRep);
+
+            // 2. Update hope on the active chain (if chainId provided and chain exists)
+            let comfortChains = state.activeChains;
+            if (chainId) {
+                comfortChains = state.activeChains.map(chain => {
+                    if (chain.id === chainId) {
+                        const currentHope = chain.variables?.hope ?? 50;
+                        return {
+                            ...chain,
+                            variables: {
+                                ...chain.variables,
+                                hope: Math.min(100, Math.max(0, currentHope + hopeChange)),
+                            },
+                        };
+                    }
+                    return chain;
+                });
+            }
+
+            return {
+                ...state,
+                reputation: comfortRep,
+                activeChains: comfortChains,
+            };
+        }
+
+        case 'SET_CONSEQUENCE_FLASH': {
+            return {
+                ...state,
+                lastConsequenceFlash: action.payload,
+            };
+        }
+
+        case 'CLEAR_CONSEQUENCE_FLASH': {
+            return {
+                ...state,
+                lastConsequenceFlash: null,
             };
         }
 

@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { RollingNumber } from '../ui/RollingNumber';
 import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack, HeartHandshake, ScanSearch } from 'lucide-react';
 import { InterestRate, Customer, Item } from '../../types';
+import { ContractTierHint } from '../../systems/characterAbility/types';
 import { playSfx } from '../../systems/game/audio';
 
 interface ControlDeckProps {
@@ -55,6 +56,9 @@ interface ControlDeckProps {
     heartStrikeUsed?: boolean;
     onHeartStrike?: () => void;
 
+    // Character Ability: Contract Tier Hints (因果自见)
+    contractTierHints?: ContractTierHint[];
+
     // Insight Interactions: Empathy & Probe
     canUseEmpathy?: boolean;
     empathyUsed?: boolean;
@@ -99,6 +103,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     canUseHeartStrike,
     heartStrikeUsed,
     onHeartStrike,
+    contractTierHints,
     canUseEmpathy,
     empathyUsed,
     onEmpathy,
@@ -166,21 +171,50 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
         setOfferPrincipal(Math.min(currentCustomer.minimumAmount, cashAvailable));
     };
 
-    const RateToggle = ({ rate, label }: { rate: InterestRate, label: string }) => (
-        <button
-          onClick={() => { playSfx('CLICK'); setSelectedRate(rate); }}
-          disabled={!canInteract}
-          className={cn(
-              "flex-1 py-1 px-1 rounded-sm border transition-all duration-200 flex flex-col items-center justify-center relative overflow-hidden group",
-              selectedRate === rate
-                  ? "bg-amber-600 border-amber-500 text-black shadow-[0_0_10px_rgba(217,119,6,0.4)]"
-                  : "bg-noir-300 border-noir-400 text-noir-txt-muted hover:bg-noir-200 hover:text-noir-txt-primary"
-          )}
-        >
-            <span className="text-xs font-black font-mono leading-none z-10">{formatRate(rate)}{unitLabel}</span>
-            <span className="text-[8px] uppercase font-bold tracking-wider opacity-80 z-10">{label}</span>
-        </button>
-    );
+    // Map rate to contract tier for hint lookup
+    const rateTierMap: Record<number, ContractTierHint['tier']> = {
+        0: 'CHARITY',
+        0.05: 'AID',
+        0.10: 'STANDARD',
+        0.20: 'SHARK',
+    };
+
+    const getHintColor = (rate: InterestRate): string | null => {
+        if (!contractTierHints || contractTierHints.length === 0) return null;
+        const tier = rateTierMap[rate];
+        if (!tier) return null;
+        const hint = contractTierHints.find(h => h.tier === tier);
+        if (!hint || hint.hintColor === 'NONE') return null;
+        if (hint.hintColor === 'GOLD') return 'bg-amber-400';
+        if (hint.hintColor === 'DARK_RED') return 'bg-red-700';
+        return null;
+    };
+
+    const RateToggle = ({ rate, label }: { rate: InterestRate, label: string }) => {
+        const hintDotColor = getHintColor(rate);
+
+        return (
+            <button
+              onClick={() => { playSfx('CLICK'); setSelectedRate(rate); }}
+              disabled={!canInteract}
+              className={cn(
+                  "flex-1 py-1 px-1 rounded-sm border transition-all duration-200 flex flex-col items-center justify-center relative overflow-hidden group",
+                  selectedRate === rate
+                      ? "bg-amber-600 border-amber-500 text-black shadow-[0_0_10px_rgba(217,119,6,0.4)]"
+                      : "bg-noir-300 border-noir-400 text-noir-txt-muted hover:bg-noir-200 hover:text-noir-txt-primary"
+              )}
+            >
+                {hintDotColor && (
+                    <span className={cn(
+                        "absolute top-1 right-1 w-2 h-2 rounded-full z-20 animate-pulse shadow-sm",
+                        hintDotColor
+                    )} />
+                )}
+                <span className="text-xs font-black font-mono leading-none z-10">{formatRate(rate)}{unitLabel}</span>
+                <span className="text-[8px] uppercase font-bold tracking-wider opacity-80 z-10">{label}</span>
+            </button>
+        );
+    };
 
     return (
         <div className="bg-noir-200 border-t border-noir-400 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-20">

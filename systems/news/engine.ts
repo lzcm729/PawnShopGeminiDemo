@@ -157,6 +157,51 @@ export function getActiveModifiers(activeNews: ActiveNewsInstance[]): NewsEffect
     return activeNews.flatMap(n => n.effects || []);
 }
 
+/** Map news effect parameter names to item category strings */
+const PARAMETER_TO_CATEGORY: Record<string, string> = {
+    electronics_price: '电子产品',
+    luxury_price: '奢侈品',
+    jewelry_price: '珠宝',
+    antique_price: '古玩',
+};
+
+/**
+ * Get the aggregate price modifier (percentage) for an item category from active news.
+ * Returns a multiplier (e.g., 1.30 for +30%, 0.70 for -30%). Defaults to 1.0.
+ */
+export function getNewsPriceModifier(activeNews: ActiveNewsInstance[], itemCategory: string): number {
+    const effects = getActiveModifiers(activeNews);
+    let totalPercentage = 0;
+    for (const e of effects) {
+        if (e.targetSystem !== 'appraisal') continue;
+        if (!e.parameter.endsWith('_price')) continue;
+        const mappedCategory = PARAMETER_TO_CATEGORY[e.parameter];
+        if (mappedCategory && mappedCategory === itemCategory) {
+            if (e.modifierType === 'PERCENTAGE') {
+                totalPercentage += e.modifier;
+            }
+        }
+    }
+    return 1 + totalPercentage / 100;
+}
+
+/**
+ * Get aggregate stolen_risk modifier from active negotiation-targeted news effects.
+ * Returns a flat value to add to risk calculations (0 if no effects).
+ */
+export function getNewsStolenRiskModifier(activeNews: ActiveNewsInstance[]): number {
+    const effects = getActiveModifiers(activeNews);
+    let totalRisk = 0;
+    for (const e of effects) {
+        if (e.targetSystem !== 'negotiation') continue;
+        if (e.parameter !== 'stolen_risk') continue;
+        if (e.modifierType === 'ABSOLUTE') {
+            totalRisk += e.modifier;
+        }
+    }
+    return totalRisk;
+}
+
 /**
  * S3-F3: Get all tags from current day's news.
  */
@@ -165,12 +210,34 @@ export function getCurrentNewsTags(activeNews: ActiveNewsInstance[]): string[] {
 }
 
 /**
- * S3-F3: Get calendar markers from active news (multi-day events).
+ * S3-F3: Get calendar markers from active and pending news.
+ * Active news spans from currentDay for daysRemaining days.
+ * Pending news spans from displayDay for duration days.
  */
-export function getNewsMarkers(activeNews: ActiveNewsInstance[]): { day: number; label: string }[] {
-    return activeNews
-        .filter(n => n.expiresDay !== undefined)
-        .map(n => ({ day: n.expiresDay!, label: n.sourceLabel }));
+export function getNewsMarkers(
+    activeNews: ActiveNewsInstance[],
+    currentDay: number,
+    pendingNews?: PendingNewsItem[]
+): { day: number; label: string }[] {
+    const markers: { day: number; label: string }[] = [];
+
+    for (const n of activeNews) {
+        const label = `${n.sourceLabel} ${n.headline}`;
+        for (let d = 0; d < n.daysRemaining; d++) {
+            markers.push({ day: currentDay + d, label });
+        }
+    }
+
+    if (pendingNews) {
+        for (const p of pendingNews) {
+            const label = `${p.sourceLabel} ${p.headline}`;
+            for (let d = 0; d < p.duration; d++) {
+                markers.push({ day: p.displayDay + d, label });
+            }
+        }
+    }
+
+    return markers;
 }
 
 // ============================================================================

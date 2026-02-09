@@ -5,6 +5,7 @@ import { CalendarDayData, CalendarEvent, IncomeCertainty, CERTAINTY_WEIGHTS, WAR
 import { ItemStatus } from '../systems/items/types';
 import { calculateInterest } from '../systems/economy/interest';
 import { GAME_CONFIG } from '../systems/game/config';
+import { getNewsMarkers } from '../systems/news/engine';
 
 // Map NPC redemptionResolve to calendar IncomeCertainty tier
 function resolveToIncomeCertainty(resolve: string | undefined): IncomeCertainty {
@@ -31,13 +32,25 @@ export interface SettlementCeremonyData {
 
 export const useFinancialProjection = () => {
     const { state } = useGame();
-    const { stats, inventory, financialHistory, activeChains } = state;
+    const { stats, inventory, financialHistory, activeChains, dailyNews, pendingNews } = state;
 
     const projection = useMemo(() => {
         const days: CalendarDayData[] = [];
         let runningBalance = stats.cash;
         const MEDICAL_INTERVAL = GAME_CONFIG.BILL_CYCLE;
         const START_OFFSET = -2; // Start grid from 2 days ago
+
+        // Build news marker lookup: day -> labels[]
+        const newsMarkers = getNewsMarkers(dailyNews || [], stats.day, pendingNews || []);
+        const markersByDay = new Map<number, string[]>();
+        for (const m of newsMarkers) {
+            const existing = markersByDay.get(m.day);
+            if (existing) {
+                existing.push(m.label);
+            } else {
+                markersByDay.set(m.day, [m.label]);
+            }
+        }
         
         // 1. Setup Rolling Horizon (28 Days)
         for (let i = 0; i < 28; i++) {
@@ -159,6 +172,19 @@ export const useFinancialProjection = () => {
 
             // 5. Mails are NOT shown on calendar
 
+            // 5b. News narrative markers (STORY_MOMENT)
+            const dayMarkers = markersByDay.get(currentProjectionDay);
+            if (dayMarkers) {
+                for (const label of dayMarkers) {
+                    dailyEvents.push({
+                        type: 'STORY_MOMENT',
+                        amount: 0,
+                        label,
+                        isCertain: true
+                    });
+                }
+            }
+
             // 6. Three-level Risk Assessment (S2-F1)
             const riskLevel = runningBalance < 0 ? 'CRITICAL'
                             : runningBalance < WARNING_THRESHOLD ? 'WARNING'
@@ -175,7 +201,7 @@ export const useFinancialProjection = () => {
         }
 
         return days;
-    }, [stats.day, stats.cash, stats.medicalBill.amount, stats.medicalBill.dueDate, stats.dailyExpenses, inventory, financialHistory, activeChains]);
+    }, [stats.day, stats.cash, stats.medicalBill.amount, stats.medicalBill.dueDate, stats.dailyExpenses, inventory, financialHistory, activeChains, dailyNews, pendingNews]);
 
     return projection;
 };

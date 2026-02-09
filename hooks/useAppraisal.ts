@@ -12,6 +12,7 @@ import {
 } from '../systems/characterAbility/abilityEngine';
 import { AbilityState } from '../systems/characterAbility/types';
 import { SKILL_DEFINITIONS } from '../systems/characterAbility/skillDefinitions';
+import { getNewsPriceModifier } from '../systems/news/engine';
 
 interface AppraisalResult {
     success: boolean;
@@ -288,6 +289,15 @@ export const useAppraisal = () => {
             finalInitialRange = generateValuationRange(item.realValue, undefined, 0.4);
             finalPerceived = undefined; // Mark that truth is now known
             newUncertainty = newUncertaintyForJump;
+        }
+
+        // === NEWS EFFECT: Apply active market modifiers to estimate range ===
+        const newsModifier = getNewsPriceModifier(state.dailyNews || [], item.category);
+        if (newsModifier !== 1.0) {
+            finalRange = [
+                Math.max(0, Math.round(finalRange[0] * newsModifier)),
+                Math.max(0, Math.round(finalRange[1] * newsModifier))
+            ];
         }
 
         let log = undefined;

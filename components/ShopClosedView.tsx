@@ -34,7 +34,7 @@ export const DepartureView: React.FC = () => {
   const { state, dispatch } = useGame();
   const { processNextExpiryEvent } = useGameEngine();
   const { send, can } = useGameMachine();
-  const { canExtraCare, applyExtraCare, isUnlocked } = useCharacterAbility();
+  const { canExtraCare, applyExtraCare, canComfort, dispatchComfort, isUnlocked } = useCharacterAbility();
   const { currentCustomer, lastSatisfaction, lastDepartureSatisfaction, lastDealSummary, expiryQueue } = state;
 
   const [textComplete, setTextComplete] = useState(false);
@@ -45,6 +45,11 @@ export const DepartureView: React.FC = () => {
   const [extraCareUsed, setExtraCareUsed] = useState(false);
   const [extraCareNarrative, setExtraCareNarrative] = useState<string | null>(null);
   const [extraCareEffects, setExtraCareEffects] = useState<{ hopeChange: number; humanityChange: number } | null>(null);
+
+  // Comfort (抚慰) state
+  const [comfortUsed, setComfortUsed] = useState(false);
+  const [comfortNarrative, setComfortNarrative] = useState<string | null>(null);
+  const [comfortEffects, setComfortEffects] = useState<{ hopeChange: number; humanityChange: number } | null>(null);
 
   const satisfaction = lastSatisfaction || 'NEUTRAL';
   const isNarrativeNPC = !!currentCustomer?.chainId;
@@ -112,6 +117,31 @@ export const DepartureView: React.FC = () => {
       if (!isUnlocked('CHERISH_ALL')) return false;
       return canExtraCare(lastDealSummary.interestRate);
   }, [lastDealSummary, extraCareUsed, isUnlocked, canExtraCare]);
+
+  // Comfort availability check
+  const comfortAvailable = useMemo(() => {
+      if (!currentCustomer || comfortUsed) return false;
+      if (!isUnlocked('COMFORT')) return false;
+      const hasActiveChain = !!currentCustomer.chainId;
+      const chain = currentCustomer.chainId
+          ? state.activeChains.find(c => c.id === currentCustomer.chainId)
+          : undefined;
+      const npcHope = chain?.variables.hope as number | undefined;
+      return canComfort(hasActiveChain, npcHope, currentCustomer.behaviorTags);
+  }, [currentCustomer, comfortUsed, isUnlocked, canComfort, state.activeChains]);
+
+  const handleComfort = () => {
+      if (!comfortAvailable || !currentCustomer) return;
+
+      const result = dispatchComfort(currentCustomer.chainId);
+      if (!result) return;
+
+      setComfortUsed(true);
+      setComfortNarrative(result.narrativeText);
+      setComfortEffects({ hopeChange: result.hopeChange, humanityChange: result.humanityChange });
+
+      playSfx('CLICK');
+  };
 
   const handleExtraCare = () => {
       if (!extraCareAvailable) return;
@@ -321,8 +351,45 @@ export const DepartureView: React.FC = () => {
               </div>
           )}
 
+          {/* Comfort Narrative (shown after using skill) */}
+          {comfortNarrative && (
+              <div className="w-full bg-rose-950/20 border border-rose-800/40 rounded p-4 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <p className="text-rose-200/90 font-serif italic text-sm text-center leading-relaxed">
+                      {comfortNarrative}
+                  </p>
+                  {comfortEffects && (
+                      <div className="flex items-center justify-center gap-4 mt-3">
+                          {comfortEffects.hopeChange !== 0 && (
+                              <span className="flex items-center gap-1 text-xs font-mono font-bold text-rose-300">
+                                  <Brain className="w-3 h-3" />
+                                  Hope {comfortEffects.hopeChange > 0 ? '+' : ''}{comfortEffects.hopeChange}
+                              </span>
+                          )}
+                          {comfortEffects.humanityChange !== 0 && (
+                              <span className="flex items-center gap-1 text-xs font-mono font-bold text-rose-400">
+                                  <Heart className="w-3 h-3" />
+                                  {comfortEffects.humanityChange > 0 ? '+' : ''}{comfortEffects.humanityChange}
+                              </span>
+                          )}
+                      </div>
+                  )}
+              </div>
+          )}
+
           {/* Actions */}
           <div className={`transition-opacity duration-1000 flex flex-col items-center gap-3 ${textComplete || isSilentAction ? 'opacity-100' : 'opacity-0'}`}>
+              {/* Comfort Button (抚慰) */}
+              {comfortAvailable && !comfortUsed && (
+                  <button
+                      onClick={handleComfort}
+                      title="抚慰: 安慰受伤的灵魂，为对方带来些许温暖。Hope +5, 人情 +2"
+                      className="h-11 px-8 flex items-center gap-3 rounded border border-rose-700/50 bg-rose-950/30 text-rose-300 font-mono font-bold text-sm tracking-wider transition-all duration-300 hover:bg-rose-900/40 hover:border-rose-500 hover:shadow-[0_0_20px_rgba(244,63,94,0.2)] hover:text-rose-200 active:scale-[0.98]"
+                  >
+                      <Heart className="w-4 h-4" />
+                      抚慰
+                  </button>
+              )}
+
               {/* Extra Care Button (above Dismiss) */}
               {extraCareAvailable && !extraCareUsed && (
                   <button

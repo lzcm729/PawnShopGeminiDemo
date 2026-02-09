@@ -33,6 +33,7 @@ import {
   generateForesightResult,
   generateContractTierHints,
   generateConsequenceFlash,
+  updateForesightFatigue,
   canUseComfort,
   calculateComfortEffect,
   canUseExtraCare,
@@ -87,10 +88,14 @@ interface UseCharacterAbilityReturn {
   hasSeeConsequence: () => boolean;
   getContractHints: (npcHope: number | undefined, isDesperateTag: boolean) => ContractTierHint[];
   getConsequenceFlash: (hopeChange: number) => ConsequenceFlashResult;
+  dispatchConsequenceFlash: (hopeChange: number) => void;
+  lastConsequenceFlash: ConsequenceFlashResult | null;
+  clearConsequenceFlash: () => void;
 
   // Departure skills
   canComfort: (hasActiveChain: boolean, npcHope: number | undefined, behaviorTags: BehaviorTag[]) => boolean;
   applyComfort: () => ComfortResult;
+  dispatchComfort: (chainId?: string) => ComfortResult | null;
   canExtraCare: (interestRate: number) => boolean;
   applyExtraCare: () => ExtraCareResult;
 
@@ -116,6 +121,7 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
     foresightFatigue: { totalFlashes: 0, fatigued: false },
     skillsUsedThisNegotiation: [],
     extraCareUsedThisDeparture: false,
+    comfortUsedThisDeparture: false,
   } as AbilityState;
 
   const { reputation, essenceBalance, nightState } = state;
@@ -232,19 +238,62 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
     [abilityState.foresightFatigue]
   );
 
+  // Dispatch consequence flash: compute, store in state, and update fatigue
+  const dispatchConsequenceFlash = useCallback(
+    (hopeChange: number) => {
+      const flash = generateConsequenceFlash(hopeChange, abilityState.foresightFatigue);
+      dispatch({ type: 'SET_CONSEQUENCE_FLASH', payload: flash });
+
+      // Update fatigue tracking (increment flash count)
+      if (!flash.suppressed) {
+        const newFatigue = updateForesightFatigue(abilityState.foresightFatigue);
+        dispatch({ type: 'UPDATE_FORESIGHT_FATIGUE', payload: newFatigue });
+      }
+    },
+    [abilityState.foresightFatigue, dispatch]
+  );
+
+  const clearConsequenceFlash = useCallback(
+    () => dispatch({ type: 'CLEAR_CONSEQUENCE_FLASH' }),
+    [dispatch]
+  );
+
   // --- Departure skills ---
 
   const canComfortCb = useCallback(
     (hasActiveChain: boolean, npcHope: number | undefined, behaviorTags: BehaviorTag[]) => {
       if (!isUnlocked('COMFORT')) return false;
+      if (abilityState.comfortUsedThisDeparture) return false;
       return canUseComfort(hasActiveChain, npcHope, behaviorTags);
     },
-    [isUnlocked]
+    [isUnlocked, abilityState.comfortUsedThisDeparture]
   );
 
   const applyComfortCb = useCallback(
     () => calculateComfortEffect(reputation),
     [reputation]
+  );
+
+  // Dispatch comfort: compute effect, dispatch state changes, return result
+  const dispatchComfortCb = useCallback(
+    (chainId?: string): ComfortResult | null => {
+      const result = calculateComfortEffect(reputation);
+      if (!result.available) return null;
+
+      dispatch({ type: 'SET_COMFORT_USED' });
+      dispatch({ type: 'MARK_SKILL_USED', payload: { skillId: 'COMFORT' } });
+      dispatch({
+        type: 'APPLY_COMFORT',
+        payload: {
+          hopeChange: result.hopeChange,
+          humanityChange: result.humanityChange,
+          chainId,
+        },
+      });
+
+      return result;
+    },
+    [reputation, dispatch]
   );
 
   const canExtraCareCb = useCallback(
@@ -295,8 +344,12 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
     hasSeeConsequence,
     getContractHints,
     getConsequenceFlash,
+    dispatchConsequenceFlash,
+    lastConsequenceFlash: state.lastConsequenceFlash,
+    clearConsequenceFlash,
     canComfort: canComfortCb,
     applyComfort: applyComfortCb,
+    dispatchComfort: dispatchComfortCb,
     canExtraCare: canExtraCareCb,
     applyExtraCare: applyExtraCareCb,
     getTransactionEssenceGain,
