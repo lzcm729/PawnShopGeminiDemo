@@ -3,30 +3,69 @@
  *
  * Standard text templates for appraisal-related inner monologues.
  * These appear in the chat panel during negotiation phase.
+ * Texts loaded from CSV: assets/data/texts/appraisal_feedback.csv
  */
 
-export const APPRAISAL_TEMPLATES = {
-    /** When appraisal roll results in mishap (range expands) */
-    MISHAP: "糟糕...好像搞错了什么，判断受到干扰。",
+import { parseCSV, CSVSchema, stringCol } from '../../utils/csvReader';
+import feedbackCSV from '@/assets/data/texts/appraisal_feedback.csv?raw';
 
-    /** When range narrowed but no trait discovered */
-    RANGE_NARROWED: "虽然没发现什么特别的，但心里更有底了。",
+// ============================================================================
+// CSV Loading
+// ============================================================================
 
-    /** When impatient event triggers extra patience cost */
-    IMPATIENT: "动作太慢了，客户开始坐立不安...",
+interface FeedbackRow {
+  key: string;
+  text: string;
+}
 
-    /** When all traits already discovered */
-    ALREADY_KNOWN: "这东西我已经看得很透彻了。",
+const FEEDBACK_SCHEMA: CSVSchema = {
+  'key': stringCol('key'),
+  'text': stringCol('text'),
+};
 
-    /** When breakthrough event triggers (d100 roll 1-10, ×0.60 uncertainty) */
-    BREAKTHROUGH: "灵光一闪！突然看懂了关键细节，估值范围大幅收窄。",
-} as const;
+/** Parsed feedback texts, lazily initialized */
+let feedbackMap: Map<string, string> | null = null;
 
-export type AppraisalTemplateKey = keyof typeof APPRAISAL_TEMPLATES;
+function getFeedbackMap(): Map<string, string> {
+  if (!feedbackMap) {
+    feedbackMap = new Map();
+    const rows = parseCSV<FeedbackRow>(feedbackCSV, FEEDBACK_SCHEMA, {
+      warnUnknownColumns: false,
+    });
+
+    for (const row of rows) {
+      if (!row.key || !row.text) continue;
+      // First occurrence wins (single text per key for now)
+      if (!feedbackMap.has(row.key)) {
+        feedbackMap.set(row.key, row.text);
+      }
+    }
+  }
+  return feedbackMap;
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export type AppraisalTemplateKey = 'MISHAP' | 'RANGE_NARROWED' | 'IMPATIENT' | 'ALREADY_KNOWN' | 'BREAKTHROUGH';
+
+/**
+ * Backward-compatible APPRAISAL_TEMPLATES accessor.
+ * Consumers can still use APPRAISAL_TEMPLATES.MISHAP etc.
+ */
+export const APPRAISAL_TEMPLATES: Record<AppraisalTemplateKey, string> = new Proxy(
+  {} as Record<AppraisalTemplateKey, string>,
+  {
+    get(_target, prop: string) {
+      return getFeedbackMap().get(prop) ?? '';
+    },
+  }
+);
 
 /**
  * Get appraisal feedback text by key
  */
 export function getAppraisalFeedbackText(key: AppraisalTemplateKey): string {
-    return APPRAISAL_TEMPLATES[key];
+  return getFeedbackMap().get(key) ?? '';
 }

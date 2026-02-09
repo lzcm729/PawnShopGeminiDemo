@@ -352,6 +352,24 @@ interface TomlInsight {
   accuracy_low_threshold: number;
 }
 
+interface TomlRecipeCost {
+  craft?: number;
+  time?: number;
+  vibe?: number;
+  energy_cost: number;
+  surprise_discovery_chance?: number;
+  min_day?: number;
+  nights_required?: number;
+  masterwork_probability?: number;
+  masterwork_multiplier?: number;
+  normal_probability?: number;
+  normal_multiplier?: number;
+  flawed_probability?: number;
+  flawed_multiplier?: number;
+  failed_probability?: number;
+  failed_multiplier?: number;
+}
+
 interface TomlWorkshop {
   extra_negative_tag_cost_ratio: number;
   high_value_threshold: number;
@@ -361,6 +379,7 @@ interface TomlWorkshop {
   breach_humanity_loss: number;
   breach_credibility_loss: number;
   breach_innocence_loss: number;
+  recipes: Record<string, TomlRecipeCost>;
 }
 
 interface GameConfigToml {
@@ -776,6 +795,7 @@ export const GAME_CONFIG = {
     BREACH_HUMANITY_LOSS: tomlConfig.workshop.breach_humanity_loss,
     BREACH_CREDIBILITY_LOSS: tomlConfig.workshop.breach_credibility_loss,
     BREACH_INNOCENCE_LOSS: tomlConfig.workshop.breach_innocence_loss,
+    RECIPES: tomlConfig.workshop.recipes,
   },
 
 };
