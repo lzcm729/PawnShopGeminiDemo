@@ -103,5 +103,9 @@ export {
   enqueueEchoes,
 } from './moralEcho';
 
+// === Moral Echo Texts ===
+export { getEchoText } from './moralEchoTexts';
+export type { EchoText } from './moralEchoTexts';
+
 // === Panel Data ===
 export { generatePanelData } from './panelData';
