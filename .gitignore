@@ -40,3 +40,6 @@ release/
 assets/*
 # But track CSV data files (data-driven content)
 !assets/data/
+# Track Kenney CC0 audio samples and cursor PNGs
+!assets/audio/
+!assets/cursors/
