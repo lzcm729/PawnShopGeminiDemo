@@ -57,6 +57,8 @@ interface TomlPawnBusiness {
   renewal_refusal_penalty_2: number;
   renewal_refusal_penalty_3_plus: number;
   renewal_refusal_credibility: number;
+  renewal_accept_humanity: number;
+  renewal_accept_credibility: number;
 }
 
 interface TomlMother {
@@ -170,6 +172,8 @@ interface TomlReputationDeltas {
   standard_credibility: number;
   // 高利贷档(20%)
   shark_humanity: number;
+  shark_credibility: number;
+  shark_innocence: number;
   // 赃物相关
   stolen_known_leverage_innocence: number;
   stolen_known_no_leverage_innocence: number;
@@ -560,6 +564,8 @@ export const GAME_CONFIG = {
     AID_GENEROUS_HUMANITY: tomlConfig.reputation_deltas.aid_generous_humanity,
     STANDARD_CREDIBILITY: tomlConfig.reputation_deltas.standard_credibility,
     SHARK_HUMANITY: tomlConfig.reputation_deltas.shark_humanity,
+    SHARK_CREDIBILITY: tomlConfig.reputation_deltas.shark_credibility,
+    SHARK_INNOCENCE: tomlConfig.reputation_deltas.shark_innocence,
     STOLEN_KNOWN_LEVERAGE_INNOCENCE: tomlConfig.reputation_deltas.stolen_known_leverage_innocence,
     STOLEN_KNOWN_NO_LEVERAGE_INNOCENCE: tomlConfig.reputation_deltas.stolen_known_no_leverage_innocence,
     CONTRABAND_INNOCENCE: tomlConfig.reputation_deltas.contraband_innocence,
@@ -756,6 +762,8 @@ export const GAME_CONFIG = {
     RENEWAL_REFUSAL_PENALTY_2: tomlConfig.pawn_business.renewal_refusal_penalty_2,
     RENEWAL_REFUSAL_PENALTY_3_PLUS: tomlConfig.pawn_business.renewal_refusal_penalty_3_plus,
     RENEWAL_REFUSAL_CREDIBILITY: tomlConfig.pawn_business.renewal_refusal_credibility,
+    RENEWAL_ACCEPT_HUMANITY: tomlConfig.pawn_business.renewal_accept_humanity,
+    RENEWAL_ACCEPT_CREDIBILITY: tomlConfig.pawn_business.renewal_accept_credibility,
   },
 
   // --- WORKSHOP (工作台系统) ---

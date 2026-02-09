@@ -121,6 +121,9 @@ renewal_refusal_penalty_2 = -1      # 固定人情惩罚
 renewal_refusal_penalty_3_plus = -1 # 固定人情惩罚
 # 续当拒绝时商誉奖励
 renewal_refusal_credibility = 1     # 固定商誉奖励
+# 续当接受声誉变化 (设计文档: 宽容加分但较小, 延期合同略微损害商誉)
+renewal_accept_humanity = 1         # 续当接受 +1 人情
+renewal_accept_credibility = -1     # 续当接受 -1 商誉
 
 # ------------------------------------------------------------
 # 母亲状态初始值 (Mother Status)
@@ -298,7 +301,9 @@ aid_generous_humanity = 1             # 大额援助 +人情
 # 标准档(10%)
 standard_credibility = 1              # 标准 +商誉
 # 高利贷档(20%)
-shark_humanity = -1                   # 高利贷 -人情
+shark_humanity = -3                   # 高利贷 -人情
+shark_credibility = -2                # 高利贷 -商誉
+shark_innocence = -2                  # 高利贷 -清白
 # 赃物相关
 stolen_known_leverage_innocence = -3  # 已知赃物+压价 -清白
 stolen_known_no_leverage_innocence = -2 # 已知赃物未压价 -清白

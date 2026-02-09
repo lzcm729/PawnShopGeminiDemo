@@ -160,7 +160,10 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                                 }
                                 : i
                         );
-                        repDelta = { [ReputationType.HUMANITY]: 5 };
+                        repDelta = {
+                            [ReputationType.HUMANITY]: GAME_CONFIG.PAWN_BUSINESS.RENEWAL_ACCEPT_HUMANITY,
+                            [ReputationType.CREDIBILITY]: GAME_CONFIG.PAWN_BUSINESS.RENEWAL_ACCEPT_CREDIBILITY,
+                        };
                         log = `同意续当: ${item.name} (收取利息 $${interest}，延期至 Day ${newDueDate})`;
                         const renewalCount = item.pawnInfo.extensionCount || 0;
                         const renewLevel = evaluateRenewalSatisfaction(renewalCount, item.pawnInfo.interestRate);

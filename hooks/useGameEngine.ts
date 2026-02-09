@@ -1147,8 +1147,10 @@ export const useGameEngine = () => {
         // 10% Standard: Credibility (no humanity bonus even if generous)
         repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.STANDARD_CREDIBILITY;
     } else if (rate >= 0.20) {
-        // >=20% Shark: Humanity penalty (generous doesn't help)
+        // >=20% Shark: Humanity, Credibility, Innocence penalties (generous doesn't help)
         repDelta[ReputationType.HUMANITY] += GAME_CONFIG.REPUTATION_DELTAS.SHARK_HUMANITY;
+        repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.SHARK_CREDIBILITY;
+        repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.SHARK_INNOCENCE;
     }
 
     const currentRisk = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.riskModifier || 0), 0);
