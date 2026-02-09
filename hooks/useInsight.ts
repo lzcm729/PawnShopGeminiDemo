@@ -9,6 +9,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
+import { playSfx } from '../systems/game/audio';
 import { Item, ItemStatus } from '../systems/items/types';
 import { EssenceCost } from '../systems/economy/essence';
 import {
@@ -178,6 +179,7 @@ export const useInsight = (): UseInsightReturn => {
       // 记录顿悟（更新格物等级和精力上限）
       if (result.isEpiphany) {
         dispatch({ type: 'RECORD_EPIPHANY' });
+        playSfx('EPIPHANY');
       }
 
       // 生成叙事

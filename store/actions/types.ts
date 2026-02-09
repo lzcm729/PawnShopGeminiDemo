@@ -20,6 +20,7 @@ import { DailyChallenge } from '../../systems/game/dailyChallenge';
 import { DailySchedule } from '../../systems/npc/customerScheduler';
 import { SkillId, MoralEchoEvent, AbilityState, ConsequenceFlashResult } from '../../systems/characterAbility/types';
 import { InProgressRecipe } from '../../systems/workshop/types';
+import { NpcFateEntry } from '../../systems/narrative/types';
 
 // === Action Type Union ===
 
@@ -247,6 +248,9 @@ export type Action =
     | { type: 'ADVANCE_MULTI_NIGHT_RECIPE'; payload: { itemId: string } }
     | { type: 'COMPLETE_MULTI_NIGHT_RECIPE'; payload: { itemId: string } }
     | { type: 'CANCEL_MULTI_NIGHT_RECIPE'; payload: { itemId: string } }
+
+    // NPC Fate Tracking (Victory Screen: Bitter Victory)
+    | { type: 'RECORD_NPC_FATE'; payload: NpcFateEntry }
 
     // Debug flags
     | { type: 'DEBUG_TOGGLE_FLOOR' };

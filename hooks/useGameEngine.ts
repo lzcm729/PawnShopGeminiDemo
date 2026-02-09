@@ -35,6 +35,7 @@ import { generateTrainingResult, determineDisposition } from '../systems/custome
 import { registerRuntimeMailTemplate } from '../systems/narrative/mailRegistry';
 import { NewsCategory } from '../systems/news/types';
 import { getEffectiveInventoryCapacity } from '../systems/upgrades/utils';
+import { playSfx, startAmbience, stopAmbience } from '../systems/game/audio';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -126,6 +127,9 @@ export const useGameEngine = () => {
   };
 
   const performNightCycle = () => {
+    // Switch to nighttime ambience
+    startAmbience('NIGHT');
+
     // 0. Deduct maintenance costs for enabled COUNTER upgrades (night closing)
     dispatch({ type: 'DEDUCT_MAINTENANCE_COST' });
 
@@ -682,6 +686,9 @@ export const useGameEngine = () => {
   };
 
   const startNewDay = () => {
+    // Switch to daytime ambience
+    startAmbience('DAY');
+
     // NOTE: Blackmarket refresh and mail processing are handled
     // by the state machine effects when OPEN_SHOP transitions to DAY_START.EXPIRY_CHECK.
     // Maintenance cost is deducted at night closing (END_DAY transition).
@@ -1357,7 +1364,10 @@ export const useGameEngine = () => {
 
   const commitTransaction = (result: TransactionResult) => {
     const currentCust = state.currentCustomer;
-    
+
+    // Play doorbell as customer leaves after transaction
+    playSfx('DOORBELL');
+
     // 1. Calculate Satisfaction (2D matrix: contract tier x pawn ratio)
     if (currentCust) {
         const principal = result.terms?.principal || 0;
@@ -1467,6 +1477,23 @@ export const useGameEngine = () => {
     };
     checkMilestones(projectedRep);
 
+    // NPC Fate Tracking: Record initial pawn entry for narrative customers
+    if (result.success && currentCust?.chainId && result.terms && result.item) {
+        const chain = state.activeChains.find(c => c.id === currentCust.chainId);
+        if (chain) {
+            dispatch({ type: 'RECORD_NPC_FATE', payload: {
+                npcId: chain.id,
+                npcName: chain.npcName || currentCust.name,
+                principalGiven: result.terms.principal,
+                interestRate: result.terms.rate,
+                wasRedeemed: false,
+                wasForfeited: false,
+                wasReforged: false,
+                wasSoldBlackmarket: false,
+            }});
+        }
+    }
+
     // P0-5: Essence gain from transaction (道德精魄获取)
     // Interest rate is stored as decimal fraction (0, 0.05, 0.10, 0.20)
     // but essenceSystem expects percentage integer (0, 5, 10, 20)
@@ -1505,6 +1532,9 @@ export const useGameEngine = () => {
 
   const rejectCustomer = (satisfaction: SatisfactionLevel = 'DESPERATE') => {
      const currentCust = state.currentCustomer;
+
+     // Play doorbell as customer leaves
+     playSfx('DOORBELL');
 
      // Set Satisfaction based on parameter (default DESPERATE for manual reject)
      dispatch({ type: 'SET_SATISFACTION', payload: satisfaction });

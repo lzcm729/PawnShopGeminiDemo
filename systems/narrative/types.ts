@@ -422,6 +422,19 @@ export interface Interaction {
     offerValue?: number;        // 收购出价（仅 PURCHASE_OFFER）
 }
 
+// === NPC FATE TRACKING (Victory Screen: Bitter Victory) ===
+export interface NpcFateEntry {
+    npcId: string;           // chainId used as NPC identifier
+    npcName: string;
+    principalGiven: number;
+    interestRate: number;
+    wasRedeemed: boolean;
+    wasForfeited: boolean;
+    wasReforged: boolean;
+    wasSoldBlackmarket: boolean;
+    finalVariables?: Record<string, number>;
+}
+
 export interface StoryEvent {
   id: string;
   chainId: string;

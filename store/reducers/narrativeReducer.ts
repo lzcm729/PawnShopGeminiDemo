@@ -167,6 +167,27 @@ export function narrativeReducer(state: GameState, action: Action): GameState {
             };
         }
 
+        case 'RECORD_NPC_FATE': {
+            const entry = action.payload;
+            // Merge with existing entry if same npcId (e.g. pawn then redeem)
+            const existingIdx = state.npcFateLog.findIndex(e => e.npcId === entry.npcId);
+            if (existingIdx >= 0) {
+                const existing = state.npcFateLog[existingIdx];
+                const merged = {
+                    ...existing,
+                    wasRedeemed: existing.wasRedeemed || entry.wasRedeemed,
+                    wasForfeited: existing.wasForfeited || entry.wasForfeited,
+                    wasReforged: existing.wasReforged || entry.wasReforged,
+                    wasSoldBlackmarket: existing.wasSoldBlackmarket || entry.wasSoldBlackmarket,
+                    finalVariables: entry.finalVariables ?? existing.finalVariables,
+                };
+                const updatedLog = [...state.npcFateLog];
+                updatedLog[existingIdx] = merged;
+                return { ...state, npcFateLog: updatedLog };
+            }
+            return { ...state, npcFateLog: [...state.npcFateLog, entry] };
+        }
+
         default:
             return state;
     }

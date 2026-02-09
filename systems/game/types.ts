@@ -4,7 +4,7 @@ import { GamePhase } from '../core/phases';
 import { Item } from '../items/types';
 import { Customer } from '../npc/types';
 import { TransactionRecord } from '../economy/types';
-import { EventChainState, MailInstance, SatisfactionLevel, DepartureSatisfaction, ExpiryEvent, PoliceInvestigationEvent } from '../narrative/types';
+import { EventChainState, MailInstance, SatisfactionLevel, DepartureSatisfaction, ExpiryEvent, PoliceInvestigationEvent, NpcFateEntry } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier, PendingNewsItem } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
 import { InProgressRecipe } from '../workshop/types';
@@ -146,6 +146,9 @@ export interface GameState {
   // === MORAL ECHO (道德回声) ===
   /** Pending monologue/NPC reaction echo texts from moral echo delivery */
   pendingEchoTexts: { channel: 'MONOLOGUE' | 'NPC_REACTION'; text: string }[];
+
+  // === NPC FATE LOG (Victory Screen: Bitter Victory) ===
+  npcFateLog: NpcFateEntry[];
 
   // === DEBUG FLAGS ===
   debugRevealFloor: boolean;  // 调试：显示客户底价

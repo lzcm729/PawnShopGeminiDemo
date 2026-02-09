@@ -50,6 +50,8 @@ export const MailModal: React.FC = () => {
   // Reset read state when selecting a new mail
   const handleSelectMail = (uniqueId: string) => {
       playSfx('CLICK');
+      // Atmospheric TYPE sound when opening a mail (like pulling up a document on a terminal)
+      setTimeout(() => playSfx('TYPE'), 150);
       setSelectedMailId(uniqueId);
       setBodyReadComplete(false);
       setClaimAnimating(false);
