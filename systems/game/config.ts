@@ -1,4 +1,3 @@
-import { EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT } from '../narrative/storyRegistry';
 import configToml from '@/config/game.toml';
 
 // ------------------------------------------------------------
@@ -538,13 +537,4 @@ export const GAME_CONFIG = {
     ACCURACY_LOW_THRESHOLD: tomlConfig.insight.accuracy_low_threshold,
   },
 
-  // --- NARRATIVE CONFIG ---
-  // 在此处配置游戏开始时激活的故事线
-  // (保留在代码中，因为需要导入 TypeScript 模块)
-  STARTING_CHAINS: [
-    EMMA_CHAIN_INIT,      // 艾玛 (失业/求职线)
-    SUSAN_CHAIN_INIT,     // 苏珊 (富太/赌博线)
-    ZHAO_CHAIN_INIT,      // 周老 (退伍老兵线)
-    LIN_CHAIN_INIT        // 小林 (大学生线)
-  ]
 };

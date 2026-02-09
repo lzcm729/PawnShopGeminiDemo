@@ -29,6 +29,7 @@ import { INITIAL_SHOP_UPGRADES } from '../systems/upgrades';
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../systems/appointment';
 import { createInitialBlackmarketState } from '../systems/blackmarket';
 import { createInitialAbilityState } from '../systems/characterAbility';
+import { EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT } from '../systems/narrative/storyRegistry';
 
 // Import combined reducer and action types
 import { gameReducer, Action } from './reducers';
@@ -73,7 +74,7 @@ const initialState: GameState = {
     showFinancials: false,
     showMedical: false,
     showVisit: false,
-    activeChains: GAME_CONFIG.STARTING_CHAINS,
+    activeChains: [EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT],
     inbox: [],
     pendingMails: [],
     completedScenarioIds: [],

@@ -11,6 +11,7 @@
 import { GameState, ReputationType, MotherCondition } from '../../../types';
 import { PhaseEvent } from './types';
 import { GAME_CONFIG } from '../../game/config';
+import { EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT } from '../../narrative/storyRegistry';
 import { INITIAL_ESSENCE_BALANCE } from '../../economy/essence';
 import { INITIAL_SHOP_UPGRADES, getEffectiveNightEnergy, getTotalMaintenanceCost } from '../../upgrades';
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../../appointment';
@@ -63,7 +64,7 @@ export function resetGameState(_state: GameState, _event: PhaseEvent): Partial<G
         showFinancials: false,
         showMedical: false,
         showVisit: false,
-        activeChains: [...GAME_CONFIG.STARTING_CHAINS],
+        activeChains: [EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT],
         inbox: [],
         pendingMails: [],
         completedScenarioIds: [],
