@@ -2,35 +2,19 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { useAppraisal } from '../hooks/useAppraisal';
-import { ScanEye, Gavel, FileSearch, Search, AlertCircle, Quote, Skull, HelpCircle, Package, Shirt, ShoppingBag, Smartphone, Gem, Music, Gamepad2, Archive, Lock, Eye, Stamp, AlertTriangle, ArrowDown, FileSignature, Scale, Scroll, BadgeAlert, CheckCircle2, Radio, Sparkles, Zap } from 'lucide-react';
 import { APPRAISAL_TEMPLATES } from '../systems/game/templates/appraisalFeedback';
 import type { AppraisalFeedback } from './NegotiationPanel';
-import { Button } from './ui/Button';
 import { ItemTrait } from '../types';
-import { getUncertaintyRisk } from '../systems/items/utils';
-import { DecryptionText } from './ui/TextEffects';
 import { playSfx } from '../systems/game/audio';
-import { getDisplayName } from '../systems/items/tagUtils';
 import { checkItemAnomaly, getAnomalyDetectionThreshold } from '../systems/upgrades';
-import { getItemIcon } from '../systems/assets';
 import { getAnomalyMessage, getAnomalySeverity, getNormalConfirmationMessage } from '../systems/upgrades/spectrometerFeedback';
+
+import { VirtualItemView } from './item/VirtualItemView';
+import { ItemAppraisalHeader } from './item/ItemAppraisalHeader';
+import { TraitList } from './item/TraitList';
 
 // Appraisal feedback visual effect types
 type AppraisalEffectType = 'none' | 'range_narrowed' | 'breakthrough' | 'fake' | 'jackpot' | 'mishap';
-
-const getIcon = (category: string) => {
-    switch(category) {
-        case '服饰': return <Shirt className="w-20 h-20 text-stone-600" />;
-        case '奢侈品': return <ShoppingBag className="w-20 h-20 text-stone-600" />;
-        case '电子产品': return <Smartphone className="w-20 h-20 text-stone-600" />;
-        case '珠宝': return <Gem className="w-20 h-20 text-stone-600" />;
-        case '违禁品': return <Skull className="w-20 h-20 text-stone-600" />;
-        case '古玩': return <Archive className="w-20 h-20 text-stone-600" />;
-        case '玩具': return <Gamepad2 className="w-20 h-20 text-stone-600" />;
-        case '乐器': return <Music className="w-20 h-20 text-stone-600" />;
-        default: return <Package className="w-20 h-20 text-stone-600" />;
-    }
-}
 
 interface ItemPanelProps {
   applyLeverage: (power: number, description: string) => void;
@@ -46,7 +30,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
   const { performAppraisal } = useAppraisal();
-  
+
   const [appraising, setAppraising] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'warning' | 'error' | 'breakthrough', text: string } | null>(null);
   const [hoveredTrait, setHoveredTrait] = useState<ItemTrait | null>(null);
@@ -89,109 +73,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
   // VIRTUAL ITEM VIEW (Contract / Offer) - No Appraisal, Document Aesthetic
   // =========================================================================================
   if (item.isVirtual) {
-      return (
-        <div className="h-full bg-[#1c1917] border-x border-[#44403c] flex flex-col relative overflow-hidden">
-           {/* Header: Contract Header */}
-           <div className="bg-[#141211] p-6 border-b border-[#292524] text-center relative z-20 shadow-md">
-              <div className="w-16 h-16 mx-auto bg-stone-900 rounded-full flex items-center justify-center border border-stone-700 mb-4 relative">
-                  <FileSignature className="w-8 h-8 text-pawn-accent" />
-                  <div className="absolute -bottom-1 -right-1 bg-red-900 text-white text-[9px] px-1.5 py-0.5 rounded border border-red-500 font-bold uppercase tracking-wider">
-                      Legal
-                  </div>
-              </div>
-              <h2 className="text-2xl font-serif text-white tracking-wide">{getDisplayName(item)}</h2>
-              <div className="text-stone-500 font-mono text-[10px] uppercase tracking-[0.2em] mt-2 flex items-center justify-center gap-2">
-                 <Scale className="w-3 h-3" />
-                 <span>Binding Agreement // 具有法律效力的合约</span>
-              </div>
-           </div>
-
-           {/* Body: The Document */}
-           <div className="flex-1 bg-[#e7e5e4] text-stone-900 relative overflow-y-auto custom-scrollbar-light">
-              {/* Paper Texture Overlay */}
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-30 pointer-events-none mix-blend-multiply" />
-              
-              <div className="relative z-10 p-8 space-y-8">
-                  
-                  {/* Financial Terms */}
-                  <div className="border-b-2 border-stone-800 pb-6">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1 flex items-center gap-1">
-                          <Stamp className="w-3 h-3" /> Acquisition Offer (收购报价)
-                      </span>
-                      <div className="flex items-baseline gap-1">
-                          <span className="text-5xl font-black font-mono text-stone-900 tracking-tighter">
-                              ${currentAskPrice || item.realValue}
-                          </span>
-                          <span className="text-sm font-bold text-stone-500">CREDITS</span>
-                      </div>
-                      <p className="text-[10px] text-stone-500 mt-2 font-mono">
-                          * 此金额将以不可追溯的现金形式立即支付。
-                      </p>
-                  </div>
-
-                  {/* Contract Body */}
-                  <div>
-                      <h4 className="font-bold font-serif text-lg mb-2 flex items-center gap-2 text-stone-800">
-                          <Scroll className="w-4 h-4" /> 协议内容
-                      </h4>
-                      <div className="bg-white/50 p-4 border-l-4 border-stone-800 text-sm font-serif italic text-stone-700 leading-relaxed shadow-sm">
-                          "{item.visualDescription}"
-                          <br/><br/>
-                          "{item.historySnippet}"
-                      </div>
-                  </div>
-
-                  {/* Stipulations / Risks */}
-                  <div className="bg-stone-200/50 border border-stone-300 p-4 rounded-sm">
-                      <h4 className="font-bold uppercase text-xs flex items-center gap-2 text-stone-600 mb-3 border-b border-stone-300 pb-2">
-                          <Gavel className="w-4 h-4"/> Terms & Conditions (条款)
-                      </h4>
-                      <ul className="text-sm space-y-3 font-mono">
-                          <li className="flex gap-3 items-start">
-                              <span className="text-stone-400 font-bold">01.</span>
-                              <span className="text-stone-800 leading-snug">
-                                  卖方同意将相关物品（即权益标的）的所有权及处置权完全转让给买方。
-                              </span>
-                          </li>
-                          <li className="flex gap-3 items-start">
-                              <span className="text-stone-400 font-bold">02.</span>
-                              <span className="text-stone-800 leading-snug">
-                                  本交易为最终定价，受第12区地下市场公约保护，任何一方不得反悔或追索。
-                              </span>
-                          </li>
-                          
-                          {item.appraisalNote && (
-                              <li className="flex gap-3 items-start p-2 bg-red-100/50 border border-red-200 rounded mt-2">
-                                  <span className="text-red-500 font-bold">03.</span>
-                                  <span className="text-red-800 font-bold leading-snug flex flex-col w-full">
-                                      <span className="flex items-center gap-1 border-b border-red-200 pb-1 mb-1 text-[10px] uppercase tracking-wider">
-                                          <BadgeAlert className="w-3 h-3"/> 风险提示 (Risk Warning)
-                                      </span>
-                                      <span className="font-serif italic text-base">
-                                          "{item.appraisalNote}"
-                                      </span>
-                                  </span>
-                              </li>
-                          )}
-                      </ul>
-                  </div>
-
-                  {/* Signature Area Decoration */}
-                  <div className="pt-8 flex justify-end opacity-60">
-                      <div className="text-center">
-                          <div className="h-0.5 w-32 bg-stone-800 mb-1"></div>
-                          <span className="text-[10px] uppercase font-bold text-stone-500">Authorized Signature</span>
-                      </div>
-                  </div>
-              </div>
-
-              {/* Watermark */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-8 border-stone-300 text-stone-300 p-4 font-black text-6xl uppercase rotate-[-30deg] pointer-events-none opacity-20 z-0 whitespace-nowrap">
-                  OFFICIAL OFFER
-              </div>
-           </div>
-        </div>
-      );
+      return <VirtualItemView item={item} currentAskPrice={currentAskPrice} />;
   }
 
   // =========================================================================================
@@ -208,14 +90,12 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
           setAppraising(false);
 
           if (!result.success) {
-              // Only ALREADY_KNOWN can occur - AP/patience are handled at UI level
               if (result.failureReason === 'ALREADY_KNOWN') {
                   setFeedbackMsg({ type: 'warning', text: "暂无更多线索 (No New Traits)" });
                   onAppraisalFeedback?.({ type: 'ALREADY_KNOWN', text: APPRAISAL_TEMPLATES.ALREADY_KNOWN });
               }
           } else {
               // Handle negative events (MISHAP, IMPATIENT)
-              // LUCKY_FIND is not shown separately - bonus traits are marked in TRAIT_DISCOVERED
               if (result.event && (result.event.type === 'MISHAP' || result.event.type === 'IMPATIENT')) {
                    if (result.event.type === 'MISHAP') {
                        setFeedbackMsg({ type: 'error', text: result.event.message || "鉴定失误" });
@@ -232,18 +112,15 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
               // Track newly revealed traits for entrance animation
               if (result.newTraitsFound.length > 0) {
                   setNewlyRevealedTraitIds(new Set(result.newTraitsFound.map(t => t.id)));
-                  // Clear the "new" marker after animation completes
                   setTimeout(() => setNewlyRevealedTraitIds(new Set()), 1200);
               }
 
               // Send feedback for each discovered trait
               if (result.newTraitsFound.length > 0) {
-                  // Special feedback for value jump discoveries (highest tier)
                   if (result.valueJump === 'FAKE') {
                       setFeedbackMsg({ type: 'error', text: "价值崩塌！(VALUE CRASH)" });
                       setAppraisalEffect('fake');
                       playSfx('FAIL');
-                      // Delayed second sfx for dramatic impact
                       setTimeout(() => playSfx('WARNING'), 300);
                   } else if (result.valueJump === 'JACKPOT') {
                       setFeedbackMsg({ type: 'breakthrough', text: "价值发现！(JACKPOT)" });
@@ -251,13 +128,11 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
                       playSfx('SUCCESS');
                       setTimeout(() => playSfx('CASH'), 400);
                   } else {
-                      // Regular trait discovery
                       setFeedbackMsg({ type: 'success', text: `发现了 ${result.newTraitsFound.length} 个新特征!` });
                       setAppraisalEffect('range_narrowed');
                       playSfx('CLICK');
                   }
                   for (const trait of result.newTraitsFound) {
-                      // Use the player's inner monologue from the trait data
                       const monologueText = trait.dialogueTrigger?.playerLine || trait.description;
                       const isBonus = result.bonusTraitIds.includes(trait.id);
                       onAppraisalFeedback?.({
@@ -269,15 +144,12 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
                       });
                   }
               } else if (!result.event || result.event.type === 'NORMAL' || result.event.type === 'BREAKTHROUGH') {
-                  // Range narrowed without trait discovery
                   if (result.isBreakthrough) {
-                      // Breakthrough: much stronger range narrowing
                       setFeedbackMsg({ type: 'breakthrough', text: "灵光一闪！估值大幅收窄" });
                       setAppraisalEffect('breakthrough');
                       playSfx('SUCCESS');
                       onAppraisalFeedback?.({ type: 'BREAKTHROUGH', text: APPRAISAL_TEMPLATES.BREAKTHROUGH });
                   } else {
-                      // Normal range narrowing
                       setFeedbackMsg({ type: 'success', text: "估值范围已更新 (Range Narrowed)" });
                       setAppraisalEffect('range_narrowed');
                       playSfx('CLICK');
@@ -294,52 +166,27 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
 
       const power = Math.abs(trait.valueImpact);
 
-      // NOTE: FAKE/JACKPOT value changes now happen at discovery time (in useAppraisal)
-      // Using the trait here only triggers customer reaction (dialogue/leverage)
-      // The value jump already occurred when the trait was discovered
-
-      // 1. Dispatch global usage state (Locks trait)
       dispatch({ type: 'MARK_TRAIT_USED', payload: { traitId: trait.id } });
 
-      // 2. Dispatch negotiation impact (customer reaction)
-      // JACKPOT traits: player discovered hidden value, triggers dialogue but no price leverage
-      // STORY traits: dialogue/rapport building only, no price leverage
-      // FLAW/FAKE traits: player points out issues, can leverage for lower price
-      // STOLEN traits: stronger leverage - reduces BOTH ask price AND minimum amount
       const negotiationPower = (trait.type === 'JACKPOT' || trait.type === 'STORY') ? 0 : power;
 
-      // STOLEN trait: special handling - reduces both ask price and minimum
-      // This gives player significant leverage when discovering stolen goods
       if (trait.type === 'STOLEN') {
-          // Use 25% reduction (stronger than the trait's valueImpact which may be -50%)
-          // to balance gameplay - discovering stolen goods is risky but gives real leverage
-          const stolenPower = 0.25; // TODO: move to config
-
-          // Apply the leverage (updates ask price in negotiation hook)
+          const stolenPower = 0.25;
           applyStolenLeverage(stolenPower, trait.name);
-
-          // Dispatch action to also reduce minimum amount in customer state
           dispatch({ type: 'APPLY_STOLEN_LEVERAGE', payload: { reductionPercent: stolenPower } });
-
-          // If there's dialogue, show it via narrative trigger (no additional price impact)
           if (trait.dialogueTrigger) {
               const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
               triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, 0);
           }
       } else if (trait.type === 'FAKE') {
-          // FAKE is a "handle-level" discovery (like STOLEN) — reduces BOTH ask price AND floor
-          // Use fixed 25% reduction (same as STOLEN) to avoid valueImpact (0.8~0.92) causing price to hit zero
-          const fakePower = 0.25; // TODO: move to config
-
+          const fakePower = 0.25;
           applyStolenLeverage(fakePower, trait.name, '赝品压价');
           dispatch({ type: 'APPLY_STOLEN_LEVERAGE', payload: { reductionPercent: fakePower } });
-
           if (trait.dialogueTrigger) {
               const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
               triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, 0);
           }
       } else if (trait.dialogueTrigger) {
-          // Use playerUseLine (正式对话) when available, fallback to playerLine (内心独白)
           const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
           triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, negotiationPower);
       } else if (trait.type === 'FLAW') {
@@ -350,68 +197,10 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
       playSfx('STAMP');
   };
 
-  const currentRange = item.currentRange || [0, 0];
-  const initialRange = item.initialRange || [0, 0];
-  
-  const [currentMin, currentMax] = currentRange;
-  const [baseMin, baseMax] = initialRange;
-
-  const displayMin = Math.min(baseMin, currentMin);
-  const displayMax = Math.max(baseMax, currentMax);
-
-  const rangeWidth = displayMax - displayMin;
-  const safeRangeWidth = rangeWidth === 0 ? 1 : rangeWidth;
-
-  const leftPercent = ((currentMin - displayMin) / safeRangeWidth) * 100;
-  const widthPercent = ((currentMax - currentMin) / safeRangeWidth) * 100;
-
-  const initialLeftPercent = ((baseMin - displayMin) / safeRangeWidth) * 100;
-  const initialWidthPercent = ((baseMax - baseMin) / safeRangeWidth) * 100;
-
-  const revealedTraits = item.revealedTraits || [];
-  const hiddenTraits = item.hiddenTraits || [];
-  
-  const unrevealedTraits = hiddenTraits.filter(
-      t => !revealedTraits.some(r => r.id === t.id)
-  );
-
-  const revealedCount = revealedTraits.length + 1;
-  const totalCount = hiddenTraits.length + revealedTraits.length + 1;
-
-  const isAppraised = item.appraised;
-  
-  const isCrashMode = item.isFake && item.perceivedValue === undefined;
-
-  const rangeBarClass = isAppraised 
-    ? "bg-green-900/60 border-green-500" 
-    : "bg-stone-700/60 border-stone-500";
-    
-  const rangeTextClass = isAppraised
-    ? "text-green-500"
-    : "text-stone-400";
-    
-  const labelContainerClass = isCrashMode
-    ? "text-lg font-mono font-bold text-pawn-red uppercase mb-1 px-1 transition-all"
-    : "text-[10px] font-mono text-stone-600 uppercase mb-1 px-1 transition-all";
-
-  const centerLabelText = "估值范围 (ESTIMATED)";
-  const centerLabelClass = isCrashMode 
-    ? "text-[10px] text-pawn-red font-bold tracking-widest border-b border-pawn-red/30 pb-0.5 mb-1 animate-pulse" 
-    : "text-[9px] text-stone-600 font-bold tracking-widest border-b border-stone-800 pb-0.5";
-
-  const barStyle = {
-      left: `${isAppraised ? leftPercent : initialLeftPercent}%`,
-      width: `${isAppraised ? widthPercent : initialWidthPercent}%`,
-      opacity: isAppraised ? 1 : 0
-  };
-
-  const uncertaintyRisk = getUncertaintyRisk(currentMin, currentMax);
-
   // Spectrometer anomaly detection
   const anomalyThreshold = getAnomalyDetectionThreshold(state.shopUpgrades);
   const hasAnomaly = checkItemAnomaly(item.perceivedValue, item.realValue, state.shopUpgrades);
 
-  // Memoize anomaly message to prevent re-rendering flickering
   const anomalyMessageData = useMemo(() => {
     if (!hasAnomaly) return null;
     const visualValue = item.perceivedValue ?? item.realValue;
@@ -420,7 +209,6 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
     return { severity, message: getAnomalyMessage(severity) };
   }, [hasAnomaly, item.id, item.perceivedValue, item.realValue]);
 
-  // Memoize normal confirmation message
   const normalMessage = useMemo(() => {
     return getNormalConfirmationMessage();
   }, [item.id]);
@@ -445,359 +233,31 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
             }} />
         )}
 
-        <div className="bg-[#0c0a09] relative flex flex-col border-b border-[#292524] min-h-[40%]">
+        <ItemAppraisalHeader
+          item={item}
+          actionPoints={state.stats.actionPoints}
+          maxActionPoints={state.stats.maxActionPoints}
+          canInteract={canInteract}
+          appraising={appraising}
+          appraisalEffect={appraisalEffect}
+          feedbackMsg={feedbackMsg}
+          hasAnomaly={hasAnomaly}
+          anomalyThreshold={anomalyThreshold}
+          anomalyMessageData={anomalyMessageData}
+          normalMessage={normalMessage}
+          onAppraise={handleAppraiseClick}
+        />
 
-            <div className="p-3 flex justify-between items-start z-20">
-                 <div className="flex items-center gap-2">
-                     <div className="bg-black/70 px-2 py-1 text-[10px] font-mono text-stone-400 border border-stone-700 backdrop-blur-sm rounded">
-                       {(item.condition || 'Unknown').toUpperCase()} | {item.category}
-                     </div>
-                     {/* S1-I3: Spectrometer Anomaly Alert - Graded severity */}
-                     {hasAnomaly && (() => {
-                         const visualValue = item.perceivedValue ?? item.realValue;
-                         const pctDiff = item.realValue > 0 ? (Math.abs(visualValue - item.realValue) / item.realValue) * 100 : 0;
-                         const severity = pctDiff > 80 ? 'severe' : pctDiff > 40 ? 'moderate' : 'mild';
-                         const severityStyle = severity === 'severe'
-                             ? "bg-red-950/80 text-red-400 border-red-700 animate-pulse"
-                             : severity === 'moderate'
-                             ? "bg-orange-950/80 text-orange-400 border-orange-700"
-                             : "bg-yellow-950/80 text-yellow-400 border-yellow-700";
-                         return (
-                             <div className={"px-2 py-1 text-[10px] font-mono border backdrop-blur-sm rounded flex items-center gap-1 " + severityStyle}>
-                                 <Radio className="w-3 h-3" />
-                                 <span>{severity === 'severe' ? 'ALERT' : severity === 'moderate' ? 'ANOMALY' : 'NOTICE'}</span>
-                             </div>
-                         );
-                     })()}
-                 </div>
-                 
-                 <div className="flex flex-col items-end gap-1">
-                     <div className="bg-stone-900/90 px-3 py-1 rounded border border-pawn-accent/50 text-pawn-accent font-mono text-xs font-bold shadow-[0_0_10px_rgba(217,119,6,0.2)]">
-                        AP: {state.stats.actionPoints} / {state.stats.maxActionPoints}
-                     </div>
-                     {feedbackMsg && (
-                         <div className={`text-xs px-2 py-1 rounded absolute top-12 right-2 z-50 ${
-                             feedbackMsg.type === 'error' ? 'text-red-500 bg-red-950/80 border border-red-800 animate-shake' :
-                             feedbackMsg.type === 'warning' ? 'text-amber-500 bg-amber-950/80 border border-amber-800' :
-                             feedbackMsg.type === 'breakthrough' ? 'text-amber-300 bg-amber-950/90 border-2 border-amber-500 shadow-[0_0_15px_rgba(217,119,6,0.4)] font-bold animate-breakthrough-glow' :
-                             'text-green-500 bg-green-950/80 border border-green-800'
-                         }`} style={{ animation: feedbackMsg.type === 'breakthrough' ? 'breakthroughGlow 2s ease-out forwards' : undefined }}>
-                             <span className="flex items-center gap-1">
-                                 {feedbackMsg.type === 'breakthrough' && <Zap className="w-3 h-3 text-amber-400" />}
-                                 {feedbackMsg.text}
-                             </span>
-                         </div>
-                     )}
-                 </div>
-            </div>
-
-            <div className="flex-1 flex flex-col items-center justify-center p-4">
-                <div className={`transition-all duration-500 w-32 h-32 border border-stone-800 rounded-lg bg-stone-900/50 mb-2 overflow-hidden flex items-center justify-center ${appraising ? 'blur-sm opacity-50 scale-110' : ''}`}>
-                    <img
-                      src={getItemIcon(item)}
-                      alt={item.name}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        // Hide failed image and show fallback icon
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        const fallback = (e.target as HTMLImageElement).nextElementSibling;
-                        if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                      }}
-                    />
-                    <div className="hidden items-center justify-center w-full h-full">
-                      {getIcon(item.category)}
-                    </div>
-                </div>
-                <h3 className="text-xl font-bold text-stone-200 leading-tight text-center">{getDisplayName(item)}</h3>
-                <p className="text-xs text-stone-500 font-serif italic text-center max-w-[80%]">"{item.historySnippet}"</p>
-            </div>
-            
-            <div className="p-4 border-t border-[#292524] bg-[#141211]">
-                 <div className="mb-4 relative pt-5"> 
-                    <div className={`flex justify-between items-end ${labelContainerClass}`}>
-                        <span>${displayMin}</span>
-                        <span className={centerLabelClass}>
-                            {centerLabelText}
-                        </span>
-                        <span>${displayMax}</span>
-                    </div>
-                    
-                    <div className="h-4 w-full bg-stone-900 rounded-sm relative overflow-visible border border-stone-800">
-                         <div 
-                            className={`absolute top-1 bottom-1 bg-stone-700/30 border-x border-stone-600/50 z-0 transition-opacity duration-700 ${isAppraised ? 'opacity-100' : 'opacity-0'}`}
-                            style={{ left: `${initialLeftPercent}%`, width: `${initialWidthPercent}%` }}
-                        ></div>
-
-                        <div
-                            className={`absolute top-0 bottom-0 border-x-2 transition-all duration-700 ease-out z-10 ${rangeBarClass} ${
-                                appraisalEffect === 'range_narrowed' ? 'animate-range-glow' :
-                                appraisalEffect === 'breakthrough' ? 'animate-range-glow' :
-                                ''
-                            }`}
-                            style={{
-                                ...barStyle,
-                                ...(appraisalEffect === 'breakthrough' ? { boxShadow: '0 0 20px 4px rgba(217, 119, 6, 0.5)' } : {})
-                            }}
-                        >
-                            <div className={`transition-opacity duration-300 ${isAppraised ? 'opacity-100' : 'opacity-0'}`}>
-                                <div className={`absolute -top-5 left-0 -translate-x-1/2 text-[10px] font-bold transition-all duration-700 bg-black/50 px-1 rounded ${rangeTextClass}`}>
-                                    ${currentMin}
-                                </div>
-                                <div className={`absolute -top-5 right-0 translate-x-1/2 text-[10px] font-bold transition-all duration-700 bg-black/50 px-1 rounded ${rangeTextClass}`}>
-                                    ${currentMax}
-                                </div>
-                                {/* Mid-value indicator */}
-                                <div className="absolute left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center">
-                                    <div className="text-[11px] font-bold text-pawn-accent bg-black/70 px-1.5 py-0.5 rounded border border-pawn-accent/50">
-                                        ${Math.round((currentMin + currentMax) / 2)}
-                                    </div>
-                                    <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-l-transparent border-r-transparent border-t-pawn-accent/70"></div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none ${isAppraised ? 'opacity-0' : 'opacity-100'}`}>
-                             <div className="w-full h-[1px] bg-stone-800 border-t border-dashed border-stone-700/50"></div>
-                        </div>
-
-                        <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-20 pointer-events-none"></div>
-                    </div>
-                    
-                    {/* S1-I3: Spectrometer Anomaly Warning - Graded severity with dynamic messages */}
-                    {hasAnomaly && anomalyMessageData && (() => {
-                        const { severity, message } = anomalyMessageData;
-                        if (severity === 'severe') {
-                            return (
-                                <div className="flex items-center justify-center gap-2 text-red-400 text-[10px] font-bold mt-1 bg-red-950/40 py-1 rounded border border-red-700/50 animate-pulse">
-                                    <Radio className="w-3 h-3" />
-                                    <span>{message.text}</span>
-                                </div>
-                            );
-                        } else if (severity === 'moderate') {
-                            return (
-                                <div className="flex items-center justify-center gap-2 text-orange-400 text-[10px] font-bold mt-1 bg-orange-950/30 py-1 rounded border border-orange-800/50">
-                                    <Radio className="w-3 h-3" />
-                                    <span>{message.text}</span>
-                                </div>
-                            );
-                        } else {
-                            return (
-                                <div className="flex items-center justify-center gap-2 text-yellow-400 text-[10px] mt-1 bg-yellow-950/20 py-1 rounded border border-yellow-900/30">
-                                    <Radio className="w-3 h-3" />
-                                    <span>{message.text}</span>
-                                </div>
-                            );
-                        }
-                    })()}
-                    {/* S1-I3: Spectrometer Normal Confirmation - Positive feedback when no anomaly */}
-                    {!hasAnomaly && anomalyThreshold > 0 && (
-                      <div className="flex items-center justify-center gap-2 text-green-400 text-[10px] mt-1 bg-green-950/20 py-1 rounded border border-green-900/30">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>{normalMessage}</span>
-                      </div>
-                    )}
-                    {!hasAnomaly && uncertaintyRisk === 'HIGH' && (
-                      <div className="flex items-center justify-center gap-2 text-red-500 text-[10px] font-bold mt-1 bg-red-950/20 py-0.5 rounded border border-red-900/30 animate-pulse">
-                        <AlertTriangle className="w-3 h-3" />
-                        <span>估值不确定性高，建议深入鉴定 (HIGH RISK)</span>
-                      </div>
-                    )}
-                    {!hasAnomaly && uncertaintyRisk === 'MEDIUM' && (
-                      <div className="flex items-center justify-center gap-2 text-amber-500 text-[10px] font-bold mt-1 bg-amber-950/20 py-0.5 rounded border border-amber-900/30">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>估值区间较大 (UNCERTAIN)</span>
-                      </div>
-                    )}
-
-                 </div>
-
-                 <Button 
-                    onClick={handleAppraiseClick}
-                    disabled={state.stats.actionPoints <= 0 || !canInteract || appraising}
-                    isLoading={appraising}
-                    className={`w-full h-12 shadow-lg border-2 font-mono text-sm flex items-center justify-center gap-2 rounded transition-all
-                        ${state.stats.actionPoints > 0 
-                            ? 'bg-pawn-accent text-black border-white hover:scale-[1.02]' 
-                            : 'bg-stone-800 text-stone-500 border-stone-600 cursor-not-allowed'
-                        }
-                    `}
-                 >
-                    <ScanEye className="w-5 h-5" />
-                    {appraising ? "ANALYZING..." : `深入鉴定 (COST: 1 AP)`}
-                 </Button>
-            </div>
-        </div>
-
-        <div className="flex-1 bg-[#e7e5e4] text-stone-900 flex flex-col relative shadow-[inset_0_10px_20px_rgba(0,0,0,0.1)] min-h-[60%]">
-             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-40 pointer-events-none mix-blend-multiply"></div>
-             
-             <div className="p-3 border-b-2 border-stone-400/50 relative z-10 flex justify-between items-center bg-[#d6d3d1]/50 backdrop-blur-sm">
-                 <h3 className="text-sm font-black uppercase tracking-tighter flex items-center gap-2">
-                    <FileSearch className="w-4 h-4 text-stone-700" />
-                    线索档案
-                 </h3>
-                 <span className="text-[10px] font-mono text-stone-500 bg-stone-200 px-2 py-0.5 rounded border border-stone-300">
-                    已发现: {revealedCount} / {totalCount}
-                 </span>
-             </div>
-
-             <div className="flex-1 overflow-y-auto p-3 relative z-10 custom-scrollbar-light">
-                 <div className="space-y-2">
-                     
-                     <div className="w-full text-left p-2 rounded border border-stone-300 bg-stone-100 shadow-sm relative group animate-in fade-in slide-in-from-left-1 duration-300">
-                        <div className="flex justify-between items-start mb-1">
-                             <div className="font-bold text-xs flex items-center gap-1.5 text-stone-700">
-                                 <Eye className="w-4 h-4 text-stone-500"/>
-                                 基础外观
-                             </div>
-                             <span className="text-[9px] font-mono px-1 py-0.5 bg-stone-200 rounded text-stone-500 uppercase">
-                                VISUAL
-                             </span>
-                         </div>
-                         <p className="text-[11px] text-stone-600 leading-snug">
-                             {item.visualDescription}
-                         </p>
-                     </div>
-
-                     {revealedTraits.map((trait) => {
-                         const isUsed = item.usedTraitIds?.includes(trait.id);
-                         
-                         let borderColor = "border-stone-400";
-                         let bgColor = "bg-white";
-                         let icon = <HelpCircle className="w-4 h-4"/>;
-                         let label = "点击压价";
-                         let impactText = "";
-                         let impactColor = "text-stone-500";
-                         
-                         if (trait.type === 'FLAW') {
-                             borderColor = "border-red-400";
-                             bgColor = isUsed ? "bg-stone-200" : "bg-red-50";
-                             icon = <AlertCircle className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-red-600'}`}/>;
-                             impactText = `-${Math.abs(trait.valueImpact * 100)}%`;
-                             impactColor = "text-red-600";
-                         } else if (trait.type === 'STORY') {
-                             borderColor = "border-blue-400";
-                             bgColor = isUsed ? "bg-stone-200" : "bg-blue-50";
-                             icon = <Quote className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-blue-600'}`}/>;
-                             label = "点击对话";
-                         } else if (trait.type === 'FAKE') {
-                             borderColor = "border-purple-600";
-                             bgColor = isUsed ? "bg-stone-200" : "bg-purple-50";
-                             icon = <Skull className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-purple-600'}`}/>;
-                             label = "点击揭穿";
-                         } else if (trait.type === 'JACKPOT') {
-                             borderColor = "border-amber-500";
-                             bgColor = isUsed ? "bg-stone-200" : "bg-amber-50";
-                             icon = <Sparkles className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-amber-600'}`}/>;
-                             impactText = `+${Math.abs(trait.valueImpact * 100)}%`;
-                             impactColor = "text-amber-600";
-                             label = "捡漏发现";
-                         } else if (trait.type === 'STOLEN') {
-                             // STOLEN: distinctive orange/warning color - this is risky but powerful leverage
-                             borderColor = "border-orange-600";
-                             bgColor = isUsed ? "bg-stone-200" : "bg-orange-50";
-                             icon = <AlertTriangle className={`w-4 h-4 ${isUsed ? 'text-stone-400' : 'text-orange-600'}`}/>;
-                             impactText = "-25%";  // Fixed 25% for both ask and minimum
-                             impactColor = "text-orange-600";
-                             label = "点击压价";
-                         }
-
-                         if (isUsed) {
-                             borderColor = "border-stone-300";
-                             impactColor = "text-stone-400";
-                         }
-                         
-                         const cashImpact = Math.floor(currentAskPrice * Math.abs(trait.valueImpact));
-
-                         return (
-                             <button
-                                key={trait.id}
-                                onClick={() => handleTraitClick(trait)}
-                                onMouseEnter={() => setHoveredTrait(trait)}
-                                onMouseLeave={() => setHoveredTrait(null)}
-                                disabled={isUsed || !canInteract}
-                                className={`
-                                    w-full text-left p-2 rounded border-l-4 shadow-sm transition-all duration-500 group relative overflow-visible
-                                    ${newlyRevealedTraitIds.has(trait.id) ? 'animate-trait-reveal' : 'animate-in zoom-in-95'}
-                                    ${borderColor} ${bgColor}
-                                    ${isUsed ? 'opacity-60 grayscale-[0.5] cursor-not-allowed' : 'hover:translate-x-1 hover:shadow-md cursor-pointer'}
-                                `}
-                             >
-                                 {hoveredTrait?.id === trait.id && !isUsed && canInteract && (trait.type === 'FLAW' || trait.type === 'FAKE') && (
-                                    <div className="absolute -top-8 right-0 bg-black/90 text-white text-[10px] px-2 py-1 rounded shadow-xl z-50 whitespace-nowrap border border-stone-600 animate-in fade-in slide-in-from-bottom-1">
-                                        <div className="flex items-center gap-1">
-                                            <ArrowDown className="w-3 h-3 text-red-500" />
-                                            <span>
-                                                {trait.type === 'FAKE' ? "价值崩塌" : `底价 -${cashImpact} (${impactText})`}
-                                            </span>
-                                        </div>
-                                    </div>
-                                 )}
-                                 {hoveredTrait?.id === trait.id && !isUsed && canInteract && trait.type === 'JACKPOT' && (
-                                    <div className="absolute -top-8 right-0 bg-black/90 text-white text-[10px] px-2 py-1 rounded shadow-xl z-50 whitespace-nowrap border border-amber-600 animate-in fade-in slide-in-from-bottom-1">
-                                        <div className="flex items-center gap-1">
-                                            <Sparkles className="w-3 h-3 text-amber-500" />
-                                            <span>价值发现 ({impactText})</span>
-                                        </div>
-                                    </div>
-                                 )}
-                                 {hoveredTrait?.id === trait.id && !isUsed && canInteract && trait.type === 'STOLEN' && (
-                                    <div className="absolute -top-8 right-0 bg-black/90 text-white text-[10px] px-2 py-1 rounded shadow-xl z-50 whitespace-nowrap border border-orange-600 animate-in fade-in slide-in-from-bottom-1">
-                                        <div className="flex items-center gap-1">
-                                            <AlertTriangle className="w-3 h-3 text-orange-500" />
-                                            <span>赃物压价 (报价和底价均 {impactText})</span>
-                                        </div>
-                                    </div>
-                                 )}
-
-                                 <div className="flex justify-between items-start mb-1 relative z-10">
-                                     <div className={`font-bold text-xs flex items-center gap-1.5 ${isUsed ? 'text-stone-500' : 'text-stone-700'}`}>
-                                         {icon}
-                                         <DecryptionText text={trait.name} speed={30} revealSpeed={100} />
-                                     </div>
-                                     <span className="text-[9px] font-mono px-1 py-0.5 bg-stone-200/80 rounded text-stone-600 uppercase">
-                                        {trait.type}
-                                     </span>
-                                 </div>
-                                 <p className={`text-[11px] leading-snug relative z-10 ${isUsed ? 'text-stone-400' : 'text-stone-600'}`}>
-                                     <DecryptionText text={trait.description} speed={10} revealSpeed={30} />
-                                 </p>
-                                 
-                                 {isUsed && (
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 border-2 border-stone-500 text-stone-500 font-black text-xs uppercase px-1 rotate-[-12deg] opacity-70 z-20 pointer-events-none mix-blend-multiply backdrop-blur-[1px] flex items-center gap-1">
-                                        <CheckCircle2 className="w-3 h-3" /> APPLIED
-                                    </div>
-                                 )}
-                                 
-                                 {!isUsed && canInteract && (
-                                     <div className="mt-1.5 text-[9px] font-bold text-stone-400 uppercase opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 relative z-10">
-                                         <Gavel className="w-3 h-3" />
-                                         {label}
-                                     </div>
-                                 )}
-                             </button>
-                         );
-                     })}
-
-                     {unrevealedTraits.map((trait) => (
-                        <div key={trait.id} className="w-full p-2 rounded border border-dashed border-stone-400 bg-stone-200/50 opacity-60 relative overflow-hidden select-none grayscale">
-                            <div className="absolute inset-0 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zaDBw8PDgk8yAgBRHhOOdaaFmwAAAABJRU5ErkJggg==')] opacity-10"></div>
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-stone-300 rounded flex items-center justify-center">
-                                    <Lock className="w-4 h-4 text-stone-500" />
-                                </div>
-                                <div className="flex-1">
-                                    <div className="h-2.5 bg-stone-300 rounded w-1/3 mb-1.5"></div>
-                                    <div className="h-2 bg-stone-300 rounded w-2/3"></div>
-                                </div>
-                                <div className="text-xl font-black text-stone-400 mr-2">?</div>
-                            </div>
-                        </div>
-                     ))}
-
-                 </div>
-             </div>
-        </div>
+        <TraitList
+          item={item}
+          canInteract={canInteract}
+          currentAskPrice={currentAskPrice}
+          hoveredTrait={hoveredTrait}
+          newlyRevealedTraitIds={newlyRevealedTraitIds}
+          onTraitClick={handleTraitClick}
+          onTraitHover={setHoveredTrait}
+          onTraitLeave={() => setHoveredTrait(null)}
+        />
       </div>
   );
 };
