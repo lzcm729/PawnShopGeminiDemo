@@ -1064,10 +1064,66 @@ function generateDescription(profile: FillerCustomerProfile): string {
     return `一位${appearanceDesc}的${ageDesc}${genderDesc}，${moodDesc}。`;
 }
 
+// ============================================================================
+// #42: REPUTATION-BASED GREETING OVERRIDES
+// ============================================================================
+
+/** Reputation-based customer greeting overrides */
+const REPUTATION_GREETINGS: Record<string, string[]> = {
+    'high_humanity': [
+        '大家都说你是个好人，我才敢来找你...',
+        '听说老板心善，所以特意来的。',
+        '街坊邻居都说你讲信用，帮帮我吧。',
+        '有人推荐我来这里，说老板你为人厚道。',
+    ],
+    'high_credibility': [
+        '你的专业能力人尽皆知，我信得过你。',
+        '听说这里鉴定最准，特意来的。',
+        '朋友说你这里最公道，推荐我来的。',
+        '业界都认可你的眼光，我放心。',
+    ],
+    'low_innocence': [
+        '听说你这里...不太一样？',
+        '有人跟我说，你这里什么都收...',
+        '老板，我有个东西...不太方便去别的地方。',
+        '嘘...听说你这里规矩灵活？',
+    ],
+};
+
+/**
+ * Get a reputation-based greeting override, if applicable.
+ * Returns null if no override should be applied.
+ */
+function getReputationGreeting(qualityOptions?: CustomerQualityOptions): string | null {
+    if (!qualityOptions) return null;
+
+    // 20% chance to show reputation-based greeting (not every customer)
+    if (Math.random() > 0.20) return null;
+
+    const { humanity, credibility, innocence } = qualityOptions;
+    const cred = credibility ?? 50;
+
+    // Priority: low innocence > high humanity > high credibility
+    if (innocence < 30) {
+        const pool = REPUTATION_GREETINGS['low_innocence'];
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+    if (humanity > 60) {
+        const pool = REPUTATION_GREETINGS['high_humanity'];
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+    if (cred > 60) {
+        const pool = REPUTATION_GREETINGS['high_credibility'];
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    return null;
+}
+
 /**
  * Generate generic dialogue for filler customers
  */
-function generateFillerDialogue(profile: FillerCustomerProfile): Dialogue {
+function generateFillerDialogue(profile: FillerCustomerProfile, qualityOptions?: CustomerQualityOptions): Dialogue {
     // Ensure templates are loaded
     if (!isFillerTemplatesLoaded()) {
         initializeFillerTemplates();
@@ -1075,8 +1131,11 @@ function generateFillerDialogue(profile: FillerCustomerProfile): Dialogue {
 
     const mood = profile.mood;
 
+    // #42: Reputation-based greeting override
+    const reputationGreeting = getReputationGreeting(qualityOptions);
+
     // Get dialogue from CSV templates with fallbacks
-    const greeting = getRandomDialogue(mood, 'greeting') || '老板，帮我看看这个。';
+    const greeting = reputationGreeting || getRandomDialogue(mood, 'greeting') || '老板，帮我看看这个。';
     const acceptedFair = getRandomDialogue(mood, 'accepted_fair') || '行，就这样吧。';
     const acceptedFleeced = getRandomDialogue(mood, 'accepted_fleeced') || '有点低，算了。';
     const acceptedPremium = getRandomDialogue(mood, 'accepted_premium') || '谢谢老板！';
@@ -1463,10 +1522,13 @@ function createUnusualItemProfile(): FillerCustomerProfile {
 /**
  * Options for customer quality bias from player reputation.
  * H-2: Moral actions affect the customer pool quality.
+ * #34-39: Milestones affect customer pool composition.
  */
 export interface CustomerQualityOptions {
     humanity: number;
     innocence: number;
+    credibility?: number;
+    activeMilestones?: string[];
 }
 
 /**
@@ -1521,9 +1583,30 @@ export function generateFillerCustomer(
     // H-2: Apply quality bias to redemption resolve
     redemptionResolve = applyQualityBiasToResolve(qualityBias, redemptionResolve);
 
+    // #34-39: Milestone-based customer pool modifications
+    const milestones = qualityOptions?.activeMilestones || [];
+    // hum_saint (Humanity >= 70): increase emotional story-line customers
+    // -> Shift mood toward 'reluctant' (sentimental customers) with 30% probability
+    if (milestones.includes('hum_saint') && Math.random() < 0.30) {
+        customerProfile = { ...customerProfile, mood: 'reluctant' };
+        // Re-infer tags after mood change to pick up SENTIMENTAL
+        behaviorTags = inferBehaviorTags(customerProfile);
+    }
+    // cred_expert (Credibility >= 60): increase high-value item customers
+    // -> Shift appearance toward 'decent'/'fancy' (higher-value items) with 25% probability
+    if (milestones.includes('cred_expert') && Math.random() < 0.25) {
+        const upgradeMap: Record<CustomerAppearance, CustomerAppearance> = {
+            'shabby': 'plain',
+            'plain': 'decent',
+            'decent': 'fancy',
+            'fancy': 'fancy'
+        };
+        customerProfile = { ...customerProfile, appearance: upgradeMap[customerProfile.appearance] };
+    }
+
     const name = generateName(customerProfile);
     const description = generateDescription(customerProfile);
-    const dialogue = generateFillerDialogue(customerProfile);
+    const dialogue = generateFillerDialogue(customerProfile, qualityOptions);
 
     // Create item with profile-based selection, excluding items already in inventory
     const { item, isUnexpected, attrTags } = createFillerItem(day, customerProfile, excludeTemplateIds, forceJumpTrait);

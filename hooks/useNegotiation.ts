@@ -120,8 +120,12 @@ const getPatienceWithBehaviorMods = (behaviorTags: BehaviorTag[], basePatience: 
  *   Applied probabilistically: modifier > 1 = higher chance of losing patience.
  * @param newsStolenRisk (P0-2) Aggregate stolen_risk modifier from active news effects.
  *   When > 0, stolen items have a chance to cost extra patience per offer round.
+ * @param reputationHumanity Player's current Humanity reputation (0-100).
+ *   High values boost NPC concession chance during push-pull negotiation.
+ * @param reputationCredibility Player's current Credibility reputation (0-100).
+ *   High values reduce patience loss chance during push-pull negotiation.
  */
-export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0, itemUncertainty: number = 0.3, moraleNegotiationModifier: number = 1.0, newsStolenRisk: number = 0): UseNegotiationReturn => {
+export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0, itemUncertainty: number = 0.3, moraleNegotiationModifier: number = 1.0, newsStolenRisk: number = 0, reputationHumanity: number = 50, reputationCredibility: number = 50): UseNegotiationReturn => {
   // Logic State
   const [patience, setPatience] = useState<number>(3);
   const [mood, setMood] = useState<NegotiationMood>('Neutral');
@@ -367,6 +371,17 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     if (status !== 'ACCEPTED' && status !== 'INSULT') {
         // Execute push-pull judgment (I-7: pass insight modifier, D: precision multiplier)
         const concessionMult = getConcessionMultiplier(lockedUncertaintyRef.current);
+
+        // #33: Reputation-based concession bonus
+        // High Humanity makes customers more willing to accept lower prices
+        const repMods = GAME_CONFIG.NEGOTIATION.REPUTATION_MODIFIERS;
+        let reputationConcessionBonus = 0;
+        if (reputationHumanity > 70) {
+            reputationConcessionBonus = repMods.HUMANITY_70_CONCESSION_BONUS;
+        } else if (reputationHumanity > 60) {
+            reputationConcessionBonus = repMods.HUMANITY_60_CONCESSION_BONUS;
+        }
+
         pushPullResult = executePushPull(
             customer.behaviorTags,
             offerPrincipal,
@@ -375,7 +390,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
             minPrincipal,
             persistCount,
             npcConcessionCount,
-            insightConcessionModifier,
+            insightConcessionModifier + reputationConcessionBonus,
             concessionMult
         );
 
@@ -462,6 +477,15 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         const extraRiskChance = Math.min(newsStolenRisk / 100, 0.5); // Cap at 50%
         if (Math.random() < extraRiskChance) {
             adjustedCostPatience += 1;
+        }
+    }
+
+    // #33: High Credibility reduces patience loss chance
+    // Customers trust a reputable shopkeeper more, so they're less likely to lose patience
+    if (adjustedCostPatience > 0 && reputationCredibility > 60) {
+        const saveChance = GAME_CONFIG.NEGOTIATION.REPUTATION_MODIFIERS.CREDIBILITY_60_PATIENCE_REDUCTION;
+        if (Math.random() < saveChance) {
+            adjustedCostPatience = Math.max(0, adjustedCostPatience - 1);
         }
     }
 

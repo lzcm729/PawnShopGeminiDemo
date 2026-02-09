@@ -56,7 +56,8 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                                 ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || []), redeemLog, choiceLog, echoLog] }
                                 : i
                         );
-                        repDelta = { [ReputationType.HUMANITY]: 3, [ReputationType.CREDIBILITY]: 2 };
+                        // #59: Per design doc, redemption success gives Credibility +1 only
+                        repDelta = { [ReputationType.CREDIBILITY]: 1 };
                         // S2-F4: 修复后归还声誉奖励 人情+10
                         if (item.wasRestored) {
                             repDelta[ReputationType.HUMANITY] = (repDelta[ReputationType.HUMANITY] || 0) + 10;
@@ -133,11 +134,14 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                             ? { ...i, status: ItemStatus.FORFEIT, logs: [...(i.logs || []), forfeitLog, choiceLog] }
                             : i
                     );
-                    // Escalating penalty based on prior renewal count
+                    // #23: Fixed penalty per design doc: Humanity -1, Credibility +1
                     const renewalExtCount = item.pawnInfo?.extensionCount || 0;
                     const renewRefusalPenalty = getRenewalRefusalPenalty(renewalExtCount);
-                    repDelta = { [ReputationType.HUMANITY]: renewRefusalPenalty };
-                    log = `拒绝续当: ${item.name} 已绝当 (Humanity ${renewRefusalPenalty})`;
+                    repDelta = {
+                        [ReputationType.HUMANITY]: renewRefusalPenalty,
+                        [ReputationType.CREDIBILITY]: 1
+                    };
+                    log = `拒绝续当: ${item.name} 已绝当 (Humanity ${renewRefusalPenalty}, Credibility +1)`;
                     departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
                     satisfaction = 'DESPERATE';
                     playSfx('CLICK');

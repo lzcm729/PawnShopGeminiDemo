@@ -58,6 +58,70 @@ export const useGameEngine = () => {
       });
   };
 
+  // #43: Check reputation thresholds and schedule feedback mails
+  // Uses milestones as proxy for "first time crossing threshold" detection
+  const checkReputationMails = () => {
+    const rep = state.reputation;
+    const milestones = state.activeMilestones;
+
+    // Humanity first exceeds 60: "社区感谢信"
+    if (rep[ReputationType.HUMANITY] >= 60 && !milestones.includes('rep_mail_hum_60')) {
+        dispatch({ type: 'UNLOCK_MILESTONE', payload: 'rep_mail_hum_60' });
+        registerRuntimeMailTemplate({
+            id: 'mail_rep_humanity_thanks',
+            sender: '街坊邻居',
+            subject: '社区感谢信',
+            body: '亲爱的老板：\n\n我们是附近的居民，写这封信是想感谢你一直以来对街坊的照顾。你的善心和厚道，大家都看在眼里。\n\n希望你的生意越来越好。\n\n——你的邻居们',
+            attachments: { cash: 0 },
+        });
+        dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: 'mail_rep_humanity_thanks', delayDays: 1 } });
+    }
+
+    // Credibility first exceeds 60: "业界认可函"
+    if (rep[ReputationType.CREDIBILITY] >= 60 && !milestones.includes('rep_mail_cred_60')) {
+        dispatch({ type: 'UNLOCK_MILESTONE', payload: 'rep_mail_cred_60' });
+        registerRuntimeMailTemplate({
+            id: 'mail_rep_credibility_recognition',
+            sender: '同业公会',
+            subject: '业界认可函',
+            body: '尊敬的典当行经营者：\n\n经同业评议，您的经营水准已获得行业认可。您的鉴定能力和公平交易原则为行业树立了标杆。\n\n特此致函，以示嘉许。\n\n——同业公会',
+            attachments: { cash: 0 },
+        });
+        dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: 'mail_rep_credibility_recognition', delayDays: 1 } });
+    }
+
+    // Innocence first drops below 30: "匿名警告信"
+    if (rep[ReputationType.INNOCENCE] < 30 && !milestones.includes('rep_mail_inn_30')) {
+        dispatch({ type: 'UNLOCK_MILESTONE', payload: 'rep_mail_inn_30' });
+        registerRuntimeMailTemplate({
+            id: 'mail_rep_innocence_warning',
+            sender: '匿名',
+            subject: '一封匿名警告',
+            body: '我知道你在做什么。\n\n警察也开始注意到了。如果不想惹上麻烦，趁早收手。\n\n——一个好心人',
+            attachments: { cash: 0 },
+        });
+        dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: 'mail_rep_innocence_warning', delayDays: 0 } });
+    }
+
+    // Any axis first drops below 20: "危机警告"
+    const anyBelow20 = rep[ReputationType.HUMANITY] < 20 ||
+                        rep[ReputationType.CREDIBILITY] < 20 ||
+                        rep[ReputationType.INNOCENCE] < 20;
+    if (anyBelow20 && !milestones.includes('rep_mail_crisis')) {
+        dispatch({ type: 'UNLOCK_MILESTONE', payload: 'rep_mail_crisis' });
+        const axisName = rep[ReputationType.HUMANITY] < 20 ? '人情' :
+                         rep[ReputationType.CREDIBILITY] < 20 ? '商誉' : '清白';
+        registerRuntimeMailTemplate({
+            id: 'mail_rep_crisis_warning',
+            sender: '自我反省',
+            subject: '危机警告',
+            body: `你的${axisName}声誉已经跌至危险水平。\n\n再这样下去，后果不堪设想。也许是时候改变做事的方式了。\n\n——你内心的声音`,
+            attachments: { cash: 0 },
+        });
+        dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: 'mail_rep_crisis_warning', delayDays: 0 } });
+    }
+  };
+
   const performNightCycle = () => {
     // 0. Deduct maintenance costs for enabled COUNTER upgrades (night closing)
     dispatch({ type: 'DEDUCT_MAINTENANCE_COST' });
@@ -448,7 +512,10 @@ export const useGameEngine = () => {
     const tomorrowChallenge = generateDailyChallenge();
     dispatch({ type: 'SET_DAILY_CHALLENGE', payload: tomorrowChallenge });
 
-    // 11. Night cycle complete - transition to EVALUATING via state machine
+    // 11. Check reputation threshold mails (#43)
+    checkReputationMails();
+
+    // 12. Night cycle complete - transition to EVALUATING via state machine
     // Note: END_DAY was already sent by NightDashboard.completeNight() to enter PROCESSING
     send({ type: 'NIGHT_CYCLE_DONE' });
   };
@@ -910,6 +977,8 @@ export const useGameEngine = () => {
           const fillerCustomer = generateFillerCustomer(state.stats.day, undefined, excludeTemplateIds, null, {
               humanity: state.reputation[ReputationType.HUMANITY],
               innocence: state.reputation[ReputationType.INNOCENCE],
+              credibility: state.reputation[ReputationType.CREDIBILITY],
+              activeMilestones: state.activeMilestones,
           });
           if (fillerCustomer) {
               setTimeout(() => {

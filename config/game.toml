@@ -113,12 +113,14 @@ gewu_lv3_energy_max = 5
 # 典当业务系统 (Pawn Business)
 # ------------------------------------------------------------
 [pawn_business]
-# 续当拒绝惩罚递增 (Escalating Renewal Refusal Penalties)
-# 续当次数越多后拒绝，惩罚越重
-renewal_refusal_penalty_0 = -10     # 首次到期直接拒绝
-renewal_refusal_penalty_1 = -15     # 给了一次希望后拒绝
-renewal_refusal_penalty_2 = -20     # 反复给予后夺走
-renewal_refusal_penalty_3_plus = -25  # 极端残忍
+# 续当拒绝惩罚 (Renewal Refusal Penalties)
+# 设计文档：固定值 Humanity -1, Credibility +1
+renewal_refusal_penalty_0 = -1      # 固定人情惩罚
+renewal_refusal_penalty_1 = -1      # 固定人情惩罚
+renewal_refusal_penalty_2 = -1      # 固定人情惩罚
+renewal_refusal_penalty_3_plus = -1 # 固定人情惩罚
+# 续当拒绝时商誉奖励
+renewal_refusal_credibility = 1     # 固定商誉奖励
 
 # ------------------------------------------------------------
 # 母亲状态初始值 (Mother Status)
@@ -309,7 +311,7 @@ crackdown_innocence = -5              # 严打 -清白
 # 赝品
 fake_credibility = -5                 # 赝品 -商誉
 # 赎回/赔偿
-redemption_success_credibility = 2    # 赎回成功 +商誉
+redemption_success_credibility = 1    # 赎回成功 +商誉 (#59: 设计文档为 +1)
 charity_return_humanity = 15          # 慈善归还 +人情
 compensation_humanity = -15           # 赔偿 -人情
 compensation_credibility = -10        # 赔偿 -商誉
@@ -363,6 +365,15 @@ SUSPICIOUS = -1
 SENTIMENTAL = 1
 NAIVE = 0
 SAVVY = 0
+
+# 声誉影响议价 (Reputation Modifiers)
+[negotiation.reputation_modifiers]
+# 人情 > 60 时：NPC 让步概率加成
+humanity_60_concession_bonus = 0.10
+# 人情 > 70 时：NPC 让步概率加成（覆盖上面的值）
+humanity_70_concession_bonus = 0.15
+# 商誉 > 60 时：NPC 耐心消耗概率减少
+credibility_60_patience_reduction = 0.05
 
 # 推拉策略：温和
 [negotiation.push_pull.SOFT]

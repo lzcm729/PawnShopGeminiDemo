@@ -56,6 +56,7 @@ interface TomlPawnBusiness {
   renewal_refusal_penalty_1: number;
   renewal_refusal_penalty_2: number;
   renewal_refusal_penalty_3_plus: number;
+  renewal_refusal_credibility: number;
 }
 
 interface TomlMother {
@@ -198,6 +199,12 @@ interface TomlPushPullStrategy {
   base_patience_loss_chance: number;
 }
 
+interface TomlReputationModifiers {
+  humanity_60_concession_bonus: number;
+  humanity_70_concession_bonus: number;
+  credibility_60_patience_reduction: number;
+}
+
 interface TomlNegotiation {
   base_insult_threshold: number;
   insult_clamp_min: number;
@@ -209,6 +216,7 @@ interface TomlNegotiation {
   behavior_insult_modifiers: Record<string, number>;
   behavior_floor_modifiers: Record<string, number>;
   behavior_patience_modifiers: Record<string, number>;
+  reputation_modifiers: TomlReputationModifiers;
   push_pull: {
     SOFT: TomlPushPullStrategy;
     HARD: TomlPushPullStrategy;
@@ -552,6 +560,11 @@ export const GAME_CONFIG = {
     BEHAVIOR_INSULT_MODIFIERS: tomlConfig.negotiation.behavior_insult_modifiers,
     BEHAVIOR_FLOOR_MODIFIERS: tomlConfig.negotiation.behavior_floor_modifiers,
     BEHAVIOR_PATIENCE_MODIFIERS: tomlConfig.negotiation.behavior_patience_modifiers,
+    REPUTATION_MODIFIERS: {
+      HUMANITY_60_CONCESSION_BONUS: tomlConfig.negotiation.reputation_modifiers.humanity_60_concession_bonus,
+      HUMANITY_70_CONCESSION_BONUS: tomlConfig.negotiation.reputation_modifiers.humanity_70_concession_bonus,
+      CREDIBILITY_60_PATIENCE_REDUCTION: tomlConfig.negotiation.reputation_modifiers.credibility_60_patience_reduction,
+    },
     PUSH_PULL: {
       SOFT: {
         BASE_CONCESSION_CHANCE: tomlConfig.negotiation.push_pull.SOFT.base_concession_chance,
@@ -700,6 +713,7 @@ export const GAME_CONFIG = {
     RENEWAL_REFUSAL_PENALTY_1: tomlConfig.pawn_business.renewal_refusal_penalty_1,
     RENEWAL_REFUSAL_PENALTY_2: tomlConfig.pawn_business.renewal_refusal_penalty_2,
     RENEWAL_REFUSAL_PENALTY_3_PLUS: tomlConfig.pawn_business.renewal_refusal_penalty_3_plus,
+    RENEWAL_REFUSAL_CREDIBILITY: tomlConfig.pawn_business.renewal_refusal_credibility,
   },
 
 };
