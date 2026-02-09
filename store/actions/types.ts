@@ -15,7 +15,7 @@ import { GameNode } from '../../types/node';
 import { BlackmarketState, RiskEvent } from '../../systems/blackmarket/types';
 import { PhaseEvent } from '../../systems/core/phases';
 import { ActiveNewsInstance, MarketModifier, PendingNewsItem } from '../../systems/news/types';
-import { CustomerInsightResult } from '../../systems/customerInsight';
+import { CustomerInsightResult, InsightTrainingResult } from '../../systems/customerInsight';
 import { DailyChallenge } from '../../systems/game/dailyChallenge';
 import { DailySchedule } from '../../systems/npc/customerScheduler';
 import { SkillId, MoralEchoEvent, AbilityState, ConsequenceFlashResult } from '../../systems/characterAbility/types';
@@ -52,6 +52,7 @@ export type Action =
     // Customer Insight (洞察客户)
     | { type: 'USE_CUSTOMER_INSIGHT'; payload: CustomerInsightResult }
     | { type: 'CLEAR_CUSTOMER_INSIGHT' }
+    | { type: 'SET_INSIGHT_TRAINING_RESULT'; payload: InsightTrainingResult | null }
 
     // Node management (new unified interface)
     | { type: 'SET_NODE'; payload: GameNode | null }

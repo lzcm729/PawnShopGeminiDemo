@@ -28,6 +28,7 @@ import {
   CustomerInsightResult,
   CustomerInsightStatus,
   InsightBlockReason,
+  InsightLayer,
   DISPOSITION_INFO,
   getPatienceCostProbability,
   calculateInsightReward,
@@ -35,14 +36,18 @@ import {
   InsightReward,
   InsightPushPullModifier,
 } from '../systems/customerInsight';
+import { hasEmpathyBonus } from '../systems/characterAbility/abilityEngine';
 import { GAME_CONFIG } from '../systems/game/config';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-/** AP cost for using customer insight */
+/** AP cost for using customer insight (layer 1) */
 const INSIGHT_AP_COST = GAME_CONFIG.INSIGHT.AP_COST;
+
+/** AP cost for deep insight (layer 2) */
+const DEEP_INSIGHT_AP_COST = GAME_CONFIG.INSIGHT.AP_COST;
 
 // ============================================================================
 // Hook Return Type
@@ -59,10 +64,34 @@ interface UseCustomerInsightReturn {
   canUseInsight: () => boolean;
 
   /**
-   * Use insight ability on current customer
+   * Use insight ability on current customer (layer 1 basic)
    * @returns InsightResult if successful, null if cannot use
    */
   useInsight: () => CustomerInsightResult | null;
+
+  /**
+   * Perform deep insight (layer 2) — requires additional AP
+   * Must have already performed basic insight (layer 1)
+   * @returns Updated InsightResult if successful, null if cannot use
+   */
+  performDeepInsight: () => CustomerInsightResult | null;
+
+  /**
+   * Whether deep insight (layer 2) can be performed
+   */
+  canDeepInsight: boolean;
+
+  /**
+   * Perform full insight (layer 3) — requires EMPATHY skill
+   * Must have already performed deep insight (layer 2)
+   * @returns Updated InsightResult if successful, null if cannot use
+   */
+  performFullInsight: () => CustomerInsightResult | null;
+
+  /**
+   * Whether full insight (layer 3) can be performed
+   */
+  canFullInsight: boolean;
 
   /** Clear current insight result */
   clearInsight: () => void;
@@ -87,6 +116,7 @@ interface UseCustomerInsightReturn {
 export const useCustomerInsight = (): UseCustomerInsightReturn => {
   const { state, dispatch } = useGame();
   const { currentCustomer, currentCustomerInsight, phase, stats } = state;
+  const abilityState = state.abilityState;
 
   // Calculate insight status
   const status = useMemo((): CustomerInsightStatus => {
@@ -143,14 +173,26 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
     return status.canUse;
   }, [status.canUse]);
 
-  // Use insight ability
+  // Check if pressure/heartstrike skills were used before insight (#22 time-order warning)
+  const hasUsedPressureSkills = useMemo((): boolean => {
+    if (!abilityState) return false;
+    const used = abilityState.skillsUsedThisNegotiation || [];
+    return used.includes('APPLY_PRESSURE') || used.includes('HEART_STRIKE');
+  }, [abilityState]);
+
+  // Use insight ability (layer 1 basic)
   const useInsight = useCallback((): CustomerInsightResult | null => {
     if (!status.canUse || !currentCustomer) {
       return null;
     }
 
     // Generate insight result (layer 1 for basic insight)
-    const result = generateCustomerInsight(currentCustomer);
+    const result = generateCustomerInsight(currentCustomer, 1);
+
+    // #22: Add time-order warning if pressure/heartstrike was already used
+    if (hasUsedPressureSkills) {
+      result.timeOrderWarning = true;
+    }
 
     // Consume AP
     dispatch({ type: 'CONSUME_AP', payload: INSIGHT_AP_COST });
@@ -171,7 +213,65 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
     dispatch({ type: 'USE_CUSTOMER_INSIGHT', payload: result });
 
     return result;
-  }, [status.canUse, currentCustomer, dispatch]);
+  }, [status.canUse, currentCustomer, dispatch, hasUsedPressureSkills]);
+
+  // Can perform deep insight (layer 2): insight already used, at layer 1, have AP
+  const canDeepInsight = useMemo((): boolean => {
+    if (!currentCustomerInsight) return false;
+    if (currentCustomerInsight.revealedLayer >= 2) return false;
+    if (!currentCustomer) return false;
+    if (!PhaseIs.negotiation(phase)) return false;
+    return stats.actionPoints >= DEEP_INSIGHT_AP_COST;
+  }, [currentCustomerInsight, currentCustomer, phase, stats.actionPoints]);
+
+  // Perform deep insight (layer 2)
+  const performDeepInsight = useCallback((): CustomerInsightResult | null => {
+    if (!canDeepInsight || !currentCustomer) return null;
+
+    // Re-generate with layer 2
+    const result = generateCustomerInsight(currentCustomer, 2);
+    // Preserve time-order warning from previous insight
+    if (currentCustomerInsight?.timeOrderWarning) {
+      result.timeOrderWarning = true;
+    }
+
+    // Consume AP for deep insight
+    dispatch({ type: 'CONSUME_AP', payload: DEEP_INSIGHT_AP_COST });
+
+    // Update stored insight result
+    dispatch({ type: 'USE_CUSTOMER_INSIGHT', payload: result });
+
+    return result;
+  }, [canDeepInsight, currentCustomer, currentCustomerInsight, dispatch]);
+
+  // Can perform full insight (layer 3): at layer 2, has EMPATHY skill
+  const canFullInsight = useMemo((): boolean => {
+    if (!currentCustomerInsight) return false;
+    if (currentCustomerInsight.revealedLayer >= 3) return false;
+    if (currentCustomerInsight.revealedLayer < 2) return false;
+    if (!currentCustomer) return false;
+    if (!PhaseIs.negotiation(phase)) return false;
+    // Layer 3 requires EMPATHY skill (no additional AP cost)
+    return hasEmpathyBonus(abilityState);
+  }, [currentCustomerInsight, currentCustomer, phase, abilityState]);
+
+  // Perform full insight (layer 3)
+  const performFullInsight = useCallback((): CustomerInsightResult | null => {
+    if (!canFullInsight || !currentCustomer) return null;
+
+    // Re-generate with layer 3
+    const result = generateCustomerInsight(currentCustomer, 3);
+    // Preserve time-order warning from previous insight
+    if (currentCustomerInsight?.timeOrderWarning) {
+      result.timeOrderWarning = true;
+    }
+
+    // No additional AP cost for layer 3 (empathy skill unlocks it)
+    // Update stored insight result
+    dispatch({ type: 'USE_CUSTOMER_INSIGHT', payload: result });
+
+    return result;
+  }, [canFullInsight, currentCustomer, currentCustomerInsight, dispatch]);
 
   // Clear insight
   const clearInsight = useCallback((): void => {
@@ -215,6 +315,10 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
     status,
     canUseInsight,
     useInsight,
+    performDeepInsight,
+    canDeepInsight,
+    performFullInsight,
+    canFullInsight,
     clearInsight,
     getBlockReasonText,
     getDispositionInfo: DISPOSITION_INFO,

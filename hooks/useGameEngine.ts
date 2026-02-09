@@ -30,6 +30,7 @@ import type { ExternalChainTrigger } from '../systems/narrative/externalTrigger'
 import { getEchoesForDay } from '../systems/characterAbility/moralEcho';
 import { getEchoText } from '../systems/characterAbility/moralEchoTexts';
 import { calculateTransactionEssenceGain, calculateStolenGoodsEssenceGain } from '../systems/characterAbility/essenceSystem';
+import { generateTrainingResult, determineDisposition } from '../systems/customerInsight';
 import { registerRuntimeMailTemplate } from '../systems/narrative/mailRegistry';
 import { NewsCategory } from '../systems/news/types';
 
@@ -1311,6 +1312,22 @@ export const useGameEngine = () => {
                 dispatch({ type: 'ADD_ESSENCE_BATCH', payload: { craft: stolenGain.craft, time: stolenGain.time, vibe: stolenGain.vibe } });
             }
         }
+    }
+
+    // I-11: Generate training feedback for night review
+    if (result.success && currentCust && result.terms) {
+        const insightUsed = state.currentCustomerInsight !== null;
+        const disposition = insightUsed && state.currentCustomerInsight
+            ? state.currentCustomerInsight.disposition
+            : determineDisposition(currentCust.behaviorTags);
+        const trainingResult = generateTrainingResult(
+            result.terms.principal,
+            currentCust.minimumAmount,
+            currentCust.desiredAmount,
+            disposition,
+            insightUsed
+        );
+        dispatch({ type: 'SET_INSIGHT_TRAINING_RESULT', payload: trainingResult });
     }
   };
 

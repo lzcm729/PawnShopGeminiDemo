@@ -180,3 +180,54 @@ export const getRandomText = (texts: string[], seed: number) => {
     const index = Math.floor(Math.abs(seed)) % texts.length;
     return texts[index];
 };
+
+// ============================================================================
+// Insight-Aware NPC Response Variants (#34)
+// ============================================================================
+
+/**
+ * When insight has been used, NPC responses carry more emotional detail.
+ * These replace the standard push-pull responses when insightUsed=true.
+ * Keyed by NPC style (from push-pull system).
+ */
+export const INSIGHT_AWARE_RESPONSES: Record<string, string[]> = {
+    // NPC concession responses (when insight is active, player "reads" deeper)
+    'insight_conceded_Desperate': [
+        "他点了点头，但你注意到他的手在微微发抖。他在妥协，但这让他付出了代价。",
+        "她答应了，但她的眼神里有一层你之前没见过的东西——是认命。",
+        "他让步了。你看得出来，这不仅仅是价格上的让步。",
+    ],
+    'insight_conceded_Aggressive': [
+        "他的嘴角抽动了一下——你看穿了他的外强中干。让步的瞬间，他的肩膀塌了下来。",
+        "她终于退了一步，但你能感觉到她心里那股不甘正在燃烧。",
+        "他让步了，但你从他攥紧的拳头看出，这让他极不舒服。",
+    ],
+    'insight_conceded_Deceptive': [
+        "面具裂开了一道缝，你看到了真实的他——没有那么从容，也没有那么无所谓。",
+        "她的表演终于维持不住了。让步的瞬间，她忘了控制自己的表情。",
+        "他假装不在乎地点了头，但你能看到他指尖的颤抖。",
+    ],
+    'insight_conceded_Professional': [
+        "他理性地接受了这个价格，但你捕捉到了一丝不易察觉的遗憾。",
+        "她冷静地同意了，但你注意到她的呼吸节奏变了——是松了一口气，还是无奈？",
+        "他让步了，带着专业人士特有的从容。但你知道，这份从容后面是计算。",
+    ],
+
+    // Push-pull persist responses (with insight active, more emotional detail)
+    'insight_persist_Desperate': [
+        "她还在坚持，但你已经看穿了——她的眼泪快要忍不住了。你的坚持在碾碎她最后的防线。",
+        "他没有放弃，但你能读到他眼神里的绝望。他知道自己没有筹码了。",
+    ],
+    'insight_persist_Aggressive': [
+        "他还在抵抗，但你看到了他紧咬的牙关后面——那不是愤怒，是恐惧。",
+        "她的声音仍然很硬，但你注意到她的手在抖。强硬是她最后的铠甲。",
+    ],
+    'insight_persist_Deceptive': [
+        "他还在演，但你已经不再被骗了。每一个假装的犹豫，你都看得清清楚楚。",
+        "她的伪装越来越薄了——你几乎能看穿她每一句话背后的真实意图。",
+    ],
+    'insight_persist_Professional': [
+        "他保持着职业化的冷静，但你能感受到他内心的天平正在倾斜。",
+        "她的专业训练让她很难读懂，但你还是捕捉到了一丝松动。",
+    ],
+};

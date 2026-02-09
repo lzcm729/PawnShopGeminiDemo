@@ -117,6 +117,7 @@ const initialState: GameState = {
     pendingSelectedItemId: null,
     // === CUSTOMER INSIGHT ===
     currentCustomerInsight: null,
+    lastInsightTrainingResult: null,
     // === POLICE INVESTIGATION ===
     currentPoliceInvestigation: null,
     // === DAILY CHALLENGE (每日挑战 v2.1) ===

@@ -66,6 +66,7 @@ export function generateCustomerInsight(
   revealLayer: InsightLayer = 1
 ): CustomerInsightResult {
   const disposition = determineDisposition(customer.behaviorTags);
+  const secondary = determineSecondaryDisposition(customer.behaviorTags, disposition);
   const dispositionText = generateDispositionText(disposition, customer);
 
   // I-2: Use behavior matrix for floor hint instead of direct text
@@ -82,6 +83,7 @@ export function generateCustomerInsight(
 
   return {
     disposition,
+    secondaryDisposition: secondary,
     dispositionText,
     floorHint,
     moralContext,
@@ -252,6 +254,43 @@ export function determineDisposition(behaviorTags: BehaviorTag[]): Disposition {
   }
 
   return 'sincere';
+}
+
+/**
+ * Determine secondary disposition from multi-tag customers.
+ * Returns the second-highest-priority tag's disposition, only if it differs
+ * from the primary disposition. This enables mixed behavior descriptions
+ * (e.g., DESPERATE+SAVVY shows both desperate urgency and bluffing cues).
+ */
+export function determineSecondaryDisposition(
+  behaviorTags: BehaviorTag[],
+  primaryDisposition: Disposition
+): Disposition | undefined {
+  const priorityOrder: BehaviorTag[] = [
+    'DESPERATE',
+    'STUBBORN',
+    'SUSPICIOUS',
+    'SAVVY',
+    'NAIVE',
+    'SENTIMENTAL',
+  ];
+
+  let foundPrimary = false;
+  for (const tag of priorityOrder) {
+    if (behaviorTags.includes(tag)) {
+      const disp = BEHAVIOR_TO_DISPOSITION[tag];
+      if (!foundPrimary) {
+        foundPrimary = true;
+        continue; // skip the primary tag
+      }
+      // Return only if it maps to a different disposition
+      if (disp !== primaryDisposition) {
+        return disp;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 // ============================================================================
