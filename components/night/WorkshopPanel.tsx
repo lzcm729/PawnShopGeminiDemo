@@ -29,9 +29,13 @@ import {
   Wand2,
   Eye,
   Lock,
+  Clock,
+  Star,
+  Gift,
 } from 'lucide-react';
 import { ESSENCE_ICONS, EssenceCost } from '../../systems/economy/essence';
-import { RecipeStatus, WorkshopResult, RestoreRecipe, ReforgeRecipe, ViolationWarning } from '../../systems/workshop/types';
+import { RecipeStatus, WorkshopResult, RestoreRecipe, ReforgeRecipe, InProgressRecipe, ViolationWarning, QualityOutcome, ReforgeQuality } from '../../systems/workshop/types';
+import { getQualityDisplayName } from '../../systems/workshop/workshopLogic';
 import { getDisplayName } from '../../systems/items/tagUtils';
 
 interface WorkshopPanelProps {
@@ -46,8 +50,10 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     essenceBalance,
     currentEnergy,
     maxEnergy,
+    inProgressRecipes,
     doRestore,
     doReforge,
+    advanceInProgressRecipe,
     getReasonText,
     getWarning,
   } = useWorkshop();
@@ -77,6 +83,11 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   const selectedItem = workshopableItems.find(w => w.item.id === selectedItemId);
   const restoreRecipe = selectedItem?.restoreRecipe;
   const reforgeRecipe = selectedItem?.reforgeRecipe;
+
+  // Multi-night: check if selected item has an in-progress recipe
+  const itemInProgress = selectedItemId
+    ? inProgressRecipes.find(r => r.itemId === selectedItemId) ?? null
+    : null;
 
   // S2-I3: Check mutual exclusion for display
   const isRestoreLocked = selectedItem?.item.workState === 'REFORGED';
@@ -132,6 +143,17 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   const handleViolationCancel = () => {
     setViolationWarning(null);
     setPendingReforgeRecipeId(null);
+  };
+
+  // Multi-night: advance in-progress recipe
+  const handleAdvance = () => {
+    if (!selectedItemId) return;
+    setIsProcessing(true);
+    const output = advanceInProgressRecipe(selectedItemId);
+    if (output?.success && output.result) {
+      triggerGaze(output.result);
+    }
+    setIsProcessing(false);
   };
 
   // S2-I2: Gaze moment trigger
@@ -217,7 +239,9 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
               库存物品 ({workshopableItems.length})
             </h4>
             <div className="space-y-2 max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
-              {workshopableItems.map(({ item, hasAnyOption, restoreCount }) => (
+              {workshopableItems.map(({ item, hasAnyOption, restoreCount }) => {
+                const inProg = inProgressRecipes.find(r => r.itemId === item.id);
+                return (
                 <button
                   key={item.id}
                   onClick={() => setSelectedItemId(item.id)}
@@ -225,8 +249,10 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                     "w-full p-3 rounded border text-left transition-all",
                     selectedItemId === item.id
                       ? "border-amber-600 bg-amber-950/30"
-                      : "border-noir-400 bg-noir-200 hover:bg-noir-300",
-                    !hasAnyOption && "opacity-50"
+                      : inProg
+                        ? "border-amber-700/50 bg-amber-950/10 hover:bg-amber-950/20"
+                        : "border-noir-400 bg-noir-200 hover:bg-noir-300",
+                    !hasAnyOption && !inProg && "opacity-50"
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -248,7 +274,13 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-bold truncate">{getDisplayName(item)}</span>
-                        {restoreCount > 1 && (
+                        {inProg && (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-amber-900/50 text-amber-300 rounded border border-amber-700 flex items-center gap-0.5">
+                            <Clock className="w-2.5 h-2.5" />
+                            工序中 {inProg.nightsCompleted}/{inProg.nightsRequired}
+                          </span>
+                        )}
+                        {!inProg && restoreCount > 1 && (
                           <span className="text-[9px] px-1.5 py-0.5 bg-emerald-900/50 text-emerald-300 rounded border border-emerald-700">
                             可修复 {restoreCount} 处
                           </span>
@@ -269,10 +301,15 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                         {item.status === ItemStatus.FORFEIT ? '流当 (自有)' : '典当中'}
                       </div>
                     </div>
-                    {hasAnyOption && <Sparkles className="w-4 h-4 text-amber-500" />}
+                    {inProg ? (
+                      <Clock className="w-4 h-4 text-amber-500" />
+                    ) : hasAnyOption ? (
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                    ) : null}
                   </div>
                 </button>
-              ))}
+                );
+              })}
 
               {workshopableItems.length === 0 && (
                 <div className="text-center py-8 text-stone-500">
@@ -330,31 +367,43 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
 
                 {/* Action Buttons */}
                 <div className="space-y-4">
-                  {/* S2-I3: Show lock indicator for mutually excluded actions */}
-                  {isRestoreLocked ? (
-                    <LockedActionCard type="restore" reason="已选择重铸路线，不可修复" />
-                  ) : (
-                    <ActionCard
-                      type="restore"
-                      recipe={restoreRecipe?.recipe}
-                      status={restoreRecipe?.status}
-                      onApply={handleRestore}
+                  {itemInProgress ? (
+                    <InProgressCard
+                      progress={itemInProgress}
+                      onAdvance={handleAdvance}
                       isProcessing={isProcessing}
-                      getReasonText={getReasonText}
+                      energyCost={reforgeRecipe?.recipe.energyCost ?? 0}
+                      currentEnergy={currentEnergy}
                     />
-                  )}
+                  ) : (
+                    <>
+                      {/* S2-I3: Show lock indicator for mutually excluded actions */}
+                      {isRestoreLocked ? (
+                        <LockedActionCard type="restore" reason="已选择重铸路线，不可修复" />
+                      ) : (
+                        <ActionCard
+                          type="restore"
+                          recipe={restoreRecipe?.recipe}
+                          status={restoreRecipe?.status}
+                          onApply={handleRestore}
+                          isProcessing={isProcessing}
+                          getReasonText={getReasonText}
+                        />
+                      )}
 
-                  {isReforgeLocked ? (
-                    <LockedActionCard type="reforge" reason="已选择修复路线，不可重铸" />
-                  ) : (
-                    <ActionCard
-                      type="reforge"
-                      recipe={reforgeRecipe?.recipe}
-                      status={reforgeRecipe?.status}
-                      onApply={handleReforge}
-                      isProcessing={isProcessing}
-                      getReasonText={getReasonText}
-                    />
+                      {isReforgeLocked ? (
+                        <LockedActionCard type="reforge" reason="已选择修复路线，不可重铸" />
+                      ) : (
+                        <ActionCard
+                          type="reforge"
+                          recipe={reforgeRecipe?.recipe}
+                          status={reforgeRecipe?.status}
+                          onApply={handleReforge}
+                          isProcessing={isProcessing}
+                          getReasonText={getReasonText}
+                        />
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -507,6 +556,12 @@ const ActionCard: React.FC<ActionCardProps> = ({
             isRestore ? "text-emerald-400" : "text-purple-400"
           )}>
             {recipe.name}
+            {recipe.nightsRequired && recipe.nightsRequired > 1 && (
+              <span className="ml-2 text-[10px] font-normal text-amber-400 inline-flex items-center gap-0.5">
+                <Clock className="w-3 h-3" />
+                需要 {recipe.nightsRequired} 夜
+              </span>
+            )}
           </h4>
           <p className="text-xs text-stone-500 mt-1">{recipe.description}</p>
         </div>
@@ -539,6 +594,11 @@ const ActionCard: React.FC<ActionCardProps> = ({
           <AlertCircle className="w-3 h-3" />
           {recipe.riskNote}
         </div>
+      )}
+
+      {/* Quality outcome probabilities for probabilistic recipes */}
+      {status.isProbabilistic && status.qualityOutcomes && (
+        <QualityOutcomesPreview outcomes={status.qualityOutcomes} />
       )}
     </div>
   );
@@ -685,6 +745,7 @@ const WorkshopResultModal: React.FC<WorkshopResultModalProps> = ({ result, onClo
   if (!result) return null;
 
   const isRestore = result.type === 'RESTORE';
+  const quality = result.reforgeQuality;
 
   return (
     <Modal
@@ -706,6 +767,7 @@ const WorkshopResultModal: React.FC<WorkshopResultModalProps> = ({ result, onClo
               重铸完成
             </>
           )}
+          {quality && <QualityBadge quality={quality} />}
         </span>
       }
       size="md"
@@ -714,7 +776,13 @@ const WorkshopResultModal: React.FC<WorkshopResultModalProps> = ({ result, onClo
         "p-6 rounded border",
         isRestore
           ? "bg-gradient-to-r from-emerald-950/50 to-noir-300/50 border-emerald-800"
-          : "bg-gradient-to-r from-purple-950/50 to-noir-300/50 border-purple-800"
+          : quality === 'MASTERWORK'
+            ? "bg-gradient-to-r from-amber-950/50 to-purple-950/30 border-amber-700"
+            : quality === 'FLAWED'
+              ? "bg-gradient-to-r from-red-950/30 to-noir-300/50 border-red-900"
+              : quality === 'FAILED'
+                ? "bg-gradient-to-r from-stone-900/50 to-noir-300/50 border-stone-700"
+                : "bg-gradient-to-r from-purple-950/50 to-noir-300/50 border-purple-800"
       )}>
         <div className="space-y-3 mb-6 text-stone-300 text-sm italic">
           <p>{result.narrative.actionText}</p>
@@ -726,7 +794,33 @@ const WorkshopResultModal: React.FC<WorkshopResultModalProps> = ({ result, onClo
 
         {result.valueIncrease !== undefined && result.valueIncrease !== 0 && (
           <div className="text-sm text-stone-400 border-t border-noir-400 pt-4">
-            物品价值: <span className="text-green-400 font-mono text-lg">+${result.valueIncrease}</span>
+            物品价值: <span className={cn(
+              "font-mono text-lg",
+              result.valueIncrease > 0 ? "text-green-400" : "text-red-400"
+            )}>
+              {result.valueIncrease > 0 ? '+' : ''}{result.valueIncrease}
+            </span>
+            {quality && quality !== 'NORMAL' && result.qualityMultiplier && (
+              <span className="text-[10px] text-stone-500 ml-2">
+                (品质系数: x{result.qualityMultiplier.toFixed(1)})
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Surprise Discovery */}
+        {result.surpriseDiscovery && (
+          <div className="mt-4 p-3 rounded border border-amber-700/50 bg-amber-950/20">
+            <div className="flex items-center gap-2 mb-1">
+              <Gift className="w-4 h-4 text-amber-400" />
+              <span className="text-[10px] uppercase text-amber-400 font-bold">意外发现</span>
+            </div>
+            <p className="text-sm text-amber-200/80 italic">
+              {result.surpriseDiscovery.description}
+            </p>
+            <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 bg-amber-900/50 text-amber-300 rounded border border-amber-700">
+              +{result.surpriseDiscovery.tag}
+            </span>
           </div>
         )}
       </div>
@@ -737,5 +831,139 @@ const WorkshopResultModal: React.FC<WorkshopResultModalProps> = ({ result, onClo
         </Button>
       </div>
     </Modal>
+  );
+};
+
+// ============================================================================
+// Multi-Night In-Progress Card
+// ============================================================================
+
+interface InProgressCardProps {
+  progress: InProgressRecipe;
+  onAdvance: () => void;
+  isProcessing: boolean;
+  energyCost: number;
+  currentEnergy: number;
+}
+
+const InProgressCard: React.FC<InProgressCardProps> = ({
+  progress,
+  onAdvance,
+  isProcessing,
+  energyCost,
+  currentEnergy,
+}) => {
+  const progressPercent = (progress.nightsCompleted / progress.nightsRequired) * 100;
+  const canAdvance = currentEnergy >= energyCost;
+
+  return (
+    <div className="p-4 rounded border border-amber-800 bg-amber-950/20">
+      <div className="flex items-center gap-3 mb-3">
+        <Clock className="w-6 h-6 text-amber-400" />
+        <div className="flex-1">
+          <h4 className="font-bold text-amber-400">工序进行中</h4>
+          <p className="text-xs text-stone-500 mt-0.5">
+            第 {progress.nightsCompleted} 夜 / 共 {progress.nightsRequired} 夜
+          </p>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full h-2 bg-noir-400 rounded-full overflow-hidden mb-3">
+        <div
+          className="h-full bg-amber-600 rounded-full transition-all"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] text-stone-500 flex items-center gap-1">
+          <Zap className="w-3 h-3" />
+          {energyCost} 精力 (仅精力，精魄已在首夜扣除)
+        </div>
+        <Button
+          onClick={onAdvance}
+          disabled={isProcessing || !canAdvance}
+          className="h-10 px-4 bg-amber-900 hover:bg-amber-800 border-amber-700"
+        >
+          {isProcessing ? '...' : '继续工序'}
+        </Button>
+      </div>
+
+      {!canAdvance && (
+        <div className="mt-2 text-[10px] text-red-400 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          精力不足，无法继续工序
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================================
+// Quality Badge
+// ============================================================================
+
+interface QualityBadgeProps {
+  quality: ReforgeQuality;
+}
+
+const QUALITY_STYLES: Record<ReforgeQuality, { bg: string; text: string; border: string }> = {
+  MASTERWORK: { bg: 'bg-amber-900/60', text: 'text-amber-300', border: 'border-amber-600' },
+  NORMAL: { bg: 'bg-stone-800/60', text: 'text-stone-300', border: 'border-stone-600' },
+  FLAWED: { bg: 'bg-red-900/40', text: 'text-red-400', border: 'border-red-800' },
+  FAILED: { bg: 'bg-stone-900/60', text: 'text-stone-500', border: 'border-stone-700' },
+};
+
+const QualityBadge: React.FC<QualityBadgeProps> = ({ quality }) => {
+  const style = QUALITY_STYLES[quality];
+  return (
+    <span className={cn(
+      "text-[10px] px-1.5 py-0.5 rounded border font-bold inline-flex items-center gap-1",
+      style.bg, style.text, style.border
+    )}>
+      {quality === 'MASTERWORK' && <Star className="w-3 h-3" />}
+      {getQualityDisplayName(quality)}
+    </span>
+  );
+};
+
+// ============================================================================
+// Quality Outcomes Preview (for probabilistic recipes)
+// ============================================================================
+
+interface QualityOutcomesPreviewProps {
+  outcomes: QualityOutcome[];
+}
+
+const QualityOutcomesPreview: React.FC<QualityOutcomesPreviewProps> = ({ outcomes }) => {
+  return (
+    <div className="mt-3 pt-3 border-t border-noir-400">
+      <div className="text-[10px] text-stone-500 uppercase mb-2">品质概率</div>
+      <div className="flex gap-2">
+        {outcomes.map(({ quality, probability, valueMultiplier }) => {
+          const style = QUALITY_STYLES[quality];
+          return (
+            <div
+              key={quality}
+              className={cn(
+                "flex-1 p-2 rounded border text-center",
+                style.bg, style.border
+              )}
+            >
+              <div className={cn("text-[10px] font-bold", style.text)}>
+                {getQualityDisplayName(quality)}
+              </div>
+              <div className="text-xs font-mono text-stone-400 mt-0.5">
+                {Math.round(probability * 100)}%
+              </div>
+              <div className={cn("text-[10px] mt-0.5", valueMultiplier >= 1 ? "text-green-500" : "text-red-400")}>
+                x{valueMultiplier.toFixed(1)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 };

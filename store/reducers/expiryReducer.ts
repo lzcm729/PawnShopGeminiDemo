@@ -11,6 +11,7 @@ import { playSfx } from '../../systems/game/audio';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog, generatePlayerChoiceLog, generateEchoLog } from '../../systems/game/utils/logGenerator';
 import { evaluateRedeemSatisfaction, evaluateRenewalSatisfaction, evaluatePostForfeitSatisfaction, mapToBaseSatisfaction } from '../../systems/game/utils/satisfaction';
 import { getRenewalRefusalPenalty } from '../../systems/economy/renewalPenalty';
+import { GAME_CONFIG } from '../../systems/game/config';
 
 export function expiryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -43,6 +44,52 @@ export function expiryReducer(state: GameState, action: Action): GameState {
             switch (choice) {
                 case 'redeem_accept': {
                     if (event) {
+                        // S2-F3: 违约重铸检测 — 物品被重铸后客户赎回触发违约赔偿
+                        if (item.workState === 'REFORGED' || item.wasReforged) {
+                            const workshopCfg = GAME_CONFIG.WORKSHOP;
+                            const principal = item.pawnInfo?.principal || item.pawnAmount;
+                            const compensation = Math.ceil(principal * workshopCfg.BREACH_COMPENSATION_MULTIPLIER);
+                            cashDelta = -compensation;
+                            repDelta = {
+                                [ReputationType.HUMANITY]: workshopCfg.BREACH_HUMANITY_LOSS,
+                                [ReputationType.CREDIBILITY]: workshopCfg.BREACH_CREDIBILITY_LOSS,
+                                [ReputationType.INNOCENCE]: workshopCfg.BREACH_INNOCENCE_LOSS,
+                            };
+                            log = `[违约重铸] ${event.npcName} 发现 ${item.name} 已被重铸，支付违约赔偿 $${compensation}`;
+                            newInventory = newInventory.map(i =>
+                                i.id === itemId
+                                    ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || [])] }
+                                    : i
+                            );
+                            departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
+                            satisfaction = 'DESPERATE';
+                            playSfx('FAIL');
+
+                            // 资金不足以赔偿时触发 GAME_OVER
+                            if (state.stats.cash + cashDelta < 0) {
+                                return {
+                                    ...state,
+                                    phase: { type: 'GAME_OVER', reason: `无力支付违约赔偿金 $${compensation}，${event.npcName} 将此事告知了所有人。` },
+                                    stats: { ...state.stats, cash: 0 },
+                                    reputation: (() => {
+                                        const newRep = { ...state.reputation };
+                                        newRep[ReputationType.HUMANITY] += workshopCfg.BREACH_HUMANITY_LOSS;
+                                        newRep[ReputationType.CREDIBILITY] += workshopCfg.BREACH_CREDIBILITY_LOSS;
+                                        newRep[ReputationType.INNOCENCE] += workshopCfg.BREACH_INNOCENCE_LOSS;
+                                        clampReputation(newRep);
+                                        return newRep;
+                                    })(),
+                                    inventory: newInventory,
+                                    currentExpiryEvent: null,
+                                    dayEvents: [...state.dayEvents, log],
+                                    lastSatisfaction: satisfaction,
+                                    lastDepartureSatisfaction: departureSatisfaction,
+                                };
+                            }
+                            break;
+                        }
+
+                        // 正常赎回路径
                         cashDelta = event.redemptionCost.total;
                         const redeemLog = generateRedeemLog(event.npcName, item, state.stats.day, cashDelta);
                         // S3-F1: Player choice log for expiry decision

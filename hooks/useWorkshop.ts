@@ -18,6 +18,7 @@ import {
   ReforgeRecipe,
   RecipeStatus,
   WorkshopResult,
+  InProgressRecipe,
   ViolationWarning,
   isRestoreRecipe,
   isReforgeRecipe,
@@ -25,8 +26,11 @@ import {
   performWorkshop,
   getBlockReasonText,
   getViolationWarning,
+  isMultiNightRecipe,
+  getInProgressRecipe,
   RESTORE_RECIPES,
   REFORGE_RECIPES,
+  getRecipeById,
 } from '../systems/workshop';
 
 // ============================================================================
@@ -64,11 +68,17 @@ interface UseWorkshopReturn {
   /** 精力上限 */
   maxEnergy: number;
 
+  /** 进行中的多夜工序 */
+  inProgressRecipes: InProgressRecipe[];
+
   /** 执行修复 */
   doRestore: (itemId: string, recipeId: string) => WorkshopOperationResult | null;
 
   /** 执行重铸 */
   doReforge: (itemId: string, recipeId: string) => WorkshopOperationResult | null;
+
+  /** 推进多夜工序（夜间处理时调用） */
+  advanceInProgressRecipe: (itemId: string) => WorkshopOperationResult | null;
 
   /** 获取配方的状态 */
   getStatus: (recipe: Recipe, item: Item) => RecipeStatus;
@@ -205,7 +215,7 @@ function getReforgeRecipeForItem(item: Item): ReforgeRecipe | null {
 
 export const useWorkshop = (): UseWorkshopReturn => {
   const { state, dispatch } = useGame();
-  const { inventory, nightState, essenceBalance } = state;
+  const { inventory, nightState, essenceBalance, inProgressRecipes } = state;
 
   // 获取可操作的物品列表
   const workshopableItems = useMemo((): WorkshopableItem[] => {
@@ -302,7 +312,66 @@ export const useWorkshop = (): UseWorkshopReturn => {
       };
     }
 
-    // 执行操作
+    // 检查是否为多夜配方
+    const recipe = getRecipeById(recipeId);
+    if (recipe && isMultiNightRecipe(recipe)) {
+      // 检查物品是否已有进行中的工序
+      const existing = getInProgressRecipe(itemId, inProgressRecipes);
+      if (existing) {
+        return {
+          success: false,
+          errorReason: '该物品已有进行中的工序',
+        };
+      }
+
+      // 多夜配方第一夜：扣除精魄和精力，创建进度记录，但不执行最终效果
+      const status = getRecipeStatus(recipe, item, essenceBalance, nightState);
+      if (!status.canApply) {
+        return {
+          success: false,
+          errorReason: status.reason || '无法执行',
+        };
+      }
+
+      // 消耗精力
+      dispatch({ type: 'CONSUME_NIGHT_ENERGY', payload: recipe.energyCost });
+      // 消耗精魄
+      dispatch({ type: 'SPEND_ESSENCE_BATCH', payload: status.actualCost });
+      // 创建多夜工序进度记录
+      dispatch({
+        type: 'START_MULTI_NIGHT_RECIPE',
+        payload: {
+          recipeId,
+          itemId,
+          nightsCompleted: 1,
+          nightsRequired: recipe.nightsRequired!,
+          essenceSpent: status.actualCost,
+        },
+      });
+      // 记录行动
+      dispatch({
+        type: 'RECORD_NIGHT_ACTION',
+        payload: `${type.toUpperCase()}_START:${item.id}:${recipeId}`,
+      });
+
+      return {
+        success: true,
+        result: {
+          success: true,
+          type: recipe.type,
+          recipeId,
+          essenceSpent: status.actualCost,
+          energySpent: recipe.energyCost,
+          narrative: {
+            actionText: `开始${recipe.name}的第一夜工序...`,
+            resultText: `工序进行中 (1/${recipe.nightsRequired})，明晚继续。`,
+            gazeText: '今夜的工作只是开始，明晚还需继续。',
+          },
+        },
+      };
+    }
+
+    // 单夜配方：直接执行
     const output = performWorkshop(recipeId, item, essenceBalance, nightState);
     if (!output) {
       return {
@@ -311,7 +380,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       };
     }
 
-    const { result, updatedItem, newBalance } = output;
+    const { result, updatedItem } = output;
 
     // 消耗精力
     dispatch({
@@ -349,13 +418,112 @@ export const useWorkshop = (): UseWorkshopReturn => {
     };
   }
 
+  // 推进多夜工序
+  const advanceInProgressRecipe = useCallback(
+    (itemId: string): WorkshopOperationResult | null => {
+      const progress = getInProgressRecipe(itemId, inProgressRecipes);
+      if (!progress) {
+        return { success: false, errorReason: '该物品没有进行中的工序' };
+      }
+
+      const item = inventory.find(i => i.id === itemId);
+      if (!item) {
+        return { success: false, errorReason: '物品不存在' };
+      }
+
+      const recipe = getRecipeById(progress.recipeId);
+      if (!recipe) {
+        return { success: false, errorReason: '配方不存在' };
+      }
+
+      // 检查精力是否足够（后续夜只消耗精力，不消耗精魄）
+      if (nightState.energy < recipe.energyCost) {
+        return { success: false, errorReason: '精力不足' };
+      }
+
+      const newNightsCompleted = progress.nightsCompleted + 1;
+      const isComplete = newNightsCompleted >= progress.nightsRequired;
+
+      // 消耗精力
+      dispatch({ type: 'CONSUME_NIGHT_ENERGY', payload: recipe.energyCost });
+
+      if (isComplete) {
+        // 最终夜：执行实际效果
+        const output = performWorkshop(progress.recipeId, item, essenceBalance, nightState);
+        if (!output) {
+          // 完成多夜工序记录但标记为取消
+          dispatch({ type: 'COMPLETE_MULTI_NIGHT_RECIPE', payload: { itemId } });
+          return { success: false, errorReason: '最终工序执行失败' };
+        }
+
+        const { result, updatedItem } = output;
+
+        // 注意：精魄已在第一夜扣除，所以这里不再扣除
+        // performWorkshop 内部已扣除了一次，需要补偿回去
+        // 更简单的做法：最终夜直接应用效果到物品，不通过 performWorkshop
+        // 但为了复用逻辑（概率/品质/surprise），仍通过 performWorkshop
+
+        // 更新物品
+        dispatch({
+          type: 'UPDATE_ITEM_TAGS',
+          payload: {
+            itemId: item.id,
+            tags: updatedItem.tags,
+            wasRestored: updatedItem.wasRestored,
+            wasReforged: updatedItem.wasReforged,
+            workState: updatedItem.workState,
+          },
+        });
+
+        // 清除进度记录
+        dispatch({ type: 'COMPLETE_MULTI_NIGHT_RECIPE', payload: { itemId } });
+
+        // 记录行动
+        dispatch({
+          type: 'RECORD_NIGHT_ACTION',
+          payload: `REFORGE_COMPLETE:${item.id}:${progress.recipeId}`,
+        });
+
+        return { success: true, result };
+      } else {
+        // 中间夜：推进进度
+        dispatch({ type: 'ADVANCE_MULTI_NIGHT_RECIPE', payload: { itemId } });
+
+        // 记录行动
+        dispatch({
+          type: 'RECORD_NIGHT_ACTION',
+          payload: `REFORGE_PROGRESS:${item.id}:${progress.recipeId}:${newNightsCompleted}/${progress.nightsRequired}`,
+        });
+
+        return {
+          success: true,
+          result: {
+            success: true,
+            type: recipe.type,
+            recipeId: progress.recipeId,
+            essenceSpent: {},
+            energySpent: recipe.energyCost,
+            narrative: {
+              actionText: `继续${recipe.name}的工序...`,
+              resultText: `工序进行中 (${newNightsCompleted}/${progress.nightsRequired})。`,
+              gazeText: '工序稳步推进，距离完成又近了一步。',
+            },
+          },
+        };
+      }
+    },
+    [inventory, nightState, essenceBalance, inProgressRecipes, dispatch]
+  );
+
   return {
     workshopableItems,
     essenceBalance,
     currentEnergy: nightState.energy,
     maxEnergy: nightState.maxEnergy,
+    inProgressRecipes,
     doRestore,
     doReforge,
+    advanceInProgressRecipe,
     getStatus,
     getReasonText,
     getWarning,

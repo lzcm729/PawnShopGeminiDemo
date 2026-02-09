@@ -12,6 +12,7 @@ export type {
   ReforgeQuality,
   QualityOutcome,
   SurpriseDiscovery,
+  InProgressRecipe,
   WorkshopResult,
   WorkshopBlockReason,
   RecipeStatus,
@@ -43,4 +44,7 @@ export {
   getViolationWarning,
   rollQualityOutcome,
   getQualityDisplayName,
+  isMultiNightRecipe,
+  getInProgressRecipe,
+  hasInProgressRecipe,
 } from './workshopLogic';

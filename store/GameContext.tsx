@@ -99,6 +99,7 @@ const initialState: GameState = {
         actionsThisNight: [] as string[],
         energyLevel: 0,
     },
+    inProgressRecipes: [],
     // === SHOP UPGRADES ===
     shopUpgrades: { ...INITIAL_SHOP_UPGRADES },
     showUpgradeShop: false,
