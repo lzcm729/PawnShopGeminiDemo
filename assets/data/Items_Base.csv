@@ -29,3 +29,16 @@ item_whisky_01,老威士忌,保存完好的威士忌,珍稀单桶原酒,酒类,8
 item_maotai_01,老茅台,品相完好的茅台,陈年飞天茅台,酒类,1500,1200,0.35,,VINTAGE_REAL;SENTIMENTAL,trait_vintage_year,120,酒瓶封口完好，酒线正常。,经过专业鉴定，确认年份真实。,经查证为八十年代出厂，陈年佳酿。,elderly;middle;fancy,true
 item_inkstone_01,旧砚台,清洗后的端砚,名坑老坑砚,文房,400,300,0.4,DIRTY,VINTAGE_REAL;ARTISTIC,trait_pit_mark,100,砚面有墨渍，边缘有磕碰。,清洗后石质细腻，发墨极佳。,经鉴定为端溪老坑石，极为珍贵。,elderly;decent,true
 item_seal_01,旧印章,清理后的寿山石印,名家篆刻印,文房,350,280,0.35,DIRTY,ARTISTIC;SENTIMENTAL,trait_carver_mark,90,印面有残墨，钮部有轻微磨损。,清理后石质温润，印文清晰。,经考证为某金石名家所刻，边款可辨。,elderly;middle,true
+item_necklace_01,发黑的项链,抛光银项链,宫廷风珠宝,首饰,450,380,0.3,DIRTY,GOLD;SENTIMENTAL,trait_filler_jewelry_bargain,90,银链发黑，坠子被油污遮盖，款式看起来有些年头。,抛光后银面雪亮，坠子上的宝石闪烁着冷冽的光。,经鉴定坠子上的宝石为天然无烧，链身工艺为清代宫廷风格。,female;elderly;decent,true
+item_bracelet_01,褪色手镯,保养翡翠镯,老坑冰种镯,首饰,600,500,0.35,DIRTY,GOLD;VINTAGE_REAL,trait_filler_jewelry_mistake,100,翡翠手镯表面有些发乌，光泽暗淡，似乎放了很久。,经过仔细清洁保养，玉质渐渐通透起来。,据说是老坑出的冰种翡翠，水头极好。,female;elderly;middle;decent,true
+item_inkpainting_01,卷轴水墨画,装裱水墨画,名家山水卷,艺术品,700,500,0.4,DIRTY,ARTISTIC;VINTAGE_REAL,trait_filler_art_bargain,140,画轴泛黄发霉，展开后画面有些模糊，但笔墨颇有气韵。,重新装裱后画面清晰，墨色层次分明，气势磅礴。,经专家鉴定为某近代山水名家的早期作品，流传有序。,elderly;decent;fancy,true
+item_buddha_01,铜佛像,清理铜佛,明代鎏金佛,古董,1500,1100,0.4,DIRTY;RUSTED,VINTAGE_REAL;ARTISTIC,trait_filler_antique_bargain,130,铜佛通体铜绿，面目模糊，底座有一层厚厚的锈迹。,清除锈迹后铜质温润，佛像面容慈悲，线条流畅。,经鉴定为明代鎏金铜佛，工艺精湛，存世稀少。,elderly;decent;SENTIMENTAL,true
+item_threadbook_01,虫蛀线装书,修复线装书,宋版珍本,书籍,250,200,0.3,BROKEN;DIRTY,VINTAGE_REAL,trait_filler_book_bargain,80,书页虫蛀严重，线装散开，但刻版字迹工整。,重新穿线装订后，书页平整，字迹清晰可读。,经版本学家考证为宋刻本残卷，极为珍贵。,elderly;middle,true
+item_phone_01,旧款手机,翻新手机,限定配色款,电子产品,600,700,0.25,,MECHANICAL;TRENDY,trait_filler_electronics_mistake,70,屏幕有些划痕，外壳磨损，但开机流畅。,更换屏幕保护膜后焕然一新，系统运行顺畅。,据查证为某品牌与设计师联名的限定配色款。,young;middle;plain;shabby,true
+item_jade_pendant_01,浑浊玉坠,通透玉佩,和田籽料坠,珠宝,1800,1500,0.4,DIRTY,GOLD;VINTAGE_REAL,trait_filler_jewelry_bargain,110,玉坠表面蒙着一层厚重的油泥，透光性很差。,仔细清洗后玉质温润细腻，隐约有油脂光泽。,经检测为新疆和田籽料，白度极高，皮色自然。,elderly;middle;decent;fancy,true
+item_qipao_01,褪色旗袍,修复旗袍,民国名媛定制旗袍,服饰,500,400,0.35,DIRTY,VINTAGE_REAL;ARTISTIC,trait_filler_clothing_bargain,90,丝绸面料褪色发黄，盘扣有些松动，但裁剪精致。,经过专业修复和染色还原，旗袍光彩重现。,经考证为民国时期上海名裁缝定制，面料为法国进口丝绸。,female;elderly;decent;fancy,true
+item_jacket_01,磨损皮夹克,保养皮衣,摇滚传奇外套,服饰,350,300,0.25,DIRTY,TRENDY;SENTIMENTAL,trait_filler_clothing_mistake,70,皮面有多处擦痕，拉链有些涩，内衬起球。,经过皮革保养和拉链更换，质感恢复柔软。,据说曾属于某位摇滚乐手，内衬有手写签名。,young;middle;male;plain,true
+item_watchbox_01,落灰的表盒,清洁名表盒,限量收藏套装,奢侈品,400,350,0.3,DIRTY,TRENDY;MECHANICAL,trait_filler_luxury_bargain,80,木质表盒落满灰尘，铰链有些松动，但内衬完好。,清洁后木纹细腻，五金件恢复光泽，内衬平整如新。,经查证为某顶级腕表品牌限量收藏套装的原装盒。,male;middle;decent;fancy,true
+item_scarf_01,起球丝巾,清洗丝巾,大师联名限定丝巾,奢侈品,300,250,0.25,DIRTY,TRENDY;ARTISTIC,trait_filler_luxury_mistake,70,丝巾有些起球，折痕明显，颜色尚算鲜艳。,经专业清洗后丝质柔滑，图案色彩饱满。,据称为某奢侈品牌与艺术大师的联名限定款。,female;middle;decent;fancy,true
+item_bronze_mirror_01,锈蚀铜镜,清理铜镜,唐代海兽葡萄镜,古玩,1000,700,0.45,DIRTY;RUSTED,VINTAGE_REAL;ARTISTIC,trait_filler_curio_bargain,120,镜面锈蚀严重，纹饰几乎看不清，分量沉重。,清除锈迹后纹饰渐显，线条精美，铸造精良。,经鉴定为唐代海兽葡萄纹铜镜，品相罕见。,elderly;decent,true
+item_jade_tablet_01,灰蒙玉牌,盘玩玉牌,乾隆工玉牌,古玩,800,600,0.4,DIRTY,VINTAGE_REAL;ARTISTIC,trait_filler_curio_mistake,110,玉牌表面灰蒙蒙的，雕工看着还算细致。,经过仔细盘玩，玉质逐渐温润，雕工清晰可辨。,据称为乾隆年间宫廷玉匠所制，工艺登峰造极。,elderly;middle;decent,true
