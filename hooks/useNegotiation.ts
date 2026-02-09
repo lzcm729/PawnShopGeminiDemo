@@ -429,6 +429,12 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
             totalConcessionMod += GAME_CONFIG.NEGOTIATION.MERCY_CONCESSION_BONUS;
         }
 
+        // #47: Insult = 0% concession (NPC won't concede on insulting offers)
+        // Override concession modifier to make it impossible
+        if (currentIsInsult) {
+            totalConcessionMod = -10; // Large negative to guarantee 0% concession
+        }
+
         // Execute push-pull judgment (I-7: pass combined modifier, D: precision multiplier)
         const concessionMult = getConcessionMultiplier(lockedUncertaintyRef.current);
         pushPullResult = executePushPull(
