@@ -1,4 +1,7 @@
 import { MailDelay, MailTemplate, MailAttachment, MailTone, MailCategory } from './types';
+import { parseCSV, CSVSchema, stringCol, listCol } from '../utils/csvReader';
+import threatMailsCsv from '@/assets/data/texts/threat_mails.csv?raw';
+import mailDefaultsCsv from '@/assets/data/texts/mail_defaults.csv?raw';
 
 export interface InterpolationContext {
     itemName?: string;
@@ -16,15 +19,48 @@ const formatCurrency = (amount: number): string => {
     return `$${amount.toLocaleString()}`;
 };
 
+// ============================================================================
+// Mail Default Texts (CSV)
+// ============================================================================
+
+interface MailDefaultRow {
+  key: string;
+  text: string;
+}
+
+const MAIL_DEFAULT_SCHEMA: CSVSchema = {
+  'key': stringCol('key'),
+  'text': stringCol('text'),
+};
+
+let _mailDefaults: Map<string, string> | null = null;
+
+function getMailDefaults(): Map<string, string> {
+  if (!_mailDefaults) {
+    _mailDefaults = new Map();
+    const rows = parseCSV<MailDefaultRow>(mailDefaultsCsv, MAIL_DEFAULT_SCHEMA, {
+      warnUnknownColumns: false,
+    });
+    for (const row of rows) {
+      if (row.key) _mailDefaults.set(row.key, row.text);
+    }
+  }
+  return _mailDefaults;
+}
+
+function getDefault(key: string, fallback: string): string {
+  return getMailDefaults().get(key) ?? fallback;
+}
+
 export const interpolateMailBody = (templateBody: string, context: InterpolationContext = {}): string => {
     let result = templateBody;
 
-    // Default replacements
+    // Default replacements from CSV
     const safeContext = {
-        itemName: "那件物品",
+        itemName: getDefault('interpolation_itemName', '那件物品'),
         amount: 0,
-        playerName: "老板",
-        npcName: "顾客",
+        playerName: getDefault('interpolation_playerName', '老板'),
+        npcName: getDefault('interpolation_npcName', '顾客'),
         daysPassed: 0,
         ...context
     };
@@ -264,34 +300,46 @@ export interface ThreatMailContext {
     senderOverride?: string;
 }
 
-/** Threat mail template pool — cryptic, menacing content */
-const THREAT_MAIL_POOL: Array<{ subject: string; body: string; triggerEvents: string[] }> = [
-    {
-        triggerEvents: ['UNDERCOVER_VISIT', 'GENERAL'],
-        subject: '你会后悔的',
-        body: `$@#*&!... 信号不好......\n\n夜路走多了，小心影子。\n\n......$#@!*`,
-    },
-    {
-        triggerEvents: ['HEAT_THRESHOLD', 'GENERAL'],
-        subject: '老朋友的忠告',
-        body: `听说最近风声很紧。\n\n有些人在打听你的事。我只说一次：该收手的时候就收手。\n\n别让我替你收拾残局。`,
-    },
-    {
-        triggerEvents: ['STOLEN_GOODS', 'GENERAL'],
-        subject: '关于那件东西',
-        body: `你手上有些不该有的东西。\n\n我不在乎你是怎么得到的。但有人在乎。\n\n%#@... 自己想想接下来该怎么办。`,
-    },
-    {
-        triggerEvents: ['PROTECTION_FEE', 'GENERAL'],
-        subject: '到期提醒',
-        body: `商人讲究的是规矩。\n\n上次的事情，你应该清楚。这条街上做生意，总要有人罩着。\n\n希望下次不用我亲自来提醒。`,
-    },
-    {
-        triggerEvents: ['HEAT_THRESHOLD', 'UNDERCOVER_VISIT'],
-        subject: '// 无标题 //',
-        body: `......\n\n我看见你了。\n\n......`,
-    },
-];
+// ============================================================================
+// Threat Mail Pool (CSV-loaded, shared with mailRegistry.ts)
+// ============================================================================
+
+interface ThreatMailRow {
+  id: string;
+  triggerEvents: string[];
+  subject: string;
+  body: string;
+}
+
+const THREAT_MAIL_CSV_SCHEMA: CSVSchema = {
+  'id': stringCol('id'),
+  'triggerEvents': listCol('triggerEvents', ';'),
+  'subject': stringCol('subject'),
+  'body': stringCol('body'),
+};
+
+let _threatMailPool: Array<{ id: string; subject: string; body: string; triggerEvents: string[] }> | null = null;
+
+/**
+ * Get the threat mail pool from CSV (single source of truth).
+ * Also used by mailRegistry.ts via getThreatMailPool().
+ */
+export function getThreatMailPool(): Array<{ id: string; subject: string; body: string; triggerEvents: string[] }> {
+  if (!_threatMailPool) {
+    const rows = parseCSV<ThreatMailRow>(threatMailsCsv, THREAT_MAIL_CSV_SCHEMA, {
+      warnUnknownColumns: false,
+    });
+    _threatMailPool = rows
+      .filter(row => row.id && row.subject)
+      .map(row => ({
+        id: row.id,
+        subject: row.subject,
+        body: row.body.replace(/\\n/g, '\n'),
+        triggerEvents: row.triggerEvents,
+      }));
+  }
+  return _threatMailPool;
+}
 
 /**
  * Generate a threat mail template from the pool.
@@ -306,13 +354,15 @@ const THREAT_MAIL_POOL: Array<{ subject: string; body: string; triggerEvents: st
  * The calling system should dispatch this via SCHEDULE_MAIL with delayDays=0.
  */
 export function generateThreatMail(context: ThreatMailContext): MailTemplate {
+    const pool = getThreatMailPool();
+
     // Filter pool by trigger event, fallback to GENERAL
-    const candidates = THREAT_MAIL_POOL.filter(
+    const candidates = pool.filter(
         t => t.triggerEvents.includes(context.triggerEvent)
     );
 
     // Pick a random candidate (or fallback to first GENERAL)
-    const fallback = THREAT_MAIL_POOL.find(t => t.triggerEvents.includes('GENERAL'))!;
+    const fallback = pool.find(t => t.triggerEvents.includes('GENERAL'))!;
     const selected = candidates.length > 0
         ? candidates[Math.floor(Math.random() * candidates.length)]
         : fallback;

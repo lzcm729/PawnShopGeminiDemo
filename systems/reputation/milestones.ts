@@ -1,65 +1,97 @@
 
 import { ReputationMilestone } from './types';
 import { ReputationType } from '../core/types';
+import { parseCSV, CSVSchema, stringCol } from '../utils/csvReader';
+import { GAME_CONFIG } from '../game/config';
+import milestonesCsv from '@/assets/data/texts/milestones.csv?raw';
 
-export const REPUTATION_MILESTONES: ReputationMilestone[] = [
-    // --- HUMANITY ---
-    {
-        id: 'hum_saint',
-        label: "贫民窟圣徒 (Saint)",
-        description: "你对弱者的仁慈在这个街区广为流传。",
-        trigger: { type: ReputationType.HUMANITY, value: 70, operator: '>=' },
-        icon: 'HeartHandshake',
-        color: 'text-rose-500',
-        effectDescription: "母亲心情改善，每日健康衰减 -1"
-    },
-    {
-        id: 'hum_cold',
-        label: "冷血动物 (Cold Blooded)",
-        description: "人们都知道你只认钱不认人。",
-        trigger: { type: ReputationType.HUMANITY, value: 10, operator: '<=' },
-        icon: 'Snowflake',
-        color: 'text-cyan-400',
-        effectDescription: "只有走投无路的人才会来找你 (绝望顾客概率提升)"
-    },
+// ============================================================================
+// CSV Loading
+// ============================================================================
 
-    // --- CREDIBILITY ---
-    {
-        id: 'cred_expert',
-        label: "金字招牌 (Gold Standard)",
-        description: "你的鉴定结果就是市场标准。",
-        trigger: { type: ReputationType.CREDIBILITY, value: 60, operator: '>=' },
-        icon: 'Award',
-        color: 'text-amber-400',
-        effectDescription: "每日行动点 (AP) 上限 +2"
-    },
-    {
-        id: 'cred_scam',
-        label: "奸商 (Scammer)",
-        description: "大家都知道你的秤有问题。",
-        trigger: { type: ReputationType.CREDIBILITY, value: 10, operator: '<=' },
-        icon: 'AlertOctagon',
-        color: 'text-red-500',
-        effectDescription: "正常顾客会避开你的店"
-    },
+interface MilestoneTextRow {
+  id: string;
+  label: string;
+  description: string;
+  effectDescription: string;
+}
 
-    // --- INNOCENCE ---
-    {
-        id: 'inn_lawful',
-        label: "守法公民 (Law Abiding)",
-        description: "警方将你视为合作伙伴，可能提供情报。",
-        trigger: { type: ReputationType.INNOCENCE, value: 70, operator: '>=' },
-        icon: 'Shield',
-        color: 'text-blue-500',
-        effectDescription: "警方友好，可能提供情报"
-    },
-    {
-        id: 'inn_suspect',
-        label: "嫌疑人 (Suspect)",
-        description: "警方已经注意到你的店铺。",
-        trigger: { type: ReputationType.INNOCENCE, value: 20, operator: '<=' },
-        icon: 'AlertTriangle',
-        color: 'text-orange-500',
-        effectDescription: "可能触发突击检查事件"
+const MILESTONE_TEXT_SCHEMA: CSVSchema = {
+  'id': stringCol('id'),
+  'label': stringCol('label'),
+  'description': stringCol('description'),
+  'effectDescription': stringCol('effectDescription'),
+};
+
+// Icon and color are presentation config, kept in code
+const MILESTONE_PRESENTATION: Record<string, { icon: string; color: string }> = {
+  hum_saint: { icon: 'HeartHandshake', color: 'text-rose-500' },
+  hum_cold: { icon: 'Snowflake', color: 'text-cyan-400' },
+  cred_expert: { icon: 'Award', color: 'text-amber-400' },
+  cred_scam: { icon: 'AlertOctagon', color: 'text-red-500' },
+  inn_lawful: { icon: 'Shield', color: 'text-blue-500' },
+  inn_suspect: { icon: 'AlertTriangle', color: 'text-orange-500' },
+};
+
+// Map TOML trigger_type string to ReputationType enum
+const REPUTATION_TYPE_MAP: Record<string, ReputationType> = {
+  'Humanity': ReputationType.HUMANITY,
+  'Credibility': ReputationType.CREDIBILITY,
+  'Innocence': ReputationType.INNOCENCE,
+};
+
+// ============================================================================
+// Lazy Initialization
+// ============================================================================
+
+let _milestones: ReputationMilestone[] | null = null;
+
+function buildMilestones(): ReputationMilestone[] {
+  if (_milestones) return _milestones;
+
+  const textRows = parseCSV<MilestoneTextRow>(milestonesCsv, MILESTONE_TEXT_SCHEMA, {
+    warnUnknownColumns: false,
+  });
+
+  const tomlMilestones = GAME_CONFIG.REPUTATION_MILESTONES;
+
+  _milestones = textRows
+    .filter(row => row.id && tomlMilestones[row.id])
+    .map(row => {
+      const trigger = tomlMilestones[row.id];
+      const presentation = MILESTONE_PRESENTATION[row.id] ?? { icon: 'Circle', color: 'text-gray-400' };
+
+      return {
+        id: row.id,
+        label: row.label,
+        description: row.description,
+        effectDescription: row.effectDescription,
+        trigger: {
+          type: REPUTATION_TYPE_MAP[trigger.trigger_type] ?? ReputationType.HUMANITY,
+          value: trigger.trigger_value,
+          operator: trigger.trigger_operator as '>=' | '<=',
+        },
+        icon: presentation.icon,
+        color: presentation.color,
+      };
+    });
+
+  return _milestones;
+}
+
+// ============================================================================
+// Export (backward compatible)
+// ============================================================================
+
+export const REPUTATION_MILESTONES: ReputationMilestone[] = new Proxy([] as ReputationMilestone[], {
+  get(_, prop) {
+    const data = buildMilestones();
+    if (prop === 'length') return data.length;
+    if (prop === Symbol.iterator) return data[Symbol.iterator].bind(data);
+    if (typeof prop === 'string' && !isNaN(Number(prop))) return data[Number(prop)];
+    if (typeof prop === 'string' && typeof (data as any)[prop] === 'function') {
+      return (data as any)[prop].bind(data);
     }
-];
+    return (data as any)[prop as any];
+  },
+});

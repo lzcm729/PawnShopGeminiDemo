@@ -736,3 +736,64 @@ flawed_probability = 0.25
 flawed_multiplier = 0.65
 failed_probability = 0.15
 failed_multiplier = 0.0
+
+# ------------------------------------------------------------
+# 声誉里程碑阈值 (Reputation Milestones)
+# ------------------------------------------------------------
+[reputation_milestones.hum_saint]
+trigger_type = "Humanity"
+trigger_value = 70
+trigger_operator = ">="
+
+[reputation_milestones.hum_cold]
+trigger_type = "Humanity"
+trigger_value = 10
+trigger_operator = "<="
+
+[reputation_milestones.cred_expert]
+trigger_type = "Credibility"
+trigger_value = 60
+trigger_operator = ">="
+
+[reputation_milestones.cred_scam]
+trigger_type = "Credibility"
+trigger_value = 10
+trigger_operator = "<="
+
+[reputation_milestones.inn_lawful]
+trigger_type = "Innocence"
+trigger_value = 70
+trigger_operator = ">="
+
+[reputation_milestones.inn_suspect]
+trigger_type = "Innocence"
+trigger_value = 20
+trigger_operator = "<="
+
+# ------------------------------------------------------------
+# 精魄获取表 (Essence Gains)
+# ------------------------------------------------------------
+[essence.tier_gains.CHARITY]
+craft = 0
+time = 0
+vibe = 4
+
+[essence.tier_gains.AID]
+craft = 0
+time = 0
+vibe = 2
+
+[essence.tier_gains.STANDARD]
+craft = 2
+time = 0
+vibe = 0
+
+[essence.tier_gains.SHARK]
+craft = 0
+time = 4
+vibe = 0
+
+[essence.stolen_goods_gain]
+craft = 0
+time = 2
+vibe = 0

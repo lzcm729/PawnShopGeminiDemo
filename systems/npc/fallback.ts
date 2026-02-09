@@ -2,136 +2,169 @@
  * Fallback 客户生成器
  *
  * 当 AI 生成失败时使用的预设客户数据。
- * 物品使用 CSV 模板系统创建。
+ * 客户对话和属性从 CSV 加载，物品使用 CSV 模板系统创建。
  */
 
 import { Customer } from "../../types";
 import { Item, ItemStatus } from "../items/types";
+import { Mood, BehaviorTag } from "../core/types";
 import { createItemFromTemplate } from "../items/csvLoader";
 import { initializeKnowledgePool } from "../items/tagUtils";
+import { parseCSV, CSVSchema, stringCol, numberCol, booleanCol } from '../utils/csvReader';
+import fallbackCsv from '@/assets/data/texts/fallback_customers.csv?raw';
 
 // ============================================================================
-// 客户预设（使用模板 ID 引用物品）
+// CSV Loading
+// ============================================================================
+
+interface FallbackCustomerRow {
+  id: string;
+  templateId: string;
+  name: string;
+  description: string;
+  avatarSeed: string;
+  patience: number;
+  mood: string;
+  redemptionResolve: string;
+  desiredAmount: number;
+  minimumAmount: number;
+  survivalMinimum: number;
+  maxRepayment: number;
+  historySnippet: string;
+  archiveSummary: string;
+  isStolen: boolean;
+  sentimentalValue: boolean;
+  greeting: string;
+  pawnReason: string;
+  redemptionPlea: string;
+  negotiationDynamic: string;
+  accepted_fair: string;
+  accepted_fleeced: string;
+  accepted_premium: string;
+  rejected: string;
+  rejection_standard: string;
+  rejection_angry: string;
+  exit_grateful: string;
+  exit_neutral: string;
+  exit_resentful: string;
+  exit_desperate: string;
+}
+
+const FALLBACK_SCHEMA: CSVSchema = {
+  'id': stringCol('id'),
+  'templateId': stringCol('templateId'),
+  'name': stringCol('name'),
+  'description': stringCol('description'),
+  'avatarSeed': stringCol('avatarSeed'),
+  'patience': numberCol('patience'),
+  'mood': stringCol('mood'),
+  'redemptionResolve': stringCol('redemptionResolve'),
+  'desiredAmount': numberCol('desiredAmount'),
+  'minimumAmount': numberCol('minimumAmount'),
+  'survivalMinimum': numberCol('survivalMinimum'),
+  'maxRepayment': numberCol('maxRepayment'),
+  'historySnippet': stringCol('historySnippet'),
+  'archiveSummary': stringCol('archiveSummary'),
+  'isStolen': booleanCol('isStolen'),
+  'sentimentalValue': booleanCol('sentimentalValue'),
+  'greeting': stringCol('greeting'),
+  'pawnReason': stringCol('pawnReason'),
+  'redemptionPlea': stringCol('redemptionPlea'),
+  'negotiationDynamic': stringCol('negotiationDynamic'),
+  'accepted_fair': stringCol('accepted_fair'),
+  'accepted_fleeced': stringCol('accepted_fleeced'),
+  'accepted_premium': stringCol('accepted_premium'),
+  'rejected': stringCol('rejected'),
+  'rejection_standard': stringCol('rejection_standard'),
+  'rejection_angry': stringCol('rejection_angry'),
+  'exit_grateful': stringCol('exit_grateful'),
+  'exit_neutral': stringCol('exit_neutral'),
+  'exit_resentful': stringCol('exit_resentful'),
+  'exit_desperate': stringCol('exit_desperate'),
+};
+
+// Code-defined identifiers (not content)
+const BEHAVIOR_TAGS: Record<string, BehaviorTag[]> = {
+  zhang: ['DESPERATE'],
+  chen: ['SAVVY'],
+  mystery: ['STUBBORN'],
+};
+
+const IDENTITY_TAGS: Record<string, string[]> = {
+  zhang: ['HighRisk', 'Gambler'],
+  chen: ['Student'],
+  mystery: ['Suspicious'],
+};
+
+// ============================================================================
+// Lazy Initialization
 // ============================================================================
 
 interface FallbackCustomerPreset {
-  templateId: string;  // 物品模板 ID（来自 Items_Base.csv）
+  templateId: string;
   customer: Omit<Partial<Customer>, 'item'>;
-  itemOverrides?: Partial<Item>;  // 覆盖模板的属性
+  itemOverrides?: Partial<Item>;
 }
 
-const FALLBACK_PRESETS: FallbackCustomerPreset[] = [
-  {
-    templateId: 'item_watch_gambler',
-    itemOverrides: {
-      historySnippet: '这是我赢来的... 以前。',
-      archiveSummary: '老张为了赌资典当的手表。',
-    },
-    customer: {
-      name: "老张",
-      description: "满脸通红，浑身酒气的中年男人。",
-      avatarSeed: "drunk_zhang",
-      dialogue: {
-        greeting: "老板... 嗝！这表... 跟了我十年了。",
-        pawnReason: "今晚的手气太差了，就差一把... 就一把我就能翻本！",
-        redemptionPlea: "明天... 明天我就来赎！我发誓！",
-        negotiationDynamic: "别磨叽了，快点给钱！",
-        accepted: { fair: "行！算你爽快！", fleeced: "切... 趁火打劫是吧？拿来！", premium: "老板你真是活菩萨！" },
-        rejected: "不识货！我去隔壁！",
-        rejectionLines: { standard: "走了。", angry: "晦气！" },
-        exitDialogues: {
-          grateful: "这就对了！等我发财了请你喝酒！",
-          neutral: "走了。回见。",
-          resentful: "什么破地方... 也就是老子今天手气背。",
-          desperate: "唉... 这一把一定要赢啊..."
-        }
+let _presets: FallbackCustomerPreset[] | null = null;
+
+function getPresets(): FallbackCustomerPreset[] {
+  if (_presets) return _presets;
+
+  const rows = parseCSV<FallbackCustomerRow>(fallbackCsv, FALLBACK_SCHEMA, {
+    warnUnknownColumns: false,
+  });
+
+  _presets = rows
+    .filter(row => row.id && row.templateId)
+    .map(row => ({
+      templateId: row.templateId,
+      itemOverrides: {
+        historySnippet: row.historySnippet,
+        archiveSummary: row.archiveSummary,
+        ...(row.isStolen ? { isStolen: true } : {}),
+        ...(row.sentimentalValue ? { sentimentalValue: true } : {}),
+      } as Partial<Item>,
+      customer: {
+        name: row.name,
+        description: row.description,
+        avatarSeed: row.avatarSeed,
+        dialogue: {
+          greeting: row.greeting,
+          pawnReason: row.pawnReason,
+          redemptionPlea: row.redemptionPlea,
+          negotiationDynamic: row.negotiationDynamic,
+          accepted: {
+            fair: row.accepted_fair,
+            fleeced: row.accepted_fleeced,
+            premium: row.accepted_premium,
+          },
+          rejected: row.rejected,
+          rejectionLines: {
+            standard: row.rejection_standard,
+            angry: row.rejection_angry,
+          },
+          exitDialogues: {
+            grateful: row.exit_grateful,
+            neutral: row.exit_neutral,
+            resentful: row.exit_resentful,
+            desperate: row.exit_desperate,
+          },
+        },
+        redemptionResolve: row.redemptionResolve as 'Strong' | 'Medium' | 'Weak' | 'None',
+        behaviorTags: BEHAVIOR_TAGS[row.id] ?? [] as BehaviorTag[],
+        patience: row.patience,
+        mood: row.mood as Mood,
+        identityTags: IDENTITY_TAGS[row.id] ?? [],
+        desiredAmount: row.desiredAmount,
+        minimumAmount: row.minimumAmount,
+        survivalMinimum: row.survivalMinimum,
+        maxRepayment: row.maxRepayment,
       },
-      redemptionResolve: "Weak",
-      behaviorTags: ["DESPERATE"],
-      patience: 2,
-      mood: "Annoyed",
-      identityTags: ["HighRisk", "Gambler"],
-      desiredAmount: 500,
-      minimumAmount: 300,
-      survivalMinimum: 210,
-      maxRepayment: 600,
-    }
-  },
-  {
-    templateId: 'item_console_student',
-    itemOverrides: {
-      historySnippet: '为了买它我吃了两个月泡面。',
-      archiveSummary: '学生的生活费周转。',
-      sentimentalValue: true,
-    },
-    customer: {
-      name: "陈学生",
-      description: "背着书包，眼神躲闪的大学生。",
-      avatarSeed: "student_chen",
-      dialogue: {
-        greeting: "你好... 请问这里收电子产品吗？",
-        pawnReason: "生活费花超了... 不想让家里人知道。",
-        redemptionPlea: "下个月兼职工资发了我就来赎，千万别卖了。",
-        negotiationDynamic: "这可是上个月刚买的最新款...",
-        accepted: { fair: "谢谢老板！救急了。", fleeced: "啊... 这么少？好吧...", premium: "太感谢了！" },
-        rejected: "打扰了...",
-        rejectionLines: { standard: "那我再去想想办法。", angry: "..." },
-        exitDialogues: {
-          grateful: "谢谢老板！您真是帮了大忙了！",
-          neutral: "谢谢老板。再见。",
-          resentful: "这也太黑了... 不过没办法...",
-          desperate: "这下完了... 真的完了..."
-        }
-      },
-      redemptionResolve: "Strong",
-      behaviorTags: ["SAVVY"],
-      patience: 4,
-      mood: "Neutral",
-      identityTags: ["Student"],
-      desiredAmount: 1200,
-      minimumAmount: 800,
-      survivalMinimum: 560,
-      maxRepayment: 1500,
-    }
-  },
-  {
-    templateId: 'item_diamond_mystery',
-    itemOverrides: {
-      historySnippet: '路上... 捡的。',
-      archiveSummary: '来源不明的钻石。',
-      isStolen: true,
-    },
-    customer: {
-      name: "神秘客",
-      description: "戴着墨镜和口罩，看不清面容。",
-      avatarSeed: "mystery_guy",
-      dialogue: {
-        greeting: "收东西吗？不问来源那种。",
-        pawnReason: "急需现金，懂的都懂。",
-        redemptionPlea: "这东西我不赎了，直接死当。",
-        negotiationDynamic: "别废话，一口价。",
-        accepted: { fair: "成交。", fleeced: "行吧，算我倒霉。", premium: "爽快。" },
-        rejected: "你会后悔的。",
-        rejectionLines: { standard: "...", angry: "..." },
-        exitDialogues: {
-          grateful: "合作愉快。嘴巴严实点。",
-          neutral: "两清了。",
-          resentful: "啧。算你运气好。",
-          desperate: "..."
-        }
-      },
-      redemptionResolve: "None",
-      behaviorTags: ["STUBBORN"],
-      patience: 1,
-      mood: "Neutral",
-      identityTags: ["Suspicious"],
-      desiredAmount: 2000,
-      minimumAmount: 1000,
-      survivalMinimum: 700,
-      maxRepayment: 0,
-    }
-  }
-];
+    }));
+
+  return _presets;
+}
 
 // ============================================================================
 // 公开 API
@@ -145,10 +178,11 @@ const FALLBACK_PRESETS: FallbackCustomerPreset[] = [
  * @returns 完整的客户对象
  */
 export const getFallbackCustomer = (day: number, excludeTemplateIds?: Set<string>): Customer => {
+  const presets = getPresets();
   // Filter presets to exclude items already in inventory
-  let availablePresets = FALLBACK_PRESETS;
+  let availablePresets = presets;
   if (excludeTemplateIds && excludeTemplateIds.size > 0) {
-    const filtered = FALLBACK_PRESETS.filter(p => !excludeTemplateIds.has(p.templateId));
+    const filtered = presets.filter(p => !excludeTemplateIds.has(p.templateId));
     // Only use filtered list if there are options left; otherwise fall back to all presets
     if (filtered.length > 0) {
       availablePresets = filtered;
@@ -162,14 +196,15 @@ export const getFallbackCustomer = (day: number, excludeTemplateIds?: Set<string
  * 获取指定索引的 fallback 客户（用于测试）
  */
 export const getFallbackCustomerByIndex = (index: number, day: number): Customer => {
-  const preset = FALLBACK_PRESETS[index % FALLBACK_PRESETS.length];
+  const presets = getPresets();
+  const preset = presets[index % presets.length];
   return createCustomerFromPreset(preset, day);
 };
 
 /**
  * 获取所有 fallback 客户预设的数量
  */
-export const getFallbackCustomerCount = (): number => FALLBACK_PRESETS.length;
+export const getFallbackCustomerCount = (): number => getPresets().length;
 
 // ============================================================================
 // 内部函数
@@ -244,4 +279,15 @@ function createFallbackItem(day: number): Item {
 }
 
 // 保留旧的导出以保持向后兼容
-export const FALLBACK_CUSTOMERS = FALLBACK_PRESETS.map(p => p.customer);
+export const FALLBACK_CUSTOMERS = new Proxy([] as Omit<Partial<Customer>, 'item'>[], {
+  get(_, prop) {
+    const data = getPresets().map(p => p.customer);
+    if (prop === 'length') return data.length;
+    if (prop === Symbol.iterator) return data[Symbol.iterator].bind(data);
+    if (typeof prop === 'string' && !isNaN(Number(prop))) return data[Number(prop)];
+    if (typeof prop === 'string' && typeof (data as any)[prop] === 'function') {
+      return (data as any)[prop].bind(data);
+    }
+    return (data as any)[prop as any];
+  },
+});

@@ -9,6 +9,9 @@
  */
 
 import { TransactionEssenceGain } from './types';
+import { GAME_CONFIG } from '../game/config';
+import { parseCSV, CSVSchema, stringCol } from '../utils/csvReader';
+import essenceTextsCsv from '@/assets/data/texts/essence_system.csv?raw';
 
 // ============================================================================
 // Contract Tier Types
@@ -32,38 +35,47 @@ export function getContractTier(interestRate: number): ContractTier {
 }
 
 // ============================================================================
-// Essence Gain Table (Design doc v1.4 section 7)
+// CSV Text Loading
 // ============================================================================
 
-/**
- * Essence gain from each contract tier.
- *
- * | Tier      | Craft | Time | Vibe | Notes                   |
- * |-----------|-------|------|------|-------------------------|
- * | Charity   |   0   |   0  |  +4  | Pure vibe gain          |
- * | Aid       |   0   |   0  |  +2  | Moderate vibe gain      |
- * | Standard  |  +2   |   0  |   0  | Craft gain              |
- * | Shark     |   0   |  +4  |   0  | Pure time gain          |
- */
-const TIER_ESSENCE_GAINS: Record<ContractTier, { craft: number; time: number; vibe: number }> = {
-  CHARITY:  { craft: 0, time: 0, vibe: 4 },
-  AID:      { craft: 0, time: 0, vibe: 2 },
-  STANDARD: { craft: 2, time: 0, vibe: 0 },
-  SHARK:    { craft: 0, time: 4, vibe: 0 },
+interface EssenceTextRow {
+  key: string;
+  text: string;
+}
+
+const ESSENCE_TEXT_SCHEMA: CSVSchema = {
+  'key': stringCol('key'),
+  'text': stringCol('text'),
 };
 
-/** Essence gain from receiving stolen goods */
-const STOLEN_GOODS_GAIN = { craft: 0, time: 2, vibe: 0 };
+let _textMap: Map<string, string> | null = null;
+
+function getTextMap(): Map<string, string> {
+  if (!_textMap) {
+    _textMap = new Map();
+    const rows = parseCSV<EssenceTextRow>(essenceTextsCsv, ESSENCE_TEXT_SCHEMA, {
+      warnUnknownColumns: false,
+    });
+    for (const row of rows) {
+      if (row.key) _textMap.set(row.key, row.text);
+    }
+  }
+  return _textMap;
+}
+
+function getText(key: string, fallback: string = ''): string {
+  return getTextMap().get(key) ?? fallback;
+}
 
 // ============================================================================
-// Tier Display Names
+// Tier Display Names (from CSV)
 // ============================================================================
 
-const TIER_NAMES: Record<ContractTier, string> = {
-  CHARITY: '慈善档(0%)',
-  AID: '援助档(5%)',
-  STANDARD: '标准档(10%)',
-  SHARK: '高利贷档(20%)',
+const TIER_NAME_KEYS: Record<ContractTier, string> = {
+  CHARITY: 'CHARITY_NAME',
+  AID: 'AID_NAME',
+  STANDARD: 'STANDARD_NAME',
+  SHARK: 'SHARK_NAME',
 };
 
 // ============================================================================
@@ -78,11 +90,15 @@ const TIER_NAMES: Record<ContractTier, string> = {
  */
 export function calculateTransactionEssenceGain(interestRate: number): TransactionEssenceGain {
   const tier = getContractTier(interestRate);
-  const gains = TIER_ESSENCE_GAINS[tier];
+  const gains = GAME_CONFIG.ESSENCE.TIER_GAINS[tier] ?? { craft: 0, time: 0, vibe: 0 };
+  const tierName = getText(TIER_NAME_KEYS[tier], tier);
+  const reasonSuffix = getText('REASON_SUFFIX', '成交');
 
   return {
-    ...gains,
-    reason: `${TIER_NAMES[tier]}成交`,
+    craft: gains.craft,
+    time: gains.time,
+    vibe: gains.vibe,
+    reason: `${tierName}${reasonSuffix}`,
   };
 }
 
@@ -90,9 +106,13 @@ export function calculateTransactionEssenceGain(interestRate: number): Transacti
  * Calculate essence gain from accepting stolen goods.
  */
 export function calculateStolenGoodsEssenceGain(): TransactionEssenceGain {
+  const gains = GAME_CONFIG.ESSENCE.STOLEN_GOODS_GAIN;
+
   return {
-    ...STOLEN_GOODS_GAIN,
-    reason: '收购赃物',
+    craft: gains.craft,
+    time: gains.time,
+    vibe: gains.vibe,
+    reason: getText('STOLEN_GOODS_REASON', '收购赃物'),
   };
 }
 

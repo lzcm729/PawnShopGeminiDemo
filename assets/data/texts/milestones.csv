@@ -1,0 +1,7 @@
+id,label,description,effectDescription
+hum_saint,"贫民窟圣徒 (Saint)","你对弱者的仁慈在这个街区广为流传。","母亲心情改善，每日健康衰减 -1"
+hum_cold,"冷血动物 (Cold Blooded)","人们都知道你只认钱不认人。","只有走投无路的人才会来找你 (绝望顾客概率提升)"
+cred_expert,"金字招牌 (Gold Standard)","你的鉴定结果就是市场标准。","每日行动点 (AP) 上限 +2"
+cred_scam,"奸商 (Scammer)","大家都知道你的秤有问题。","正常顾客会避开你的店"
+inn_lawful,"守法公民 (Law Abiding)","警方将你视为合作伙伴，可能提供情报。","警方友好，可能提供情报"
+inn_suspect,"嫌疑人 (Suspect)","警方已经注意到你的店铺。","可能触发突击检查事件"

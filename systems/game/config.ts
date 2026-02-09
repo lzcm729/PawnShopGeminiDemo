@@ -382,6 +382,23 @@ interface TomlWorkshop {
   recipes: Record<string, TomlRecipeCost>;
 }
 
+interface TomlMilestoneTrigger {
+  trigger_type: string;
+  trigger_value: number;
+  trigger_operator: string;
+}
+
+interface TomlEssenceTierGain {
+  craft: number;
+  time: number;
+  vibe: number;
+}
+
+interface TomlEssence {
+  tier_gains: Record<string, TomlEssenceTierGain>;
+  stolen_goods_gain: TomlEssenceTierGain;
+}
+
 interface GameConfigToml {
   economy: TomlEconomy;
   night: TomlNight;
@@ -403,6 +420,8 @@ interface GameConfigToml {
   insight: TomlInsight;
   pawn_business: TomlPawnBusiness;
   workshop: TomlWorkshop;
+  reputation_milestones: Record<string, TomlMilestoneTrigger>;
+  essence: TomlEssence;
 }
 
 // Cast TOML import to typed interface
@@ -796,6 +815,15 @@ export const GAME_CONFIG = {
     BREACH_CREDIBILITY_LOSS: tomlConfig.workshop.breach_credibility_loss,
     BREACH_INNOCENCE_LOSS: tomlConfig.workshop.breach_innocence_loss,
     RECIPES: tomlConfig.workshop.recipes,
+  },
+
+  // --- REPUTATION MILESTONES (声誉里程碑) ---
+  REPUTATION_MILESTONES: tomlConfig.reputation_milestones,
+
+  // --- ESSENCE GAINS (精魄获取) ---
+  ESSENCE: {
+    TIER_GAINS: tomlConfig.essence.tier_gains,
+    STOLEN_GOODS_GAIN: tomlConfig.essence.stolen_goods_gain,
   },
 
 };
