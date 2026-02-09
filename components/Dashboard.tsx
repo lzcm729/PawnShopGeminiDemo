@@ -9,7 +9,7 @@ import { StatDisplay } from './ui/StatDisplay';
 import { Tooltip } from './ui/Tooltip';
 import { ValidationModal } from './ValidationModal';
 import { validateEvents, ValidationIssue } from '../systems/narrative/validator';
-import { toggleMute, getMuteState, playSfx, startAmbience, stopAmbience } from '../systems/game/audio';
+import { toggleMute, getMuteState, playSfx } from '../systems/game/audio';
 import { cn } from '../lib/utils';
 import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
 import { MilestoneNotification } from './ui/MilestoneNotification';
@@ -67,9 +67,6 @@ export const Dashboard: React.FC = () => {
         setIsMuted(newState);
         if (!newState) {
             playSfx('CLICK');
-            startAmbience();
-        } else {
-            stopAmbience();
         }
     };
 

@@ -5,7 +5,7 @@ import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
 import { Disc, Play, RotateCcw, Volume2, VolumeX, Monitor } from 'lucide-react';
 import { hasSaveGame, loadGame, clearSave } from '../systems/core/persistence';
-import { toggleMute, getMuteState, playSfx, initAudio, startAmbience } from '../systems/game/audio';
+import { toggleMute, getMuteState, playSfx, initAudio } from '../systems/game/audio';
 
 export const StartScreen: React.FC = () => {
   const { dispatch } = useGame();
@@ -19,9 +19,6 @@ export const StartScreen: React.FC = () => {
 
   const initializeGameAudio = () => {
       initAudio();
-      if (!isMuted) {
-          startAmbience();
-      }
   };
 
   const handleContinue = () => {

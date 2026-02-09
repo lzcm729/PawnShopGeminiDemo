@@ -35,7 +35,7 @@ import { generateTrainingResult, determineDisposition } from '../systems/custome
 import { registerRuntimeMailTemplate } from '../systems/narrative/mailRegistry';
 import { NewsCategory } from '../systems/news/types';
 import { getEffectiveInventoryCapacity } from '../systems/upgrades/utils';
-import { playSfx, startAmbience, stopAmbience } from '../systems/game/audio';
+import { playSfx } from '../systems/game/audio';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -127,8 +127,7 @@ export const useGameEngine = () => {
   };
 
   const performNightCycle = () => {
-    // Switch to nighttime ambience
-    startAmbience('NIGHT');
+    // startAmbience('NIGHT'); // Removed per user request
 
     // 0. Deduct maintenance costs for enabled COUNTER upgrades (night closing)
     dispatch({ type: 'DEDUCT_MAINTENANCE_COST' });
@@ -686,8 +685,7 @@ export const useGameEngine = () => {
   };
 
   const startNewDay = () => {
-    // Switch to daytime ambience
-    startAmbience('DAY');
+    // startAmbience('DAY'); // Removed per user request
 
     // NOTE: Blackmarket refresh and mail processing are handled
     // by the state machine effects when OPEN_SHOP transitions to DAY_START.EXPIRY_CHECK.
