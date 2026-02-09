@@ -1,16 +1,10 @@
 
 import { Item } from '../items/types';
-import { Mood } from '../core/types';
+import { Mood, BehaviorTag } from '../core/types';
 import { Dialogue, SimLogEntry, CustomerPortraits } from '../narrative/types';
 
-// === 行为标签（影响议价机制）===
-export type BehaviorTag =
-  | 'DESPERATE'    // 急迫：易接受低价，耐心低
-  | 'STUBBORN'     // 固执：难以妥协
-  | 'SUSPICIOUS'   // 疑心：不信任鉴定
-  | 'NAIVE'        // 天真：易受鉴定影响
-  | 'SAVVY'        // 精明：熟悉市场
-  | 'SENTIMENTAL'; // 念旧：对物品有情感
+// Re-export BehaviorTag for backward compatibility
+export type { BehaviorTag };
 
 export interface RenewalProposal {
     itemId: string;

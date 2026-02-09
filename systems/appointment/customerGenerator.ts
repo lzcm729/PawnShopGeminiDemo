@@ -16,7 +16,7 @@ import { Dialogue } from '../narrative/types';
 // Template mappings for candidate types
 // ============================================================================
 
-import { BehaviorTag } from '../narrative/types';
+import { BehaviorTag } from '../core/types';
 
 interface CandidateCustomerTemplate {
   names: string[];

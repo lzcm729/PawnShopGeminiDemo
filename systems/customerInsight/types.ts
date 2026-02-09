@@ -7,7 +7,7 @@
  * Design document: 洞察系统 (Customer Insight System).md v1.4
  */
 
-import { BehaviorTag } from '../npc/types';
+import { BehaviorTag } from '../core/types';
 
 // ============================================================================
 // Disposition Types (心理倾向)

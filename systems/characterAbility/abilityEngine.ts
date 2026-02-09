@@ -14,7 +14,7 @@
 
 import { ReputationProfile } from '../core/types';
 import { EssenceBalance } from '../economy/essence';
-import { BehaviorTag } from '../npc/types';
+import { BehaviorTag } from '../core/types';
 import { NpcPushPullStyle, getPushPullStyle } from '../negotiation/pushPull';
 import {
   AbilityState,

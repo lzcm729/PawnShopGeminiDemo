@@ -7,7 +7,7 @@ import { useNegotiation } from './hooks/useNegotiation';
 import { useCustomerInsight } from './hooks/useCustomerInsight';
 import { useGameMachine } from './hooks/useGameMachine';
 import { PhaseIs, PhaseMatch } from './systems/core/phases';
-import { Dashboard } from './systems/game/ui/Dashboard';
+import { Dashboard } from './components/Dashboard';
 import { CustomerView } from './components/CustomerView';
 import { ItemPanel } from './components/ItemPanel';
 import { NegotiationPanel } from './components/NegotiationPanel';

@@ -336,8 +336,8 @@ export interface CustomerPortraits {
     conflicted?: string;
 }
 
-// Import and re-export BehaviorTag from npc/types for backward compatibility
-import type { BehaviorTag } from '../npc/types';
+// Import and re-export BehaviorTag from core/types (shared cross-system concept)
+import type { BehaviorTag } from '../core/types';
 export type { BehaviorTag };
 
 // === 事件链类型 ===

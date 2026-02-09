@@ -6,6 +6,7 @@
  */
 
 import { GamePhase, PhaseEvent } from './types';
+// TODO: resolve core<->game cycle - GameState should live in a shared location
 import { GameState } from '../../game/types';
 import * as actions from './actions';
 

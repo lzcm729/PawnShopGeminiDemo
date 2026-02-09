@@ -1,5 +1,5 @@
 
-import { BehaviorTag } from '../npc/types';
+import { BehaviorTag } from '../core/types';
 import { Disposition } from '../customerInsight/types';
 
 /**

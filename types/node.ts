@@ -13,7 +13,8 @@
 
 import { Item, ItemTrait, ItemStatus } from '../systems/items/types';
 import { Mood } from '../systems/core/types';
-import { Customer, BehaviorTag } from '../systems/npc/types';
+import { Customer } from '../systems/npc/types';
+import { BehaviorTag } from '../systems/core/types';
 import { Dialogue } from '../systems/narrative/types';
 
 // ============================================================================

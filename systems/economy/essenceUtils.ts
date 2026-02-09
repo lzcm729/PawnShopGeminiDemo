@@ -9,7 +9,6 @@
 
 import { EssenceBalance, EssenceType, EssenceCost, ESSENCE_TYPES } from './essence';
 import { Item } from '../items/types';
-import { calculateEssenceYieldFromTags } from '../items/tagUtils';
 
 // ============================================================================
 // 余额操作
@@ -132,14 +131,6 @@ export function getTotalEssence(balance: EssenceBalance): number {
 // ============================================================================
 // 格物相关
 // ============================================================================
-
-/**
- * 根据物品标签计算格物的产出配比
- * 这是 calculateEssenceYieldFromTags 的别名，方便从 essenceUtils 导入
- */
-export function getEssenceYieldFromTags(item: Item): EssenceCost {
-  return calculateEssenceYieldFromTags(item);
-}
 
 /**
  * 根据产出配比和提取量计算实际获得的精魄

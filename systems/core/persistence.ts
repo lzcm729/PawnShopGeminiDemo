@@ -1,4 +1,5 @@
 
+// TODO: resolve core<->game cycle - GameState should live in a shared location
 import { GameState } from '../game/types';
 import { PhaseIs } from './phases';
 

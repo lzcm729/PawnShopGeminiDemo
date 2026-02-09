@@ -63,3 +63,12 @@ export interface DailyStats {
 }
 
 export type Mood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
+
+// === Behavior Tags (cross-system shared concept) ===
+export type BehaviorTag =
+  | 'DESPERATE'    // Urgent: accepts lower price, low patience
+  | 'STUBBORN'     // Stubborn: hard to compromise
+  | 'SUSPICIOUS'   // Suspicious: distrusts appraisal
+  | 'NAIVE'        // Naive: influenced by appraisal
+  | 'SAVVY'        // Savvy: knows the market
+  | 'SENTIMENTAL'; // Sentimental: emotional attachment to items

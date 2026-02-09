@@ -15,7 +15,8 @@
  * - I-11: Training result generation
  */
 
-import { Customer, BehaviorTag } from '../npc/types';
+import { Customer } from '../npc/types';
+import { BehaviorTag } from '../core/types';
 import {
   Disposition,
   CustomerInsightResult,
