@@ -36,7 +36,7 @@ export function upgradeReducer(state: GameState, action: Action): GameState {
                 id: crypto.randomUUID(),
                 description: `设施升级: ${upgradeId}`,
                 amount: -levelConfig.cost,
-                type: 'UPGRADE' as any
+                type: 'UPGRADE'
             };
 
             return {
@@ -69,7 +69,7 @@ export function upgradeReducer(state: GameState, action: Action): GameState {
                 id: crypto.randomUUID(),
                 description: '柜台设施维护费',
                 amount: -maintenanceCost,
-                type: 'MAINTENANCE' as any
+                type: 'MAINTENANCE'
             };
 
             return {

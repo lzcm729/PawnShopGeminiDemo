@@ -27,10 +27,6 @@ export {
   REFORGE_RECIPES,
   ALL_RECIPES,
   getRecipeById,
-  getRestoreRecipes,
-  getReforgeRecipes,
-  getRestoreRecipeForTag,
-  getReforgeRecipeForResult,
 } from './recipes';
 
 // 逻辑函数导出
@@ -41,7 +37,5 @@ export {
   performReforge,
   performWorkshop,
   getBlockReasonText,
-  getAvailableRestoreRecipes,
-  getAvailableReforgeRecipes,
   getViolationWarning,
 } from './workshopLogic';

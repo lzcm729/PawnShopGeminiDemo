@@ -59,7 +59,7 @@ export const useGameEngine = () => {
     
     sideEffects.forEach(({ chainId, op }) => {
         if (op.type === 'SCHEDULE_MAIL' && op.templateId) {
-             let metadata: any = {};
+             let metadata: Record<string, unknown> = {};
              if (op.templateId === 'mail_underworld_warning') {
                  const chain = simulatedChains.find(c => c.id === chainId);
                  const itemId = chain?.variables?.targetItemId;
@@ -469,9 +469,7 @@ export const useGameEngine = () => {
   };
 
   const generateDailyEvent = async () => {
-    console.log('[generateDailyEvent] Called, isLoading:', state.isLoading);
     if (state.isLoading) return;
-    console.log('[generateDailyEvent] Starting...');
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
@@ -517,7 +515,6 @@ export const useGameEngine = () => {
           if (narrativeEvent.type === 'POST_FORFEIT_VISIT') {
               const forfeitItem = state.inventory.find(i => i.id === targetId && i.status === ItemStatus.FORFEIT);
               if (!forfeitItem) {
-                   console.log("Skipping event: Item not forfeit");
                    dispatch({ type: 'SET_LOADING', payload: false });
                    // Signal no customer generated, then close shop via state machine
                    send({ type: 'CUSTOMER_GENERATED', hasCustomer: false });
@@ -595,13 +592,13 @@ export const useGameEngine = () => {
 
                   if (isItemLost || isHostile) {
                        storyCustomer.dialogue.greeting = resolveDialogue(flowResult.flow.dialogue, chainState);
-                       (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
+                       storyCustomer._dynamicEffects = flowResult.flow.outcome;
                   } else if (intent === 'EXTEND') {
                        storyCustomer.dialogue.greeting = "老板... 钱还没凑齐。能不能再宽限几天？我先付利息。";
                   } else {
                        storyCustomer.dialogue.greeting = resolveDialogue(flowResult.flow.dialogue, chainState);
                        storyCustomer.dialogue.accepted.fair = "谢谢。";
-                       (storyCustomer as any)._dynamicEffects = flowResult.flow.outcome;
+                       storyCustomer._dynamicEffects = flowResult.flow.outcome;
                   }
                   
                   if (tId) {
@@ -841,7 +838,7 @@ export const useGameEngine = () => {
                          case 'DEACTIVATE': case 'DEACTIVATE_CHAIN': newChain.isActive = false; break;
                          case 'SCHEDULE_MAIL':
                              if (effect.templateId) {
-                                 const meta: any = { relatedItemName: customer?.item.name };
+                                 const meta: Record<string, unknown> = { relatedItemName: customer?.item.name };
                                  const ed = effect.delayDays || 0;
                                  const mt = getMailTemplate(effect.templateId);
                                  const fd = ed > 0 ? ed : resolveMailDelay(mt?.delay);
@@ -851,7 +848,7 @@ export const useGameEngine = () => {
                          case 'CONDITIONAL_MAIL':
                              if (effect.condition && effect.templateId) {
                                  if (checkCondition(effect.condition, newChain)) {
-                                      const meta: any = { relatedItemName: customer?.item.name };
+                                      const meta: Record<string, unknown> = { relatedItemName: customer?.item.name };
                                       const ed2 = effect.delayDays || 0;
                                       const mt2 = getMailTemplate(effect.templateId);
                                       const fd2 = ed2 > 0 ? ed2 : resolveMailDelay(mt2?.delay);
@@ -955,7 +952,7 @@ export const useGameEngine = () => {
     if (result.success && currentCust?.chainId && currentCust?.eventId) {
         const chainEvent = ALL_STORY_EVENTS.find(e => e.id === currentCust.eventId);
         if (chainEvent) {
-             let effectsToRun: ChainUpdateEffect[] = (currentCust as any)._dynamicEffects || [];
+             let effectsToRun: ChainUpdateEffect[] = currentCust._dynamicEffects || [];
              if (effectsToRun.length === 0 && chainEvent.outcomes) {
                  const { principal, rate } = result.terms || { principal: 0, rate: 0.05 };
                  let outcomeKey = 'deal_standard';

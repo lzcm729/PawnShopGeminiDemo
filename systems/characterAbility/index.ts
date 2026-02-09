@@ -72,15 +72,7 @@ export {
   hasEmpathyBonus,
 } from './abilityEngine';
 
-// === Modulation ===
-export {
-  getPathModifier,
-  getFusionModifier,
-  getSkillModifier,
-  modulateEffect,
-  getReactionIntensity,
-} from './modulation';
-export type { ReactionIntensity } from './modulation';
+// === Modulation (consumed directly by abilityEngine via ./modulation) ===
 
 // === Essence Gain ===
 export {
@@ -93,18 +85,11 @@ export type { ContractTier } from './essenceSystem';
 
 // === Moral Echo ===
 export {
-  createPressureEcho,
-  createHeartStrikeEchoes,
-  createSharkDealEchoes,
-  createStolenGoodsEchoes,
-  createBlackmarketSellEcho,
-  getEchoesForDay,
   removeDeliveredEchoes,
   enqueueEchoes,
 } from './moralEcho';
 
 // === Moral Echo Texts ===
-export { getEchoText } from './moralEchoTexts';
 export type { EchoText } from './moralEchoTexts';
 
 // === Panel Data ===

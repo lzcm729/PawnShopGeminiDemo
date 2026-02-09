@@ -1,7 +1,7 @@
 
 import { Item } from '../items/types';
 import { Mood, BehaviorTag } from '../core/types';
-import { Dialogue, SimLogEntry, CustomerPortraits } from '../narrative/types';
+import { Dialogue, SimLogEntry, CustomerPortraits, ChainUpdateEffect } from '../narrative/types';
 
 // Re-export BehaviorTag for backward compatibility
 export type { BehaviorTag };
@@ -55,4 +55,7 @@ export interface Customer {
   pawnTermDays?: number;  // 自定义典当期限（默认7天）
 
   observation?: string; // Narrative observation/hint
+
+  /** Dynamic chain effects injected during story customer generation */
+  _dynamicEffects?: ChainUpdateEffect[];
 }

@@ -41,9 +41,6 @@ export {
   getPatienceCostProbability,
   calculateInsightReward,
   getInsightPushPullModifier,
-  generateTrainingResult,
-  generateFloorHint,
-  generateMoralContext,
 } from './generator';
 
 // Behavior matrix exports

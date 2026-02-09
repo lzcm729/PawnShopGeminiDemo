@@ -95,7 +95,7 @@ function getEchoTextMap(): Map<string, EchoText[]> {
  * Falls back to a generic text if no match is found (should not happen
  * if all triggered combinations are covered in CSV).
  */
-export function getEchoText(echo: MoralEchoEvent): EchoText {
+function getEchoText(echo: MoralEchoEvent): EchoText {
   const key = `${echo.source}:${echo.channel}:${echo.severity}`;
   const variants = getEchoTextMap().get(key);
 

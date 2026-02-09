@@ -4,6 +4,7 @@
  */
 
 import { GameState, ReputationType, ItemStatus, TransactionRecord, SatisfactionLevel, ReputationProfile } from '../../types';
+import { clampReputation } from '../../systems/core/reputationUtils';
 import { PostForfeitSatisfaction } from '../../systems/narrative/types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
@@ -338,7 +339,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
             const newRep = { ...state.reputation };
             if (repDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += repDelta[ReputationType.HUMANITY]!;
             if (repDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += repDelta[ReputationType.CREDIBILITY]!;
-            Object.keys(newRep).forEach(key => { newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType])); });
+            clampReputation(newRep);
 
             const transaction: TransactionRecord | null = cashDelta !== 0 ? {
                 id: crypto.randomUUID(),

@@ -4,6 +4,7 @@
  */
 
 import { GameState, ReputationType, TransactionRecord } from '../../types';
+import { clampReputation } from '../../systems/core/reputationUtils';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { clearSave } from '../../systems/core/persistence';
@@ -223,7 +224,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
             if (reputationDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += reputationDelta[ReputationType.HUMANITY]!;
             if (reputationDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += reputationDelta[ReputationType.CREDIBILITY]!;
             if (reputationDelta[ReputationType.INNOCENCE]) newRep[ReputationType.INNOCENCE] += reputationDelta[ReputationType.INNOCENCE]!;
-            Object.keys(newRep).forEach(key => { newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType])); });
+            clampReputation(newRep);
 
             const newInventory = item ? [...state.inventory, item] : state.inventory;
             const newTransaction: TransactionRecord | null = item ? { id: crypto.randomUUID(), description: `收当: ${item.name}`, amount: cashDelta, type: 'PAWN' } : null;

@@ -14,6 +14,7 @@ import { ItemLogEntry } from '../../types';
 import { GameNode } from '../../types/node';
 import { BlackmarketState, RiskEvent } from '../../systems/blackmarket/types';
 import { PhaseEvent } from '../../systems/core/phases';
+import { ActiveNewsInstance, MarketModifier, PendingNewsItem } from '../../systems/news/types';
 import { CustomerInsightResult } from '../../systems/customerInsight';
 import { DailyChallenge } from '../../systems/game/dailyChallenge';
 import { DailySchedule } from '../../systems/npc/customerScheduler';
@@ -54,11 +55,11 @@ export type Action =
     // Node management (new unified interface)
     | { type: 'SET_NODE'; payload: GameNode | null }
     | { type: 'CLEAR_NODE' }
-    | { type: 'UPDATE_NODE_ITEM'; payload: { newRange?: [number, number]; revealedTraits?: any[]; newUncertainty?: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry } }
+    | { type: 'UPDATE_NODE_ITEM'; payload: { newRange?: [number, number]; revealedTraits?: ItemTrait[]; newUncertainty?: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry } }
 
     // Appraisal & Item knowledge
     | { type: 'APPRAISE_ITEM' }
-    | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: any[]; hiddenTraits?: any[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry; initialRange?: [number, number] } }
+    | { type: 'UPDATE_ITEM_KNOWLEDGE'; payload: { itemId: string; newRange: [number, number]; revealedTraits: ItemTrait[]; hiddenTraits?: ItemTrait[]; newUncertainty: number; newPerceived?: number; incrementAppraisalCount?: boolean; hasNegativeEvent?: boolean; log?: ItemLogEntry; initialRange?: [number, number] } }
     | { type: 'REALIZE_ITEM_TRUTH'; payload: { itemId: string } }
     | { type: 'MARK_TRAIT_USED'; payload: { traitId: string } }
     | { type: 'CONSUME_AP'; payload: number }
@@ -105,13 +106,13 @@ export type Action =
     // Narrative (chains, mail)
     | { type: 'UPDATE_CHAINS'; payload: EventChainState[] }
     | { type: 'UPDATE_CHAIN_VAR'; payload: { chainId: string; variable: string; value: number } }
-    | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number; metadata?: any; sourceChainId?: string; relatedEventId?: string } }
+    | { type: 'SCHEDULE_MAIL'; payload: { templateId: string; delayDays: number; metadata?: Record<string, unknown>; sourceChainId?: string; relatedEventId?: string } }
     | { type: 'PROCESS_DAILY_MAIL' }
     | { type: 'READ_MAIL'; payload: string }
     | { type: 'CLAIM_MAIL_REWARD'; payload: string }
 
     // News & Market
-    | { type: 'UPDATE_NEWS'; payload: { news: any[], modifiers: any[], deferredNews?: any[] } }
+    | { type: 'UPDATE_NEWS'; payload: { news: ActiveNewsInstance[], modifiers: MarketModifier[], deferredNews?: PendingNewsItem[] } }
     | { type: 'ADD_VIOLATION'; payload: string }
     | { type: 'CLEAR_VIOLATIONS' }
 

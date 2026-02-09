@@ -4,6 +4,7 @@
  */
 
 import { GameState, ReputationType, ItemStatus, TransactionRecord, SatisfactionLevel, ReputationProfile } from '../../types';
+import { clampReputation } from '../../systems/core/reputationUtils';
 import { DepartureSatisfaction } from '../../systems/narrative/types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
@@ -198,9 +199,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
             if (repDelta[ReputationType.HUMANITY]) newRep[ReputationType.HUMANITY] += repDelta[ReputationType.HUMANITY]!;
             if (repDelta[ReputationType.CREDIBILITY]) newRep[ReputationType.CREDIBILITY] += repDelta[ReputationType.CREDIBILITY]!;
             if (repDelta[ReputationType.INNOCENCE]) newRep[ReputationType.INNOCENCE] += repDelta[ReputationType.INNOCENCE]!;
-            Object.keys(newRep).forEach(key => {
-                newRep[key as ReputationType] = Math.max(0, Math.min(100, newRep[key as ReputationType]));
-            });
+            clampReputation(newRep);
 
             // Create transaction record
             const transaction: TransactionRecord | null = cashDelta !== 0 ? {

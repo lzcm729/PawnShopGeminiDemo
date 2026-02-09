@@ -134,20 +134,6 @@ const GameContent: React.FC = () => {
     const effectiveMax = Math.max(state.maxCustomersPerDay, narrativeServed);
     const canServe = state.customersServedToday < effectiveMax;
 
-    // DEBUG: Log conditions
-    console.log('[App] generateDailyEvent check:', {
-      phase: state.phase,
-      isBusiness,
-      isLoading: state.isLoading,
-      currentCustomer: !!state.currentCustomer,
-      isIdle,
-      customersServedToday: state.customersServedToday,
-      narrativeServed,
-      effectiveMax,
-      canServe,
-      shouldTrigger: isBusiness && isIdle && canServe
-    });
-
     if (isBusiness && isIdle && canServe) {
       setLoadingText("Someone is approaching the counter...");
       generateDailyEvent();

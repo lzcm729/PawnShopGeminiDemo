@@ -88,10 +88,6 @@ export function transition(
         {} as Partial<GameState>
     ) ?? {};
 
-    if (process.env.NODE_ENV === 'development') {
-        console.log(`[StateMachine] ${JSON.stringify(phase)} --[${event.type}]--> ${JSON.stringify(nextPhase)}`);
-    }
-
     return { nextPhase, stateUpdates };
 }
 

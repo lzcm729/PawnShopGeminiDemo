@@ -116,18 +116,3 @@ export function getRecipeById(id: string): Recipe | undefined {
   return ALL_RECIPES.find(r => r.id === id);
 }
 
-export function getRestoreRecipes(): RestoreRecipe[] {
-  return RESTORE_RECIPES;
-}
-
-export function getReforgeRecipes(): ReforgeRecipe[] {
-  return REFORGE_RECIPES;
-}
-
-export function getRestoreRecipeForTag(tag: string): RestoreRecipe | undefined {
-  return RESTORE_RECIPES.find(r => r.targetTag === tag);
-}
-
-export function getReforgeRecipeForResult(tag: string): ReforgeRecipe | undefined {
-  return REFORGE_RECIPES.find(r => r.resultTag === tag);
-}

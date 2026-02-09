@@ -442,29 +442,3 @@ export function getBlockReasonText(reason: WorkshopBlockReason): string {
 /**
  * 获取物品可用的修复配方
  */
-export function getAvailableRestoreRecipes(
-  item: Item,
-  essenceBalance: EssenceBalance,
-  nightState: NightState,
-  recipes: RestoreRecipe[]
-): Array<{ recipe: RestoreRecipe; status: RecipeStatus }> {
-  return recipes.map(recipe => ({
-    recipe,
-    status: getRecipeStatus(recipe, item, essenceBalance, nightState),
-  }));
-}
-
-/**
- * 获取物品可用的重铸配方
- */
-export function getAvailableReforgeRecipes(
-  item: Item,
-  essenceBalance: EssenceBalance,
-  nightState: NightState,
-  recipes: ReforgeRecipe[]
-): Array<{ recipe: ReforgeRecipe; status: RecipeStatus }> {
-  return recipes.map(recipe => ({
-    recipe,
-    status: getRecipeStatus(recipe, item, essenceBalance, nightState),
-  }));
-}

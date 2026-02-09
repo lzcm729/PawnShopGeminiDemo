@@ -19,7 +19,7 @@ export interface TransactionRecord {
   id: string;
   description: string;
   amount: number;
-  type: 'PAWN' | 'SELL' | 'RENT' | 'EXPENSE' | 'REWARD' | 'REDEEM' | 'EXTEND' | 'PENALTY' | 'CHARITY' | 'MEDICAL' | 'SURGERY' | 'UPGRADE';
+  type: 'PAWN' | 'SELL' | 'RENT' | 'EXPENSE' | 'REWARD' | 'REDEEM' | 'EXTEND' | 'PENALTY' | 'CHARITY' | 'MEDICAL' | 'SURGERY' | 'UPGRADE' | 'MAINTENANCE';
 }
 
 // --- FINANCIAL PROJECTION SYSTEM ---
