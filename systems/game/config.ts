@@ -342,6 +342,17 @@ interface TomlInsight {
   accuracy_low_threshold: number;
 }
 
+interface TomlWorkshop {
+  extra_negative_tag_cost_ratio: number;
+  high_value_threshold: number;
+  high_value_cost_ratio: number;
+  partial_restore_discount: number;
+  breach_compensation_multiplier: number;
+  breach_humanity_loss: number;
+  breach_credibility_loss: number;
+  breach_innocence_loss: number;
+}
+
 interface GameConfigToml {
   economy: TomlEconomy;
   night: TomlNight;
@@ -361,6 +372,7 @@ interface GameConfigToml {
   inventory_decay: TomlInventoryDecay;
   insight: TomlInsight;
   pawn_business: TomlPawnBusiness;
+  workshop: TomlWorkshop;
 }
 
 // Cast TOML import to typed interface
@@ -730,6 +742,18 @@ export const GAME_CONFIG = {
     RENEWAL_REFUSAL_PENALTY_2: tomlConfig.pawn_business.renewal_refusal_penalty_2,
     RENEWAL_REFUSAL_PENALTY_3_PLUS: tomlConfig.pawn_business.renewal_refusal_penalty_3_plus,
     RENEWAL_REFUSAL_CREDIBILITY: tomlConfig.pawn_business.renewal_refusal_credibility,
+  },
+
+  // --- WORKSHOP (工作台系统) ---
+  WORKSHOP: {
+    EXTRA_NEGATIVE_TAG_COST_RATIO: tomlConfig.workshop.extra_negative_tag_cost_ratio,
+    HIGH_VALUE_THRESHOLD: tomlConfig.workshop.high_value_threshold,
+    HIGH_VALUE_COST_RATIO: tomlConfig.workshop.high_value_cost_ratio,
+    PARTIAL_RESTORE_DISCOUNT: tomlConfig.workshop.partial_restore_discount,
+    BREACH_COMPENSATION_MULTIPLIER: tomlConfig.workshop.breach_compensation_multiplier,
+    BREACH_HUMANITY_LOSS: tomlConfig.workshop.breach_humanity_loss,
+    BREACH_CREDIBILITY_LOSS: tomlConfig.workshop.breach_credibility_loss,
+    BREACH_INNOCENCE_LOSS: tomlConfig.workshop.breach_innocence_loss,
   },
 
 };

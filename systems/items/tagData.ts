@@ -141,7 +141,7 @@ export const TAG_DEFINITIONS: Record<ItemTag, TagDefinition> = {
   FAKE_HISTORY: {
     id: 'FAKE_HISTORY',
     group: 'ESSENCE',
-    valueMultiplier: 3.0,       // 3倍 - 伪造历史有溢价，但有风险
+    valueMultiplier: 2.5,       // 2.5倍 - 伪造历史有溢价，但有风险（设计文档修正）
     displayName: '伪造历史',
     description: '经过做旧处理，被赋予了虚构的历史背景。',
     icon: '🎭',

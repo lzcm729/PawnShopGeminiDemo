@@ -69,6 +69,11 @@ export const loadGame = (): GameState | null => {
             return null;
         }
 
+        // Migration: ensure inProgressRecipes exists (added in workshop multi-night update)
+        if (!Array.isArray(state.inProgressRecipes)) {
+            state.inProgressRecipes = [];
+        }
+
         return state;
     } catch (e) {
         console.error("[System] Load failed:", e);

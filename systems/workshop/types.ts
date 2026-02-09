@@ -81,6 +81,9 @@ export interface RecipeBase {
 
   /** 消耗的精力 */
   energyCost: number;
+
+  /** 需要的夜间工序次数（默认 1，多夜配方需连续操作） */
+  nightsRequired?: number;
 }
 
 /**
@@ -142,6 +145,27 @@ export interface ReforgeRecipe extends RecipeBase {
  * 所有配方的联合类型
  */
 export type Recipe = RestoreRecipe | ReforgeRecipe;
+
+// ============================================================================
+// 多夜工序进度追踪 (Multi-Night Recipe Progress)
+// ============================================================================
+
+/**
+ * 进行中的工序
+ * 追踪需要多夜完成的配方的进度
+ */
+export interface InProgressRecipe {
+  /** 配方ID */
+  recipeId: string;
+  /** 目标物品ID */
+  itemId: string;
+  /** 已完成的夜数 */
+  nightsCompleted: number;
+  /** 总共需要的夜数 */
+  nightsRequired: number;
+  /** 启动时消耗的精魄（记录用，已扣除） */
+  essenceSpent: EssenceCost;
+}
 
 // ============================================================================
 // 操作结果

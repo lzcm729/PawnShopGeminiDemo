@@ -116,6 +116,42 @@ export function nightReducer(state: GameState, action: Action): GameState {
                 }
             };
 
+        // === MULTI-NIGHT RECIPES ===
+
+        case 'START_MULTI_NIGHT_RECIPE':
+            return {
+                ...state,
+                inProgressRecipes: [...state.inProgressRecipes, action.payload]
+            };
+
+        case 'ADVANCE_MULTI_NIGHT_RECIPE': {
+            const { itemId } = action.payload;
+            return {
+                ...state,
+                inProgressRecipes: state.inProgressRecipes.map(r =>
+                    r.itemId === itemId
+                        ? { ...r, nightsCompleted: r.nightsCompleted + 1 }
+                        : r
+                )
+            };
+        }
+
+        case 'COMPLETE_MULTI_NIGHT_RECIPE': {
+            const { itemId } = action.payload;
+            return {
+                ...state,
+                inProgressRecipes: state.inProgressRecipes.filter(r => r.itemId !== itemId)
+            };
+        }
+
+        case 'CANCEL_MULTI_NIGHT_RECIPE': {
+            const { itemId } = action.payload;
+            return {
+                ...state,
+                inProgressRecipes: state.inProgressRecipes.filter(r => r.itemId !== itemId)
+            };
+        }
+
         default:
             return state;
     }

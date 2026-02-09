@@ -6,7 +6,7 @@
 import { GameState, Customer, Mood, ReputationProfile, Item, EventChainState, SatisfactionLevel, MotherCondition, ExpiryEvent, PoliceInvestigationEvent, MoraleBuff } from '../../types';
 import { DepartureSatisfaction } from '../../systems/narrative/types';
 import { GamePhase } from '../../systems/core/phases';
-import { EssenceType, EssenceBalance } from '../../systems/economy/essence';
+import { EssenceType, EssenceBalance, EssenceCost } from '../../systems/economy/essence';
 import { KnowledgePool } from '../../systems/items/tags';
 import { ItemTag, ItemTrait, WorkState } from '../../systems/items/types';
 import { AppointmentCandidate, AppointmentPreference } from '../../systems/appointment';
@@ -19,6 +19,7 @@ import { CustomerInsightResult, InsightTrainingResult } from '../../systems/cust
 import { DailyChallenge } from '../../systems/game/dailyChallenge';
 import { DailySchedule } from '../../systems/npc/customerScheduler';
 import { SkillId, MoralEchoEvent, AbilityState, ConsequenceFlashResult } from '../../systems/characterAbility/types';
+import { InProgressRecipe } from '../../systems/workshop/types';
 
 // === Action Type Union ===
 
@@ -238,6 +239,12 @@ export type Action =
     // Morale Buff (H-1: Visit → next-day mood)
     | { type: 'SET_MORALE_BUFF'; payload: MoraleBuff }
     | { type: 'CLEAR_MORALE_BUFF' }
+
+    // Workshop multi-night recipes
+    | { type: 'START_MULTI_NIGHT_RECIPE'; payload: InProgressRecipe }
+    | { type: 'ADVANCE_MULTI_NIGHT_RECIPE'; payload: { itemId: string } }
+    | { type: 'COMPLETE_MULTI_NIGHT_RECIPE'; payload: { itemId: string } }
+    | { type: 'CANCEL_MULTI_NIGHT_RECIPE'; payload: { itemId: string } }
 
     // Debug flags
     | { type: 'DEBUG_TOGGLE_FLOOR' };

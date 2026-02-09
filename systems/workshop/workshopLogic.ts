@@ -27,12 +27,14 @@ import {
   ReforgeQuality,
   QualityOutcome,
   SurpriseDiscovery,
+  InProgressRecipe,
   isRestoreRecipe,
   isReforgeRecipe,
 } from './types';
 import { getRecipeById } from './recipes';
 import { createTextRegistry, TextRegistry } from '../utils/textRegistry';
 import workshopTextsCSV from '@/assets/data/texts/workshop_texts.csv?raw';
+import { GAME_CONFIG } from '../game/config';
 
 // ============================================================================
 // 文本注册表 (从 CSV 加载叙事文本)
@@ -202,9 +204,45 @@ function checkReforgeBlockReason(
 
 /**
  * 计算配方的实际成本
+ *
+ * 动态调整规则：
+ * - 多个 G1 负面标签 → 每个额外标签 +20% 成本
+ * - 高价值物品（realValue > 阈值）→ 成本 +30%
+ * - 已有部分修复（wasRestored）→ 修复类配方成本减半
  */
 export function calculateActualCost(recipe: Recipe, item: Item): EssenceCost {
-  return recipe.baseCost;
+  const config = GAME_CONFIG.WORKSHOP;
+  let multiplier = 1.0;
+
+  // 多个 G1 负面标签：第一个免费，之后每个额外标签 +20%
+  const tags = item.tags || [];
+  const negativeTagCount = STATE_TAGS.filter(tag => tags.includes(tag)).length;
+  if (negativeTagCount > 1) {
+    multiplier += (negativeTagCount - 1) * config.EXTRA_NEGATIVE_TAG_COST_RATIO;
+  }
+
+  // 高价值物品加成
+  if (item.realValue > config.HIGH_VALUE_THRESHOLD) {
+    multiplier += config.HIGH_VALUE_COST_RATIO;
+  }
+
+  // 已有部分修复：修复类配方享受折扣
+  if (item.wasRestored && isRestoreRecipe(recipe)) {
+    multiplier *= (1 - config.PARTIAL_RESTORE_DISCOUNT);
+  }
+
+  // 如果没有调整，直接返回原始成本
+  if (multiplier === 1.0) {
+    return recipe.baseCost;
+  }
+
+  // 应用乘数到每个精魄类型
+  const result: EssenceCost = {};
+  if (recipe.baseCost.craft) result.craft = Math.ceil(recipe.baseCost.craft * multiplier);
+  if (recipe.baseCost.time) result.time = Math.ceil(recipe.baseCost.time * multiplier);
+  if (recipe.baseCost.vibe) result.vibe = Math.ceil(recipe.baseCost.vibe * multiplier);
+
+  return result;
 }
 
 // ============================================================================
@@ -609,6 +647,37 @@ export function getQualityDisplayName(quality: ReforgeQuality): string {
 export function getBlockReasonText(reason: WorkshopBlockReason): string {
   const texts = getTexts();
   return texts.resolve([`block:${reason}`, 'block:_default']) || '无法操作';
+}
+
+// ============================================================================
+// 多夜工序辅助函数 (Multi-Night Recipe Helpers)
+// ============================================================================
+
+/**
+ * 检查配方是否需要多夜工序
+ */
+export function isMultiNightRecipe(recipe: Recipe): boolean {
+  return (recipe.nightsRequired ?? 1) > 1;
+}
+
+/**
+ * 获取物品当前进行中的工序（如果有）
+ */
+export function getInProgressRecipe(
+  itemId: string,
+  inProgressRecipes: InProgressRecipe[]
+): InProgressRecipe | undefined {
+  return inProgressRecipes.find(r => r.itemId === itemId);
+}
+
+/**
+ * 检查物品是否有进行中的多夜工序
+ */
+export function hasInProgressRecipe(
+  itemId: string,
+  inProgressRecipes: InProgressRecipe[]
+): boolean {
+  return inProgressRecipes.some(r => r.itemId === itemId);
 }
 
 /**

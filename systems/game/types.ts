@@ -7,6 +7,7 @@ import { TransactionRecord } from '../economy/types';
 import { EventChainState, MailInstance, SatisfactionLevel, DepartureSatisfaction, ExpiryEvent, PoliceInvestigationEvent } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier, PendingNewsItem } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
+import { InProgressRecipe } from '../workshop/types';
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
 import { GameNode } from '../../types/node';
 import { BlackmarketState } from '../blackmarket/types';
@@ -91,6 +92,7 @@ export interface GameState {
   // === NIGHT PHASE (夜间玩法) ===
   essenceBalance: EssenceBalance;          // 精魄余额（匠心/旧影/灵韵）
   nightState: NightState;                  // 夜间状态（精力/已执行操作）
+  inProgressRecipes: InProgressRecipe[];   // 进行中的多夜工序
 
   // === SHOP UPGRADES (典当行升级) ===
   shopUpgrades: ShopUpgradeState;          // 店铺设施升级状态

@@ -616,3 +616,23 @@ fair_threshold = 0.7
 accuracy_high_threshold = 1.2
 # 准确度低阈值
 accuracy_low_threshold = 1.8
+
+# ------------------------------------------------------------
+# 工作台系统 (Workshop)
+# ------------------------------------------------------------
+[workshop]
+# 动态成本调整参数
+# 额外 G1 负面标签的成本加成比例（每个额外标签 +20%）
+extra_negative_tag_cost_ratio = 0.20
+# 高价值物品阈值（realValue > 此值时触发成本加成）
+high_value_threshold = 5000
+# 高价值物品成本加成比例
+high_value_cost_ratio = 0.30
+# 已部分修复时的成本减免比例（对应修复成本减半）
+partial_restore_discount = 0.50
+# 违约赔偿金倍率（principal × 此值）
+breach_compensation_multiplier = 2.0
+# 违约声誉损失
+breach_humanity_loss = -15
+breach_credibility_loss = -10
+breach_innocence_loss = -5
