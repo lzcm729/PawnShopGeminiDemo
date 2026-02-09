@@ -10,7 +10,7 @@ import { EssenceBalance } from '../economy/essence';
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
 import { GameNode } from '../../types/node';
 import { BlackmarketState } from '../blackmarket/types';
-import { CustomerInsightResult } from '../customerInsight';
+import { CustomerInsightResult, InsightTrainingResult } from '../customerInsight';
 import { DailyChallenge } from './dailyChallenge';
 import { DailySchedule } from '../npc/customerScheduler';
 import { AbilityState, ConsequenceFlashResult } from '../characterAbility/types';
@@ -114,6 +114,7 @@ export interface GameState {
 
   // === CUSTOMER INSIGHT (洞察客户) ===
   currentCustomerInsight: CustomerInsightResult | null;  // 当前客户的洞察结果
+  lastInsightTrainingResult: InsightTrainingResult | null;  // 上一次交易的洞察训练反馈（夜间复盘用）
 
   // === POLICE INVESTIGATION (警方调查) ===
   currentPoliceInvestigation: PoliceInvestigationEvent | null;  // 当前警方调查事件

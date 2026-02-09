@@ -279,6 +279,9 @@ export function customerReducer(state: GameState, action: Action): GameState {
         case 'CLEAR_CUSTOMER_INSIGHT':
             return { ...state, currentCustomerInsight: null };
 
+        case 'SET_INSIGHT_TRAINING_RESULT':
+            return { ...state, lastInsightTrainingResult: action.payload };
+
         default:
             return state;
     }

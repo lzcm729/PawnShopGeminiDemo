@@ -40,6 +40,8 @@ interface NegotiationStateProps {
         persistCount: number;
         npcConcessionCount: number;
         lastPushPullResult: PushPullResult | null;
+        // Insight-aware NPC response
+        insightAwareText: string | null;
     };
     appraisalFeedbacks?: AppraisalFeedback[];
 }
@@ -82,6 +84,10 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     status: insightStatus,
     canUseInsight,
     useInsight,
+    performDeepInsight,
+    canDeepInsight,
+    performFullInsight,
+    canFullInsight,
     getBlockReasonText,
     getInsightReward,
   } = useCustomerInsight();
@@ -121,7 +127,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     lastOfferAmount,
     persistCount,
     npcConcessionCount,
-    lastPushPullResult
+    lastPushPullResult,
+    // Insight-aware NPC response
+    insightAwareText
   } = negotiation;
 
   const [chatLog, setChatLog] = useState<LogEntry[]>([]);
@@ -299,6 +307,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   useEffect(() => {
       discoveredTraitIdsRef.current.clear();
       processedCountRef.current = 0;
+      lastInsightAwareTextRef.current = null;
       setShowStolenWarning(false);
       setStolenDecisionMade(false);
       setPressureUsed(false);
@@ -324,6 +333,20 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     if (!canUseInsight()) return;
     playSfx('CLICK');
     useInsight();
+  };
+
+  // Handle deep insight (layer 2) button click
+  const handleDeepInsightClick = () => {
+    if (!canDeepInsight) return;
+    playSfx('CLICK');
+    performDeepInsight();
+  };
+
+  // Handle full insight (layer 3) button click
+  const handleFullInsightClick = () => {
+    if (!canFullInsight) return;
+    playSfx('CLICK');
+    performFullInsight();
   };
 
   // Track whether the latest offer was a COUNTER (push-pull zone)
@@ -366,6 +389,24 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           sentiment: counterSentiment
       }]);
   }, [lastPushPullResult]);
+
+  // Track last insightAwareText to avoid duplicate entries
+  const lastInsightAwareTextRef = useRef<string | null>(null);
+
+  // Add insightAwareText to chat log when it changes
+  useEffect(() => {
+      if (!insightAwareText || insightAwareText === lastInsightAwareTextRef.current) return;
+      lastInsightAwareTextRef.current = insightAwareText;
+
+      setChatLog(prev => [...prev, {
+          id: `insight-aware-${Date.now()}`,
+          sender: 'customer' as const,
+          text: insightAwareText,
+          sentiment: 'neutral' as const,
+          type: 'INNER_MONOLOGUE' as const,
+          data: { feedbackType: 'INSIGHT_AWARE' },
+      }]);
+  }, [insightAwareText]);
 
   // Handle pressure skill activation
   const handlePressure = () => {
@@ -656,6 +697,10 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           hasUsedInsight={insightResult !== null}
           insightBlockReason={insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
           insightResult={insightResult}
+          canDeepInsight={canDeepInsight}
+          onDeepInsightClick={handleDeepInsightClick}
+          canFullInsight={canFullInsight}
+          onFullInsightClick={handleFullInsightClick}
         />
 
       {/* Rejection Overlay */}

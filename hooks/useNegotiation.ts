@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Customer, InterestRate, BehaviorTag } from '../types';
-import { executePushPull, PushPullResult, PlayerMoveType } from '../systems/negotiation/pushPull';
+import { executePushPull, PushPullResult, PlayerMoveType, getPushPullStyle } from '../systems/negotiation/pushPull';
 import { GAME_CONFIG } from '../systems/game/config';
 import { getAskPriceModifier, getInsultModifier, getConcessionMultiplier } from '../systems/appraisal/precision';
+import { INSIGHT_AWARE_RESPONSES, getRandomText } from '../systems/negotiation/data';
 
 export type NegotiationMood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
 
@@ -65,6 +66,9 @@ interface UseNegotiationReturn {
   persistCount: number;
   npcConcessionCount: number;
   lastPushPullResult: PushPullResult | null;
+
+  /** Insight-aware NPC response text (null if insight not used) */
+  insightAwareText: string | null;
 }
 
 const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number, insultPrecisionModifier: number = 1.0) => {
@@ -125,7 +129,7 @@ const getPatienceWithBehaviorMods = (behaviorTags: BehaviorTag[], basePatience: 
  * @param reputationCredibility Player's current Credibility reputation (0-100).
  *   High values reduce patience loss chance during push-pull negotiation.
  */
-export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0, itemUncertainty: number = 0.3, moraleNegotiationModifier: number = 1.0, newsStolenRisk: number = 0, reputationHumanity: number = 50, reputationCredibility: number = 50): UseNegotiationReturn => {
+export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0, itemUncertainty: number = 0.3, moraleNegotiationModifier: number = 1.0, newsStolenRisk: number = 0, reputationHumanity: number = 50, reputationCredibility: number = 50, insightUsed: boolean = false): UseNegotiationReturn => {
   // Logic State
   const [patience, setPatience] = useState<number>(3);
   const [mood, setMood] = useState<NegotiationMood>('Neutral');
@@ -529,6 +533,30 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     });
   }, []);
 
+  // #34: Generate insight-aware NPC response text when insight is active
+  const insightAwareText = useMemo((): string | null => {
+    if (!insightUsed || !lastPushPullResult || !customer) return null;
+
+    const npcStyle = getPushPullStyle(customer.behaviorTags);
+    const seed = Date.now();
+
+    if (lastPushPullResult.conceded) {
+      const key = `insight_conceded_${npcStyle}`;
+      const texts = INSIGHT_AWARE_RESPONSES[key];
+      if (texts && texts.length > 0) {
+        return getRandomText(texts, seed);
+      }
+    } else if (lastPushPullResult.playerMove === 'PERSIST') {
+      const key = `insight_persist_${npcStyle}`;
+      const texts = INSIGHT_AWARE_RESPONSES[key];
+      if (texts && texts.length > 0) {
+        return getRandomText(texts, seed);
+      }
+    }
+
+    return null;
+  }, [insightUsed, lastPushPullResult, customer]);
+
   return {
     patience,
     mood,
@@ -551,6 +579,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     lastOfferAmount,
     persistCount,
     npcConcessionCount,
-    lastPushPullResult
+    lastPushPullResult,
+    insightAwareText
   };
 };

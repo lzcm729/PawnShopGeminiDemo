@@ -37,10 +37,12 @@ export {
 export {
   generateCustomerInsight,
   determineDisposition,
+  determineSecondaryDisposition,
   calculatePatienceCost,
   getPatienceCostProbability,
   calculateInsightReward,
   getInsightPushPullModifier,
+  generateTrainingResult,
 } from './generator';
 
 // Behavior matrix exports

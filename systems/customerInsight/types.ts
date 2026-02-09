@@ -54,6 +54,9 @@ export interface CustomerInsightResult {
   /** Detected psychological disposition (internal, not shown as label) */
   disposition: Disposition;
 
+  /** Secondary disposition from multi-tag customers (e.g., DESPERATE+SAVVY) */
+  secondaryDisposition?: Disposition;
+
   /** Layer 1: Behavioral description of customer's psychological state */
   dispositionText: string;
 
@@ -71,6 +74,9 @@ export interface CustomerInsightResult {
 
   /** Whether patience was consumed (for UI feedback) */
   patienceTriggered: boolean;
+
+  /** Warning flag: if pressure/heartstrike was used before insight */
+  timeOrderWarning?: boolean;
 }
 
 // ============================================================================
