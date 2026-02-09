@@ -74,13 +74,17 @@ export const determinePlayerMove = (
  * @param playerMove 玩家行为类型
  * @param persistCount 连续坚持次数
  * @param concessionCount 已让步次数
+ * @param currentOffer 当前出价（用于近底线加成）
+ * @param minimumAmount NPC 底价（用于近底线加成）
  * @returns 让步概率 (0-1)
  */
 export const calculateConcessionChance = (
     style: NpcPushPullStyle,
     playerMove: PlayerMoveType,
     persistCount: number,
-    concessionCount: number
+    concessionCount: number,
+    currentOffer: number = 0,
+    minimumAmount: number = 0
 ): number => {
     const config = PUSH_PULL_CONFIG[style];
 
@@ -104,6 +108,11 @@ export const calculateConcessionChance = (
             const persistBonus = Math.min(persistCount * GAME_CONFIG.NEGOTIATION.PERSIST_BONUS_PER_COUNT, GAME_CONFIG.NEGOTIATION.PERSIST_BONUS_CAP);
             chance += persistBonus;
             break;
+    }
+
+    // 近底线加成：offer >= floor * near_floor_ratio → concession chance + bonus
+    if (minimumAmount > 0 && currentOffer >= minimumAmount * GAME_CONFIG.NEGOTIATION.NEAR_FLOOR_RATIO) {
+        chance += GAME_CONFIG.NEGOTIATION.NEAR_FLOOR_CONCESSION_BONUS;
     }
 
     return Math.min(chance, 1.0);
@@ -160,13 +169,6 @@ export const calculatePatienceLossChance = (
         case 'FIRST_OFFER': break; // +0%
         case 'YIELD': chance -= 0.15; break;
         case 'PERSIST': chance += 0.10; break;
-    }
-
-    // 出价接近度修正
-    if (currentAsk > 0) {
-        const ratio = currentOffer / currentAsk;
-        if (ratio >= 0.9) chance -= 0.10;
-        else if (ratio >= 0.8) chance -= 0.05;
     }
 
     // Clamp to [0.20, 0.95]
@@ -227,8 +229,8 @@ export const executePushPull = (
         };
     }
 
-    // 计算让步概率 (I-7: apply insight modifier)
-    let chance = calculateConcessionChance(style, playerMove, persistCount, concessionCount);
+    // 计算让步概率 (I-7: apply insight modifier, #48: near-floor bonus)
+    let chance = calculateConcessionChance(style, playerMove, persistCount, concessionCount, currentOffer, minimumAmount);
     if (insightConcessionModifier !== 0) {
         chance = Math.min(1.0, Math.max(0, chance + insightConcessionModifier));
     }

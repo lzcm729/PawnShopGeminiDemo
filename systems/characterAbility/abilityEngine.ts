@@ -15,7 +15,7 @@
 import { ReputationProfile } from '../core/types';
 import { EssenceBalance } from '../economy/essence';
 import { BehaviorTag } from '../core/types';
-import { NpcPushPullStyle, getPushPullStyle } from '../negotiation/pushPull';
+// NpcPushPullStyle and getPushPullStyle no longer needed after heart strike redesign
 import {
   AbilityState,
   SkillId,
@@ -42,12 +42,7 @@ const GLOBAL_FLOOR_REDUCTION_CAP = GAME_CONFIG.ABILITY.GLOBAL_FLOOR_REDUCTION_CA
 /** Base floor reduction for Apply Pressure */
 const PRESSURE_BASE_REDUCTION = GAME_CONFIG.ABILITY.PRESSURE_BASE_REDUCTION;
 
-/** Base floor reduction for Heart Strike by NPC type */
-const HEART_STRIKE_BASE_REDUCTION: Record<string, number> = {
-  DESPERATE: GAME_CONFIG.ABILITY.HEART_STRIKE_DESPERATE,
-  HARD: GAME_CONFIG.ABILITY.HEART_STRIKE_HARD,
-  DEFAULT: GAME_CONFIG.ABILITY.HEART_STRIKE_DEFAULT,
-};
+// Heart strike floor reduction constants removed — mechanic is now concession chance bonus
 
 /** Per-flaw floor reduction for Sharp Scrutiny */
 const SHARP_SCRUTINY_PER_FLAW = GAME_CONFIG.ABILITY.SHARP_SCRUTINY_PER_FLAW;
@@ -232,17 +227,45 @@ export function calculatePressureEffect(
 }
 
 /**
- * Calculate the floor reduction from Heart Strike (攻心).
+ * Heart Strike Result — concession chance bonus (not floor reduction)
+ */
+export interface HeartStrikeResult {
+  /** Concession chance bonus (e.g. 0.30 = +30%) */
+  concessionBonus: number;
+  /** Patience cost (always 0 for heart strike) */
+  patienceCost: number;
+  /** Modulation coefficient applied */
+  modulationCoefficient: number;
+}
+
+/**
+ * Calculate the Heart Strike (攻心) effect.
  *
- * Base effect varies by NPC type:
- *   DESPERATE: -12%
- *   HARD (push-pull style): -6%
- *   Default: -10%
+ * Design: Heart Strike grants +30% concession chance (configurable).
+ * This is NOT a floor reduction — it boosts the probability that NPC
+ * concedes during push-pull negotiation.
  *
- * Timing bonus: +20% if used right after NPC concession
  * Patience cost: 0 (unique to heart strike)
  */
 export function calculateHeartStrikeEffect(
+  reputation: ReputationProfile,
+): HeartStrikeResult {
+  const modCoeff = getSkillModifier('HEART_STRIKE', reputation);
+  const baseBonus = GAME_CONFIG.NEGOTIATION.HEART_STRIKE_CONCESSION_BONUS;
+
+  return {
+    concessionBonus: baseBonus * modCoeff,
+    patienceCost: 0,
+    modulationCoefficient: modCoeff,
+  };
+}
+
+/**
+ * @deprecated Legacy floor reduction interface for Heart Strike.
+ * Kept for backward compatibility with existing component calls.
+ * Returns zero floor reduction; the actual effect is now concession chance bonus.
+ */
+export function calculateHeartStrikeFloorEffect(
   originalFloor: number,
   currentFloor: number,
   reputation: ReputationProfile,
@@ -250,44 +273,14 @@ export function calculateHeartStrikeEffect(
   afterConcession: boolean,
   existingReduction: number
 ): FloorReductionResult {
-  const modCoeff = getSkillModifier('HEART_STRIKE', reputation);
-
-  // Determine base reduction based on NPC type
-  let baseReduction: number;
-  const pushPullStyle = getPushPullStyle(behaviorTags);
-
-  if (behaviorTags.includes('DESPERATE')) {
-    baseReduction = HEART_STRIKE_BASE_REDUCTION.DESPERATE;
-  } else if (pushPullStyle === 'HARD') {
-    baseReduction = HEART_STRIKE_BASE_REDUCTION.HARD;
-  } else {
-    baseReduction = HEART_STRIKE_BASE_REDUCTION.DEFAULT;
-  }
-
-  const timingApplied = afterConcession;
-  if (timingApplied) {
-    baseReduction *= TIMING_BONUS_MULTIPLIER;
-  }
-
-  const rawReduction = baseReduction * modCoeff;
-
-  // Apply global cap
-  const totalWithNew = existingReduction + rawReduction;
-  const cappedTotal = Math.min(totalWithNew, GLOBAL_FLOOR_REDUCTION_CAP);
-  const effectiveReduction = cappedTotal - existingReduction;
-  const cappedByGlobalLimit = totalWithNew > GLOBAL_FLOOR_REDUCTION_CAP;
-
-  const reductionAmount = Math.floor(originalFloor * effectiveReduction);
-  const newFloor = Math.max(currentFloor - reductionAmount, 0);
-
   return {
-    rawReduction,
-    effectiveReduction,
-    newFloor,
-    patienceCost: 0, // Heart strike does NOT cost patience
-    cappedByGlobalLimit,
-    modulationCoefficient: modCoeff,
-    timingBonusApplied: timingApplied,
+    rawReduction: 0,
+    effectiveReduction: 0,
+    newFloor: currentFloor,
+    patienceCost: 0,
+    cappedByGlobalLimit: false,
+    modulationCoefficient: getSkillModifier('HEART_STRIKE', reputation),
+    timingBonusApplied: false,
   };
 }
 
