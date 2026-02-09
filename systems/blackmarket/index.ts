@@ -65,5 +65,8 @@ export {
   getRefusalRiskBonus,
 
   // v3.6 [BM-10]: Moral echo system
-  generateMoralEcho
+  generateMoralEcho,
+
+  // P1-10: Customer ecology shift
+  getCustomerEcologyShift
 } from './blackmarketService';

@@ -27,4 +27,7 @@ export {
   resetInsightedFlags,
   // 夜间鉴定相关
   isValueLocked,
+  // 格物等级系统
+  calculateGewuLevel,
+  getGewuEnergyMax,
 } from './insightLogic';

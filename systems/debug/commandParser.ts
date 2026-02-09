@@ -1268,11 +1268,18 @@ function handleSpawnCommand(
           .map((item: Item) => item.templateId!)
       );
 
+      // H-2: Pass reputation for customer quality bias
+      const qualityOptions = {
+        humanity: state.reputation[ReputationType.HUMANITY],
+        innocence: state.reputation[ReputationType.INNOCENCE]
+      };
+
       const customer = generateFillerCustomer(
         state.stats.day,
         undefined, // Random profile
         excludeTemplateIds,
-        forceJumpTrait
+        forceJumpTrait,
+        qualityOptions
       );
 
       if (!customer) {

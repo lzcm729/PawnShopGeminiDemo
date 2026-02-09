@@ -11,7 +11,8 @@ import {
   processStartOfDay,
   applyHeatDecay,
   payProtectionFee,
-  refuseProtectionFee
+  refuseProtectionFee,
+  getCustomerEcologyShift
 } from '../../systems/blackmarket/blackmarketService';
 import { getBlackMarketContactLevel } from '../../systems/upgrades/utils';
 
@@ -238,8 +239,12 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       const salePenaltyPercent = riskEvent?.salePenalty ?? 0;
       const nextHeatDecaySuspended = riskEvent?.suspendHeatDecay ?? false;
 
-      // Generate new daily state with demand inertia
-      const newDaily = generateDailyBlackmarketState(upgradeLevel, newTagHistory, salePenaltyPercent);
+      // P1-10: Compute ecology shift based on innocence
+      const innocence = state.reputation[ReputationType.INNOCENCE];
+      const ecologyShift = getCustomerEcologyShift(innocence);
+
+      // Generate new daily state with demand inertia and ecology shift
+      const newDaily = generateDailyBlackmarketState(upgradeLevel, newTagHistory, salePenaltyPercent, ecologyShift);
 
       // v3.6 [BM-2]: Lv3+ next day preview
       const nextDayPreviewTag = upgradeLevel >= 3 && newDaily.purchaseRequests.length > 0
@@ -268,11 +273,15 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       // Get upgrade level for daily limits
       const upgradeLevel = getBlackMarketContactLevel(state.shopUpgrades);
 
+      // P1-10: Compute ecology shift based on innocence
+      const ecologyShift = getCustomerEcologyShift(state.reputation[ReputationType.INNOCENCE]);
+
       // Generate new daily requests if not locked, with upgrade-based purchase limit
       // v3.6 [BM-2]: Pass tagHistory for demand inertia
+      // P1-10: Pass ecology shift for gray tag weighting
       const newDaily = updatedState.isLocked
         ? state.blackmarket.daily
-        : generateDailyBlackmarketState(upgradeLevel, state.blackmarket.tagHistory);
+        : generateDailyBlackmarketState(upgradeLevel, state.blackmarket.tagHistory, 0, ecologyShift);
 
       return {
         ...state,

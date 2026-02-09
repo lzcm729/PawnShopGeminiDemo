@@ -69,6 +69,7 @@ interface InsightOperationResult {
 export const useInsight = (): UseInsightReturn => {
   const { state, dispatch } = useGame();
   const { inventory, nightState, essenceBalance } = state;
+  const gewuLevel = state.abilityState?.gewuLevel ?? 1;
 
   // 获取可格物的物品列表
   const insightableItems = useMemo((): InsightableItem[] => {
@@ -80,17 +81,17 @@ export const useInsight = (): UseInsightReturn => {
 
     return eligibleItems.map(item => ({
       item,
-      status: getInsightStatus(item, nightState),
+      status: getInsightStatus(item, nightState, gewuLevel),
       primaryEssence: getPrimaryEssenceType(item),
     }));
-  }, [inventory, nightState]);
+  }, [inventory, nightState, gewuLevel]);
 
   // 获取物品的格物状态
   const getItemInsightStatus = useCallback(
     (item: Item): InsightStatus => {
-      return getInsightStatus(item, nightState);
+      return getInsightStatus(item, nightState, gewuLevel);
     },
-    [nightState]
+    [nightState, gewuLevel]
   );
 
   // 获取格物叙事
@@ -119,7 +120,7 @@ export const useInsight = (): UseInsightReturn => {
       }
 
       // 检查是否可以格物
-      const status = getInsightStatus(item, nightState);
+      const status = getInsightStatus(item, nightState, gewuLevel);
       if (!status.canInsight) {
         return {
           success: false,
@@ -127,8 +128,8 @@ export const useInsight = (): UseInsightReturn => {
         };
       }
 
-      // 执行格物（传入库存以支持共鸣事件）
-      const insightOutput = performInsight(item, nightState, inventory);
+      // 执行格物（传入库存以支持共鸣事件，传入格物等级）
+      const insightOutput = performInsight(item, nightState, inventory, gewuLevel);
       if (!insightOutput) {
         return {
           success: false,
@@ -172,6 +173,11 @@ export const useInsight = (): UseInsightReturn => {
         },
       });
 
+      // 记录顿悟（更新格物等级和精力上限）
+      if (result.isEpiphany) {
+        dispatch({ type: 'RECORD_EPIPHANY' });
+      }
+
       // 生成叙事
       const narrative = getInsightNarrative(item, result);
 
@@ -181,7 +187,7 @@ export const useInsight = (): UseInsightReturn => {
         narrative,
       };
     },
-    [inventory, nightState, dispatch]
+    [inventory, nightState, dispatch, gewuLevel]
   );
 
   return {

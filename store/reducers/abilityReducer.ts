@@ -9,6 +9,8 @@ import { SkillId } from '../../systems/characterAbility/types';
 import { SKILL_DEFINITIONS } from '../../systems/characterAbility/skillDefinitions';
 import { removeDeliveredEchoes, enqueueEchoes } from '../../systems/characterAbility/moralEcho';
 import { clampReputation } from '../../systems/core/reputationUtils';
+import { calculateGewuLevel, getGewuEnergyMax } from '../../systems/insight';
+import { getEffectiveNightEnergy } from '../../systems/upgrades';
 
 export function abilityReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -161,6 +163,46 @@ export function abilityReducer(state: GameState, action: Action): GameState {
             return {
                 ...state,
                 pendingEchoTexts: [],
+            };
+        }
+
+        case 'RECORD_EPIPHANY': {
+            const newTotal = (state.abilityState.totalEpiphanies ?? 0) + 1;
+            const newGewuLevel = calculateGewuLevel(newTotal);
+            const oldGewuLevel = state.abilityState.gewuLevel ?? 1;
+
+            // Update ability state with new epiphany count and level
+            const updatedAbility = {
+                ...state.abilityState,
+                totalEpiphanies: newTotal,
+                gewuLevel: newGewuLevel,
+            };
+
+            // If level changed, update energy max (gewu level provides base energy growth)
+            if (newGewuLevel > oldGewuLevel) {
+                const gewuEnergyMax = getGewuEnergyMax(newGewuLevel);
+                // Effective energy = max(upgrade-based energy, gewu-based energy)
+                const upgradeEnergy = getEffectiveNightEnergy(state.shopUpgrades);
+                const newMaxEnergy = Math.max(upgradeEnergy, gewuEnergyMax);
+                return {
+                    ...state,
+                    abilityState: updatedAbility,
+                    nightState: {
+                        ...state.nightState,
+                        maxEnergy: newMaxEnergy,
+                        // Also grant the energy increase immediately
+                        energy: state.nightState.energy + (newMaxEnergy - state.nightState.maxEnergy),
+                    },
+                    dayEvents: [
+                        ...state.dayEvents,
+                        `[格物] 格物等级提升至 Lv${newGewuLevel}！精力上限提升至 ${newMaxEnergy}。`,
+                    ],
+                };
+            }
+
+            return {
+                ...state,
+                abilityState: updatedAbility,
             };
         }
 

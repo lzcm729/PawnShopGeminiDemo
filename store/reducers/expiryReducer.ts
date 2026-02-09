@@ -10,6 +10,7 @@ import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog, generatePlayerChoiceLog, generateEchoLog } from '../../systems/game/utils/logGenerator';
 import { evaluateRedeemSatisfaction, evaluateRenewalSatisfaction, evaluatePostForfeitSatisfaction, mapToBaseSatisfaction } from '../../systems/game/utils/satisfaction';
+import { getRenewalRefusalPenalty } from '../../systems/economy/renewalPenalty';
 
 export function expiryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -132,8 +133,11 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                             ? { ...i, status: ItemStatus.FORFEIT, logs: [...(i.logs || []), forfeitLog, choiceLog] }
                             : i
                     );
-                    repDelta = { [ReputationType.HUMANITY]: -10 };
-                    log = `拒绝续当: ${item.name} 已绝当`;
+                    // Escalating penalty based on prior renewal count
+                    const renewalExtCount = item.pawnInfo?.extensionCount || 0;
+                    const renewRefusalPenalty = getRenewalRefusalPenalty(renewalExtCount);
+                    repDelta = { [ReputationType.HUMANITY]: renewRefusalPenalty };
+                    log = `拒绝续当: ${item.name} 已绝当 (Humanity ${renewRefusalPenalty})`;
                     departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
                     satisfaction = 'DESPERATE';
                     playSfx('CLICK');

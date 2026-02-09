@@ -6,7 +6,7 @@ import { generateDailyNews } from '../systems/news/engine';
 import { generatePawnLog, generatePlayerChoiceLog } from '../systems/game/utils/logGenerator';
 import { detectEchoEntries } from '../systems/game/utils/echoDetector';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
-import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, ChainUpdateEffect, MotherCondition, ExpiryEvent } from '../types';
+import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, ChainUpdateEffect, MotherCondition, ExpiryEvent, MoraleBuff } from '../types';
 import { usePawnShop } from './usePawnShop';
 import { GAME_CONFIG } from '../systems/game/config';
 import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
@@ -202,8 +202,15 @@ export const useGameEngine = () => {
     let newCareLevel = currentMother.careLevel;
     let logMessage = '';
 
+    // P1-6: Check if purchased care is still active, expire it if needed
+    let purchasedCare = currentMother.purchasedCare;
+    if (purchasedCare && day >= purchasedCare.expiresDay) {
+        purchasedCare = null;
+        logMessage += "护理服务已到期。";
+    }
+
     const isBillOverdue = day >= medicalBill.dueDate && medicalBill.status !== 'PAID';
-    
+
     // Milestone Effect: Saint (Health decay reduced)
     const hasSaint = state.activeMilestones.includes('hum_saint');
     const decayModifier = hasSaint ? 1 : 0; // +1 health offset (reduces decay)
@@ -224,6 +231,22 @@ export const useGameEngine = () => {
         // PENDING status: health remains stable (no change)
         newCareLevel = 'Basic';
         newStatus = 'Stable';
+    }
+
+    // P1-6: Apply purchased care effects (overrides passive care if higher)
+    // Purchased care reduces risk even when passive care level is lower
+    if (purchasedCare) {
+        const careRiskReduction = purchasedCare.level === 'Premium'
+            ? GAME_CONFIG.MOTHER.CARE_PREMIUM_RISK_REDUCTION
+            : GAME_CONFIG.MOTHER.CARE_STANDARD_RISK_REDUCTION;
+        newRisk = Math.max(0, newRisk - careRiskReduction);
+
+        // Upgrade effective care level if purchased care is higher
+        if (purchasedCare.level === 'Premium' && newCareLevel !== 'Premium') {
+            newCareLevel = 'Premium';
+        } else if (purchasedCare.level === 'Standard' && newCareLevel === 'None') {
+            newCareLevel = 'Basic'; // Standard purchased care = at least Basic
+        }
     }
 
     const complicationRoll = Math.random() * 100;
@@ -247,10 +270,62 @@ export const useGameEngine = () => {
         health: newHealth,
         status: newStatus,
         risk: newRisk,
-        careLevel: newCareLevel
+        careLevel: newCareLevel,
+        purchasedCare: purchasedCare
     };
 
     dispatch({ type: 'UPDATE_MOTHER_STATUS', payload: updatedMother });
+
+    // 6b. H-1: Morale Buff from Hospital Visit
+    // After visiting mother at night, compute next-day mood buff based on health
+    if (state.stats.visitedToday) {
+        const moraleHealth = newHealth;
+        const anxiousSevereThreshold = GAME_CONFIG.MOTHER.MORALE_ANXIOUS_HEALTH_THRESHOLD;
+        let moraleBuff: MoraleBuff;
+
+        if (moraleHealth >= 60) {
+            // Good health: positive buff
+            // "Good conversation" approximated by health being high (>= 60)
+            moraleBuff = {
+                type: 'MOTIVATED',
+                appraisalModifier: GAME_CONFIG.MOTHER.MORALE_MOTIVATED_APPRAISAL,
+                negotiationModifier: GAME_CONFIG.MOTHER.MORALE_MOTIVATED_NEGOTIATION,
+                expiresDay: nextDay + 1 // expires at end of next business day
+            };
+        } else if (moraleHealth >= anxiousSevereThreshold) {
+            // Moderate health: calm or mild anxiety
+            if (moraleHealth >= 50) {
+                moraleBuff = {
+                    type: 'CALM',
+                    appraisalModifier: GAME_CONFIG.MOTHER.MORALE_CALM_APPRAISAL,
+                    negotiationModifier: GAME_CONFIG.MOTHER.MORALE_CALM_NEGOTIATION,
+                    expiresDay: nextDay + 1
+                };
+            } else {
+                moraleBuff = {
+                    type: 'ANXIOUS',
+                    appraisalModifier: GAME_CONFIG.MOTHER.MORALE_ANXIOUS_APPRAISAL,
+                    negotiationModifier: GAME_CONFIG.MOTHER.MORALE_ANXIOUS_NEGOTIATION,
+                    expiresDay: nextDay + 1
+                };
+            }
+        } else {
+            // Severe anxiety: mother in critical condition
+            moraleBuff = {
+                type: 'ANXIOUS',
+                appraisalModifier: GAME_CONFIG.MOTHER.MORALE_ANXIOUS_SEVERE_APPRAISAL,
+                negotiationModifier: GAME_CONFIG.MOTHER.MORALE_ANXIOUS_SEVERE_NEGOTIATION,
+                expiresDay: nextDay + 1
+            };
+        }
+
+        dispatch({ type: 'SET_MORALE_BUFF', payload: moraleBuff });
+    }
+
+    // 6c. Clear expired morale buff
+    if (state.moraleBuff && nextDay >= state.moraleBuff.expiresDay) {
+        dispatch({ type: 'CLEAR_MORALE_BUFF' });
+    }
 
     // 7. Prepare Appointments for Tomorrow
     // This copies selected candidate IDs to pendingAppointedCustomerIds and clears selections
@@ -707,7 +782,10 @@ export const useGameEngine = () => {
                   .filter(item => item.status === ItemStatus.ACTIVE && item.templateId)
                   .map(item => item.templateId!)
           );
-          const fillerCustomer = generateFillerCustomer(state.stats.day, undefined, excludeTemplateIds);
+          const fillerCustomer = generateFillerCustomer(state.stats.day, undefined, excludeTemplateIds, null, {
+              humanity: state.reputation[ReputationType.HUMANITY],
+              innocence: state.reputation[ReputationType.INNOCENCE],
+          });
           if (fillerCustomer) {
               setTimeout(() => {
                   dispatch({ type: 'SET_CUSTOMER', payload: fillerCustomer });
@@ -1236,6 +1314,70 @@ export const useGameEngine = () => {
       }
   };
 
+  // H-3: Get mother's dialogue variant based on player's moral standing
+  // Returns dialogue text that reflects mother's reaction to player's business practices
+  const getMotherVisitDialogue = (): { greeting: string; mood: 'proud' | 'neutral' | 'concerned' } => {
+      const humanity = state.reputation[ReputationType.HUMANITY];
+      const motherHealth = state.stats.motherStatus.health;
+
+      if (humanity >= GAME_CONFIG.MOTHER.MOTHER_PROUD_HUMANITY_THRESHOLD) {
+          // High humanity: mother is proud but worried about finances
+          const lines = [
+              "孩子，听说你帮了不少人...妈妈很骄傲。不过你自己的钱够用吗？",
+              "邻居说你是个好人...别光顾着帮别人，也照顾好自己。",
+              "妈妈听说了你做的好事，心里很欣慰。但别把自己亏了。",
+          ];
+          return {
+              greeting: lines[Math.floor(Math.random() * lines.length)],
+              mood: 'proud'
+          };
+      } else if (humanity < GAME_CONFIG.MOTHER.MOTHER_CONCERN_HUMANITY_THRESHOLD) {
+          // Low humanity: mother has heard rumors
+          const lines = [
+              "孩子...外面有些不好的传闻。你没在做什么过分的事吧？",
+              "妈妈听人说了一些事...你做生意，不能太黑心啊。",
+              "有人跟我说你铺子里的利息很高...孩子，做人要有良心。",
+          ];
+          return {
+              greeting: lines[Math.floor(Math.random() * lines.length)],
+              mood: 'concerned'
+          };
+      } else {
+          // Normal range: neutral conversation
+          if (motherHealth < 40) {
+              return {
+                  greeting: "咳咳...你来了。别担心妈妈，我还撑得住。",
+                  mood: 'neutral'
+              };
+          }
+          const lines = [
+              "你来了啊，今天生意怎么样？",
+              "看你这么辛苦，妈妈心疼你。",
+              "别太累了，身体要紧。",
+          ];
+          return {
+              greeting: lines[Math.floor(Math.random() * lines.length)],
+              mood: 'neutral'
+          };
+      }
+  };
+
+  // P1-6: Purchase care for mother
+  const purchaseCare = (level: 'Standard' | 'Premium') => {
+      const cost = level === 'Premium'
+          ? GAME_CONFIG.MOTHER.CARE_PREMIUM_COST
+          : GAME_CONFIG.MOTHER.CARE_STANDARD_COST;
+      const duration = GAME_CONFIG.MOTHER.CARE_DURATION;
+
+      if (state.stats.cash < cost) return false;
+
+      dispatch({
+          type: 'PURCHASE_CARE',
+          payload: { level, cost, duration }
+      });
+      return true;
+  };
+
   return {
       startNewDay,
       performNightCycle,
@@ -1251,6 +1393,10 @@ export const useGameEngine = () => {
       handleStolenItemDecision,
       handlePoliceInvestigationDecision,
       // S4-F1/F2: External trigger handler
-      handleExternalTrigger
+      handleExternalTrigger,
+      // P1-6: Care purchase
+      purchaseCare,
+      // H-3: Mother visit dialogue
+      getMotherVisitDialogue
   };
 };

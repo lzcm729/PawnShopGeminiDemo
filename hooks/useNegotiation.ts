@@ -88,8 +88,11 @@ const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number, i
  *   to NPC concession probability. Pass getInsightPushPullModifier result.
  * @param itemUncertainty Current item uncertainty (0.05-0.30). Used for precision payoff modifiers.
  *   Locked at negotiation start — later appraisals don't change the already-reported ask price.
+ * @param moraleNegotiationModifier (H-1) Optional modifier from morale buff.
+ *   Values < 1.0 reduce patience cost (good morale), > 1.0 increase it (bad morale).
+ *   Applied probabilistically: modifier > 1 = higher chance of losing patience.
  */
-export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0, itemUncertainty: number = 0.3): UseNegotiationReturn => {
+export const useNegotiation = (customer: Customer | null, insightConcessionModifier: number = 0, itemUncertainty: number = 0.3, moraleNegotiationModifier: number = 1.0): UseNegotiationReturn => {
   // Logic State
   const [patience, setPatience] = useState<number>(3);
   const [mood, setMood] = useState<NegotiationMood>('Neutral');
@@ -373,7 +376,27 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     // Update last offer amount
     setLastOfferAmount(offerPrincipal);
 
-    const remaining = Math.max(0, patience - costPatience);
+    // H-1: Apply morale negotiation modifier to patience cost
+    // modifier < 1 (good morale): chance to avoid 1 patience loss
+    // modifier > 1 (bad morale): chance to lose extra patience
+    let adjustedCostPatience = costPatience;
+    if (costPatience > 0 && moraleNegotiationModifier !== 1.0) {
+        if (moraleNegotiationModifier < 1.0) {
+            // Good morale: chance to save 1 patience (e.g., 0.90 => 10% chance to save)
+            const saveChance = 1.0 - moraleNegotiationModifier;
+            if (Math.random() < saveChance) {
+                adjustedCostPatience = Math.max(0, costPatience - 1);
+            }
+        } else {
+            // Bad morale: chance to lose extra patience (e.g., 1.10 => 10% chance to lose extra)
+            const extraChance = moraleNegotiationModifier - 1.0;
+            if (Math.random() < extraChance) {
+                adjustedCostPatience = costPatience + 1;
+            }
+        }
+    }
+
+    const remaining = Math.max(0, patience - adjustedCostPatience);
     setPatience(remaining);
     setMood(nextMood);
 
@@ -398,7 +421,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         patienceRemaining: remaining
     };
 
-  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier]);
+  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier, moraleNegotiationModifier]);
 
   // Allow external systems (ability skills) to deduct patience from the hook's local state.
   // This keeps the hook's patience in sync when skills like "施压" cost patience.

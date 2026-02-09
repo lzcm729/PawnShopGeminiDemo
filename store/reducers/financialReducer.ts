@@ -169,6 +169,42 @@ export function financialReducer(state: GameState, action: Action): GameState {
         case 'UPDATE_MOTHER_STATUS':
             return { ...state, stats: { ...state.stats, motherStatus: action.payload } };
 
+        // P1-6: Active care purchase
+        case 'PURCHASE_CARE': {
+            const { level, cost, duration } = action.payload;
+            if (state.stats.cash < cost) return state;
+            playSfx('SUCCESS');
+            const careRecord: TransactionRecord = {
+                id: crypto.randomUUID(),
+                description: level === 'Premium' ? '高级护理服务' : '标准护理服务',
+                amount: -cost,
+                type: 'MEDICAL'
+            };
+            const careLevelLabel = level === 'Premium' ? '高级' : '标准';
+            const expiresDay = state.stats.day + duration;
+            const newMotherWithCare = {
+                ...state.stats.motherStatus,
+                purchasedCare: { level, expiresDay }
+            };
+            return {
+                ...state,
+                stats: {
+                    ...state.stats,
+                    cash: state.stats.cash - cost,
+                    motherStatus: newMotherWithCare
+                },
+                todayTransactions: [...state.todayTransactions, careRecord],
+                dayEvents: [...state.dayEvents, `购买了${careLevelLabel}护理服务 ($${cost})，持续${duration}天至第${expiresDay}天。`]
+            };
+        }
+
+        // H-1: Morale buff from hospital visit
+        case 'SET_MORALE_BUFF':
+            return { ...state, moraleBuff: action.payload };
+
+        case 'CLEAR_MORALE_BUFF':
+            return { ...state, moraleBuff: null };
+
         case 'END_DAY': {
             const currentDay = state.stats.day;
             const nextDay = state.stats.day + 1;

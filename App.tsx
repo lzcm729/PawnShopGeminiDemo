@@ -48,7 +48,8 @@ const GameContent: React.FC = () => {
     return mod ? mod.concessionModifier : 0;
   }, [insight.getPushPullModifier]);
   const itemUncertainty = state.currentCustomer?.item.uncertainty ?? 0.3;
-  const negotiation = useNegotiation(state.currentCustomer, insightConcessionModifier, itemUncertainty);
+  const moraleNegotiationModifier = state.moraleBuff?.negotiationModifier ?? 1.0;
+  const negotiation = useNegotiation(state.currentCustomer, insightConcessionModifier, itemUncertainty, moraleNegotiationModifier);
   
   // Transition State
   const prevPhaseType = useRef<string>(state.phase.type);

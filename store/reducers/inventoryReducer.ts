@@ -11,6 +11,7 @@ import { playSfx } from '../../systems/game/audio';
 import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../../systems/game/utils/logGenerator';
 import { GamePhase } from '../../systems/core/phases';
 import { calculateTaggedValue } from '../../systems/items/tagUtils';
+import { getRenewalRefusalPenalty } from '../../systems/economy/renewalPenalty';
 
 export function inventoryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -103,7 +104,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
         }
 
         case 'REFUSE_EXTENSION': {
-            const { itemId, name } = action.payload;
+            const { itemId, name, extensionCount } = action.payload;
             const updatedInventory = state.inventory.map(item => {
                 if (item.id === itemId) {
                     const log = generateForfeitLog(item, state.stats.day, "拒绝续当");
@@ -111,8 +112,10 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 }
                 return item;
             });
+            // Escalating penalty: more prior renewals = harsher humanity loss
+            const humanityPenalty = getRenewalRefusalPenalty(extensionCount);
             const newRep = { ...state.reputation };
-            newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 10);
+            newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] + humanityPenalty);
             const servedCount = state.customersServedToday + 1;
             return {
                 ...state,
@@ -120,7 +123,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 reputation: newRep,
                 customersServedToday: servedCount,
                 phase: { type: 'DEPARTURE' } as GamePhase,
-                dayEvents: [...state.dayEvents, `拒绝续当: ${name}。物品已收归店铺 (Humanity -10)。`]
+                dayEvents: [...state.dayEvents, `拒绝续当: ${name}。物品已收归店铺 (Humanity ${humanityPenalty})。`]
             };
         }
 

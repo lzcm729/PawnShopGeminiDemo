@@ -14,6 +14,7 @@ import { GAME_CONFIG } from '../../game/config';
 import { EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT } from '../../narrative/storyRegistry';
 import { INITIAL_ESSENCE_BALANCE } from '../../economy/essence';
 import { INITIAL_SHOP_UPGRADES, getEffectiveNightEnergy, getTotalMaintenanceCost } from '../../upgrades';
+import { getGewuEnergyMax } from '../../insight';
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../../appointment';
 import { createInitialBlackmarketState, processStartOfDay as processBlackmarketStartOfDay } from '../../blackmarket/blackmarketService';
 
@@ -206,8 +207,10 @@ export function resetDailyCounters(state: GameState, _event: PhaseEvent): Partia
     const apModifier = state.activeMarketEffects.reduce((acc, mod) => acc + (mod.actionPointsModifier || 0), 0);
     const effectiveMaxAP = Math.max(1, baseAP + apModifier);
 
-    // Calculate effective max energy for the upcoming night
-    const effectiveMaxEnergy = getEffectiveNightEnergy(state.shopUpgrades);
+    // Calculate effective max energy for the upcoming night (max of upgrade and gewu level)
+    const upgradeMaxEnergy = getEffectiveNightEnergy(state.shopUpgrades);
+    const gewuLevel = state.abilityState?.gewuLevel ?? 1;
+    const effectiveMaxEnergy = Math.max(upgradeMaxEnergy, getGewuEnergyMax(gewuLevel));
 
     return {
         customersServedToday: 0,

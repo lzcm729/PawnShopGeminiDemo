@@ -101,12 +101,15 @@ export const usePawnShop = () => {
     }, [calculateRedemptionCost, dispatch]);
 
     // NEW: Process Refuse Extension (Forfeit item, no money, rep loss)
+    // Escalating penalty: more prior renewals = harsher humanity loss
     const processRefuseExtension = useCallback((item: Item) => {
+        const extensionCount = item.pawnInfo?.extensionCount || 0;
         dispatch({
             type: 'REFUSE_EXTENSION',
             payload: {
                 itemId: item.id,
-                name: item.name
+                name: item.name,
+                extensionCount
             }
         });
     }, [dispatch]);

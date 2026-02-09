@@ -82,8 +82,16 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     status: insightStatus,
     canUseInsight,
     useInsight,
-    getBlockReasonText
+    getBlockReasonText,
+    getInsightReward,
   } = useCustomerInsight();
+
+  // Insight Interaction state (EMPATHY / PROBE)
+  const [empathyUsed, setEmpathyUsed] = useState(false);
+  const [probeUsed, setProbeUsed] = useState(false);
+  const insightReward = getInsightReward();
+  const hasEmpathyInteraction = insightReward?.unlockedInteractions.includes('EMPATHY') ?? false;
+  const hasProbeInteraction = insightReward?.unlockedInteractions.includes('PROBE') ?? false;
 
   const {
     offerPrincipal,
@@ -284,6 +292,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       setStolenDecisionMade(false);
       setPressureUsed(false);
       setHeartStrikeUsed(false);
+      setEmpathyUsed(false);
+      setProbeUsed(false);
   }, [currentCustomer?.id]);
 
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
@@ -422,6 +432,89 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       }
 
       // Heart strike does NOT cost patience (patienceCost = 0)
+
+      playSfx('CLICK');
+  };
+
+  // Handle Empathy interaction
+  const handleEmpathy = () => {
+      if (!currentCustomer || empathyUsed || !insightResult) return;
+
+      setEmpathyUsed(true);
+
+      // Determine correctness based on disposition
+      // EMPATHY is effective on emotional/sincere NPCs: 'desperate' | 'sincere'
+      // Incorrect on shrewd/calculating NPCs: 'bluffing' | 'firm'
+      const disposition = insightResult.disposition;
+      const isCorrect = disposition === 'desperate' || disposition === 'sincere';
+
+      if (isCorrect) {
+          // Correct: positive feedback, no patience cost
+          // NOTE: "reduce patience cost for remaining rounds" would require framework
+          // changes to applyExternalPatienceCost (currently rejects negative values).
+          // For now, correct match gives zero cost + positive feedback.
+          setChatLog(prev => [...prev, {
+              id: `empathy-${Date.now()}`,
+              sender: 'player' as const,
+              text: '[共情] 你表达了对对方处境的理解，氛围变得温和了一些。',
+              subtext: '好感上升',
+              sentiment: 'positive' as const,
+              type: 'INNER_MONOLOGUE' as const,
+          }]);
+      } else {
+          // Incorrect: extra patience cost, negative reaction
+          negotiation.applyExternalPatienceCost(2);
+
+          setChatLog(prev => [...prev, {
+              id: `empathy-${Date.now()}`,
+              sender: 'player' as const,
+              text: '[共情] 你试图表示理解，但对方似乎觉得你在套近乎。',
+              subtext: '耐心 -2 | 好感下降',
+              sentiment: 'negative' as const,
+              type: 'INNER_MONOLOGUE' as const,
+          }]);
+      }
+
+      playSfx('CLICK');
+  };
+
+  // Handle Probe interaction
+  const handleProbe = () => {
+      if (!currentCustomer || probeUsed || !insightResult) return;
+
+      setProbeUsed(true);
+
+      // Determine correctness based on disposition
+      // PROBE is effective on bluffing/shrewd NPCs: 'bluffing' | 'firm'
+      // Incorrect on emotional/vulnerable NPCs: 'desperate' | 'sincere'
+      const disposition = insightResult.disposition;
+      const isCorrect = disposition === 'bluffing' || disposition === 'firm';
+
+      if (isCorrect) {
+          // Correct: positive feedback, no patience cost
+          // NOTE: "reveal more bottom-line information" would require framework
+          // changes. For now, correct match gives zero cost + positive feedback.
+          setChatLog(prev => [...prev, {
+              id: `probe-${Date.now()}`,
+              sender: 'player' as const,
+              text: '[试探] 你巧妙地试探了对方的底线，对方的虚张声势被你看穿了。',
+              subtext: '底线信息增加',
+              sentiment: 'positive' as const,
+              type: 'INNER_MONOLOGUE' as const,
+          }]);
+      } else {
+          // Incorrect: lose affinity, patience penalty
+          negotiation.applyExternalPatienceCost(2);
+
+          setChatLog(prev => [...prev, {
+              id: `probe-${Date.now()}`,
+              sender: 'player' as const,
+              text: '[试探] 你的试探让对方感到不被信任，关系变得紧张。',
+              subtext: '耐心 -2 | 好感下降',
+              sentiment: 'negative' as const,
+              type: 'INNER_MONOLOGUE' as const,
+          }]);
+      }
 
       playSfx('CLICK');
   };
@@ -621,6 +714,12 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           canUseHeartStrike={canUseHeartStrikeNow}
           heartStrikeUsed={heartStrikeUsed}
           onHeartStrike={heartStrikeSkillAvailable ? handleHeartStrike : undefined}
+          canUseEmpathy={hasEmpathyInteraction && !empathyUsed}
+          empathyUsed={empathyUsed}
+          onEmpathy={hasEmpathyInteraction ? handleEmpathy : undefined}
+          canUseProbe={hasProbeInteraction && !probeUsed}
+          probeUsed={probeUsed}
+          onProbe={hasProbeInteraction ? handleProbe : undefined}
           onOffer={handleOffer}
           onManualReject={handleManualReject}
           onBinaryAccept={handleBinaryAccept}

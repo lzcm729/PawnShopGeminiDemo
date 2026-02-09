@@ -7,6 +7,7 @@ import { GameState, TransactionRecord } from '../../types';
 import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { purchaseUpgrade, toggleUpgrade, getUpgradeLevelConfig, getEffectiveNightEnergy, getTotalMaintenanceCost } from '../../systems/upgrades';
+import { getGewuEnergyMax } from '../../systems/insight';
 
 export function upgradeReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -29,8 +30,10 @@ export function upgradeReducer(state: GameState, action: Action): GameState {
 
             playSfx('SUCCESS');
 
-            // Calculate new night energy cap based on upgrades
-            const newMaxEnergy = getEffectiveNightEnergy(newState);
+            // Calculate new night energy cap based on upgrades and gewu level
+            const upgradeEnergy = getEffectiveNightEnergy(newState);
+            const gewuLevel = state.abilityState?.gewuLevel ?? 1;
+            const newMaxEnergy = Math.max(upgradeEnergy, getGewuEnergyMax(gewuLevel));
 
             const upgradeRecord: TransactionRecord = {
                 id: crypto.randomUUID(),

@@ -35,11 +35,27 @@ export interface MedicalBill {
   status: 'PENDING' | 'PAID' | 'OVERDUE';
 }
 
+export interface PurchasedCare {
+  level: 'Standard' | 'Premium';
+  expiresDay: number;
+}
+
 export interface MotherCondition {
   health: number; // 0-100
   status: 'Stable' | 'Declining' | 'Critical';
   risk: number; // 0-100% chance of complication
   careLevel: 'None' | 'Basic' | 'Premium';
+  purchasedCare: PurchasedCare | null;
+}
+
+// === MORALE BUFF (探望 → 次日心态) ===
+export type MoraleBuffType = 'CALM' | 'ANXIOUS' | 'MOTIVATED';
+
+export interface MoraleBuff {
+  type: MoraleBuffType;
+  appraisalModifier: number;    // multiplier on uncertainty shrink rate, e.g., 1.10 or 0.90
+  negotiationModifier: number;  // patience cost multiplier, e.g., 0.90 or 1.10
+  expiresDay: number;           // buff expires at end of this day
 }
 
 export interface DailyStats {

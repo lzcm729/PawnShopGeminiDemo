@@ -1,5 +1,5 @@
 
-import { DailyStats, ReputationProfile } from '../core/types';
+import { DailyStats, ReputationProfile, MoraleBuff } from '../core/types';
 import { GamePhase } from '../core/phases';
 import { Item } from '../items/types';
 import { Customer } from '../npc/types';
@@ -130,6 +130,9 @@ export interface GameState {
   // === CHARACTER ABILITY (人物能力升级系统) ===
   abilityState: AbilityState;               // 修行系统状态
   showAbilityPanel: boolean;                // 修行面板显示状态
+
+  // === MORALE BUFF (探望 → 次日心态) ===
+  moraleBuff: MoraleBuff | null;
 
   // === MORAL ECHO (道德回声) ===
   /** Pending monologue/NPC reaction echo texts from moral echo delivery */

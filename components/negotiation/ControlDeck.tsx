@@ -3,7 +3,7 @@ import React, { useMemo, useRef } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { RollingNumber } from '../ui/RollingNumber';
-import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack } from 'lucide-react';
+import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack, HeartHandshake, ScanSearch } from 'lucide-react';
 import { InterestRate, Customer, Item } from '../../types';
 import { playSfx } from '../../systems/game/audio';
 
@@ -55,6 +55,14 @@ interface ControlDeckProps {
     heartStrikeUsed?: boolean;
     onHeartStrike?: () => void;
 
+    // Insight Interactions: Empathy & Probe
+    canUseEmpathy?: boolean;
+    empathyUsed?: boolean;
+    onEmpathy?: () => void;
+    canUseProbe?: boolean;
+    probeUsed?: boolean;
+    onProbe?: () => void;
+
     // Handlers
     onOffer: () => void;
     onManualReject: () => void;
@@ -91,6 +99,12 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     canUseHeartStrike,
     heartStrikeUsed,
     onHeartStrike,
+    canUseEmpathy,
+    empathyUsed,
+    onEmpathy,
+    canUseProbe,
+    probeUsed,
+    onProbe,
     onOffer,
     onManualReject,
     onBinaryAccept,
@@ -384,6 +398,60 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                               <HeartCrack className={cn("w-5 h-5", heartStrikeUsed && "opacity-40")} />
                               <span className="text-[9px] font-bold tracking-wider mt-0.5">
                                   {heartStrikeUsed ? "已用" : "攻心"}
+                              </span>
+                          </button>
+                      )}
+
+                      {/* Insight Interaction: Empathy Button */}
+                      {onEmpathy && (
+                          <button
+                              onClick={() => {
+                                  if (!empathyUsed && canUseEmpathy && canInteract) {
+                                      playSfx('CLICK');
+                                      onEmpathy();
+                                  }
+                              }}
+                              disabled={!canInteract || !canUseEmpathy || empathyUsed}
+                              title={empathyUsed ? "已使用 - 每次议价限用一次" : "共情: 对客户表达理解与关怀"}
+                              className={cn(
+                                  "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
+                                  empathyUsed
+                                      ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                      : canUseEmpathy && canInteract
+                                      ? "bg-rose-950/40 border-rose-700/60 text-rose-400 hover:bg-rose-900/50 hover:border-rose-500 hover:shadow-[0_0_12px_rgba(244,63,94,0.3)] active:scale-95"
+                                      : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                              )}
+                          >
+                              <HeartHandshake className={cn("w-5 h-5", empathyUsed && "opacity-40")} />
+                              <span className="text-[9px] font-bold tracking-wider mt-0.5">
+                                  {empathyUsed ? "已用" : "共情"}
+                              </span>
+                          </button>
+                      )}
+
+                      {/* Insight Interaction: Probe Button */}
+                      {onProbe && (
+                          <button
+                              onClick={() => {
+                                  if (!probeUsed && canUseProbe && canInteract) {
+                                      playSfx('CLICK');
+                                      onProbe();
+                                  }
+                              }}
+                              disabled={!canInteract || !canUseProbe || probeUsed}
+                              title={probeUsed ? "已使用 - 每次议价限用一次" : "试探: 试探客户的真实底线"}
+                              className={cn(
+                                  "w-16 h-16 border-2 rounded flex flex-col items-center justify-center transition-all duration-200",
+                                  probeUsed
+                                      ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                      : canUseProbe && canInteract
+                                      ? "bg-cyan-950/40 border-cyan-700/60 text-cyan-400 hover:bg-cyan-900/50 hover:border-cyan-500 hover:shadow-[0_0_12px_rgba(6,182,212,0.3)] active:scale-95"
+                                      : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                              )}
+                          >
+                              <ScanSearch className={cn("w-5 h-5", probeUsed && "opacity-40")} />
+                              <span className="text-[9px] font-bold tracking-wider mt-0.5">
+                                  {probeUsed ? "已用" : "试探"}
                               </span>
                           </button>
                       )}

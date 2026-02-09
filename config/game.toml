@@ -94,6 +94,32 @@ insight_trait_discovery_chance = 0.25
 # 估价锁定阈值：当区间宽度/真值 < 此值时锁定（5%）
 value_lock_threshold = 0.05
 
+# 格物等级系统 (Gewu Level System)
+# 等级提取量范围
+gewu_lv1_extraction_min = 15
+gewu_lv1_extraction_max = 25
+gewu_lv2_extraction_min = 18
+gewu_lv2_extraction_max = 30
+gewu_lv3_extraction_min = 22
+gewu_lv3_extraction_max = 35
+# 升级所需顿悟次数
+gewu_lv2_epiphany_threshold = 3
+gewu_lv3_epiphany_threshold = 8
+# 等级对应精力上限
+gewu_lv2_energy_max = 4
+gewu_lv3_energy_max = 5
+
+# ------------------------------------------------------------
+# 典当业务系统 (Pawn Business)
+# ------------------------------------------------------------
+[pawn_business]
+# 续当拒绝惩罚递增 (Escalating Renewal Refusal Penalties)
+# 续当次数越多后拒绝，惩罚越重
+renewal_refusal_penalty_0 = -10     # 首次到期直接拒绝
+renewal_refusal_penalty_1 = -15     # 给了一次希望后拒绝
+renewal_refusal_penalty_2 = -20     # 反复给予后夺走
+renewal_refusal_penalty_3_plus = -25  # 极端残忍
+
 # ------------------------------------------------------------
 # 母亲状态初始值 (Mother Status)
 # ------------------------------------------------------------
@@ -128,6 +154,34 @@ health_declining_threshold = 40       # 健康>=此值为Declining（<此值为C
 overdue_health_decay = 15             # 断缴时健康衰减
 complication_health_loss = 10         # 并发症健康损失
 overdue_risk_increase = 10            # 断缴时风险增加
+
+# === P1-6: 主动护理选项 (Active Care Purchase) ===
+care_standard_cost = 150              # 标准护理周费
+care_premium_cost = 350               # 高级护理周费
+care_duration = 7                     # 护理持续天数
+care_standard_risk_reduction = 3      # 标准护理每日风险减少
+care_premium_risk_reduction = 6       # 高级护理每日风险减少
+
+# === H-1: 探望 → 次日心态 BUFF ===
+morale_motivated_appraisal = 1.10     # 积极心态：鉴定精度提升10%
+morale_motivated_negotiation = 0.90   # 积极心态：耐心消耗减少10%
+morale_calm_appraisal = 1.05         # 平静心态：鉴定精度提升5%
+morale_calm_negotiation = 0.95       # 平静心态：耐心消耗减少5%
+morale_anxious_appraisal = 0.95      # 焦虑心态：鉴定精度降低5%
+morale_anxious_negotiation = 1.05    # 焦虑心态：耐心消耗增加5%
+morale_anxious_severe_appraisal = 0.90   # 严重焦虑：鉴定精度降低10%
+morale_anxious_severe_negotiation = 1.10  # 严重焦虑：耐心消耗增加10%
+morale_anxious_health_threshold = 30  # 严重焦虑的健康值阈值
+
+# === H-3: 利率选择 → 母亲反应 ===
+mother_proud_humanity_threshold = 70  # 母亲骄傲的人情阈值
+mother_concern_humanity_threshold = 40 # 母亲担忧的人情阈值
+
+# === H-4: 生命值 → 鉴定能力 ===
+health_penalty_mild_threshold = 50    # 健康>=此值无惩罚
+health_penalty_mild_modifier = 0.90   # 健康30-49：收敛速度×0.90
+health_penalty_severe_threshold = 30  # 健康<此值严重惩罚
+health_penalty_severe_modifier = 0.80 # 健康<30：收敛速度×0.80
 
 # ------------------------------------------------------------
 # 游戏玩法 (Gameplay)
@@ -367,6 +421,22 @@ low_heat_price_bonus = 0.05
 # 卧底出售惩罚
 undercover_sale_penalty = 0.05
 
+# --- 客户生态转变 (P1-10: Customer Ecology Shift) ---
+# 清白阈值：低于此值开始吸引灰色客户
+ecology_threshold = 60
+# 轻度转变增加灰色客户比例 (清白 41-60)
+ecology_shift_mild = 0.10
+# 中度转变增加灰色客户比例 (清白 21-40)
+ecology_shift_moderate = 0.25
+# 重度转变增加灰色客户比例 (清白 0-20)
+ecology_shift_severe = 0.40
+# 轻度转变清白上限
+ecology_mild_max_innocence = 60
+# 中度转变清白上限
+ecology_moderate_max_innocence = 40
+# 重度转变清白上限
+ecology_severe_max_innocence = 20
+
 # ------------------------------------------------------------
 # 角色能力系统 (Ability)
 # ------------------------------------------------------------
@@ -422,6 +492,24 @@ insult_ratio = 0.70
 base_patience = 3
 # 稀有遭遇概率
 rare_encounter_chance = 0.075
+
+# --- 后果回传：客户质量偏移 (H-2: Moral Actions → Customer Pool Quality) ---
+# 人情加成系数（每10点人情增加可信客户权重）
+humanity_quality_bonus_per_10 = 0.05
+# 清白惩罚系数（每10点清白低于50增加风险客户权重）
+low_innocence_risk_per_10 = 0.08
+# 可信客户修正：赎回意愿提升
+trustworthy_redeem_bonus = 0.10
+# 可信客户修正：耐心加成
+trustworthy_patience_bonus = 1
+# 风险客户修正：赎回意愿降低
+risky_redeem_penalty = -0.15
+# 风险客户修正：耐心惩罚
+risky_patience_penalty = -1
+# 风险客户被标记为赃物的概率
+risky_stolen_chance = 0.12
+# 偏移最大值（防止极端偏向）
+quality_bias_cap = 0.30
 
 # ------------------------------------------------------------
 # 新闻系统 (News)

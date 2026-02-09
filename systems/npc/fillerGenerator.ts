@@ -834,6 +834,149 @@ export function inferRedemptionResolve(profile: FillerCustomerProfile, tags: Beh
 }
 
 // ============================================================================
+// H-2: MORAL ACTIONS → CUSTOMER POOL QUALITY BIAS
+// ============================================================================
+
+/**
+ * Customer quality bias computed from player reputation.
+ * Positive trustworthyBias attracts more reliable customers.
+ * Positive riskyBias attracts more risky/shady customers.
+ * These are NOT mutually exclusive -- a player with moderate stats has both near zero.
+ */
+export interface CustomerQualityBias {
+    /** Bias toward trustworthy customers (0.0 - cap) */
+    trustworthyBias: number;
+    /** Bias toward risky customers (0.0 - cap) */
+    riskyBias: number;
+}
+
+/**
+ * Compute customer quality bias from player reputation.
+ *
+ * H-2 Design (核心设定 v1.4, Section H, Connection 2):
+ * - High humanity → attracts trustworthy customers (STORY traits, strong redeem, patient)
+ * - Low innocence → attracts risky customers (STOLEN items, weak redeem, impatient)
+ *
+ * The bias is subtle and gradual -- it shifts probabilities, not guarantees.
+ *
+ * @param humanity Player's Humanity reputation (0-100)
+ * @param innocence Player's Innocence reputation (0-100)
+ * @returns CustomerQualityBias with trustworthy and risky weights
+ */
+export function computeCustomerQualityBias(humanity: number, innocence: number): CustomerQualityBias {
+    const cfg = GAME_CONFIG.NPC_FILLER;
+    const cap = cfg.QUALITY_BIAS_CAP;
+
+    // Trustworthy bias: increases as humanity exceeds 50
+    // Each 10 points above 50 adds the configured bonus
+    const humanityAbove50 = Math.max(0, humanity - 50);
+    const rawTrustworthy = (humanityAbove50 / 10) * cfg.HUMANITY_QUALITY_BONUS_PER_10;
+
+    // Risky bias: increases as innocence drops below 50
+    // Each 10 points below 50 adds the configured penalty
+    const innocenceBelow50 = Math.max(0, 50 - innocence);
+    const rawRisky = (innocenceBelow50 / 10) * cfg.LOW_INNOCENCE_RISK_PER_10;
+
+    return {
+        trustworthyBias: Math.min(cap, rawTrustworthy),
+        riskyBias: Math.min(cap, rawRisky)
+    };
+}
+
+/**
+ * Apply quality bias to a filler customer's profile and attributes.
+ * Modifies the profile generation weights, redemption resolve, patience, and item flags.
+ *
+ * "Trustworthy" customers:
+ * - Shift appearance toward 'decent'/'plain' (away from 'shabby')
+ * - Boost redemption resolve by one tier
+ * - Add patience bonus
+ * - More likely to have SENTIMENTAL behavior tag
+ *
+ * "Risky" customers:
+ * - Shift appearance toward 'shabby' (away from 'decent'/'fancy')
+ * - Lower redemption resolve by one tier
+ * - Reduce patience
+ * - Chance to mark item as stolen
+ * - More likely to have SUSPICIOUS/DESPERATE behavior tags
+ */
+function applyQualityBiasToProfile(
+    bias: CustomerQualityBias,
+    profile: FillerCustomerProfile
+): FillerCustomerProfile {
+    const netBias = bias.trustworthyBias - bias.riskyBias;
+
+    // Only modify if there's a meaningful bias
+    if (Math.abs(netBias) < 0.01) return profile;
+
+    // Probabilistic shift: roll against the bias magnitude
+    if (Math.random() >= Math.abs(netBias) * 3) return profile; // Most of the time, no change
+
+    if (netBias > 0) {
+        // Trustworthy shift: upgrade appearance
+        const upgradeMap: Record<CustomerAppearance, CustomerAppearance> = {
+            'shabby': 'plain',
+            'plain': 'decent',
+            'decent': 'decent',
+            'fancy': 'fancy'
+        };
+        return { ...profile, appearance: upgradeMap[profile.appearance] };
+    } else {
+        // Risky shift: downgrade appearance
+        const downgradeMap: Record<CustomerAppearance, CustomerAppearance> = {
+            'fancy': 'decent',
+            'decent': 'plain',
+            'plain': 'shabby',
+            'shabby': 'shabby'
+        };
+        return { ...profile, appearance: downgradeMap[profile.appearance], mood: 'anxious' };
+    }
+}
+
+/**
+ * Apply quality bias to redemption resolve.
+ */
+function applyQualityBiasToResolve(
+    bias: CustomerQualityBias,
+    resolve: RedemptionResolve
+): RedemptionResolve {
+    const netBias = bias.trustworthyBias - bias.riskyBias;
+
+    // Probabilistic: only sometimes shifts the resolve
+    if (Math.random() >= Math.abs(netBias) * 2) return resolve;
+
+    const resolveOrder: RedemptionResolve[] = ['None', 'Weak', 'Medium', 'Strong'];
+    const currentIdx = resolveOrder.indexOf(resolve);
+
+    if (netBias > 0 && currentIdx < resolveOrder.length - 1) {
+        return resolveOrder[currentIdx + 1]; // upgrade
+    } else if (netBias < 0 && currentIdx > 0) {
+        return resolveOrder[currentIdx - 1]; // downgrade
+    }
+
+    return resolve;
+}
+
+/**
+ * Apply quality bias to patience.
+ */
+function applyQualityBiasToPatience(
+    bias: CustomerQualityBias,
+    patience: number
+): number {
+    const cfg = GAME_CONFIG.NPC_FILLER;
+
+    if (bias.trustworthyBias > 0.05) {
+        patience += cfg.TRUSTWORTHY_PATIENCE_BONUS;
+    }
+    if (bias.riskyBias > 0.05) {
+        patience += cfg.RISKY_PATIENCE_PENALTY;
+    }
+
+    return Math.max(1, Math.min(5, patience));
+}
+
+// ============================================================================
 // FILLER CUSTOMER GENERATION
 // ============================================================================
 
@@ -1318,6 +1461,15 @@ function createUnusualItemProfile(): FillerCustomerProfile {
 }
 
 /**
+ * Options for customer quality bias from player reputation.
+ * H-2: Moral actions affect the customer pool quality.
+ */
+export interface CustomerQualityOptions {
+    humanity: number;
+    innocence: number;
+}
+
+/**
  * Generate a filler customer with TRANSIENT event chain metadata
  *
  * @param day Current game day
@@ -1325,18 +1477,29 @@ function createUnusualItemProfile(): FillerCustomerProfile {
  * @param excludeTemplateIds Template IDs to exclude (items already in inventory).
  *                           Pass this to avoid generating duplicate items.
  * @param forceJumpTrait Optional: Force a specific jump trait type (for testing)
+ * @param qualityOptions Optional: Player reputation for H-2 customer quality bias
  * @returns Customer with inferred behavior tags and redemption resolve
  */
 export function generateFillerCustomer(
     day: number,
     profile?: FillerCustomerProfile,
     excludeTemplateIds?: Set<string>,
-    forceJumpTrait: ForcedJumpTrait = null
+    forceJumpTrait: ForcedJumpTrait = null,
+    qualityOptions?: CustomerQualityOptions
 ): Customer {
+    // H-2: Compute quality bias from reputation
+    const qualityBias = qualityOptions
+        ? computeCustomerQualityBias(qualityOptions.humanity, qualityOptions.innocence)
+        : { trustworthyBias: 0, riskyBias: 0 };
+
     // Roll for rare encounter (v2.1 Section 11.2)
     const rareEncounter = rollRareEncounter();
 
     let customerProfile = profile || generateRandomProfile();
+
+    // H-2: Apply quality bias to profile (before behavior tag inference)
+    customerProfile = applyQualityBiasToProfile(qualityBias, customerProfile);
+
     let behaviorTags = inferBehaviorTags(customerProfile);
     let redemptionResolve = inferRedemptionResolve(customerProfile, behaviorTags);
 
@@ -1355,12 +1518,23 @@ export function generateFillerCustomer(
         forceJumpTrait = 'BARGAIN';
     }
 
+    // H-2: Apply quality bias to redemption resolve
+    redemptionResolve = applyQualityBiasToResolve(qualityBias, redemptionResolve);
+
     const name = generateName(customerProfile);
     const description = generateDescription(customerProfile);
     const dialogue = generateFillerDialogue(customerProfile);
 
     // Create item with profile-based selection, excluding items already in inventory
     const { item, isUnexpected, attrTags } = createFillerItem(day, customerProfile, excludeTemplateIds, forceJumpTrait);
+
+    // H-2: Risky bias can mark items as stolen
+    if (qualityBias.riskyBias > 0.05 && !item.isStolen) {
+        const stolenChance = GAME_CONFIG.NPC_FILLER.RISKY_STOLEN_CHANCE * (qualityBias.riskyBias / GAME_CONFIG.NPC_FILLER.QUALITY_BIAS_CAP);
+        if (Math.random() < stolenChance) {
+            item.isStolen = true;
+        }
+    }
 
     // If this is an unexpected combination, get a narrative reason
     if (isUnexpected) {
@@ -1387,6 +1561,9 @@ export function generateFillerCustomer(
         baseInsultThreshold
     );
 
+    // H-2: Apply quality bias to patience
+    const finalPatience = applyQualityBiasToPatience(qualityBias, patience);
+
     // Convert profile mood to game Mood type
     const moodMap: Record<CustomerMood, Mood> = {
         anxious: 'Annoyed',
@@ -1408,7 +1585,7 @@ export function generateFillerCustomer(
         dialogue,
         redemptionResolve,
         behaviorTags,
-        patience: Math.round(patience),
+        patience: Math.round(finalPatience),
         mood: moodMap[customerProfile.mood],
         identityTags: ['Filler', customerProfile.appearance, customerProfile.mood],
         item,

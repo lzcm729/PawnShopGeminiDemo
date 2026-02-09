@@ -63,6 +63,17 @@ const getInsightConfig = () => ({
   resonanceChance: GAME_CONFIG.NIGHT.RESONANCE_CHANCE,
   resonanceBonusRatio: GAME_CONFIG.NIGHT.RESONANCE_BONUS_RATIO,
   epiphanyResidualUncertainty: GAME_CONFIG.NIGHT.EPIPHANY_RESIDUAL_UNCERTAINTY,
+  // 格物等级系统
+  gewuLv1ExtractionMin: GAME_CONFIG.NIGHT.GEWU_LV1_EXTRACTION_MIN,
+  gewuLv1ExtractionMax: GAME_CONFIG.NIGHT.GEWU_LV1_EXTRACTION_MAX,
+  gewuLv2ExtractionMin: GAME_CONFIG.NIGHT.GEWU_LV2_EXTRACTION_MIN,
+  gewuLv2ExtractionMax: GAME_CONFIG.NIGHT.GEWU_LV2_EXTRACTION_MAX,
+  gewuLv3ExtractionMin: GAME_CONFIG.NIGHT.GEWU_LV3_EXTRACTION_MIN,
+  gewuLv3ExtractionMax: GAME_CONFIG.NIGHT.GEWU_LV3_EXTRACTION_MAX,
+  gewuLv2EpiphanyThreshold: GAME_CONFIG.NIGHT.GEWU_LV2_EPIPHANY_THRESHOLD,
+  gewuLv3EpiphanyThreshold: GAME_CONFIG.NIGHT.GEWU_LV3_EPIPHANY_THRESHOLD,
+  gewuLv2EnergyMax: GAME_CONFIG.NIGHT.GEWU_LV2_ENERGY_MAX,
+  gewuLv3EnergyMax: GAME_CONFIG.NIGHT.GEWU_LV3_ENERGY_MAX,
 });
 
 // ============================================================================
@@ -79,18 +90,50 @@ function getTexts(): TextRegistry {
 }
 
 // ============================================================================
+// 格物等级系统 (Gewu Level System)
+// ============================================================================
+
+/**
+ * 根据总顿悟次数计算格物等级 (1-3)
+ */
+export function calculateGewuLevel(totalEpiphanies: number): number {
+  const config = getInsightConfig();
+  if (totalEpiphanies >= config.gewuLv3EpiphanyThreshold) return 3;
+  if (totalEpiphanies >= config.gewuLv2EpiphanyThreshold) return 2;
+  return 1;
+}
+
+/**
+ * 获取格物等级对应的精力上限
+ */
+export function getGewuEnergyMax(gewuLevel: number): number {
+  const config = getInsightConfig();
+  if (gewuLevel >= 3) return config.gewuLv3EnergyMax;
+  if (gewuLevel >= 2) return config.gewuLv2EnergyMax;
+  return GAME_CONFIG.NIGHT.BASE_ENERGY;
+}
+
+/**
+ * 获取格物等级对应的提取范围
+ */
+function getExtractionRange(gewuLevel: number): { min: number; max: number } {
+  const config = getInsightConfig();
+  if (gewuLevel >= 3) return { min: config.gewuLv3ExtractionMin, max: config.gewuLv3ExtractionMax };
+  if (gewuLevel >= 2) return { min: config.gewuLv2ExtractionMin, max: config.gewuLv2ExtractionMax };
+  return { min: config.gewuLv1ExtractionMin, max: config.gewuLv1ExtractionMax };
+}
+
+// ============================================================================
 // 随机产出计算 (S3-F1)
 // ============================================================================
 
 /**
  * 计算随机格物产出量
- * 范围: [min, max] (inclusive)
+ * 范围基于格物等级: Lv1 [15,25], Lv2 [18,30], Lv3 [22,35]
  */
-function rollExtractionAmount(): number {
-  const config = getInsightConfig();
-  const min = config.extractionRateMin;
-  const max = config.extractionRateMax;
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+function rollExtractionAmount(gewuLevel: number = 1): number {
+  const range = getExtractionRange(gewuLevel);
+  return Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
 }
 
 // ============================================================================
@@ -279,7 +322,7 @@ function tryDiscoverTrait(item: Item): ItemTrait | undefined {
 /**
  * 检查物品是否可以被格物
  */
-export function getInsightStatus(item: Item, nightState: NightState): InsightStatus {
+export function getInsightStatus(item: Item, nightState: NightState, gewuLevel: number = 1): InsightStatus {
   const config = getInsightConfig();
 
   // 确保物品有知识池
@@ -291,8 +334,9 @@ export function getInsightStatus(item: Item, nightState: NightState): InsightSta
 
   const remaining = pool.capacity - pool.extracted;
   const progress = pool.extracted / pool.capacity;
-  // 使用最大产出判断是否接近顿悟（最乐观估计）
-  const nearEpiphany = remaining > 0 && remaining <= config.extractionRateMax;
+  // 使用当前等级的最大产出判断是否接近顿悟（最乐观估计）
+  const levelRange = getExtractionRange(gewuLevel);
+  const nearEpiphany = remaining > 0 && remaining <= levelRange.max;
 
   // 检查各种阻止条件
   let canInsight = true;
@@ -328,10 +372,10 @@ export function getInsightStatus(item: Item, nightState: NightState): InsightSta
     onlyEssenceRemaining: valueLocked && allTraitsRevealed,
   };
 
-  // 距顿悟次数（基于最大产出的乐观估计）
+  // 距顿悟次数（基于当前等级最大产出的乐观估计）
   const insightsToEpiphany = remaining <= 0
     ? 0
-    : Math.ceil(remaining / config.extractionRateMax);
+    : Math.ceil(remaining / levelRange.max);
 
   return {
     canInsight,
@@ -378,7 +422,8 @@ export function canInsight(item: Item, nightState: NightState): boolean {
 export function performInsight(
   item: Item,
   nightState: NightState,
-  inventory?: Item[]
+  inventory?: Item[],
+  gewuLevel: number = 1
 ): { result: InsightResult; updatedItem: Item } | null {
   const status = getInsightStatus(item, nightState);
 
@@ -396,8 +441,8 @@ export function performInsight(
   const pool = workingItem.knowledgePool!;
   const remaining = getRemainingKnowledge(workingItem);
 
-  // S3-F1: 随机产出量
-  const baseExtraction = rollExtractionAmount();
+  // S3-F1: 随机产出量（基于格物等级）
+  const baseExtraction = rollExtractionAmount(gewuLevel);
 
   // S3-F3: 格物意外事件判定
   const unexpectedEvent = rollUnexpectedEvent();
@@ -558,30 +603,31 @@ export function performInsight(
 /**
  * 检查物品是否即将触发顿悟
  */
-export function isNearEpiphany(item: Item): boolean {
+export function isNearEpiphany(item: Item, gewuLevel: number = 1): boolean {
   if (!item.knowledgePool) return false;
 
-  const config = getInsightConfig();
+  const range = getExtractionRange(gewuLevel);
   const remaining = getRemainingKnowledge(item);
 
-  return remaining > 0 && remaining <= config.extractionRateMax;
+  return remaining > 0 && remaining <= range.max;
 }
 
 /**
  * 计算达到顿悟还需要多少次格物
- * 使用最大产出的乐观估计
+ * 使用当前等级最大产出的乐观估计
  */
-export function getInsightsToEpiphany(item: Item): number {
+export function getInsightsToEpiphany(item: Item, gewuLevel: number = 1): number {
+  const range = getExtractionRange(gewuLevel);
+
   if (!item.knowledgePool) {
     const config = getInsightConfig();
-    return Math.ceil(config.defaultCapacity / config.extractionRateMax);
+    return Math.ceil(config.defaultCapacity / range.max);
   }
 
   const remaining = getRemainingKnowledge(item);
   if (remaining <= 0) return 0;
 
-  const config = getInsightConfig();
-  return Math.ceil(remaining / config.extractionRateMax);
+  return Math.ceil(remaining / range.max);
 }
 
 // ============================================================================

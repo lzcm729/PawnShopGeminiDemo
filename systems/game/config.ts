@@ -38,6 +38,24 @@ interface TomlNight {
   insight_range_shrink_rate: number;
   insight_trait_discovery_chance: number;
   value_lock_threshold: number;
+  // Gewu level system
+  gewu_lv1_extraction_min: number;
+  gewu_lv1_extraction_max: number;
+  gewu_lv2_extraction_min: number;
+  gewu_lv2_extraction_max: number;
+  gewu_lv3_extraction_min: number;
+  gewu_lv3_extraction_max: number;
+  gewu_lv2_epiphany_threshold: number;
+  gewu_lv3_epiphany_threshold: number;
+  gewu_lv2_energy_max: number;
+  gewu_lv3_energy_max: number;
+}
+
+interface TomlPawnBusiness {
+  renewal_refusal_penalty_0: number;
+  renewal_refusal_penalty_1: number;
+  renewal_refusal_penalty_2: number;
+  renewal_refusal_penalty_3_plus: number;
 }
 
 interface TomlMother {
@@ -61,6 +79,30 @@ interface TomlMother {
   overdue_health_decay: number;
   complication_health_loss: number;
   overdue_risk_increase: number;
+  // P1-6: Active care purchase
+  care_standard_cost: number;
+  care_premium_cost: number;
+  care_duration: number;
+  care_standard_risk_reduction: number;
+  care_premium_risk_reduction: number;
+  // H-1: Morale buff from visit
+  morale_motivated_appraisal: number;
+  morale_motivated_negotiation: number;
+  morale_calm_appraisal: number;
+  morale_calm_negotiation: number;
+  morale_anxious_appraisal: number;
+  morale_anxious_negotiation: number;
+  morale_anxious_severe_appraisal: number;
+  morale_anxious_severe_negotiation: number;
+  morale_anxious_health_threshold: number;
+  // H-3: Interest rate → mother reaction
+  mother_proud_humanity_threshold: number;
+  mother_concern_humanity_threshold: number;
+  // H-4: Health → appraisal ability
+  health_penalty_mild_threshold: number;
+  health_penalty_mild_modifier: number;
+  health_penalty_severe_threshold: number;
+  health_penalty_severe_modifier: number;
 }
 
 interface TomlGameplay {
@@ -195,6 +237,14 @@ interface TomlBlackmarket {
   low_heat_safe_days: number;
   low_heat_price_bonus: number;
   undercover_sale_penalty: number;
+  // P1-10: Customer ecology shift
+  ecology_threshold: number;
+  ecology_shift_mild: number;
+  ecology_shift_moderate: number;
+  ecology_shift_severe: number;
+  ecology_mild_max_innocence: number;
+  ecology_moderate_max_innocence: number;
+  ecology_severe_max_innocence: number;
 }
 
 interface TomlMoralEcho {
@@ -232,6 +282,15 @@ interface TomlNpcFiller {
   insult_ratio: number;
   base_patience: number;
   rare_encounter_chance: number;
+  // H-2: Moral actions -> customer pool quality
+  humanity_quality_bonus_per_10: number;
+  low_innocence_risk_per_10: number;
+  trustworthy_redeem_bonus: number;
+  trustworthy_patience_bonus: number;
+  risky_redeem_penalty: number;
+  risky_patience_penalty: number;
+  risky_stolen_chance: number;
+  quality_bias_cap: number;
 }
 
 interface TomlNews {
@@ -279,6 +338,7 @@ interface GameConfigToml {
   narrative: TomlNarrative;
   appointment: TomlAppointment;
   insight: TomlInsight;
+  pawn_business: TomlPawnBusiness;
 }
 
 // Cast TOML import to typed interface
@@ -329,13 +389,25 @@ export const GAME_CONFIG = {
     INSIGHT_RANGE_SHRINK_RATE: tomlConfig.night.insight_range_shrink_rate,
     INSIGHT_TRAIT_DISCOVERY_CHANCE: tomlConfig.night.insight_trait_discovery_chance,
     VALUE_LOCK_THRESHOLD: tomlConfig.night.value_lock_threshold,
+    // Gewu level system
+    GEWU_LV1_EXTRACTION_MIN: tomlConfig.night.gewu_lv1_extraction_min,
+    GEWU_LV1_EXTRACTION_MAX: tomlConfig.night.gewu_lv1_extraction_max,
+    GEWU_LV2_EXTRACTION_MIN: tomlConfig.night.gewu_lv2_extraction_min,
+    GEWU_LV2_EXTRACTION_MAX: tomlConfig.night.gewu_lv2_extraction_max,
+    GEWU_LV3_EXTRACTION_MIN: tomlConfig.night.gewu_lv3_extraction_min,
+    GEWU_LV3_EXTRACTION_MAX: tomlConfig.night.gewu_lv3_extraction_max,
+    GEWU_LV2_EPIPHANY_THRESHOLD: tomlConfig.night.gewu_lv2_epiphany_threshold,
+    GEWU_LV3_EPIPHANY_THRESHOLD: tomlConfig.night.gewu_lv3_epiphany_threshold,
+    GEWU_LV2_ENERGY_MAX: tomlConfig.night.gewu_lv2_energy_max,
+    GEWU_LV3_ENERGY_MAX: tomlConfig.night.gewu_lv3_energy_max,
   },
 
   INITIAL_MOTHER_STATUS: {
     health: tomlConfig.mother.health,
     status: tomlConfig.mother.status as 'Stable' | 'Declining' | 'Critical',
     risk: tomlConfig.mother.risk,
-    careLevel: tomlConfig.mother.care_level as 'None' | 'Basic' | 'Premium'
+    careLevel: tomlConfig.mother.care_level as 'None' | 'Basic' | 'Premium',
+    purchasedCare: null,
   } as const,
 
   // --- MOTHER DYNAMIC PARAMETERS (母亲动态参数) ---
@@ -352,6 +424,30 @@ export const GAME_CONFIG = {
     OVERDUE_HEALTH_DECAY: tomlConfig.mother.overdue_health_decay,
     COMPLICATION_HEALTH_LOSS: tomlConfig.mother.complication_health_loss,
     OVERDUE_RISK_INCREASE: tomlConfig.mother.overdue_risk_increase,
+    // P1-6: Active care purchase
+    CARE_STANDARD_COST: tomlConfig.mother.care_standard_cost,
+    CARE_PREMIUM_COST: tomlConfig.mother.care_premium_cost,
+    CARE_DURATION: tomlConfig.mother.care_duration,
+    CARE_STANDARD_RISK_REDUCTION: tomlConfig.mother.care_standard_risk_reduction,
+    CARE_PREMIUM_RISK_REDUCTION: tomlConfig.mother.care_premium_risk_reduction,
+    // H-1: Morale buff
+    MORALE_MOTIVATED_APPRAISAL: tomlConfig.mother.morale_motivated_appraisal,
+    MORALE_MOTIVATED_NEGOTIATION: tomlConfig.mother.morale_motivated_negotiation,
+    MORALE_CALM_APPRAISAL: tomlConfig.mother.morale_calm_appraisal,
+    MORALE_CALM_NEGOTIATION: tomlConfig.mother.morale_calm_negotiation,
+    MORALE_ANXIOUS_APPRAISAL: tomlConfig.mother.morale_anxious_appraisal,
+    MORALE_ANXIOUS_NEGOTIATION: tomlConfig.mother.morale_anxious_negotiation,
+    MORALE_ANXIOUS_SEVERE_APPRAISAL: tomlConfig.mother.morale_anxious_severe_appraisal,
+    MORALE_ANXIOUS_SEVERE_NEGOTIATION: tomlConfig.mother.morale_anxious_severe_negotiation,
+    MORALE_ANXIOUS_HEALTH_THRESHOLD: tomlConfig.mother.morale_anxious_health_threshold,
+    // H-3: Mother reaction thresholds
+    MOTHER_PROUD_HUMANITY_THRESHOLD: tomlConfig.mother.mother_proud_humanity_threshold,
+    MOTHER_CONCERN_HUMANITY_THRESHOLD: tomlConfig.mother.mother_concern_humanity_threshold,
+    // H-4: Health → appraisal
+    HEALTH_PENALTY_MILD_THRESHOLD: tomlConfig.mother.health_penalty_mild_threshold,
+    HEALTH_PENALTY_MILD_MODIFIER: tomlConfig.mother.health_penalty_mild_modifier,
+    HEALTH_PENALTY_SEVERE_THRESHOLD: tomlConfig.mother.health_penalty_severe_threshold,
+    HEALTH_PENALTY_SEVERE_MODIFIER: tomlConfig.mother.health_penalty_severe_modifier,
   },
 
   // --- GAMEPLAY SETTINGS ---
@@ -498,6 +594,14 @@ export const GAME_CONFIG = {
     LOW_HEAT_SAFE_DAYS: tomlConfig.blackmarket.low_heat_safe_days,
     LOW_HEAT_PRICE_BONUS: tomlConfig.blackmarket.low_heat_price_bonus,
     UNDERCOVER_SALE_PENALTY: tomlConfig.blackmarket.undercover_sale_penalty,
+    // P1-10: Customer ecology shift
+    ECOLOGY_THRESHOLD: tomlConfig.blackmarket.ecology_threshold,
+    ECOLOGY_SHIFT_MILD: tomlConfig.blackmarket.ecology_shift_mild,
+    ECOLOGY_SHIFT_MODERATE: tomlConfig.blackmarket.ecology_shift_moderate,
+    ECOLOGY_SHIFT_SEVERE: tomlConfig.blackmarket.ecology_shift_severe,
+    ECOLOGY_MILD_MAX_INNOCENCE: tomlConfig.blackmarket.ecology_mild_max_innocence,
+    ECOLOGY_MODERATE_MAX_INNOCENCE: tomlConfig.blackmarket.ecology_moderate_max_innocence,
+    ECOLOGY_SEVERE_MAX_INNOCENCE: tomlConfig.blackmarket.ecology_severe_max_innocence,
   },
 
   // --- ABILITY (角色能力系统) ---
@@ -533,6 +637,15 @@ export const GAME_CONFIG = {
     INSULT_RATIO: tomlConfig.npc.filler.insult_ratio,
     BASE_PATIENCE: tomlConfig.npc.filler.base_patience,
     RARE_ENCOUNTER_CHANCE: tomlConfig.npc.filler.rare_encounter_chance,
+    // H-2: Moral actions -> customer pool quality
+    HUMANITY_QUALITY_BONUS_PER_10: tomlConfig.npc.filler.humanity_quality_bonus_per_10,
+    LOW_INNOCENCE_RISK_PER_10: tomlConfig.npc.filler.low_innocence_risk_per_10,
+    TRUSTWORTHY_REDEEM_BONUS: tomlConfig.npc.filler.trustworthy_redeem_bonus,
+    TRUSTWORTHY_PATIENCE_BONUS: tomlConfig.npc.filler.trustworthy_patience_bonus,
+    RISKY_REDEEM_PENALTY: tomlConfig.npc.filler.risky_redeem_penalty,
+    RISKY_PATIENCE_PENALTY: tomlConfig.npc.filler.risky_patience_penalty,
+    RISKY_STOLEN_CHANCE: tomlConfig.npc.filler.risky_stolen_chance,
+    QUALITY_BIAS_CAP: tomlConfig.npc.filler.quality_bias_cap,
   },
 
   // --- NEWS (新闻系统) ---
@@ -565,6 +678,14 @@ export const GAME_CONFIG = {
     FAIR_THRESHOLD: tomlConfig.insight.fair_threshold,
     ACCURACY_HIGH_THRESHOLD: tomlConfig.insight.accuracy_high_threshold,
     ACCURACY_LOW_THRESHOLD: tomlConfig.insight.accuracy_low_threshold,
+  },
+
+  // --- PAWN BUSINESS (典当业务) ---
+  PAWN_BUSINESS: {
+    RENEWAL_REFUSAL_PENALTY_0: tomlConfig.pawn_business.renewal_refusal_penalty_0,
+    RENEWAL_REFUSAL_PENALTY_1: tomlConfig.pawn_business.renewal_refusal_penalty_1,
+    RENEWAL_REFUSAL_PENALTY_2: tomlConfig.pawn_business.renewal_refusal_penalty_2,
+    RENEWAL_REFUSAL_PENALTY_3_PLUS: tomlConfig.pawn_business.renewal_refusal_penalty_3_plus,
   },
 
 };

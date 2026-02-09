@@ -33,6 +33,40 @@ import { GAME_CONFIG } from '../game/config';
 import { getBlackmarketVolatilityRange, getBlackmarketPurchaseModifier } from '../appraisal/precision';
 
 // ============================================================================
+// P1-10: Customer Ecology Shift
+// ============================================================================
+
+/**
+ * Gray tags - tags associated with suspicious/stolen/underground items.
+ * When innocence drops, these tags become more likely in purchase requests,
+ * representing the shift toward a "darker" market ecosystem.
+ */
+const GRAY_TAGS: ItemTag[] = ['FAKE_HISTORY', 'VINTAGE_REAL'];
+
+/**
+ * Get the gray customer percentage bonus based on player's innocence.
+ * Lower innocence = more gray customers attracted to the black market.
+ *
+ * P1-10 Design:
+ * | Innocence | Gray % increase | Effect            |
+ * |-----------|-----------------|-------------------|
+ * | 61-100    | +0%             | Normal            |
+ * | 41-60     | +10%            | Slight change     |
+ * | 21-40     | +25%            | Noticeable shift  |
+ * | 0-20      | +40%            | Shop "goes dark"  |
+ *
+ * @param innocence Player's current innocence value (0-100)
+ * @returns Gray customer percentage bonus (0.0 - 0.40)
+ */
+export function getCustomerEcologyShift(innocence: number): number {
+  const cfg = GAME_CONFIG.BLACKMARKET;
+  if (innocence > cfg.ECOLOGY_THRESHOLD) return 0;
+  if (innocence > cfg.ECOLOGY_MODERATE_MAX_INNOCENCE) return cfg.ECOLOGY_SHIFT_MILD;
+  if (innocence > cfg.ECOLOGY_SEVERE_MAX_INNOCENCE) return cfg.ECOLOGY_SHIFT_MODERATE;
+  return cfg.ECOLOGY_SHIFT_SEVERE;
+}
+
+// ============================================================================
 // Daily Market Generation
 // ============================================================================
 
@@ -57,13 +91,16 @@ const DEMAND_INERTIA_BONUS = GAME_CONFIG.BLACKMARKET.DEMAND_INERTIA_BONUS;
 /**
  * Generate random purchase requests for the day
  * v3.6 [BM-2]: Supports demand inertia via tagHistory
+ * P1-10: Supports ecology shift via innocence-based gray tag weighting
  * @param count Number of purchase requests to generate (equals daily purchase limit)
  * @param tagHistory Recent tag history for demand inertia (most recent first)
+ * @param ecologyShift Gray customer percentage bonus from P1-10 (0.0 - 0.40)
  * @returns Array of MarketPurchaseRequest, each with a unique tag and fulfilled: false
  */
 export function generateDailyPurchaseRequests(
   count: number,
-  tagHistory: ItemTag[] = []
+  tagHistory: ItemTag[] = [],
+  ecologyShift: number = 0
 ): MarketPurchaseRequest[] {
   const tradeableTags = getTradeableTags();
 
@@ -74,6 +111,9 @@ export function generateDailyPurchaseRequests(
   // Yesterday's tags (last N entries where N = previous day's request count) get bonus probability
   const yesterdayTags = new Set(tagHistory.slice(0, 8)); // Up to 8 tags from yesterday
 
+  // P1-10: Gray tag set for ecology weighting
+  const grayTagSet = new Set<ItemTag>(GRAY_TAGS);
+
   const selectedTags: ItemTag[] = [];
   const requests: MarketPurchaseRequest[] = [];
 
@@ -83,7 +123,9 @@ export function generateDailyPurchaseRequests(
     const weights = availableTags.map(tag => {
       const base = 1.0;
       const inertiaBonus = yesterdayTags.has(tag) ? DEMAND_INERTIA_BONUS : 0;
-      return base + inertiaBonus;
+      // P1-10: Gray tags get extra weight based on ecology shift
+      const ecologyBonus = grayTagSet.has(tag) ? ecologyShift * 2 : 0;
+      return base + inertiaBonus + ecologyBonus;
     });
 
     const totalWeight = weights.reduce((sum, w) => sum + w, 0);
@@ -162,20 +204,24 @@ export function getHeatDecayRate(upgradeLevel: number): number {
 /**
  * Generate a fresh daily state
  * v3.6: Now accepts tagHistory for demand inertia and lastRiskEvent for sale penalty
+ * P1-10: Now accepts ecologyShift for gray tag weighting
  * @param upgradeLevel Optional black market contact upgrade level (defaults to 1)
  * @param tagHistory Recent tag history for demand inertia
  * @param salePenaltyPercent Sale price penalty from previous risk event (e.g., undercover visit)
+ * @param ecologyShift Gray customer percentage bonus from P1-10 (0.0 - 0.40)
  */
 export function generateDailyBlackmarketState(
   upgradeLevel: number = 1,
   tagHistory: ItemTag[] = [],
-  salePenaltyPercent: number = 0
+  salePenaltyPercent: number = 0,
+  ecologyShift: number = 0
 ): BlackmarketDailyState {
   const { min, max } = generateDailySaleMultipliers();
   const purchaseLimit = getDailyPurchaseLimit(upgradeLevel);
 
   // v3.6 [BM-2]: Pass tagHistory for demand inertia
-  const purchaseRequests = generateDailyPurchaseRequests(purchaseLimit, tagHistory);
+  // P1-10: Pass ecologyShift for gray tag weighting
+  const purchaseRequests = generateDailyPurchaseRequests(purchaseLimit, tagHistory, ecologyShift);
 
   // v3.6 [BM-1]: Select one tag to reveal to news system (100% accurate)
   const revealedTag = purchaseRequests.length > 0
@@ -500,14 +546,17 @@ export function createInitialBlackmarketState(): BlackmarketState {
  * Process end of day for blackmarket
  * v3.6: Now handles demand inertia, heat decay suspension, low heat rewards,
  *        undercover visit aftermath, moral echoes, and Lv3+ preview
+ * P1-10: Now accepts innocence for customer ecology shift
  * @param state Current blackmarket state
  * @param currentDay Current game day
  * @param upgradeLevel Optional black market upgrade level (default 1)
+ * @param innocence Player's current innocence (for P1-10 ecology shift, default 100)
  */
 export function processEndOfDay(
   state: BlackmarketState,
   currentDay: number,
-  upgradeLevel: number = 1
+  upgradeLevel: number = 1,
+  innocence: number = 100
 ): { newState: BlackmarketState; riskEvent: RiskEvent | null } {
   // v3.6 [BM-4]: Check if heat decay is suspended (from undercover visit)
   let newHeat: number;
@@ -544,8 +593,9 @@ export function processEndOfDay(
   // v3.6 [BM-4]: Determine if next day heat decay should be suspended
   const nextHeatDecaySuspended = riskEvent?.suspendHeatDecay ?? false;
 
-  // Generate new daily state with demand inertia
-  const newDaily = generateDailyBlackmarketState(upgradeLevel, newTagHistory, salePenaltyPercent);
+  // Generate new daily state with demand inertia and ecology shift
+  const ecologyShift = getCustomerEcologyShift(innocence);
+  const newDaily = generateDailyBlackmarketState(upgradeLevel, newTagHistory, salePenaltyPercent, ecologyShift);
 
   // v3.6 [BM-2]: Lv3+ next day preview tag
   const nextDayPreviewTag = upgradeLevel >= 3 && newDaily.purchaseRequests.length > 0

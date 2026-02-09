@@ -12,6 +12,7 @@ import { GAME_CONFIG } from '../../systems/game/config';
 import { INITIAL_SHOP_UPGRADES, getEffectiveNightEnergy } from '../../systems/upgrades';
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../../systems/appointment';
 import { GamePhase, LegacyGamePhase } from '../../systems/core/types';
+import { getGewuEnergyMax } from '../../systems/insight';
 
 /**
  * Infer phase from old saves that used the legacy GamePhase enum.
@@ -65,14 +66,25 @@ export function coreReducer(state: GameState, action: Action): GameState {
             const appointmentBoard = action.payload.appointmentBoard || { ...INITIAL_APPOINTMENT_BOARD_STATE };
             // Ensure pending appointments are migrated
             const pendingAppointedCandidates = action.payload.pendingAppointedCandidates || [];
-            // Recalculate maxEnergy based on upgrades
-            const effectiveMaxEnergy = getEffectiveNightEnergy(shopUpgrades);
+            // Recalculate maxEnergy based on upgrades and gewu level
+            const upgradeMaxEnergy = getEffectiveNightEnergy(shopUpgrades);
+            const gewuLevel = action.payload.abilityState?.gewuLevel ?? 1;
+            const gewuMaxEnergy = getGewuEnergyMax(gewuLevel);
+            const effectiveMaxEnergy = Math.max(upgradeMaxEnergy, gewuMaxEnergy);
 
             // Migrate phase from old saves
             // Old saves had phase as string enum, new format is discriminated union
             // Also handle saves that had phase2 field (migration period)
             const loadedPhase = (action.payload as any).phase2 ?? action.payload.phase;
             const phase = inferPhaseFromLegacySave(loadedPhase);
+
+            // Migrate abilityState from old saves (add gewu fields)
+            const loadedAbility = action.payload.abilityState;
+            const migratedAbility = loadedAbility ? {
+                ...loadedAbility,
+                totalEpiphanies: loadedAbility.totalEpiphanies ?? 0,
+                gewuLevel: loadedAbility.gewuLevel ?? 1,
+            } : undefined;
 
             return {
                 ...action.payload,
@@ -86,6 +98,8 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 currentNode: action.payload.currentNode ?? null,
                 // Ensure narrativeCustomersServedToday is present (migration from old saves)
                 narrativeCustomersServedToday: action.payload.narrativeCustomersServedToday ?? 0,
+                // Migrate abilityState with gewu fields
+                ...(migratedAbility ? { abilityState: migratedAbility } : {}),
                 nightState: {
                     ...action.payload.nightState,
                     maxEnergy: effectiveMaxEnergy,
@@ -99,7 +113,16 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 hadMistakeToday: action.payload.hadMistakeToday ?? false,
                 hadHighRiskItemToday: action.payload.hadHighRiskItemToday ?? false,
                 dailyCustomerSchedule: action.payload.dailyCustomerSchedule ?? null,
-                scheduleSlotIndex: action.payload.scheduleSlotIndex ?? 0
+                scheduleSlotIndex: action.payload.scheduleSlotIndex ?? 0,
+                // P1-6 / H-1 migration: moraleBuff and purchasedCare
+                moraleBuff: action.payload.moraleBuff ?? null,
+                stats: {
+                    ...action.payload.stats,
+                    motherStatus: {
+                        ...action.payload.stats.motherStatus,
+                        purchasedCare: action.payload.stats.motherStatus.purchasedCare ?? null
+                    }
+                }
             };
         }
 

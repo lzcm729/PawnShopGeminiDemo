@@ -3,7 +3,7 @@
  * Centralized action types for the game state reducer
  */
 
-import { GameState, Customer, Mood, ReputationProfile, Item, EventChainState, SatisfactionLevel, MotherCondition, ExpiryEvent, PoliceInvestigationEvent } from '../../types';
+import { GameState, Customer, Mood, ReputationProfile, Item, EventChainState, SatisfactionLevel, MotherCondition, ExpiryEvent, PoliceInvestigationEvent, MoraleBuff } from '../../types';
 import { DepartureSatisfaction } from '../../systems/narrative/types';
 import { GamePhase } from '../../systems/core/phases';
 import { EssenceType, EssenceBalance } from '../../systems/economy/essence';
@@ -73,7 +73,7 @@ export type Action =
     // Inventory management
     | { type: 'REDEEM_ITEM'; payload: { itemId: string; paymentAmount: number; name: string } }
     | { type: 'EXTEND_PAWN'; payload: { itemId: string; interestPaid: number; newDueDate: number; name: string } }
-    | { type: 'REFUSE_EXTENSION'; payload: { itemId: string; name: string } }
+    | { type: 'REFUSE_EXTENSION'; payload: { itemId: string; name: string; extensionCount: number } }
     | { type: 'EXPIRE_ITEMS'; payload: { expiredItemIds: string[]; logs: string[] } }
     | { type: 'DEFAULT_SELL_ITEM'; payload: { itemId: string; amount: number; name: string } }
     | { type: 'SELL_FORFEIT_ITEM'; payload: { itemId: string; amount: number; name: string } }
@@ -217,6 +217,14 @@ export type Action =
     | { type: 'APPLY_EXTRA_CARE'; payload: { hopeChange: number; humanityChange: number; chainId?: string } }
     | { type: 'SET_ABILITY_STATE'; payload: AbilityState }
     | { type: 'TOGGLE_ABILITY_PANEL' }
+    | { type: 'RECORD_EPIPHANY' }
+
+    // Care Options (P1-6: Active care purchase)
+    | { type: 'PURCHASE_CARE'; payload: { level: 'Standard' | 'Premium'; cost: number; duration: number } }
+
+    // Morale Buff (H-1: Visit → next-day mood)
+    | { type: 'SET_MORALE_BUFF'; payload: MoraleBuff }
+    | { type: 'CLEAR_MORALE_BUFF' }
 
     // Debug flags
     | { type: 'DEBUG_TOGGLE_FLOOR' };

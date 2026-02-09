@@ -179,6 +179,23 @@ export const useAppraisal = () => {
 
         let newUncertainty = item.uncertainty;
 
+        // H-1 + H-4: Compute combined appraisal modifier from morale buff and health penalty
+        let appraisalEfficiencyModifier = 1.0;
+
+        // H-1: Morale buff modifier (from visiting mother)
+        const moraleBuff = state.moraleBuff;
+        if (moraleBuff && state.stats.day < moraleBuff.expiresDay) {
+            appraisalEfficiencyModifier *= moraleBuff.appraisalModifier;
+        }
+
+        // H-4: Health penalty (mother's poor health distracts player)
+        const motherHealth = state.stats.motherStatus.health;
+        if (motherHealth < GAME_CONFIG.MOTHER.HEALTH_PENALTY_SEVERE_THRESHOLD) {
+            appraisalEfficiencyModifier *= GAME_CONFIG.MOTHER.HEALTH_PENALTY_SEVERE_MODIFIER;
+        } else if (motherHealth < GAME_CONFIG.MOTHER.HEALTH_PENALTY_MILD_THRESHOLD) {
+            appraisalEfficiencyModifier *= GAME_CONFIG.MOTHER.HEALTH_PENALTY_MILD_MODIFIER;
+        }
+
         if (event.type === 'MISHAP') {
             newUncertainty = Math.min(0.5, newUncertainty + uncertaintyBoost);
         } else {
@@ -194,10 +211,15 @@ export const useAppraisal = () => {
             } else if (isBreakthrough) {
                 // S1-F2: BREAKTHROUGH event: uncertainty ×0.60 (from config)
                 const breakthroughMultiplier = GAME_CONFIG.APPRAISAL_EVENTS.BREAKTHROUGH_UNCERTAINTY_MULTIPLIER;
-                newUncertainty = Math.max(0.05, newUncertainty * breakthroughMultiplier);
+                // Apply H-1/H-4 modifier to breakthrough shrink rate
+                const adjustedMultiplier = 1 - (1 - breakthroughMultiplier) * appraisalEfficiencyModifier;
+                newUncertainty = Math.max(0.05, newUncertainty * adjustedMultiplier);
             } else {
-                // Normal shrink
-                newUncertainty = Math.max(0.05, newUncertainty * GAME_CONFIG.APPRAISAL.NORMAL_SHRINK_RATE);
+                // Normal shrink - apply H-1/H-4 modifier to shrink rate
+                const baseShrinkRate = GAME_CONFIG.APPRAISAL.NORMAL_SHRINK_RATE;
+                // shrinkRate closer to 0 = faster shrink; modifier > 1 = faster, < 1 = slower
+                const adjustedShrinkRate = 1 - (1 - baseShrinkRate) * appraisalEfficiencyModifier;
+                newUncertainty = Math.max(0.05, newUncertainty * adjustedShrinkRate);
             }
         }
 

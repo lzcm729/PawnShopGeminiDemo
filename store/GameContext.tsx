@@ -130,6 +130,8 @@ const initialState: GameState = {
     // === CHARACTER ABILITY (人物能力升级系统) ===
     abilityState: createInitialAbilityState(),
     showAbilityPanel: false,
+    // === MORALE BUFF (探望 → 次日心态) ===
+    moraleBuff: null,
     // === MORAL ECHO ===
     pendingEchoTexts: [],
     // === DEBUG FLAGS ===
