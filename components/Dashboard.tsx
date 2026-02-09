@@ -218,32 +218,30 @@ export const Dashboard: React.FC = () => {
 
             {/* Compact Reputation Bars */}
             <div className="flex items-center gap-3 bg-noir-100 p-2 rounded border border-noir-300 hidden xl:flex">
-                <Tooltip content={<RepTooltip label="Humanity" value={reputation[ReputationType.HUMANITY]} />}>
-                    <div className="flex items-center gap-2">
-                        <Heart className="w-3 h-3 text-noir-humanity" />
-                        <div className="w-8 h-1.5 bg-noir-300 rounded-full overflow-hidden">
-                            <div className="h-full bg-noir-humanity" style={{ width: `${reputation[ReputationType.HUMANITY]}%` }}></div>
-                        </div>
-                    </div>
-                </Tooltip>
-
-                <Tooltip content={<RepTooltip label="Credibility" value={reputation[ReputationType.CREDIBILITY]} />}>
-                    <div className="flex items-center gap-2">
-                        <Briefcase className="w-3 h-3 text-noir-credibility" />
-                        <div className="w-8 h-1.5 bg-noir-300 rounded-full overflow-hidden">
-                            <div className="h-full bg-noir-credibility" style={{ width: `${reputation[ReputationType.CREDIBILITY]}%` }}></div>
-                        </div>
-                    </div>
-                </Tooltip>
-
-                <Tooltip content={<RepTooltip label="Innocence" value={reputation[ReputationType.INNOCENCE]} />}>
-                    <div className="flex items-center gap-2">
-                        <Shield className="w-3 h-3 text-blue-400" />
-                        <div className="w-8 h-1.5 bg-noir-300 rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-400" style={{ width: `${reputation[ReputationType.INNOCENCE]}%` }}></div>
-                        </div>
-                    </div>
-                </Tooltip>
+                {([
+                    { key: ReputationType.HUMANITY, label: 'Humanity', icon: <Heart className="w-3 h-3 text-noir-humanity" />, barColor: 'bg-noir-humanity' },
+                    { key: ReputationType.CREDIBILITY, label: 'Credibility', icon: <Briefcase className="w-3 h-3 text-noir-credibility" />, barColor: 'bg-noir-credibility' },
+                    { key: ReputationType.INNOCENCE, label: 'Innocence', icon: <Shield className="w-3 h-3 text-blue-400" />, barColor: 'bg-blue-400' },
+                ] as const).map(({ key, label, icon, barColor }) => {
+                    const val = reputation[key];
+                    const dangerClass = val <= 5
+                        ? 'animate-[pulse_0.4s_ease-in-out_infinite] bg-red-500/50 rounded'
+                        : val <= 10
+                        ? 'animate-pulse bg-red-500/40 rounded'
+                        : val <= 20
+                        ? 'animate-pulse bg-yellow-500/30 rounded'
+                        : '';
+                    return (
+                        <Tooltip key={key} content={<RepTooltip label={label} value={val} />}>
+                            <div className={cn("flex items-center gap-2 px-1 py-0.5 transition-colors", dangerClass)}>
+                                {icon}
+                                <div className="w-8 h-1.5 bg-noir-300 rounded-full overflow-hidden">
+                                    <div className={cn("h-full", barColor)} style={{ width: `${val}%` }}></div>
+                                </div>
+                            </div>
+                        </Tooltip>
+                    );
+                })}
             </div>
 
             <div className="h-8 w-px bg-noir-400 mx-2 hidden xl:block"></div>

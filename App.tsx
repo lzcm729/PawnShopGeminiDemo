@@ -52,7 +52,7 @@ const GameContent: React.FC = () => {
   const itemUncertainty = state.currentCustomer?.item.uncertainty ?? 0.3;
   const moraleNegotiationModifier = state.moraleBuff?.negotiationModifier ?? 1.0;
   const newsStolenRisk = useMemo(() => getNewsStolenRiskModifier(state.dailyNews || []), [state.dailyNews]);
-  const negotiation = useNegotiation(state.currentCustomer, insightConcessionModifier, itemUncertainty, moraleNegotiationModifier, newsStolenRisk);
+  const negotiation = useNegotiation(state.currentCustomer, insightConcessionModifier, itemUncertainty, moraleNegotiationModifier, newsStolenRisk, state.reputation[ReputationType.HUMANITY], state.reputation[ReputationType.CREDIBILITY]);
   
   // Transition State
   const prevPhaseType = useRef<string>(state.phase.type);
