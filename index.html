@@ -87,7 +87,7 @@
         background: var(--accent-primary);
         border: 2px solid #fff;
         border-radius: 50%;
-        cursor: pointer;
+        cursor: url('/cursors/hand_closed.png') 16 16, grab;
         margin-top: -6px;
         box-shadow: 0 0 10px var(--accent-glow);
         transition: transform 0.1s;
@@ -98,9 +98,85 @@
       input[type=range]::-webkit-slider-runnable-track {
         width: 100%;
         height: 4px;
-        cursor: pointer;
+        cursor: url('/cursors/hand_point.png') 10 2, pointer;
         background: #44403c;
         border-radius: 2px;
+      }
+
+      /* Custom Game Cursors (Kenney Cursor Pack - Outline/Default) */
+      /*
+       * Uses !important to override Tailwind utility classes (cursor-pointer,
+       * cursor-not-allowed) so the custom cursor theme is applied consistently.
+       * Fallback values ensure usability if PNG fails to load.
+       */
+
+      /* Global default cursor */
+      *, *::before, *::after {
+        cursor: url('/cursors/pointer_a.png') 4 2, default !important;
+      }
+
+      /* Clickable elements - pointing hand */
+      a, button:not(:disabled), [role="button"], label[for], select, summary,
+      input[type="button"], input[type="submit"], input[type="reset"],
+      input[type="checkbox"], input[type="radio"],
+      .cursor-pointer, .cursor-game-pointer {
+        cursor: url('/cursors/hand_point.png') 10 2, pointer !important;
+      }
+
+      /* Disabled elements override */
+      button:disabled, [aria-disabled="true"],
+      .cursor-not-allowed, .cursor-game-disabled {
+        cursor: url('/cursors/cursor_disabled.png') 4 2, not-allowed !important;
+      }
+
+      /* Range slider thumb - grabbing hand */
+      input[type=range]::-webkit-slider-thumb {
+        cursor: url('/cursors/hand_closed.png') 16 16, grab !important;
+      }
+
+      /* Help cursor */
+      .cursor-help, .cursor-game-help {
+        cursor: url('/cursors/cursor_help.png') 4 2, help !important;
+      }
+
+      /* Zoom / Appraisal cursor */
+      .cursor-game-zoom {
+        cursor: url('/cursors/zoom_in.png') 12 12, zoom-in !important;
+      }
+
+      /* Look / Inspect cursor */
+      .cursor-game-look {
+        cursor: url('/cursors/look_a.png') 16 16, default !important;
+      }
+
+      /* Grab cursor (open hand for draggable) */
+      .cursor-game-grab {
+        cursor: url('/cursors/hand_open.png') 16 16, grab !important;
+      }
+
+      /* Grabbing cursor (closed hand while dragging) */
+      .cursor-game-grabbing {
+        cursor: url('/cursors/hand_closed.png') 16 16, grabbing !important;
+      }
+
+      /* Loading / busy cursor */
+      .cursor-game-busy {
+        cursor: url('/cursors/busy_hourglass.png') 16 16, wait !important;
+      }
+
+      /* Night phase sci-fi cursor */
+      .cursor-game-night {
+        cursor: url('/cursors/pointer_scifi_a.png') 4 2, default !important;
+      }
+      .cursor-game-night a,
+      .cursor-game-night button:not(:disabled),
+      .cursor-game-night [role="button"],
+      .cursor-game-night .cursor-pointer {
+        cursor: url('/cursors/hand_point.png') 10 2, pointer !important;
+      }
+      .cursor-game-night button:disabled,
+      .cursor-game-night .cursor-not-allowed {
+        cursor: url('/cursors/cursor_disabled.png') 4 2, not-allowed !important;
       }
     </style>
     <script>

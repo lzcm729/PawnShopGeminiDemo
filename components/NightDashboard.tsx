@@ -108,7 +108,7 @@ export const NightDashboard: React.FC = () => {
     };
 
     return (
-        <div className="h-screen w-full bg-[#050505] relative overflow-hidden font-mono text-stone-400 flex flex-col items-center justify-center">
+        <div className="h-screen w-full bg-[#050505] relative overflow-hidden font-mono text-stone-400 flex flex-col items-center justify-center cursor-game-night">
 
             {showMonologue && (
                 <InnerVoiceDisplay text={monologueText} onComplete={completeNight} />

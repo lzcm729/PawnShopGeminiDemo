@@ -161,7 +161,7 @@ export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center p-4">
-            <div className={`transition-all duration-500 w-32 h-32 border border-stone-800 rounded-lg bg-stone-900/50 mb-2 overflow-hidden flex items-center justify-center ${appraising ? 'blur-sm opacity-50 scale-110' : ''}`}>
+            <div className={`transition-all duration-500 w-32 h-32 border border-stone-800 rounded-lg bg-stone-900/50 mb-2 overflow-hidden flex items-center justify-center cursor-game-look ${appraising ? 'blur-sm opacity-50 scale-110' : ''}`}>
                 <img
                   src={getItemIcon(item)}
                   alt={item.name}
@@ -284,9 +284,9 @@ export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
                 disabled={actionPoints <= 0 || !canInteract || appraising}
                 isLoading={appraising}
                 className={`w-full h-12 shadow-lg border-2 font-mono text-sm flex items-center justify-center gap-2 rounded transition-all
-                    ${actionPoints > 0
-                        ? 'bg-pawn-accent text-black border-white hover:scale-[1.02]'
-                        : 'bg-stone-800 text-stone-500 border-stone-600 cursor-not-allowed'
+                    ${actionPoints > 0 && canInteract && !appraising
+                        ? 'bg-pawn-accent text-black border-white hover:scale-[1.02] cursor-game-zoom'
+                        : 'bg-stone-800 text-stone-500 border-stone-600'
                     }
                 `}
              >
