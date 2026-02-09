@@ -2,11 +2,20 @@
  * Mirror Law Warnings (镜鉴法则警告)
  *
  * When the player's Innocence (清白) drops into the 40-30 range,
- * the game delivers escalating narrative signals across three channels:
+ * the game delivers escalating narrative signals across three channels,
+ * following the "inside-out" (由内而外) arc from design doc v1.4 §8.3:
  *
- *   Level 1 (Innocence <= 40): Anonymous mail warnings
- *   Level 2 (Innocence <= 35): Protagonist's inner monologue
- *   Level 3 (Innocence <= 30): NPC behavioral reactions
+ *   Level 1 (Innocence <= 40): MONOLOGUE — Inner mirror (内在镜子)
+ *     The protagonist's private unease: nighttime reflections, fragmented
+ *     memories, self-doubt. First-person, introspective.
+ *
+ *   Level 2 (Innocence <= 35): MAIL — Social mirror (社会镜子)
+ *     Anonymous letters and veiled hints from the community. The outside
+ *     world begins to notice and respond.
+ *
+ *   Level 3 (Innocence <= 30): NPC_REACTION — Relationship mirror (关系镜子)
+ *     Observable behavioral changes from familiar faces: averted eyes,
+ *     quickened steps, cold formality.
  *
  * These warnings are atmospheric -- they don't moralize or lecture.
  * They let the player feel the weight of their choices through
@@ -39,83 +48,85 @@ export interface MirrorLawWarning {
 
 export const MIRROR_LAW_WARNINGS: MirrorLawWarning[] = [
   // ------------------------------------------------------------------
-  // Level 1: MAIL (Innocence <= 40)
-  // Anonymous letters, veiled hints, concerned acquaintances
+  // Level 1: MONOLOGUE (Innocence <= 40)
+  // Inner mirror — nighttime reflections, unease, self-doubt
+  // First-person introspective thoughts during quiet moments
   // ------------------------------------------------------------------
   {
     level: 1,
-    channel: 'MAIL',
+    channel: 'MONOLOGUE',
     innocenceThreshold: 40,
+    text: '关了灯准备睡觉，但脑子停不下来。今天那笔生意……我做得对吗？翻了个身，把这个念头按下去。明天还有账要算。',
+  },
+  {
+    level: 1,
+    channel: 'MONOLOGUE',
+    innocenceThreshold: 40,
+    text: '洗手的时候愣了一下。不知道为什么，总觉得指缝间还留着什么东西的触感。大概是今天摸的货太多了吧。',
+  },
+  {
+    level: 1,
+    channel: 'MONOLOGUE',
+    innocenceThreshold: 40,
+    text: '夜里醒了一次，想起小时候妈常说的一句话："人在做，天在看。"翻了个身，告诉自己只是做梦。但后半夜没再睡着。',
+  },
+  {
+    level: 1,
+    channel: 'MONOLOGUE',
+    innocenceThreshold: 40,
+    text: '收拾柜台的时候发现自己在发呆。盯着玻璃柜里的倒影看了好一会儿——那个人有点陌生。摇摇头，继续擦桌子。',
+  },
+  {
+    level: 1,
+    channel: 'MONOLOGUE',
+    innocenceThreshold: 40,
+    text: '今晚的茶泡浓了，苦得发涩。以前嫌淡，现在好像只有苦味才能让自己觉得还在正常地过日子。什么时候开始变成这样的？',
+  },
+
+  // ------------------------------------------------------------------
+  // Level 2: MAIL (Innocence <= 35)
+  // Social mirror — anonymous letters, veiled community signals,
+  // concerned acquaintances reaching out indirectly
+  // ------------------------------------------------------------------
+  {
+    level: 2,
+    channel: 'MAIL',
+    innocenceThreshold: 35,
     mailSubject: '一点小建议',
     mailSender: '一位老客户',
     text: '掌柜的，我在你这当了好些年东西了。最近有人在茶馆里聊起你的铺子，说的话不太好听。我知道生意难做，但有些路，走远了就回不来了。这封信看完就烧了吧。',
   },
   {
-    level: 1,
+    level: 2,
     channel: 'MAIL',
-    innocenceThreshold: 40,
+    innocenceThreshold: 35,
     mailSubject: '（无标题）',
     mailSender: '匿名',
     text: '你大概不认识我，但我认识你。街角杂货铺的老陈跟我说，最近有人在打听你铺子里进出的货。不是什么好事。信不信由你。',
   },
   {
-    level: 1,
+    level: 2,
     channel: 'MAIL',
-    innocenceThreshold: 40,
+    innocenceThreshold: 35,
     mailSubject: '街坊提醒',
     mailSender: '隔壁裁缝铺',
     text: '掌柜，你可能没注意，但最近你铺子门口总有个穿灰大衣的人站着抽烟。不是来典当的，就是站一会儿就走了。我也不知道什么意思，就是觉得应该告诉你一声。',
   },
   {
-    level: 1,
+    level: 2,
     channel: 'MAIL',
-    innocenceThreshold: 40,
+    innocenceThreshold: 35,
     mailSubject: '旧日邻居的问候',
     mailSender: '王婶',
     text: '好久没去你铺子坐坐了。前几天碰到你妈以前的老姐妹，她们问起你，我不知道该怎么说。你妈要是知道你现在的名声……算了，我也只是个多嘴的老太太。保重。',
   },
   {
-    level: 1,
+    level: 2,
     channel: 'MAIL',
-    innocenceThreshold: 40,
+    innocenceThreshold: 35,
     mailSubject: '关于近期的传闻',
     mailSender: '同业公会',
     text: '致当铺经营者：近期本区域内有关部分典当行经营行为的非正式投诉有所增加。公会建议各成员自行审视近期业务，确保合规经营。此函仅作提醒，不针对任何具体个人。',
-  },
-
-  // ------------------------------------------------------------------
-  // Level 2: MONOLOGUE (Innocence <= 35)
-  // Inner thoughts at night -- unease, fragmented memories, doubt
-  // ------------------------------------------------------------------
-  {
-    level: 2,
-    channel: 'MONOLOGUE',
-    innocenceThreshold: 35,
-    text: '今晚照镜子的时候，我把灯关了。不是为了省电。是因为我不太想看清镜子里那个人的眼睛。',
-  },
-  {
-    level: 2,
-    channel: 'MONOLOGUE',
-    innocenceThreshold: 35,
-    text: '睡不着。脑子里一直在算账——不是铺子的账，是另一种账。那些东西从我手里过的时候，我真的什么都没察觉到吗？还是我选择了不去想？',
-  },
-  {
-    level: 2,
-    channel: 'MONOLOGUE',
-    innocenceThreshold: 35,
-    text: '梦见小时候了。妈带我去典当铺赎爸的手表，柜台后面那个老头看我们的眼神——我一直记得那种眼神。今天有个客人也是那么看我的。',
-  },
-  {
-    level: 2,
-    channel: 'MONOLOGUE',
-    innocenceThreshold: 35,
-    text: '洗手的时候发现自己洗了很久。水一直流着，手已经搓红了，但总觉得还没洗干净。大概只是天冷，皮肤干燥吧。',
-  },
-  {
-    level: 2,
-    channel: 'MONOLOGUE',
-    innocenceThreshold: 35,
-    text: '翻到一张老照片。照片上的人笑得很坦然，那种不需要理由就能笑出来的坦然。我试着也笑了一下——嘴角是动了，但眼睛没跟上。',
   },
 
   // ------------------------------------------------------------------

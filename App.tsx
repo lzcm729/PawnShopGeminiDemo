@@ -4,6 +4,7 @@ import type { AppraisalFeedback } from './components/NegotiationPanel';
 import { GameProvider, useGame } from './store/GameContext';
 import { useGameEngine } from './hooks/useGameEngine';
 import { useNegotiation } from './hooks/useNegotiation';
+import { useCustomerInsight } from './hooks/useCustomerInsight';
 import { useGameMachine } from './hooks/useGameMachine';
 import { PhaseIs, PhaseMatch } from './systems/core/phases';
 import { Dashboard } from './systems/game/ui/Dashboard';
@@ -41,7 +42,12 @@ const GameContent: React.FC = () => {
   const { generateDailyEvent, processNextExpiryEvent, startNewDay } = useGameEngine();
   const { send } = useGameMachine();
   const [loadingText, setLoadingText] = useState("");
-  const negotiation = useNegotiation(state.currentCustomer);
+  const insight = useCustomerInsight();
+  const insightConcessionModifier = useMemo(() => {
+    const mod = insight.getPushPullModifier();
+    return mod ? mod.concessionModifier : 0;
+  }, [insight.getPushPullModifier]);
+  const negotiation = useNegotiation(state.currentCustomer, insightConcessionModifier);
   
   // Transition State
   const prevPhaseType = useRef<string>(state.phase.type);
