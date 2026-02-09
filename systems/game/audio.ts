@@ -74,11 +74,7 @@ const SOUND_DEFS: Record<SoundType, SoundDef> = {
         gain: 0.45,
     },
     TYPE: {
-        files: [
-            '/audio/sfx/switch_001.ogg',
-            '/audio/sfx/switch_002.ogg',
-            '/audio/sfx/switch_003.ogg',
-        ],
+        files: [],  // Uses synthesized sound (see playSynthType)
         gain: 0.3,
     },
     BOOT: {
@@ -296,6 +292,40 @@ export const toggleMute = () => {
 
 export const getMuteState = () => isMuted;
 
+// --- Synthesized TYPE sound (mechanical keyboard click) ---
+
+const playSynthType = (ctx: AudioContext, master: GainNode) => {
+    const t = ctx.currentTime;
+
+    // Square wave key click
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(2000, t);
+    gain.gain.setValueAtTime(0.05, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+    osc.connect(gain);
+    gain.connect(master);
+    osc.start(t);
+    osc.stop(t + 0.03);
+
+    // White noise burst for texture
+    const bufferSize = ctx.sampleRate * 0.02;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+    }
+    const noise = ctx.createBufferSource();
+    const noiseGain = ctx.createGain();
+    noise.buffer = noiseBuffer;
+    noiseGain.gain.setValueAtTime(0.05, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+    noise.connect(noiseGain);
+    noiseGain.connect(master);
+    noise.start(t);
+};
+
 // --- SFX playback ---
 
 export const playSfx = (type: SoundType) => {
@@ -303,6 +333,12 @@ export const playSfx = (type: SoundType) => {
 
     const ctx = initAudio();
     if (!ctx || !masterGain) return;
+
+    // TYPE uses original synthesized sound
+    if (type === 'TYPE') {
+        playSynthType(ctx, masterGain);
+        return;
+    }
 
     const def = SOUND_DEFS[type];
     if (!def) return;

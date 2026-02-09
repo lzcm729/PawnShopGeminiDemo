@@ -206,8 +206,22 @@ function tryResonance(
 
 /**
  * 检查物品估价是否已锁定（区间足够小）
+ *
+ * 必须满足两个条件：
+ * 1. 物品至少经过一次鉴定（白天 appraisal）或格物（夜间 insight）
+ * 2. 区间宽度足够小（相对阈值或绝对值兜底）
+ *
+ * 这防止初始区间恰好很窄的物品在未经任何检查时就被判定为"已锁定"。
  */
 export function isValueLocked(item: Item): boolean {
+  // 前置条件：必须至少被鉴定或格物过一次
+  const hasBeenExamined =
+    item.appraised ||
+    (item.appraisalCount != null && item.appraisalCount > 0) ||
+    (item.knowledgePool != null && item.knowledgePool.extracted > 0);
+
+  if (!hasBeenExamined) return false;
+
   const config = getInsightConfig();
   const [min, max] = item.currentRange;
   const width = max - min;
