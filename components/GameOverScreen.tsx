@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from './ui/Button';
 import { RotateCcw, AlertTriangle, Skull, Calendar, DollarSign } from 'lucide-react';
 import { useGame } from '../store/GameContext';
+import { stopAmbience } from '../systems/game/audio';
 
 interface GameOverScreenProps {
     reason: string;
@@ -11,6 +12,8 @@ interface GameOverScreenProps {
 
 export const GameOverScreen: React.FC<GameOverScreenProps> = ({ reason, onRestart }) => {
     const { state } = useGame();
+
+    useEffect(() => { stopAmbience(); }, []);
     
     return (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-[#1a0505] text-red-50 relative overflow-hidden font-mono">

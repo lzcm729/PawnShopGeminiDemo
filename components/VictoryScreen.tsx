@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { Button } from './ui/Button';
 import { Heart, Shield, Calendar, DollarSign, RotateCcw, Sun, Users, CheckCircle, XCircle, Hammer, Skull, ChevronDown, ChevronUp } from 'lucide-react';
 import { ReputationType, NpcFateEntry } from '../types';
-import { playSfx } from '../systems/game/audio';
+import { playSfx, stopAmbience } from '../systems/game/audio';
 import { summarizeFates, evaluateVerdict, type FateVerdict } from '../systems/narrative/fateEvaluator';
 
 interface VictoryScreenProps {
@@ -84,6 +84,7 @@ export const VictoryScreen: React.FC<VictoryScreenProps> = ({ onRestart }) => {
     const hasFateData = fateSummary.totalNpcs > 0;
 
     useEffect(() => {
+        stopAmbience();
         const timer = setTimeout(() => setReveal(true), 500);
         return () => clearTimeout(timer);
     }, []);
