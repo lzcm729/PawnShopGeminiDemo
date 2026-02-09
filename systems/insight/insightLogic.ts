@@ -39,6 +39,8 @@ import {
   getAttributeTags,
 } from '../items/tagUtils';
 import { calculateEssenceGain } from '../economy/essenceUtils';
+import { createTextRegistry, TextRegistry } from '../utils/textRegistry';
+import insightTextsCSV from '@/assets/data/texts/insight_texts.csv?raw';
 
 // ============================================================================
 // 配置读取
@@ -62,6 +64,19 @@ const getInsightConfig = () => ({
   resonanceBonusRatio: GAME_CONFIG.NIGHT.RESONANCE_BONUS_RATIO,
   epiphanyResidualUncertainty: GAME_CONFIG.NIGHT.EPIPHANY_RESIDUAL_UNCERTAINTY,
 });
+
+// ============================================================================
+// 文本注册表 (从 CSV 加载叙事文本)
+// ============================================================================
+
+let insightTexts: TextRegistry | null = null;
+
+function getTexts(): TextRegistry {
+  if (!insightTexts) {
+    insightTexts = createTextRegistry('insight', insightTextsCSV);
+  }
+  return insightTexts;
+}
 
 // ============================================================================
 // 随机产出计算 (S3-F1)
@@ -173,8 +188,12 @@ function tryResonance(
   const bonusAmount = Math.floor(config.extractionRateMin * config.resonanceBonusRatio);
   const bonusEssence = calculateEssenceGain(bonusAmount, yieldRatios);
 
+  const resonanceVars = { item_name: item.name, paired_name: pairedItem.name };
+  const resonanceText = getTexts().getWithVars('resonance', resonanceVars)
+    || `${item.name}与${pairedItem.name}之间产生了微妙的共鸣...`;
+
   return {
-    text: `${item.name}与${pairedItem.name}之间产生了微妙的共鸣...它们之间似乎有着不为人知的联系。`,
+    text: resonanceText,
     bonusEssence,
     pairedItemId: pairedItem.id,
     pairedItemName: pairedItem.name,
@@ -557,49 +576,42 @@ export function getInsightsToEpiphany(item: Item): number {
 
 /**
  * 根据物品和结果生成格物叙事
+ * 所有叙事文本从 CSV 文件加载 (assets/data/texts/insight_texts.csv)
  */
 export function getInsightNarrative(
   item: Item,
   result: InsightResult
 ): InsightNarrative {
   const tags = item.tags || [];
+  const vars = { item_name: item.name };
+  const texts = getTexts();
 
   // 基础行为描述
-  let actionText = `你在灯下仔细端详着${item.name}...`;
+  let actionText = texts.getWithVars('action_default', vars)
+    || `你在灯下仔细端详着${item.name}...`;
 
   // S3-C3: 意外事件覆盖行为描述（从多样化文案中随机选择）
   if (result.unexpectedEvent === 'DISTRACTION') {
-    const texts = getDistractionTexts();
-    actionText = texts[Math.floor(Math.random() * texts.length)];
+    actionText = texts.getRandom('distraction') || actionText;
   } else if (result.unexpectedEvent === 'REMARKABLE_FIND') {
-    const texts = getRemarkableFindTexts(item);
-    actionText = texts[Math.floor(Math.random() * texts.length)];
+    actionText = texts.getRandomWithVars('remarkable', vars) || actionText;
   }
 
-  // 根据标签生成发现描述
-  let discoveryText: string;
-
-  if (tags.includes('MECHANICAL')) {
-    discoveryText = '精密的机械结构让你对工艺有了更深的理解。';
-  } else if (tags.includes('GOLD')) {
-    discoveryText = '贵金属的质感与重量，让你对材质工艺有了新的认识。';
-  } else if (tags.includes('VINTAGE_REAL')) {
-    discoveryText = '岁月在这件物品上留下的痕迹，诉说着一段无声的历史。';
-  } else if (tags.includes('SENTIMENTAL')) {
-    discoveryText = '你仿佛能感受到物品主人曾经的情感寄托。';
-  } else if (tags.includes('ARTISTIC')) {
-    discoveryText = '艺术的美感让你的感知变得更加敏锐。';
-  } else {
-    discoveryText = '你从中获得了一些领悟。';
-  }
+  // 根据标签生成发现描述（优先级：按标签顺序尝试）
+  const discoveryKeys = buildDiscoveryKeys(tags);
+  const discoveryText = texts.resolve(discoveryKeys)
+    || '你从中获得了一些领悟。';
 
   // 顿悟描述 (S3-C1: 物品类型专属独白)
   let epiphanyText: string | undefined;
   if (result.isEpiphany) {
-    epiphanyText = getEpiphanyMonologue(item, tags);
+    const epiphanyKeys = buildEpiphanyKeys(item, tags);
+    epiphanyText = texts.resolve(epiphanyKeys, vars);
 
     if (item.status === ItemStatus.ACTIVE && item.pawnInfo) {
-      epiphanyText += '\n...只是，这件物品的主人还在等着它。';
+      const suffix = texts.get('pawn_active_suffix')
+        || '...只是，这件物品的主人还在等着它。';
+      epiphanyText = (epiphanyText || '') + '\n' + suffix;
     }
   }
 
@@ -611,187 +623,117 @@ export function getInsightNarrative(
 }
 
 // ============================================================================
-// 叙事内容 (Content Layer)
+// 文本查找键构建 (Key Builders)
 // ============================================================================
 
+/** 标签发现文本的查找键优先级 */
+const DISCOVERY_TAG_ORDER = ['MECHANICAL', 'GOLD', 'VINTAGE_REAL', 'SENTIMENTAL', 'ARTISTIC'] as const;
+
+function buildDiscoveryKeys(tags: string[]): string[] {
+  const keys: string[] = [];
+  for (const tag of DISCOVERY_TAG_ORDER) {
+    if (tags.includes(tag)) {
+      keys.push(`discovery:${tag}`);
+    }
+  }
+  keys.push('discovery:_default');
+  return keys;
+}
+
 /**
- * S3-C1: 顿悟专属感悟独白
- * 根据物品类型/标签生成具体洞察，而非泛泛的"我明白了"
+ * 构建顿悟文本查找键 — 复现原始优先级逻辑：
+ * MECHANICAL+钟表 > GOLD(非MECHANICAL) > ARTISTIC(非VINTAGE_REAL) >
+ * VINTAGE_REAL+ARTISTIC > VINTAGE_REAL > SENTIMENTAL > TRENDY >
+ * category > _default
  */
-function getEpiphanyMonologue(item: Item, tags: string[]): string {
-  // 钟表类
-  if (tags.includes('MECHANICAL') && (item.category === '钟表' || item.name.includes('表'))) {
-    return `原来如此...每一个齿轮的咬合角度，每一根游丝的弹性系数——它们不是零件，是凝固的时间本身。${item.name}的秘密，全在那永不停歇的嘀嗒声里。`;
+function buildEpiphanyKeys(item: Item, tags: string[]): string[] {
+  const keys: string[] = [];
+  const cat = item.category;
+  const nameHasWatch = item.name.includes('表');
+
+  // Tag-based keys (most specific combos first)
+  if (tags.includes('MECHANICAL') && (cat === '钟表' || nameHasWatch)) {
+    keys.push('epiphany:MECHANICAL:钟表');
   }
-  // 珠宝/贵金属
   if (tags.includes('GOLD') && !tags.includes('MECHANICAL')) {
-    return `金属不会说谎。成色、密度、折光率——${item.name}把答案刻在每一个分子里。你只需要足够安静，就能听见它的低语。`;
+    keys.push('epiphany:GOLD');
   }
-  // 艺术品
   if (tags.includes('ARTISTIC') && !tags.includes('VINTAGE_REAL')) {
-    return `笔触之间藏着呼吸的节奏，色彩的叠加记录着犹豫与决断。${item.name}不只是一件作品——它是创作者灵魂的切片。`;
+    keys.push('epiphany:ARTISTIC');
   }
-  // 古董/年代物
   if (tags.includes('VINTAGE_REAL') && tags.includes('ARTISTIC')) {
-    return `岁月和技艺在这里交汇。你终于读懂了${item.name}表面每一道裂纹的含义——那不是瑕疵，是时间亲笔写下的签名。`;
+    keys.push('epiphany:VINTAGE_REAL:ARTISTIC');
   }
   if (tags.includes('VINTAGE_REAL')) {
-    return `握着${item.name}，你看到了它流经的所有手掌。一百年的悲欢离合浓缩在这方寸之间，而你是最后一个读懂它的人。`;
+    keys.push('epiphany:VINTAGE_REAL');
   }
-  // 情感物
   if (tags.includes('SENTIMENTAL')) {
-    return `这不只是一件物品。${item.name}承载着某个人最珍贵的记忆——那些无法用金钱衡量的时刻。你触碰到了它的灵魂。`;
+    keys.push('epiphany:SENTIMENTAL');
   }
-  // 潮流/电子
   if (tags.includes('TRENDY')) {
-    return `在批量生产的外壳之下，你发现了独一无二的痕迹。${item.name}的真正价值不在标价，而在使用它的人赋予它的意义。`;
+    keys.push('epiphany:TRENDY');
   }
-  // 乐器
-  if (item.category === '乐器') {
-    return `你的指尖拂过琴弦时，仿佛听到了所有曾在它上面演奏过的旋律。${item.name}记住了每一首歌——而现在，你也记住了。`;
+
+  // Category-based keys
+  keys.push(`epiphany:cat:${cat}`);
+
+  // Fallback
+  keys.push('epiphany:_default');
+
+  return keys;
+}
+
+/**
+ * 构建窥见文本查找键 — 累积所有匹配的标签和类别
+ * 原始逻辑: 收集所有匹配标签的窥见文本，无匹配时用默认
+ */
+function buildGlimpseKeys(item: Item, tags: string[]): string[] {
+  const keys: string[] = [];
+  const cat = item.category;
+  const nameHasWatch = item.name.includes('表');
+
+  // Tag-based keys (accumulative)
+  if (tags.includes('MECHANICAL') && (cat === '钟表' || nameHasWatch)) {
+    keys.push('glimpse:MECHANICAL:钟表');
   }
-  // 书籍/文房
-  if (item.category === '书籍' || item.category === '文房') {
-    return `字里行间，你找到了那个写下它们的人。墨迹的深浅、笔锋的转折——${item.name}是一封跨越时空的信，而你终于读完了。`;
+  if (tags.includes('GOLD')) {
+    keys.push('glimpse:GOLD');
   }
-  // 酒类
-  if (item.category === '酒类') {
-    return `封口之下是凝固的时光。${item.name}的每一滴都在诉说酿造那年的阳光、土壤和匠人的等待。真正的佳酿，从不急于被打开。`;
+  if (tags.includes('VINTAGE_REAL')) {
+    keys.push('glimpse:VINTAGE_REAL');
   }
-  // 收藏品
-  if (item.category === '收藏品') {
-    return `表面的旧迹之下，是被忽略的珍贵。${item.name}的真正价值，只有愿意花时间去看的人才能发现。而你，看到了。`;
+  if (tags.includes('SENTIMENTAL')) {
+    keys.push('glimpse:SENTIMENTAL');
   }
-  // 通用兜底
-  return `你已经完全理解了${item.name}的一切秘密。表象之下的真实，此刻在你眼中清晰如镜。`;
+  if (tags.includes('ARTISTIC')) {
+    keys.push('glimpse:ARTISTIC');
+  }
+  if (tags.includes('TRENDY')) {
+    keys.push('glimpse:TRENDY');
+  }
+
+  // Category-based keys
+  keys.push(`glimpse:cat:${cat}`);
+
+  return keys;
 }
 
 /**
  * S3-C2: 窥见碎片文案
- * 根据物品标签生成多样化的故事片段
+ * 从 CSV 加载，按标签累积收集
  */
 function getGlimpseTexts(item: Item, tags: string[]): string[] {
-  const glimpses: string[] = [];
+  const vars = { item_name: item.name };
+  const keys = buildGlimpseKeys(item, tags);
+  const texts = getTexts();
 
-  // 钟表类窥见
-  if (tags.includes('MECHANICAL') && (item.category === '钟表' || item.name.includes('表'))) {
-    glimpses.push(
-      `...恍惚间，你听到了嘀嗒声背后更深沉的节奏。仿佛有人在用${item.name}计算着什么重要的日子...`,
-      `...表盘上的数字忽然变得模糊，你看到了一双苍老的手，在反复校准着指针...`,
-      `...机芯的齿轮在微光下闪烁，每一个咬合似乎都在低语着制表师的执念...`,
-    );
-  }
+  const glimpses = texts.collectAll(keys, 'glimpse:_default', vars);
 
-  // 贵金属/珠宝窥见
-  if (tags.includes('GOLD')) {
-    glimpses.push(
-      `...金属表面映出了一张模糊的脸。不是你的——是很久以前的某个人...`,
-      `...指尖传来一阵温热。这种金属的温度，不应该来自物质本身...`,
-      `...光线掠过${item.name}时，你瞥见了一丝不属于这个时代的光泽...`,
-    );
-  }
-
-  // 年代物窥见
-  if (tags.includes('VINTAGE_REAL')) {
-    glimpses.push(
-      `...岁月的包浆下，隐约浮现出一个模糊的场景：有人在昏暗的灯下仔细擦拭着${item.name}...`,
-      `...你闻到了一股陈旧的气息——不是霉味，而是某个时代特有的空气...`,
-      `...旧日的痕迹在灯下若隐若现，像是有人在低声诉说着一段往事...`,
-    );
-  }
-
-  // 情感物窥见
-  if (tags.includes('SENTIMENTAL')) {
-    glimpses.push(
-      `...模糊的画面闪过...有人将${item.name}紧紧攥在手里，低声说着"一定会回来取的"...`,
-      `...一个短暂的幻觉：小小的房间，温暖的灯光，${item.name}被小心翼翼地放在显眼的位置...`,
-      `...你仿佛听到了一声叹息。不是来自风，是来自物品本身...`,
-    );
-  }
-
-  // 艺术品窥见
-  if (tags.includes('ARTISTIC')) {
-    glimpses.push(
-      `...一瞬间，色彩变得异常鲜明。你似乎看到了创作者下笔时的犹豫与坚定...`,
-      `...画面深处有一个被刻意遮盖的细节。是修改？还是秘密？...`,
-      `...你的目光穿透了表面，看到了最初的底稿。原来的构思和最终呈现截然不同...`,
-    );
-  }
-
-  // 潮流物窥见
-  if (tags.includes('TRENDY')) {
-    glimpses.push(
-      `...使用痕迹描绘出主人的轮廓——年轻的手指，急切的操作，和某些深夜的独处时光...`,
-      `...批量制品的缝隙里，藏着一点点独特。某个人曾试图让${item.name}变得与众不同...`,
-    );
-  }
-
-  // 乐器窥见
-  if (item.category === '乐器') {
-    glimpses.push(
-      `...指尖触碰琴身时，木纹仿佛在振动。很轻，像是遥远的回声...`,
-      `...恍惚间你听到了一段旋律的残片。不是幻觉——是共鸣腔里残留的记忆...`,
-      `...琴弦的张力中藏着无数次调音的痕迹。每一次微调，都是演奏者与乐器的对话...`,
-    );
-  }
-
-  // 书籍/文房窥见
-  if (item.category === '书籍' || item.category === '文房') {
-    glimpses.push(
-      `...翻动间，你瞥见了页边空白处的铅笔痕迹。有人曾在这里停留很久...`,
-      `...墨渍的分布不是随机的。细看之下，像是某种刻意留下的标记...`,
-    );
-  }
-
-  // 酒类窥见
-  if (item.category === '酒类') {
-    glimpses.push(
-      `...封蜡上的指纹已经模糊，但你能感受到封瓶那一刻的郑重...`,
-      `...酒液在灯光下折射出琥珀色的光。时间在瓶中流得比外面慢...`,
-    );
-  }
-
-  // 收藏品窥见
-  if (item.category === '收藏品') {
-    glimpses.push(
-      `...收藏者留下的痕迹比物品本身更有故事——保护套上的磨损说明它曾被反复取出欣赏...`,
-      `...一闪而过的画面：某个柜子的深处，${item.name}被小心地包裹在绸布中...`,
-    );
-  }
-
-  // 通用兜底
+  // Should never be empty due to _default fallback, but guard anyway
   if (glimpses.length === 0) {
-    glimpses.push(
-      `...恍惚间，你似乎看到了${item.name}过去的影子...`,
-      `...一段模糊的记忆从${item.name}中浮现，转瞬即逝...`,
-    );
+    return [`...恍惚间，你似乎看到了${item.name}过去的影子...`];
   }
-
   return glimpses;
-}
-
-/**
- * S3-C3: 格物意外叙事文案
- * 走神和惊人发现的多样化描述
- */
-function getDistractionTexts(): string[] {
-  return [
-    '今晚心不在焉...窗外的雨声搅乱了思绪，只捕捉到了一些浅层的信息。',
-    '疲倦不知不觉地袭来。你发现自己盯着同一个细节看了很久，却什么也没看出来。',
-    '脑海里浮现出母亲的面容，注意力被牵走了...等回过神时，精力已经耗散大半。',
-    '不知为何，今晚的灯光让你觉得刺眼。勉强维持的专注，只换来了有限的收获。',
-    '手指触碰的瞬间，思绪飘到了白天的某个场景...等你拉回注意力，已经错过了最佳观察窗口。',
-  ];
-}
-
-function getRemarkableFindTexts(item: Item): string[] {
-  return [
-    `等等...这个细节——普通人绝对会忽略——但你注意到了${item.name}上一处极其微妙的痕迹！`,
-    `灵光一闪！你从一个完全意想不到的角度看到了${item.name}的隐藏线索，所有碎片突然串联起来。`,
-    `你的手指滑过一个不起眼的凹陷...不对，这不是瑕疵——这是故意留下的标记！收获翻倍！`,
-    `今晚的状态出奇地好。${item.name}表层下的秘密像潮水一样涌来，你几乎来不及记录。`,
-    `一个极其细微的温差变化引起了你的注意。深入探查后，你发现了远超预期的信息量。`,
-  ];
 }
 
 // ============================================================================
@@ -800,24 +742,13 @@ function getRemarkableFindTexts(item: Item): string[] {
 
 /**
  * 获取格物受阻原因的显示文本
+ * 从 CSV 加载 (key: block:REASON)
  */
 export function getBlockReasonText(reason: InsightBlockReason): string {
-  switch (reason) {
-    case 'NO_ENERGY':
-      return '精力不足';
-    case 'ALREADY_INSIGHTED':
-      return '今晚已研究过';
-    case 'DEPLETED':
-      return '已被研究透彻';
-    case 'NOT_IN_INVENTORY':
-      return '物品不在库存中';
-    case 'ITEM_REDEEMED':
-      return '物品已被赎回';
-    case 'ITEM_SOLD':
-      return '物品已售出';
-    default:
-      return '无法研究';
-  }
+  const texts = getTexts();
+  return texts.get(`block:${reason}`)
+    || texts.get('block:_default')
+    || '无法研究';
 }
 
 /**

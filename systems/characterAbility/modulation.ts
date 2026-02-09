@@ -16,6 +16,8 @@ import { ReputationType, ReputationProfile } from '../core/types';
 import { getReputationModifier } from '../reputation/modulation';
 import { AbilityPath, FusionPath, SkillId, SkillPhase } from './types';
 import { SKILL_DEFINITIONS } from './skillDefinitions';
+import { createTextRegistry, TextRegistry } from '../utils/textRegistry';
+import reactionTextsCSV from '@/assets/data/texts/reaction_texts.csv?raw';
 
 // ============================================================================
 // Path-to-Reputation Mapping
@@ -133,81 +135,19 @@ export function getReactionIntensity(modulationCoefficient: number): ReactionInt
 
 // ============================================================================
 // NPC Reaction Texts (Design doc v1.4 section 6.3)
+// Loaded from CSV: assets/data/texts/reaction_texts.csv
+// CSV key format: {INTENSITY}:{PHASE} (e.g., STRONG:APPRAISAL)
 // ============================================================================
 
-/**
- * NPC reaction text variants organized by ReactionIntensity x SkillPhase.
- *
- * These texts describe NPC reactions to the *player's skill effectiveness*,
- * which is modulated by reputation alignment. They are behavioral descriptions
- * (expressions, gestures, tone) rather than explicit reputation references.
- *
- * NIGHT phase has no NPC interaction, so arrays are empty.
- */
-const REACTION_TEXTS: Record<ReactionIntensity, Record<SkillPhase, readonly string[]>> = {
-  STRONG: {
-    APPRAISAL: [
-      '对方明显一愣，目光中多了几分敬意。',
-      '你果然名不虚传......',
-      '对方不自觉地点了点头，像是被说服了。',
-      '看得出来，对方对你的判断深信不疑。',
-    ],
-    NEGOTIATION: [
-      '对方的手微微发抖，显然感受到了压力。',
-      '对方咽了口唾沫，额头渗出细汗。',
-      '对方的眼神开始游移，底气明显不足了。',
-      '你话音未落，对方的姿态已经软了下来。',
-    ],
-    DEPARTURE: [
-      '对方眼眶微红，深深鞠了一躬。',
-      '对方握着你的手迟迟不肯松开。',
-      '走到门口又回头看了你一眼，嘴唇翕动着说不出话。',
-      '对方低声说了句"谢谢"，声音有些哽咽。',
-    ],
-    NIGHT: [],
-  },
+/** Lazily initialized reaction text registry */
+let reactionRegistry: TextRegistry | null = null;
 
-  NORMAL: {
-    APPRAISAL: [
-      '嗯，你说的有道理。',
-      '对方若有所思地看了看物件。',
-      '对方没有反驳，似乎认可了你的说法。',
-    ],
-    NEGOTIATION: [
-      '对方犹豫了一下，在心里盘算着。',
-      '对方皱了皱眉，但没有立刻拒绝。',
-      '对方沉默片刻，似乎在权衡利弊。',
-    ],
-    DEPARTURE: [
-      '谢谢你，再见。',
-      '对方礼貌地点了点头，转身离开。',
-      '对方拿好东西，朝你挥了挥手。',
-    ],
-    NIGHT: [],
-  },
-
-  WEAK: {
-    APPRAISAL: [
-      '你确定？我可听说过一些关于你的事......',
-      '对方用怀疑的眼神打量着你。',
-      '哼，我凭什么信你的鉴定？',
-      '对方不以为然地撇了撇嘴。',
-    ],
-    NEGOTIATION: [
-      '你那一套对我没用。',
-      '对方双臂交叉，冷冷地看着你。',
-      '对方面无表情，丝毫不为所动。',
-      '少来这套，我又不是没打听过你。',
-    ],
-    DEPARTURE: [
-      '哼，不必了。',
-      '对方头也不回地走了出去。',
-      '对方面无表情地收好东西，径直离开。',
-      '对方冷淡地点了下头，快步走向门口。',
-    ],
-    NIGHT: [],
-  },
-};
+function getReactionRegistry(): TextRegistry {
+  if (!reactionRegistry) {
+    reactionRegistry = createTextRegistry('reaction', reactionTextsCSV);
+  }
+  return reactionRegistry;
+}
 
 /**
  * Get a random NPC reaction text for the given intensity and phase.
@@ -222,8 +162,9 @@ export function getReactionText(
   intensity: ReactionIntensity,
   phase: SkillPhase
 ): string | undefined {
-  const variants = REACTION_TEXTS[intensity][phase];
-  if (variants.length === 0) return undefined;
-  const index = Math.floor(Math.random() * variants.length);
-  return variants[index];
+  // NIGHT phase has no NPC interaction
+  if (phase === 'NIGHT') return undefined;
+
+  const key = `${intensity}:${phase}`;
+  return getReactionRegistry().getRandom(key);
 }

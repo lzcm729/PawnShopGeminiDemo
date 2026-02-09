@@ -28,6 +28,21 @@ import {
   isReforgeRecipe,
 } from './types';
 import { getRecipeById } from './recipes';
+import { createTextRegistry, TextRegistry } from '../utils/textRegistry';
+import workshopTextsCSV from '@/assets/data/texts/workshop_texts.csv?raw';
+
+// ============================================================================
+// 文本注册表 (从 CSV 加载叙事文本)
+// ============================================================================
+
+let workshopTexts: TextRegistry | null = null;
+
+function getTexts(): TextRegistry {
+  if (!workshopTexts) {
+    workshopTexts = createTextRegistry('workshop', workshopTextsCSV);
+  }
+  return workshopTexts;
+}
 
 // ============================================================================
 // 配方检查
@@ -192,11 +207,13 @@ export function getViolationWarning(item: Item): ViolationWarning | null {
   const compensationAmount = Math.ceil(principal * 2);
 
   // 商人直觉文本：有故事关联时使用情感化提示
+  const texts = getTexts();
+  const vars = { item_name: item.name };
   let intuitionText: string;
   if (item.relatedChainId) {
-    intuitionText = `这件${item.name}的主人还在等着它...你脑海中浮现出他的脸。`;
+    intuitionText = texts.getWithVars('violation:related', vars) || `这件${item.name}的主人还在等着它...你脑海中浮现出他的脸。`;
   } else {
-    intuitionText = '这件物品对某人来说可能意义非凡...';
+    intuitionText = texts.get('violation:generic') || '这件物品对某人来说可能意义非凡...';
   }
 
   return {
@@ -348,69 +365,38 @@ export function performWorkshop(
 }
 
 // ============================================================================
-// 凝视时刻文本 (S2-F5)
-// ============================================================================
-
-const RESTORE_GAZE_TEXTS = [
-  '擦亮的表面映出你自己的脸...归还，还是留下？',
-  '物品恢复了原本的光彩。它的主人，还会回来吗？',
-  '修复完成的瞬间，寂静的店铺里只剩下你和这件重获新生的旧物。',
-  '指尖残留着修复的温度。你想起了它被送进来时主人的表情。',
-  '灯光下，修好的裂痕几乎看不出来。但你知道它在那里——就像某些记忆。',
-];
-
-const REFORGE_GAZE_TEXTS = [
-  '崭新的铭文取代了旧日的痕迹...有人会相信这个故事吗？',
-  '它看起来比任何真品都更像真品。这，或许就是问题所在。',
-  '你凝视着自己的杰作。它的前世已经消失了——取而代之的，是一个精心编织的谎言。',
-  '桌上的灯忽明忽暗。你分不清那是手在抖，还是心在抖。',
-  '完成了。一件全新的"古董"诞生了。你闭上眼，试着忘记它原来的样子。',
-];
-
-function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-// ============================================================================
-// 叙事生成
+// 叙事生成 (凝视时刻文本 S2-F5 从 CSV 加载)
 // ============================================================================
 
 /**
  * 生成修复操作的叙事（含凝视时刻）
  */
 function generateRestoreNarrative(recipe: RestoreRecipe, item: Item): WorkshopNarrative {
+  const texts = getTexts();
+  const vars = { item_name: item.name };
+
   let actionText: string;
   let resultText: string;
 
   if (recipe.targetAll) {
-    actionText = `你准备了全套工具，开始对${item.name}进行彻底的翻新修复...`;
-    resultText = '所有瑕疵被一一清除，物品焕然一新。';
+    actionText = texts.getWithVars('narrative:restore:all:action', vars) || `你准备了全套工具，开始对${item.name}进行彻底的翻新修复...`;
+    resultText = texts.get('narrative:restore:all:result') || '所有瑕疵被一一清除，物品焕然一新。';
   } else {
-    switch (recipe.targetTag) {
-      case 'BROKEN':
-        if (recipe.requiredTags?.includes('ARTISTIC')) {
-          actionText = `你以审慎的目光审视${item.name}的裂纹，开始艺术修复...`;
-          resultText = '经过细致的艺术修复，物品重新焕发美感。';
-        } else {
-          actionText = `你仔细检查了${item.name}的损坏部位，开始动手修复...`;
-          resultText = '经过精心修复，物品恢复了原本的完整。';
-        }
-        break;
-      case 'DIRTY':
-        actionText = `你准备好清洁工具，开始为${item.name}去除污垢...`;
-        resultText = '污垢被彻底清除，物品焕然一新。';
-        break;
-      case 'RUSTED':
-        actionText = `你取出除锈剂和抛光布，开始处理${item.name}的锈蚀...`;
-        resultText = '锈迹被完全清除，金属重新散发光泽。';
-        break;
-      default:
-        actionText = `你开始修复${item.name}...`;
-        resultText = '修复完成。';
-    }
+    // Try specific key with required tag variant first, then tag-only, then default
+    const tag = recipe.targetTag || '_default';
+    const hasArtistic = recipe.requiredTags?.includes('ARTISTIC');
+    const actionKeys = hasArtistic
+      ? [`narrative:restore:${tag}:ARTISTIC:action`, `narrative:restore:${tag}:action`, 'narrative:restore:_default:action']
+      : [`narrative:restore:${tag}:action`, 'narrative:restore:_default:action'];
+    const resultKeys = hasArtistic
+      ? [`narrative:restore:${tag}:ARTISTIC:result`, `narrative:restore:${tag}:result`, 'narrative:restore:_default:result']
+      : [`narrative:restore:${tag}:result`, 'narrative:restore:_default:result'];
+
+    actionText = texts.resolve(actionKeys, vars) || `你开始修复${item.name}...`;
+    resultText = texts.resolve(resultKeys) || '修复完成。';
   }
 
-  const gazeText = pickRandom(RESTORE_GAZE_TEXTS);
+  const gazeText = texts.getRandom('gaze:restore') || '修复完成。';
 
   return { actionText, resultText, gazeText };
 }
@@ -419,34 +405,24 @@ function generateRestoreNarrative(recipe: RestoreRecipe, item: Item): WorkshopNa
  * 生成重铸操作的叙事（含凝视时刻）
  */
 function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item): WorkshopNarrative {
-  let actionText: string;
-  let resultText: string;
-  let moralNote: string | undefined;
+  const texts = getTexts();
+  const vars = { item_name: item.name };
 
-  switch (recipe.resultTag) {
-    case 'FAKE_HISTORY':
-      actionText = `你开始为${item.name}进行做旧处理，模拟时间的痕迹...`;
-      resultText = '物品现在看起来像是一件真正的古董了。';
-      break;
-    case 'ART_ENHANCED':
-      actionText = `你对${item.name}进行艺术再创作，注入新的灵魂...`;
-      resultText = '艺术升华完成，物品被赋予了全新的艺术灵魂。';
-      break;
-    case 'IMPERIAL':
-      actionText = `你开始为${item.name}编造一个与皇室相关的故事...`;
-      resultText = '一个惊人的"宫廷来历"被创造出来了。这是一把双刃剑。';
-      break;
-    default:
-      actionText = `你开始为${item.name}注入新的故事...`;
-      resultText = '物品被赋予了新的"身份"。';
-  }
+  // Try specific result tag key, then default
+  const tag = recipe.resultTag;
+  const actionText = texts.resolve([`narrative:reforge:${tag}:action`, 'narrative:reforge:_default:action'], vars)
+    || `你开始为${item.name}注入新的故事...`;
+  const resultText = texts.resolve([`narrative:reforge:${tag}:result`, 'narrative:reforge:_default:result'])
+    || '物品被赋予了新的"身份"。';
 
   // 微妙的道德提醒（不做评判）
+  let moralNote: string | undefined;
   if (item.status === ItemStatus.ACTIVE && item.pawnInfo) {
-    moralNote = `...这件物品的主人还在等着它。当他赎回时，会看到一个不一样的${item.name}。`;
+    moralNote = texts.getWithVars('moral:active', vars)
+      || `...这件物品的主人还在等着它。当他赎回时，会看到一个不一样的${item.name}。`;
   }
 
-  const gazeText = pickRandom(REFORGE_GAZE_TEXTS);
+  const gazeText = texts.getRandom('gaze:reforge') || '重铸完成。';
 
   return { actionText, resultText, moralNote, gazeText };
 }
@@ -459,20 +435,8 @@ function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item): WorkshopNa
  * 获取阻止原因的显示文本
  */
 export function getBlockReasonText(reason: WorkshopBlockReason): string {
-  switch (reason) {
-    case 'NO_ENERGY': return '精力不足';
-    case 'NO_ESSENCE': return '精魄不足';
-    case 'MISSING_TAG': return '物品没有该状态';
-    case 'MISSING_REQUIRED': return '缺少前置条件';
-    case 'HAS_EXCLUDED': return '物品已有冲突标签';
-    case 'WRONG_CATEGORY': return '物品类别不匹配';
-    case 'ALREADY_RESTORED': return '已选择修复路线，不可重铸';
-    case 'ALREADY_REFORGED': return '已选择重铸路线，不可修复';
-    case 'ITEM_ACTIVE': return '物品仍在典当中';
-    case 'ITEM_REDEEMED': return '物品已被赎回';
-    case 'ITEM_SOLD': return '物品已售出';
-    default: return '无法操作';
-  }
+  const texts = getTexts();
+  return texts.resolve([`block:${reason}`, 'block:_default']) || '无法操作';
 }
 
 /**
