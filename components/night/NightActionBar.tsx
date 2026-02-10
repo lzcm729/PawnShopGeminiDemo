@@ -23,6 +23,9 @@ interface NightActionBarProps {
     currentCapacity: number;
     currentEnergy: number;
 
+    // Unseen forfeit notification
+    unseenForfeitItemIds: string[];
+
     // Black market state
     blackmarketHeatLevel: string;
     isBlackmarketLocked: boolean;
@@ -50,6 +53,7 @@ export const NightActionBar: React.FC<NightActionBarProps> = ({
     storageLevel,
     currentCapacity,
     currentEnergy,
+    unseenForfeitItemIds,
     blackmarketHeatLevel,
     isBlackmarketLocked,
     hasRiskEvent,
@@ -86,8 +90,11 @@ export const NightActionBar: React.FC<NightActionBarProps> = ({
 
             <button
                 onClick={() => dispatch({ type: 'TOGGLE_INVENTORY' })}
-                className="h-32 border border-stone-800 bg-stone-900/50 hover:bg-stone-800 transition-all rounded flex flex-col items-center justify-center gap-3 group"
+                className="h-32 border border-stone-800 bg-stone-900/50 hover:bg-stone-800 transition-all rounded flex flex-col items-center justify-center gap-3 group relative"
             >
+                {unseenForfeitItemIds.length > 0 && (
+                    <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                )}
                 <Package className="w-8 h-8 text-stone-500 group-hover:text-stone-300 group-hover:scale-110 transition-transform" />
                 <span className="text-xs uppercase tracking-widest group-hover:text-white">
                     Vault ({activeItems})

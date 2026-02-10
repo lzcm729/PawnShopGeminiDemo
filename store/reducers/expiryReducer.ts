@@ -337,6 +337,12 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 }
             }
 
+            // Track unseen forfeit items for red dot notification
+            const isForfeitOutcome = choice === 'renew_refuse' || choice === 'noshow_keep';
+            const updatedUnseenForfeit = isForfeitOutcome
+                ? [...state.unseenForfeitItemIds, itemId]
+                : state.unseenForfeitItemIds;
+
             // Phase transition handled by state machine (SETTLEMENT_COMPLETE or appropriate event)
             return {
                 ...state,
@@ -350,6 +356,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 lastSatisfaction: satisfaction,
                 lastDepartureSatisfaction: departureSatisfaction,
                 npcFateLog: updatedFateLog,
+                unseenForfeitItemIds: updatedUnseenForfeit,
                 // phase transition removed - handled by state machine
             };
         }

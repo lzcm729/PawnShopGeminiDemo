@@ -88,6 +88,7 @@ export interface GameState {
   currentExpiryEvent: ExpiryEvent | null;  // 当前正在处理的到期事件
   expiryQueue: ExpiryEvent[];              // 待处理的到期事件队列
   coreLostItems: string[];                 // 已丢失的核心物品 ID 列表
+  unseenForfeitItemIds: string[];           // 未查看的绝当物品ID列表（红点提示用）
 
   // === NIGHT PHASE (夜间玩法) ===
   essenceBalance: EssenceBalance;          // 精魄余额（匠心/旧影/灵韵）

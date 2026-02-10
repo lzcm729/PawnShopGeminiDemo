@@ -17,7 +17,7 @@ import * as Icons from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
     const { state, dispatch } = useGame();
-    const { stats, reputation, inventory, inbox, phase, activeMilestones } = state;
+    const { stats, reputation, inventory, inbox, phase, activeMilestones, unseenForfeitItemIds } = state;
 
     // If we are in Night phase, we hide the top dashboard because NightDashboard takes over full screen
     if (PhaseIs.night(phase)) return null;
@@ -263,14 +263,19 @@ export const Dashboard: React.FC = () => {
                     CALENDAR
                 </Button>
 
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => dispatch({type: 'TOGGLE_INVENTORY'})}
-                    leftIcon={<Package size={14} />}
-                >
-                    VAULT ({activeItems})
-                </Button>
+                <div className="relative">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => dispatch({type: 'TOGGLE_INVENTORY'})}
+                        leftIcon={<Package size={14} />}
+                    >
+                        VAULT ({activeItems})
+                    </Button>
+                    {unseenForfeitItemIds.length > 0 && (
+                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                    )}
+                </div>
             </div>
         </div>
     </div>
