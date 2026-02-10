@@ -48,6 +48,8 @@ interface FallbackCustomerRow {
   exit_neutral: string;
   exit_resentful: string;
   exit_desperate: string;
+  behaviorTags: string;
+  identityTags: string;
 }
 
 const FALLBACK_SCHEMA: CSVSchema = {
@@ -81,19 +83,8 @@ const FALLBACK_SCHEMA: CSVSchema = {
   'exit_neutral': stringCol('exit_neutral'),
   'exit_resentful': stringCol('exit_resentful'),
   'exit_desperate': stringCol('exit_desperate'),
-};
-
-// Code-defined identifiers (not content)
-const BEHAVIOR_TAGS: Record<string, BehaviorTag[]> = {
-  zhang: ['DESPERATE'],
-  chen: ['SAVVY'],
-  mystery: ['STUBBORN'],
-};
-
-const IDENTITY_TAGS: Record<string, string[]> = {
-  zhang: ['HighRisk', 'Gambler'],
-  chen: ['Student'],
-  mystery: ['Suspicious'],
+  'behaviorTags': stringCol('behaviorTags'),
+  'identityTags': stringCol('identityTags'),
 };
 
 // ============================================================================
@@ -152,10 +143,14 @@ function getPresets(): FallbackCustomerPreset[] {
           },
         },
         redemptionResolve: row.redemptionResolve as 'Strong' | 'Medium' | 'Weak' | 'None',
-        behaviorTags: BEHAVIOR_TAGS[row.id] ?? [] as BehaviorTag[],
+        behaviorTags: (row.behaviorTags
+          ? row.behaviorTags.split(',').map(s => s.trim()).filter(s => s !== '')
+          : []) as BehaviorTag[],
         patience: row.patience,
         mood: row.mood as Mood,
-        identityTags: IDENTITY_TAGS[row.id] ?? [],
+        identityTags: row.identityTags
+          ? row.identityTags.split(',').map(s => s.trim()).filter(s => s !== '')
+          : [],
         desiredAmount: row.desiredAmount,
         minimumAmount: row.minimumAmount,
         survivalMinimum: row.survivalMinimum,
