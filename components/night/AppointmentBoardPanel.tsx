@@ -22,6 +22,7 @@ import {
   X,
   Filter,
   Newspaper,
+  CalendarDays,
 } from 'lucide-react';
 import {
   getActiveAppointmentBoardConfig,
@@ -29,9 +30,11 @@ import {
 } from '../../systems/upgrades';
 import {
   generateAppointmentCandidates,
+  estimateNextDayCustomerCount,
   AppointmentCandidate,
   AppointmentPreference,
 } from '../../systems/appointment';
+import { GAME_CONFIG } from '../../systems/game/config';
 
 interface AppointmentBoardPanelProps {
   isOpen: boolean;
@@ -146,19 +149,33 @@ export const AppointmentBoardPanel: React.FC<AppointmentBoardPanelProps> = ({
     >
       <div className="flex flex-col gap-6">
         {/* Status Bar */}
-        <div className="flex items-center justify-between bg-noir-300/50 p-4 rounded border border-noir-400">
-          <div className="flex items-center gap-3">
-            <User className="w-6 h-6 text-teal-500" />
-            <div>
-              <div className="text-xs uppercase text-stone-500 tracking-wider">
-                已选择 (Selected)
-              </div>
-              <div className="text-2xl font-mono text-teal-400">
-                {selectedCount} / {maxInvites}
+        <div className="bg-noir-300/50 p-4 rounded border border-noir-400">
+          <div className="flex items-stretch gap-4">
+            {/* Left: Selected count */}
+            <div className="flex items-center gap-3 flex-1">
+              <User className="w-6 h-6 text-teal-500" />
+              <div>
+                <div className="text-xs uppercase text-stone-500 tracking-wider">
+                  已选择 (Selected)
+                </div>
+                <div className="text-2xl font-mono text-teal-400">
+                  {selectedCount} / {maxInvites}
+                </div>
               </div>
             </div>
+
+            {/* Divider */}
+            <div className="w-px bg-noir-400 self-stretch" />
+
+            {/* Right: Forecast */}
+            <CustomerForecast
+              maxCustomersPerDay={GAME_CONFIG.MAX_CUSTOMERS_PER_DAY}
+              selectedCount={selectedCount}
+            />
           </div>
-          <div className="text-xs text-stone-500 max-w-xs text-right">
+
+          {/* Bottom helper text spanning full width */}
+          <div className="text-xs text-stone-500 mt-3 text-center">
             选中的客户将于明日<span className="text-teal-400">额外</span>来访
           </div>
         </div>
@@ -277,6 +294,42 @@ export const AppointmentBoardPanel: React.FC<AppointmentBoardPanelProps> = ({
 // ============================================================================
 // Sub-components
 // ============================================================================
+
+interface CustomerForecastProps {
+  maxCustomersPerDay: number;
+  selectedCount: number;
+}
+
+const CustomerForecast: React.FC<CustomerForecastProps> = ({
+  maxCustomersPerDay,
+  selectedCount,
+}) => {
+  const estimate = estimateNextDayCustomerCount(maxCustomersPerDay, selectedCount);
+
+  const rangeText =
+    estimate.totalMin === estimate.totalMax
+      ? `${estimate.totalMin} 人`
+      : `${estimate.totalMin}~${estimate.totalMax} 人`;
+
+  return (
+    <div className="flex items-center gap-3 flex-1">
+      <CalendarDays className="w-6 h-6 text-amber-500" />
+      <div>
+        <div className="text-xs uppercase text-stone-500 tracking-wider">
+          明日预计 (Forecast)
+        </div>
+        <div className="text-2xl font-mono text-amber-400">
+          {rangeText}
+        </div>
+        {estimate.invited > 0 && (
+          <div className="text-xs text-teal-400/70">
+            (含 {estimate.invited} 位邀请)
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 interface PreferenceButtonProps {
   active: boolean;

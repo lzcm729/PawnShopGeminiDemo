@@ -280,5 +280,56 @@ export function getAppointedCustomerCount(selectedIds: string[]): number {
   return selectedIds.length;
 }
 
+// ============================================================================
+// Next-Day Customer Count Estimation
+// ============================================================================
+
+/**
+ * Estimated customer count breakdown for the next day.
+ * Used by the appointment board UI to show expected traffic.
+ */
+export interface NextDayCustomerEstimate {
+  /** Minimum base customers (from scheduler: min 2 across all narrative scenarios) */
+  baseMin: number;
+  /** Maximum base customers (maxCustomersPerDay from config) */
+  baseMax: number;
+  /** Number of invited customers via appointment board */
+  invited: number;
+  /** Total minimum = baseMin + invited */
+  totalMin: number;
+  /** Total maximum = baseMax + invited */
+  totalMax: number;
+}
+
+/**
+ * Estimate the number of customers expected tomorrow.
+ *
+ * Derives baseMin from the customer scheduler logic:
+ * - 0 narratives: 2-3 filler (min 2)
+ * - 1 narrative:  1+1-2 filler (min 2)
+ * - 2 narratives: 2+0-1 filler (min 2)
+ * - 3+ narratives: 3+ narratives (min 3, but we use 2 as conservative floor)
+ *
+ * @param maxCustomersPerDay - GAME_CONFIG.MAX_CUSTOMERS_PER_DAY
+ * @param selectedCount - Number of candidates selected on the appointment board
+ */
+export function estimateNextDayCustomerCount(
+  maxCustomersPerDay: number,
+  selectedCount: number
+): NextDayCustomerEstimate {
+  // The scheduler guarantees at least 2 customers in every scenario
+  // (see customerScheduler.ts scheduleCustomerOrder filler logic)
+  const baseMin = 2;
+  const baseMax = maxCustomersPerDay;
+
+  return {
+    baseMin,
+    baseMax,
+    invited: selectedCount,
+    totalMin: baseMin + selectedCount,
+    totalMax: baseMax + selectedCount,
+  };
+}
+
 // Re-export types
 export type { AppointmentCandidate, AppointmentPreference, AppointmentBoardLevelConfig };
