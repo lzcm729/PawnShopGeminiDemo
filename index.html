@@ -230,6 +230,7 @@
               'trait-reveal': 'traitReveal 0.6s ease-out forwards',
               'crt-flicker': 'crtFlicker 4s infinite',
               'departure-drift': 'departureDrift 3s ease-in forwards 1.5s',
+              'float-up': 'floatUp 1.2s ease-out forwards',
             },
             keyframes: {
               shake: {
@@ -294,6 +295,10 @@
               departureDrift: {
                 '0%': { opacity: 1, transform: 'translateY(0)' },
                 '100%': { opacity: 0, transform: 'translateY(-30px)' },
+              },
+              floatUp: {
+                '0%': { opacity: 1, transform: 'translateY(0)' },
+                '100%': { opacity: 0, transform: 'translateY(-24px)' },
               }
             }
           }

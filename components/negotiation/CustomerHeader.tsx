@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
 import { Flame, Eye, EyeOff, Heart, Lock, AlertTriangle, HeartHandshake, ScanSearch } from 'lucide-react';
 import { Customer } from '../../types';
@@ -65,6 +65,23 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
     onProbe,
 }) => {
     const isAngry = mood === 'Angry';
+
+    // Track patience changes for floating delta animation
+    const prevPatienceRef = useRef(patience);
+    const [patienceDelta, setPatienceDelta] = useState<number | null>(null);
+    const deltaKeyRef = useRef(0);
+
+    useEffect(() => {
+        const delta = patience - prevPatienceRef.current;
+        if (delta !== 0) {
+            deltaKeyRef.current += 1;
+            setPatienceDelta(delta);
+            const timer = setTimeout(() => setPatienceDelta(null), 1200);
+            prevPatienceRef.current = patience;
+            return () => clearTimeout(timer);
+        }
+        prevPatienceRef.current = patience;
+    }, [patience]);
 
     return (
         <div className="bg-gradient-to-b from-noir-300 to-noir-200 border-b border-noir-400 shrink-0 shadow-lg relative overflow-hidden">
@@ -360,7 +377,19 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                 </div>
 
                 {/* Right: Stress Flames */}
-                <div className="shrink-0 flex flex-col items-center justify-center gap-1 px-3 min-w-[48px]">
+                <div className="shrink-0 flex flex-col items-center justify-center gap-1 px-3 min-w-[48px] relative">
+                    {/* Floating patience delta */}
+                    {patienceDelta !== null && (
+                        <span
+                            key={deltaKeyRef.current}
+                            className={cn(
+                                "absolute -top-1 left-1/2 -translate-x-1/2 text-sm font-bold font-mono animate-float-up pointer-events-none z-10",
+                                patienceDelta < 0 ? "text-red-400" : "text-green-400"
+                            )}
+                        >
+                            {patienceDelta > 0 ? `+${patienceDelta}` : patienceDelta}
+                        </span>
+                    )}
                     <div className="flex flex-col-reverse items-center gap-0.5">
                         {Array.from({length: 5}).map((_, i) => (
                             <Flame
