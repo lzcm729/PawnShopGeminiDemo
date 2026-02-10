@@ -1,4 +1,4 @@
-id,triggerEvents,subject,body
+﻿id,triggerEvents,subject,body
 mail_threat_undercover,UNDERCOVER_VISIT;GENERAL,你会后悔的,"$@#*&!... 信号不好......\n\n夜路走多了，小心影子。\n\n......$#@!*"
 mail_threat_heat_warning,HEAT_THRESHOLD;GENERAL,老朋友的忠告,"听说最近风声很紧。\n\n有些人在打听你的事。我只说一次：该收手的时候就收手。\n\n别让我替你收拾残局。"
 mail_threat_stolen_goods,STOLEN_GOODS;GENERAL,关于那件东西,"你手上有些不该有的东西。\n\n我不在乎你是怎么得到的。但有人在乎。\n\n%#@... 自己想想接下来该怎么办。"

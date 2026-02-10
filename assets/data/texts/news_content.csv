@@ -1,4 +1,4 @@
-id,headline,body,category,priority,duration,sourceLabel,tags,effects,triggers,relatedChainId,triggerMailId,effectCategoryTarget,effectPriceMultiplier,effectRiskModifier,effectActionPointsModifier
+﻿id,headline,body,category,priority,duration,sourceLabel,tags,effects,triggers,relatedChainId,triggerMailId,effectCategoryTarget,effectPriceMultiplier,effectRiskModifier,effectActionPointsModifier
 news_emma_laptop_rejected,街头见闻：第12区的崩溃,"昨夜，一名年轻女性在网吧门口因无力支付终端租用费而被驱逐。目击者称，她一直在哭诉自己的笔记本电脑没能卖出去，导致错过了最后的面试邮件投递时间。在这个城市，失去连接就等于失去生命。",NARRATIVE_ECHO,100,1,[市民热线],emma;rejection;crisis,,chain_emma.stage==3;chain_emma.has_laptop==0,emma,,,,,
 news_emma_body_found,警方通报：河岸发现无名女尸,昨夜在第12区运河边发现一具年轻女性尸体。死者身上未发现身份证明，仅有一张被揉皱的面试通知单。警方初步排除他杀。,NARRATIVE_ECHO,100,3,[警方通报],emma;death;extreme,,chain_emma.stage==99;chain_emma.hope<=-50,emma,mail_emma_hate,,,,
 news_emma_hopeful,社区动态：人才公寓申请激增,"随着几家科技公司重新开放招聘，第12区的人才公寓申请处排起了长龙。一名刚刚递交材料的年轻女孩对记者表示：'哪怕只有1%的机会，也要试一试。'",NARRATIVE_ECHO,80,1,[社区动态],emma;positive,,chain_emma.stage==1;chain_emma.hope>50,emma,,,,,

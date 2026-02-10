@@ -1,4 +1,4 @@
-key,text,tone
+﻿key,text,tone
 anomaly_mild,"嗯...有点蹊跷，但也可能是仪器偏差。",neutral
 anomaly_mild,"读数有轻微波动，不确定是否有意义。",neutral
 anomaly_mild,"指针微微偏了一下...也许值得多看看。",positive

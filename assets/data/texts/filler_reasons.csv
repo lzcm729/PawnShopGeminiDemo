@@ -1,4 +1,4 @@
-context_tag,item_tags,npc_appearance,npc_age,npc_mood,weight,reason_text,exclude_categories
+﻿context_tag,item_tags,npc_appearance,npc_age,npc_mood,weight,reason_text,exclude_categories
 INHERITANCE,VINTAGE_REAL|SENTIMENTAL,shabby|plain,*,reluctant,1,"这是家里老人留下的，但现在实在没办法了。",
 INHERITANCE,VINTAGE_REAL|SENTIMENTAL,*,young,*,1,"祖母留下的遗物，不得已才拿来。",
 INHERITANCE,VINTAGE_REAL|SENTIMENTAL,decent,*,calm,1,"祖上传下来的，放着也是放着。",

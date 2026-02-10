@@ -1,4 +1,4 @@
-key,text
+﻿key,text
 action_default,"你在灯下仔细端详着{item_name}..."
 pawn_active_suffix,"...只是，这件物品的主人还在等着它。"
 resonance,"{item_name}与{paired_name}之间产生了微妙的共鸣...它们之间似乎有着不为人知的联系。"

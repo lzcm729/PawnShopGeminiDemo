@@ -1,4 +1,4 @@
-id,sender,subject,body,tone,category,parentId,variantTone
+﻿id,sender,subject,body,tone,category,parentId,variantTone
 mail_welcome,房东,关于租金调整的通知,"那个谁，\n\n最近物价上涨，这片街区的治安也不好。提醒你一句，别忘了按时交租。\n\n如果你能搞到一些稀罕玩意儿，也许我们可以谈谈延期的事情。\n\n好自为之。",FORMAL,STANDARD,,
 mail_generic_plea,顾客,关于我的当品,"老板，\n\n我现在手头有点紧，没法按时去赎回 {{relatedItemName}} 了。但我真的不想失去它。\n\n请不要把它挂牌出售，我会尽快凑钱回来的。拜托了。",FORMAL,STANDARD,,
 mail_generic_plea__desperate,顾客,求求你了,"老板，求你了......\n\n{{relatedItemName}} 是我最后的念想了。我知道我没按时来，但我真的走投无路了。\n\n你要是把它卖了，我......我不知道该怎么办了。\n\n求你再等等，我一定会来的。",DESPERATE,STANDARD,mail_generic_plea,DESPERATE

@@ -1,4 +1,4 @@
-id,name,description,riskNote
+﻿id,name,description,riskNote
 restore_clean,清洁,"深度清洁物品，去除岁月的污垢。最低门槛操作，仅消耗精力。",
 restore_derust,除锈,"去除锈蚀，恢复金属光泽。基础金属修复。",
 restore_broken_mechanical,机械修复,"修复物理损坏，恢复精密机械的完整性。需要了解内部结构。",
