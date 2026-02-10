@@ -166,7 +166,7 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                     </div>
 
                     {/* Bottom: Insight Result Area */}
-                    <div className="flex-1 flex flex-col items-stretch min-h-[94px]">
+                    <div className="flex-1 flex flex-col items-stretch">
                         {insightResult ? (
                             /* Insight Result - layer-gated behavioral descriptions */
                             <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -180,7 +180,7 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                                     </div>
                                 )}
 
-                                <div className="flex-1 flex">
+                                <div className="flex-1 flex min-w-0">
                                     {/* Left Column: Disposition Type - only show if labels are enabled */}
                                     {SHOW_DISPOSITION_LABEL_IN_NEGOTIATION && (
                                         <div className="flex flex-col items-center justify-center px-4 py-2 border-r border-noir-400/30 min-w-[80px]">
@@ -192,12 +192,12 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                                     )}
 
                                     {/* Right Column: Layer-gated behavioral observations */}
-                                    <div className="flex-1 flex flex-col">
+                                    <div className="flex-1 flex flex-col min-w-0">
                                         {/* Row 1 (Layer 1): Behavioral description (dispositionText) - always shown */}
-                                        <div className="flex-1 px-3 py-1.5 border-b border-noir-400/20 flex flex-col justify-center">
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                                <Eye className="w-3 h-3 text-amber-500/60 shrink-0" />
-                                                <p className="font-serif text-xs text-noir-txt-secondary leading-snug italic line-clamp-1 truncate" title={insightResult.dispositionText}>
+                                        <div className="flex-1 px-3 py-1.5 border-b border-noir-400/20 flex flex-col justify-center min-w-0">
+                                            <div className="flex items-start gap-1.5 min-w-0">
+                                                <Eye className="w-3 h-3 text-amber-500/60 shrink-0 mt-0.5" />
+                                                <p className="font-serif text-xs text-noir-txt-secondary leading-snug italic break-words min-w-0">
                                                     "{insightResult.dispositionText}"
                                                 </p>
                                             </div>
@@ -210,11 +210,11 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                                         </div>
 
                                         {/* Row 2 (Layer 2): Floor hint behavioral description */}
-                                        <div className="flex-1 px-3 py-1.5 border-b border-noir-400/20 flex items-center">
+                                        <div className="flex-1 px-3 py-1.5 border-b border-noir-400/20 flex items-start min-w-0">
                                             {insightResult.revealedLayer >= 2 ? (
-                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                    <Eye className="w-3 h-3 text-purple-500/60 shrink-0" />
-                                                    <p className="font-serif text-[11px] text-amber-500/90 leading-snug italic line-clamp-1 truncate" title={insightResult.floorHint}>
+                                                <div className="flex items-start gap-1.5 min-w-0">
+                                                    <Eye className="w-3 h-3 text-purple-500/60 shrink-0 mt-0.5" />
+                                                    <p className="font-serif text-[11px] text-amber-500/90 leading-snug italic break-words min-w-0">
                                                         "{insightResult.floorHint}"
                                                     </p>
                                                 </div>
@@ -227,12 +227,12 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                                         </div>
 
                                         {/* Row 3 (Layer 3): Moral context */}
-                                        <div className="flex-1 px-3 py-1.5 flex items-center">
+                                        <div className="flex-1 px-3 py-1.5 flex items-start min-w-0">
                                             {insightResult.revealedLayer >= 3 ? (
                                                 insightResult.moralContext ? (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Heart className="w-3 h-3 text-red-400 shrink-0" />
-                                                        <p className="font-serif text-[10px] text-red-300/80 leading-snug italic line-clamp-1" title={insightResult.moralContext}>
+                                                    <div className="flex items-start gap-1.5 min-w-0">
+                                                        <Heart className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                                                        <p className="font-serif text-[10px] text-red-300/80 leading-snug italic break-words min-w-0">
                                                             {insightResult.moralContext}
                                                         </p>
                                                     </div>
