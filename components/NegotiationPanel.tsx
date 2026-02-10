@@ -728,15 +728,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           customer={currentCustomer}
           patience={patience}
           mood={mood}
-          onInsightClick={handleInsightClick}
-          canUseInsight={canUseInsight()}
-          hasUsedInsight={insightResult !== null}
-          insightBlockReason={insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
           insightResult={insightResult}
-          canDeepInsight={canDeepInsight}
-          onDeepInsightClick={handleDeepInsightClick}
-          canFullInsight={canFullInsight}
-          onFullInsightClick={handleFullInsightClick}
         />
 
       {/* Rejection Overlay */}
@@ -801,6 +793,15 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           formatRate={formatRate}
           unitLabel={unitLabel}
           contractTierHints={contractTierHints}
+          canUseInsight={canUseInsight()}
+          hasUsedInsight={insightResult !== null}
+          insightBlockReason={insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
+          insightRevealedLayer={insightResult?.revealedLayer}
+          onInsightClick={handleInsightClick}
+          canDeepInsight={canDeepInsight}
+          onDeepInsightClick={handleDeepInsightClick}
+          canFullInsight={canFullInsight}
+          onFullInsightClick={handleFullInsightClick}
           canUsePressure={canUsePressureNow}
           pressureUsed={pressureUsed}
           onPressure={pressureSkillAvailable ? handlePressure : undefined}

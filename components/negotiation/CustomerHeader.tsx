@@ -6,7 +6,7 @@ import { Customer } from '../../types';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../../systems/assets';
 import { DISPOSITION_INFO, SHOW_DISPOSITION_LABEL_IN_NEGOTIATION, InsightLayer, Disposition } from '../../systems/customerInsight';
 
-interface InsightResultData {
+export interface InsightResultData {
     disposition: string;
     dispositionText: string;
     floorHint: string;
@@ -20,32 +20,14 @@ interface CustomerHeaderProps {
     customer: Customer;
     patience: number;
     mood: string;
-    onInsightClick?: () => void;
-    canUseInsight?: boolean;
-    hasUsedInsight?: boolean;
-    insightBlockReason?: string;
     insightResult?: InsightResultData | null;
-    /** Deep insight (layer 2) */
-    canDeepInsight?: boolean;
-    onDeepInsightClick?: () => void;
-    /** Full insight (layer 3) */
-    canFullInsight?: boolean;
-    onFullInsightClick?: () => void;
 }
 
 export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
     customer,
     patience,
     mood,
-    onInsightClick,
-    canUseInsight = false,
-    hasUsedInsight = false,
-    insightBlockReason,
     insightResult,
-    canDeepInsight = false,
-    onDeepInsightClick,
-    canFullInsight = false,
-    onFullInsightClick,
 }) => {
     const isAngry = mood === 'Angry';
 
@@ -100,7 +82,7 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
 
                 {/* Center: Observation + Insight Area */}
                 <div className="flex-1 min-w-0 flex flex-col border border-noir-400/50 rounded bg-noir-100/30">
-                    {/* Top: Customer Observation + Insight Button */}
+                    {/* Top: Customer Observation */}
                     <div className="px-3 py-2 border-b border-noir-400/30 min-h-[32px] flex items-center gap-2">
                         <div className="flex-1 min-w-0">
                             {customer.observation ? (
@@ -111,56 +93,6 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                                 <p className="text-xs text-noir-txt-muted font-serif italic opacity-50">
                                     (观察客户行为...)
                                 </p>
-                            )}
-                        </div>
-                        {/* Insight Buttons - Inline with observation */}
-                        <div className="shrink-0 flex items-center gap-1">
-                            {!hasUsedInsight ? (
-                                <button
-                                    onClick={onInsightClick}
-                                    disabled={!canUseInsight}
-                                    title={canUseInsight ? "洞察客户心理 (消耗 1 AP)" : insightBlockReason}
-                                    className={cn(
-                                        "flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded border transition-all duration-200 shadow-sm",
-                                        canUseInsight
-                                            ? "bg-pawn-accent text-black border-amber-400 hover:scale-105 hover:shadow-md"
-                                            : "bg-stone-800/80 text-stone-500 border-stone-600 cursor-not-allowed"
-                                    )}
-                                >
-                                    <Eye className="w-3 h-3" />
-                                    <span>洞察</span>
-                                    <span className="text-[8px] opacity-80">1AP</span>
-                                </button>
-                            ) : (
-                                <>
-                                    <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded border bg-pawn-green/20 text-pawn-green border-pawn-green/50">
-                                        <Eye className="w-3 h-3" />
-                                        <span>L{insightResult?.revealedLayer ?? 1}</span>
-                                    </div>
-                                    {/* Deep Insight button (layer 2) */}
-                                    {canDeepInsight && onDeepInsightClick && (
-                                        <button
-                                            onClick={onDeepInsightClick}
-                                            title="深度洞察 - 揭示底线提示 (消耗 1 AP)"
-                                            className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded border transition-all duration-200 shadow-sm bg-purple-600 text-white border-purple-400 hover:scale-105 hover:shadow-md"
-                                        >
-                                            <Eye className="w-3 h-3" />
-                                            <span>深度</span>
-                                            <span className="text-[8px] opacity-80">1AP</span>
-                                        </button>
-                                    )}
-                                    {/* Full Insight button (layer 3) */}
-                                    {canFullInsight && onFullInsightClick && (
-                                        <button
-                                            onClick={onFullInsightClick}
-                                            title="完全洞察 - 揭示道德背景 (需要共情技能)"
-                                            className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded border transition-all duration-200 shadow-sm bg-red-700 text-white border-red-400 hover:scale-105 hover:shadow-md"
-                                        >
-                                            <Heart className="w-3 h-3" />
-                                            <span>完全</span>
-                                        </button>
-                                    )}
-                                </>
                             )}
                         </div>
                     </div>
@@ -258,7 +190,7 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                                         <span className="text-sm text-noir-txt-muted font-mono">???</span>
                                     </div>
                                     <span className="text-xs text-noir-txt-muted font-serif italic">
-                                        点击洞察了解客户心理
+                                        使用洞察技能了解客户心理
                                     </span>
                                 </div>
                             </div>
