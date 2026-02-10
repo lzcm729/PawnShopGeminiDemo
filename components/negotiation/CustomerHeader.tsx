@@ -1,10 +1,11 @@
 
 import React from 'react';
 import { cn } from '../../lib/utils';
-import { Flame, Eye, EyeOff, Heart, Lock, AlertTriangle } from 'lucide-react';
+import { Flame, Eye, EyeOff, Heart, Lock, AlertTriangle, HeartHandshake, ScanSearch } from 'lucide-react';
 import { Customer } from '../../types';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../../systems/assets';
 import { DISPOSITION_INFO, SHOW_DISPOSITION_LABEL_IN_NEGOTIATION, InsightLayer, Disposition } from '../../systems/customerInsight';
+import { playSfx } from '../../systems/game/audio';
 
 export interface InsightResultData {
     disposition: string;
@@ -21,6 +22,24 @@ interface CustomerHeaderProps {
     patience: number;
     mood: string;
     insightResult?: InsightResultData | null;
+    // Insight skill
+    canUseInsight?: boolean;
+    hasUsedInsight?: boolean;
+    insightBlockReason?: string;
+    insightRevealedLayer?: number;
+    onInsightClick?: () => void;
+    canDeepInsight?: boolean;
+    onDeepInsightClick?: () => void;
+    canFullInsight?: boolean;
+    onFullInsightClick?: () => void;
+    // Empathy & Probe
+    canInteract?: boolean;
+    canUseEmpathy?: boolean;
+    empathyUsed?: boolean;
+    onEmpathy?: () => void;
+    canUseProbe?: boolean;
+    probeUsed?: boolean;
+    onProbe?: () => void;
 }
 
 export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
@@ -28,6 +47,22 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
     patience,
     mood,
     insightResult,
+    canUseInsight,
+    hasUsedInsight,
+    insightBlockReason,
+    insightRevealedLayer,
+    onInsightClick,
+    canDeepInsight,
+    onDeepInsightClick,
+    canFullInsight,
+    onFullInsightClick,
+    canInteract = true,
+    canUseEmpathy,
+    empathyUsed,
+    onEmpathy,
+    canUseProbe,
+    probeUsed,
+    onProbe,
 }) => {
     const isAngry = mood === 'Angry';
 
@@ -196,6 +231,132 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* Skill Buttons Column: Insight / Empathy / Probe */}
+                <div className="shrink-0 flex flex-col items-center justify-center gap-1 px-1">
+                    {/* Insight Button (multi-layer) */}
+                    {(() => {
+                        const used = hasUsedInsight ?? false;
+                        const layer = insightRevealedLayer ?? 0;
+                        const canDeep = canDeepInsight && onDeepInsightClick;
+                        const canFull = canFullInsight && onFullInsightClick;
+                        let insightLabel: string;
+                        let insightEnabled: boolean;
+                        let insightHandler: (() => void) | undefined;
+                        let insightActiveColor: string;
+                        let insightIcon: React.ReactNode;
+
+                        if (!used) {
+                            insightLabel = '洞察';
+                            insightEnabled = !!canUseInsight;
+                            insightHandler = onInsightClick;
+                            insightActiveColor = 'bg-amber-950/40 border-amber-700/60 text-amber-400 hover:bg-amber-900/50 hover:border-amber-500 hover:shadow-[0_0_8px_rgba(217,119,6,0.3)] active:scale-95';
+                            insightIcon = <Eye className="w-4 h-4" />;
+                        } else if (canFull) {
+                            insightLabel = '完全';
+                            insightEnabled = true;
+                            insightHandler = onFullInsightClick;
+                            insightActiveColor = 'bg-red-950/40 border-red-700/60 text-red-400 hover:bg-red-900/50 hover:border-red-500 hover:shadow-[0_0_8px_rgba(239,68,68,0.3)] active:scale-95';
+                            insightIcon = <Heart className="w-4 h-4" />;
+                        } else if (canDeep) {
+                            insightLabel = '深度';
+                            insightEnabled = true;
+                            insightHandler = onDeepInsightClick;
+                            insightActiveColor = 'bg-purple-950/40 border-purple-700/60 text-purple-400 hover:bg-purple-900/50 hover:border-purple-500 hover:shadow-[0_0_8px_rgba(147,51,234,0.3)] active:scale-95';
+                            insightIcon = <Eye className="w-4 h-4" />;
+                        } else {
+                            insightLabel = `L${layer}`;
+                            insightEnabled = false;
+                            insightHandler = undefined;
+                            insightActiveColor = '';
+                            insightIcon = <Eye className="w-4 h-4 opacity-40" />;
+                        }
+
+                        const isDisabled = !insightEnabled || !canInteract;
+
+                        return (
+                            <button
+                                onClick={() => {
+                                    if (!isDisabled && insightHandler) {
+                                        playSfx('CLICK');
+                                        insightHandler();
+                                    }
+                                }}
+                                disabled={isDisabled}
+                                title={
+                                    !used
+                                        ? (canUseInsight ? "洞察客户心理 (消耗 1 AP)" : (insightBlockReason || "洞察不可用"))
+                                        : canFull
+                                        ? "完全洞察 - 揭示道德背景"
+                                        : canDeep
+                                        ? "深度洞察 - 揭示底线提示 (消耗 1 AP)"
+                                        : `洞察 L${layer} - 已完成`
+                                }
+                                className={cn(
+                                    "w-11 h-11 border rounded flex flex-col items-center justify-center transition-all duration-200",
+                                    isDisabled
+                                        ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                        : insightActiveColor
+                                )}
+                            >
+                                {insightIcon}
+                                <span className="text-[8px] font-bold tracking-wider mt-0.5 leading-none">
+                                    {insightLabel}
+                                </span>
+                            </button>
+                        );
+                    })()}
+
+                    {/* Empathy Button */}
+                    <button
+                        onClick={() => {
+                            if (!empathyUsed && canUseEmpathy && canInteract && onEmpathy) {
+                                playSfx('CLICK');
+                                onEmpathy();
+                            }
+                        }}
+                        disabled={!canInteract || !canUseEmpathy || empathyUsed || !onEmpathy}
+                        title={empathyUsed ? "已使用 - 每次议价限用一次" : !onEmpathy ? "需要先洞察客户" : "共情: 对客户表达理解与关怀"}
+                        className={cn(
+                            "w-11 h-11 border rounded flex flex-col items-center justify-center transition-all duration-200",
+                            empathyUsed || !onEmpathy
+                                ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                : canUseEmpathy && canInteract
+                                ? "bg-rose-950/40 border-rose-700/60 text-rose-400 hover:bg-rose-900/50 hover:border-rose-500 hover:shadow-[0_0_8px_rgba(244,63,94,0.3)] active:scale-95"
+                                : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                        )}
+                    >
+                        <HeartHandshake className={cn("w-4 h-4", (empathyUsed || !onEmpathy) && "opacity-40")} />
+                        <span className="text-[8px] font-bold tracking-wider mt-0.5 leading-none">
+                            {empathyUsed ? "已用" : "共情"}
+                        </span>
+                    </button>
+
+                    {/* Probe Button */}
+                    <button
+                        onClick={() => {
+                            if (!probeUsed && canUseProbe && canInteract && onProbe) {
+                                playSfx('CLICK');
+                                onProbe();
+                            }
+                        }}
+                        disabled={!canInteract || !canUseProbe || probeUsed || !onProbe}
+                        title={probeUsed ? "已使用 - 每次议价限用一次" : !onProbe ? "需要先洞察客户" : "试探: 试探客户的真实底线"}
+                        className={cn(
+                            "w-11 h-11 border rounded flex flex-col items-center justify-center transition-all duration-200",
+                            probeUsed || !onProbe
+                                ? "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                : canUseProbe && canInteract
+                                ? "bg-cyan-950/40 border-cyan-700/60 text-cyan-400 hover:bg-cyan-900/50 hover:border-cyan-500 hover:shadow-[0_0_8px_rgba(6,182,212,0.3)] active:scale-95"
+                                : "bg-noir-400/50 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                        )}
+                    >
+                        <ScanSearch className={cn("w-4 h-4", (probeUsed || !onProbe) && "opacity-40")} />
+                        <span className="text-[8px] font-bold tracking-wider mt-0.5 leading-none">
+                            {probeUsed ? "已用" : "试探"}
+                        </span>
+                    </button>
                 </div>
 
                 {/* Right: Stress Flames */}

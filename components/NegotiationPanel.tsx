@@ -729,6 +729,22 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           patience={patience}
           mood={mood}
           insightResult={insightResult}
+          canUseInsight={canUseInsight()}
+          hasUsedInsight={insightResult !== null}
+          insightBlockReason={insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
+          insightRevealedLayer={insightResult?.revealedLayer}
+          onInsightClick={handleInsightClick}
+          canDeepInsight={canDeepInsight}
+          onDeepInsightClick={handleDeepInsightClick}
+          canFullInsight={canFullInsight}
+          onFullInsightClick={handleFullInsightClick}
+          canInteract={canInteract}
+          canUseEmpathy={hasEmpathyInteraction && !empathyUsed}
+          empathyUsed={empathyUsed}
+          onEmpathy={hasEmpathyInteraction ? handleEmpathy : undefined}
+          canUseProbe={hasProbeInteraction && !probeUsed}
+          probeUsed={probeUsed}
+          onProbe={hasProbeInteraction ? handleProbe : undefined}
         />
 
       {/* Rejection Overlay */}
@@ -793,27 +809,12 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           formatRate={formatRate}
           unitLabel={unitLabel}
           contractTierHints={contractTierHints}
-          canUseInsight={canUseInsight()}
-          hasUsedInsight={insightResult !== null}
-          insightBlockReason={insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
-          insightRevealedLayer={insightResult?.revealedLayer}
-          onInsightClick={handleInsightClick}
-          canDeepInsight={canDeepInsight}
-          onDeepInsightClick={handleDeepInsightClick}
-          canFullInsight={canFullInsight}
-          onFullInsightClick={handleFullInsightClick}
           canUsePressure={canUsePressureNow}
           pressureUsed={pressureUsed}
           onPressure={pressureSkillAvailable ? handlePressure : undefined}
           canUseHeartStrike={canUseHeartStrikeNow}
           heartStrikeUsed={heartStrikeUsed}
           onHeartStrike={heartStrikeSkillAvailable ? handleHeartStrike : undefined}
-          canUseEmpathy={hasEmpathyInteraction && !empathyUsed}
-          empathyUsed={empathyUsed}
-          onEmpathy={hasEmpathyInteraction ? handleEmpathy : undefined}
-          canUseProbe={hasProbeInteraction && !probeUsed}
-          probeUsed={probeUsed}
-          onProbe={hasProbeInteraction ? handleProbe : undefined}
           roundCount={roundCount}
           isRoundLimitReached={isRoundLimitReached}
           onOffer={handleOffer}
