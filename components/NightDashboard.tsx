@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
-import { Moon, Heart, Briefcase, Shield, Eye } from 'lucide-react';
+import { Moon, Heart, Briefcase, Shield } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
@@ -225,36 +225,6 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </Tooltip>
                     </div>
-
-                    {/* Insight Training Result (if available) */}
-                    {state.lastInsightTrainingResult && (
-                        <div className="w-full max-w-[200px] mb-4">
-                            <div className="bg-stone-900/60 border border-stone-800 rounded p-3">
-                                <div className="flex items-center gap-1.5 mb-2">
-                                    <Eye className="w-3 h-3 text-amber-500/70" />
-                                    <span className="text-[10px] uppercase text-stone-500 tracking-[0.15em] font-bold">洞察复盘</span>
-                                </div>
-                                <p className="text-xs text-stone-400 font-serif italic leading-relaxed">
-                                    {state.lastInsightTrainingResult.feedbackText}
-                                </p>
-                                {state.lastInsightTrainingResult.insightAccuracyHint && (
-                                    <p className="mt-1.5 text-[10px] text-amber-500/60 font-mono">
-                                        {state.lastInsightTrainingResult.insightAccuracyHint}
-                                    </p>
-                                )}
-                                <div className={cn(
-                                    "mt-2 text-[10px] font-mono uppercase tracking-wider",
-                                    state.lastInsightTrainingResult.dealPosition === 'generous' ? 'text-red-400/60' :
-                                    state.lastInsightTrainingResult.dealPosition === 'fair' ? 'text-pawn-green/60' :
-                                    'text-amber-400/60'
-                                )}>
-                                    {state.lastInsightTrainingResult.dealPosition === 'generous' ? '出手大方' :
-                                     state.lastInsightTrainingResult.dealPosition === 'fair' ? '公平合理' :
-                                     '精打细算'}
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     <Button
                         onClick={handleSleep}

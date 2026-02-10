@@ -5,7 +5,7 @@ import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { useCharacterAbility } from '../hooks/useCharacterAbility';
 import { Button } from './ui/Button';
-import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull, XCircle, HandHeart } from 'lucide-react';
+import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull, XCircle, HandHeart, Eye } from 'lucide-react';
 import { SatisfactionLevel } from '../systems/narrative/types';
 import { ReputationType } from '../types';
 import { TypewriterText } from './ui/TextEffects';
@@ -175,6 +175,7 @@ export const DepartureView: React.FC = () => {
       send({ type: 'DISMISS' });
 
       dispatch({ type: 'CLEAR_CUSTOMER' });
+      dispatch({ type: 'SET_INSIGHT_TRAINING_RESULT', payload: null });
 
       // If there are remaining expiry events, process them instead of going to BUSINESS
       if (hasMoreExpiryEvents) {
@@ -327,6 +328,34 @@ export const DepartureView: React.FC = () => {
                           ? '你拒绝了这笔交易。'
                           : '双方未能达成一致。'}
                   </p>
+              </div>
+          )}
+
+          {/* Insight Training Review (洞察复盘) */}
+          {lastDealSummary && state.lastInsightTrainingResult && (
+              <div className="w-full bg-stone-900/60 border border-amber-900/30 rounded p-4 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="flex items-center justify-center gap-1.5 mb-2">
+                      <Eye className="w-3 h-3 text-amber-500/70" />
+                      <span className="text-[10px] uppercase text-stone-500 tracking-[0.15em] font-bold">洞察复盘</span>
+                  </div>
+                  <p className="text-xs text-stone-400 font-serif italic leading-relaxed text-center">
+                      {state.lastInsightTrainingResult.feedbackText}
+                  </p>
+                  {state.lastInsightTrainingResult.insightAccuracyHint && (
+                      <p className="mt-1.5 text-[10px] text-amber-500/60 font-mono text-center">
+                          {state.lastInsightTrainingResult.insightAccuracyHint}
+                      </p>
+                  )}
+                  <div className={cn(
+                      "mt-2 text-[10px] font-mono uppercase tracking-wider text-center",
+                      state.lastInsightTrainingResult.dealPosition === 'generous' ? 'text-red-400/60' :
+                      state.lastInsightTrainingResult.dealPosition === 'fair' ? 'text-pawn-green/60' :
+                      'text-amber-400/60'
+                  )}>
+                      {state.lastInsightTrainingResult.dealPosition === 'generous' ? '出手大方' :
+                       state.lastInsightTrainingResult.dealPosition === 'fair' ? '公平合理' :
+                       '精打细算'}
+                  </div>
               </div>
           )}
 
