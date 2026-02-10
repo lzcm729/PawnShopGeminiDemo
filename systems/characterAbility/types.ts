@@ -20,7 +20,7 @@ export type AbilityPath = 'CRAFT' | 'TIME' | 'VIBE';
 export type FusionPath = 'TIME_CRAFT' | 'CRAFT_VIBE' | 'TIME_VIBE';
 
 /** Skill tier within a path */
-export type AbilityTier = 'T1' | 'T2';
+export type AbilityTier = 'T1' | 'T2' | 'T3';
 
 // ============================================================================
 // Skill IDs

@@ -105,7 +105,6 @@ export const AbilityPanel: React.FC<AbilityPanelProps> = ({ isOpen, onClose }) =
               skillMap={skillMap}
               selectedSkillId={selectedSkillId}
               onSelectSkill={setSelectedSkillId}
-              essenceBalance={panelData.essenceBalance}
             />
           </div>
 
