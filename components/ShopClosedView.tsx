@@ -237,7 +237,6 @@ export const DepartureView: React.FC = () => {
           <div className={cn(
               "w-40 h-40 rounded-full border-4 overflow-hidden mb-8 relative transition-all duration-1000 group",
               borderStyle,
-              (textComplete || isSilentAction) && "animate-departure-drift"
           )}>
               <img
                 src={avatarUrl}
@@ -250,7 +249,6 @@ export const DepartureView: React.FC = () => {
           {/* Dialogue Box — fades along with avatar */}
           <div className={cn(
               "w-full bg-[#1c1917] border border-stone-700 p-8 rounded-sm shadow-2xl relative mb-8 min-h-[150px] flex flex-col items-center justify-center text-center transition-all duration-500",
-              (textComplete || isSilentAction) && "animate-departure-drift"
           )}>
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-black px-4 text-stone-500 text-xs font-mono uppercase tracking-widest border border-stone-800 flex items-center gap-2">
                   <MessageSquare className="w-3 h-3" />
