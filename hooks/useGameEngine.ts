@@ -129,8 +129,8 @@ export const useGameEngine = () => {
   const performNightCycle = () => {
     // startAmbience('NIGHT'); // Removed per user request
 
-    // 0. Deduct maintenance costs for enabled COUNTER upgrades (night closing)
-    dispatch({ type: 'DEDUCT_MAINTENANCE_COST' });
+    // 0. Maintenance costs are now included in stats.dailyExpenses (synced on upgrade purchase/toggle)
+    // and deducted via END_DAY reducer. No separate DEDUCT_MAINTENANCE_COST dispatch needed.
 
     // 1. Narrative Side Effects
     const { chains: simulatedChains, sideEffects } = runDailySimulation(state.activeChains);

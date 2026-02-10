@@ -9,7 +9,7 @@ import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { clearSave } from '../../systems/core/persistence';
 import { GAME_CONFIG } from '../../systems/game/config';
-import { INITIAL_SHOP_UPGRADES, getEffectiveNightEnergy } from '../../systems/upgrades';
+import { INITIAL_SHOP_UPGRADES, getEffectiveNightEnergy, getTotalMaintenanceCost } from '../../systems/upgrades';
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../../systems/appointment';
 import { GamePhase, LegacyGamePhase } from '../../systems/core/types';
 import { getGewuEnergyMax } from '../../systems/insight';
@@ -120,6 +120,8 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 npcFateLog: action.payload.npcFateLog ?? [],
                 stats: {
                     ...action.payload.stats,
+                    // Recalculate dailyExpenses from base + maintenance (fixes old saves with stale $50)
+                    dailyExpenses: GAME_CONFIG.DAILY_EXPENSES + getTotalMaintenanceCost(shopUpgrades),
                     motherStatus: {
                         ...action.payload.stats.motherStatus,
                         purchasedCare: action.payload.stats.motherStatus.purchasedCare ?? null

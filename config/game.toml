@@ -21,8 +21,8 @@ weekly_medical_cost = 1000
 # 医药费缴纳周期（天数）
 bill_cycle = 7
 
-# 每日运营/生活成本（每日扣除）
-daily_expenses = 50
+# 每日基础运营成本（每日扣除，设施维护费自动叠加）
+daily_expenses = 0
 
 # 店铺周租（当前禁用：游戏聚焦于医药费压力）
 weekly_rent = 0

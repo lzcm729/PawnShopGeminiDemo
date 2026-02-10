@@ -8,6 +8,7 @@ import { Action } from '../actions/types';
 import { playSfx } from '../../systems/game/audio';
 import { purchaseUpgrade, toggleUpgrade, getUpgradeLevelConfig, getEffectiveNightEnergy, getTotalMaintenanceCost } from '../../systems/upgrades';
 import { getGewuEnergyMax } from '../../systems/insight';
+import { GAME_CONFIG } from '../../systems/game/config';
 
 export function upgradeReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -42,9 +43,16 @@ export function upgradeReducer(state: GameState, action: Action): GameState {
                 type: 'UPGRADE'
             };
 
+            // Recalculate dailyExpenses: base + total maintenance of all enabled facilities
+            const newMaintenanceAfterPurchase = getTotalMaintenanceCost(newState);
+
             return {
                 ...state,
-                stats: { ...state.stats, cash: state.stats.cash - levelConfig.cost },
+                stats: {
+                    ...state.stats,
+                    cash: state.stats.cash - levelConfig.cost,
+                    dailyExpenses: GAME_CONFIG.DAILY_EXPENSES + newMaintenanceAfterPurchase,
+                },
                 shopUpgrades: newState,
                 nightState: {
                     ...state.nightState,
@@ -59,8 +67,16 @@ export function upgradeReducer(state: GameState, action: Action): GameState {
         case 'TOGGLE_UPGRADE_ENABLED': {
             const { upgradeId } = action.payload;
             const newUpgradeState = toggleUpgrade(upgradeId, state.shopUpgrades);
+            const newMaintenanceAfterToggle = getTotalMaintenanceCost(newUpgradeState);
             playSfx('CLICK');
-            return { ...state, shopUpgrades: newUpgradeState };
+            return {
+                ...state,
+                shopUpgrades: newUpgradeState,
+                stats: {
+                    ...state.stats,
+                    dailyExpenses: GAME_CONFIG.DAILY_EXPENSES + newMaintenanceAfterToggle,
+                },
+            };
         }
 
         case 'DEDUCT_MAINTENANCE_COST': {
