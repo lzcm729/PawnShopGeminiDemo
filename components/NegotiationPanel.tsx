@@ -454,6 +454,11 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       // Sync patience cost to the hook's local state (which then auto-syncs to global state via App.tsx effect)
       if (result.patienceCost > 0) {
           negotiation.applyExternalPatienceCost(result.patienceCost);
+          // If patience will drop to 0, trigger walk-away flow to avoid stuck UI
+          if (patience <= result.patienceCost) {
+              send({ type: 'CUSTOMER_REJECTED' });
+              rejectCustomer('RESENTFUL');
+          }
       }
 
       playSfx('CLICK');
@@ -521,16 +526,25 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           }]);
       } else {
           // Incorrect: extra patience cost, negative reaction
-          negotiation.applyExternalPatienceCost(2);
+          const patienceCost = 2;
+          negotiation.applyExternalPatienceCost(patienceCost);
+          const willWalkAway = patience <= patienceCost;
 
           setChatLog(prev => [...prev, {
               id: `empathy-${Date.now()}`,
               sender: 'player' as const,
-              text: '[共情] 你试图表示理解，但对方似乎觉得你在套近乎。',
-              subtext: '耐心 -2 | 好感下降',
+              text: willWalkAway
+                  ? '[共情] 你试图表示理解，但对方觉得你在套近乎，愤怒地离开了。'
+                  : '[共情] 你试图表示理解，但对方似乎觉得你在套近乎。',
+              subtext: willWalkAway ? '客户离开了' : '耐心 -2 | 好感下降',
               sentiment: 'negative' as const,
               type: 'INNER_MONOLOGUE' as const,
           }]);
+
+          if (willWalkAway) {
+              send({ type: 'CUSTOMER_REJECTED' });
+              rejectCustomer('RESENTFUL');
+          }
       }
 
       playSfx('CLICK');
@@ -562,16 +576,25 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           }]);
       } else {
           // Incorrect: lose affinity, patience penalty
-          negotiation.applyExternalPatienceCost(2);
+          const patienceCost = 2;
+          negotiation.applyExternalPatienceCost(patienceCost);
+          const willWalkAway = patience <= patienceCost;
 
           setChatLog(prev => [...prev, {
               id: `probe-${Date.now()}`,
               sender: 'player' as const,
-              text: '[试探] 你的试探让对方感到不被信任，关系变得紧张。',
-              subtext: '耐心 -2 | 好感下降',
+              text: willWalkAway
+                  ? '[试探] 你的试探让对方彻底失去信任，愤怒地离开了。'
+                  : '[试探] 你的试探让对方感到不被信任，关系变得紧张。',
+              subtext: willWalkAway ? '客户离开了' : '耐心 -2 | 好感下降',
               sentiment: 'negative' as const,
               type: 'INNER_MONOLOGUE' as const,
           }]);
+
+          if (willWalkAway) {
+              send({ type: 'CUSTOMER_REJECTED' });
+              rejectCustomer('RESENTFUL');
+          }
       }
 
       playSfx('CLICK');
