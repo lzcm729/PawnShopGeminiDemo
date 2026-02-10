@@ -20,13 +20,19 @@ type UIState = Pick<GameState,
     | 'showWorkshop'
     | 'showInsight'
     | 'pendingSelectedItemId'
+    | 'unseenForfeitItemIds'
 >;
 
 export function uiReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
         case 'TOGGLE_INVENTORY':
             playSfx('HOVER');
-            return { ...state, showInventory: !state.showInventory };
+            return {
+                ...state,
+                showInventory: !state.showInventory,
+                // Clear forfeit notifications when opening inventory
+                ...(!state.showInventory ? { unseenForfeitItemIds: [] } : {})
+            };
 
         case 'TOGGLE_MAIL':
             playSfx('HOVER');

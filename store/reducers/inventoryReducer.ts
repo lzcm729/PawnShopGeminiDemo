@@ -123,7 +123,8 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 reputation: newRep,
                 customersServedToday: servedCount,
                 phase: { type: 'DEPARTURE' } as GamePhase,
-                dayEvents: [...state.dayEvents, `拒绝续当: ${name}。物品已收归店铺 (Humanity ${humanityPenalty})。`]
+                dayEvents: [...state.dayEvents, `拒绝续当: ${name}。物品已收归店铺 (Humanity ${humanityPenalty})。`],
+                unseenForfeitItemIds: [...state.unseenForfeitItemIds, itemId]
             };
         }
 
@@ -140,7 +141,8 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
             return {
                 ...state,
                 inventory: updatedInventory,
-                dayEvents: [...state.dayEvents, ...logs]
+                dayEvents: [...state.dayEvents, ...logs],
+                unseenForfeitItemIds: [...state.unseenForfeitItemIds, ...expiredItemIds]
             };
         }
 
@@ -159,7 +161,8 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 inventory: updatedInventory,
                 customersServedToday: servedCount,
                 phase: { type: 'DEPARTURE' } as GamePhase,
-                dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`]
+                dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`],
+                unseenForfeitItemIds: [...state.unseenForfeitItemIds, itemId]
             };
         }
 

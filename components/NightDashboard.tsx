@@ -167,6 +167,7 @@ export const NightDashboard: React.FC = () => {
                         isBlackmarketLocked={isBlackmarketLocked}
                         hasRiskEvent={hasRiskEvent}
                         forfeitItems={forfeitItems}
+                        unseenForfeitItemIds={state.unseenForfeitItemIds}
                         dispatch={dispatch}
                         onShowAppointmentBoard={() => setShowAppointmentBoard(true)}
                         onShowBlackmarket={() => setShowBlackmarket(true)}

@@ -91,6 +91,7 @@ const initialState: GameState = {
     currentExpiryEvent: null,
     expiryQueue: [],
     coreLostItems: [],
+    unseenForfeitItemIds: [],
     // === NIGHT PHASE ===
     essenceBalance: { ...INITIAL_ESSENCE_BALANCE },
     nightState: {

@@ -74,6 +74,11 @@ export const loadGame = (): GameState | null => {
             state.inProgressRecipes = [];
         }
 
+        // Migration: ensure unseenForfeitItemIds exists (added for vault red dot notification)
+        if (!Array.isArray(state.unseenForfeitItemIds)) {
+            state.unseenForfeitItemIds = [];
+        }
+
         return state;
     } catch (e) {
         console.error("[System] Load failed:", e);
