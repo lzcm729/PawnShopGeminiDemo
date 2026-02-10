@@ -195,6 +195,7 @@ export function generateTrainingResult(
     dealPosition,
     feedbackText,
     insightAccuracyHint,
+    insightUsed,
   };
 }
 

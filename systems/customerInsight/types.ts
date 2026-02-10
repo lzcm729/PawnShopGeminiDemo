@@ -199,6 +199,9 @@ export interface InsightTrainingResult {
 
   /** Whether the insight judgment was accurate (hidden hint in review) */
   insightAccuracyHint: string | null;
+
+  /** Whether the player used the insight ability during this transaction */
+  insightUsed: boolean;
 }
 
 // ============================================================================
