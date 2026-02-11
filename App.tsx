@@ -150,9 +150,9 @@ const GameContent: React.FC = () => {
   useEffect(() => {
     if (state.currentCustomer && state.currentCustomer.interactionType === 'PAWN') {
         const needsUpdate =
-            state.currentCustomer.patience !== negotiation.patience ||
+            !Object.is(state.currentCustomer.patience, negotiation.patience) ||
             state.currentCustomer.mood !== negotiation.mood ||
-            state.currentCustomer.currentAskPrice !== negotiation.currentAskPrice;
+            !Object.is(state.currentCustomer.currentAskPrice, negotiation.currentAskPrice);
 
         if (needsUpdate) {
             dispatch({

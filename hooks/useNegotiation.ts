@@ -245,7 +245,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       setEmpathyPatienceModifier(0);
       setIsInsult(false);
     }
-  }, [customer, itemUncertainty]);
+  }, [customer?.id, itemUncertainty]);
 
   const resetNegotiation = useCallback(() => {
     if (customer) {
