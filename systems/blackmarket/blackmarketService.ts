@@ -466,15 +466,13 @@ export function applyHeatDecay(currentHeat: number, upgradeLevel: number = 1): n
 /**
  * Check for and generate risk event based on current heat
  * @param heat Current heat level (0-10)
- * @param refusalRiskBonus Extra risk percentage from consecutive protection fee refusals (default 0)
  * @returns RiskEvent if triggered, null otherwise
  */
-export function checkRiskEvent(heat: number, refusalRiskBonus: number = 0): RiskEvent | null {
+export function checkRiskEvent(heat: number): RiskEvent | null {
   const config = getHeatConfig(heat);
-  const effectiveRisk = config.riskPercent + refusalRiskBonus;
   const roll = Math.random() * 100;
 
-  if (roll >= effectiveRisk) {
+  if (roll >= config.riskPercent) {
     return null;  // No event triggered
   }
 
@@ -584,9 +582,7 @@ export function processEndOfDay(
   const isStillLocked = state.isLocked && state.lockUntilDay > currentDay;
 
   // Check for risk event (only if not already locked)
-  // Include refusal risk bonus from consecutive protection fee refusals
-  const refusalBonus = getRefusalRiskBonus(state.protectionFee);
-  const riskEvent = !state.isLocked ? checkRiskEvent(state.heat, refusalBonus) : null;
+  const riskEvent = !state.isLocked ? checkRiskEvent(state.heat) : null;
 
   // Apply risk event effects
   let finalLocked = isStillLocked;
@@ -876,14 +872,6 @@ export function refuseProtectionFee(feeState: ProtectionFeeState, currentDay: nu
  */
 export function isInProtectionCooldown(feeState: ProtectionFeeState, currentDay: number): boolean {
   return feeState.cooldownUntilDay > currentDay;
-}
-
-/**
- * Get extra search warning probability from consecutive refusals
- */
-export function getRefusalRiskBonus(feeState: ProtectionFeeState): number {
-  // Each refusal adds to search warning probability, capped
-  return Math.min(GAME_CONFIG.BLACKMARKET.REFUSAL_RISK_CAP, feeState.timesRefused * GAME_CONFIG.BLACKMARKET.REFUSAL_RISK_PER_TIME);
 }
 
 // ============================================================================

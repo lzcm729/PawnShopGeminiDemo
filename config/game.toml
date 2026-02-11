@@ -481,10 +481,6 @@ protection_fee_growth_rate = 0.15
 protection_fee_request_interval = 5
 # 拒绝冷却（天）
 protection_fee_refusal_cooldown = 2
-# 每次拒绝风险增加
-refusal_risk_per_time = 0.10
-# 拒绝风险上限
-refusal_risk_cap = 0.30
 # 低热度安全天数
 low_heat_safe_days = 3
 # 低热度价格加成

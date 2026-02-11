@@ -62,7 +62,6 @@ export {
   payProtectionFee,
   refuseProtectionFee,
   isInProtectionCooldown,
-  getRefusalRiskBonus,
 
   // v3.6 [BM-10]: Moral echo system
   generateMoralEcho,

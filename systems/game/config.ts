@@ -268,8 +268,6 @@ interface TomlBlackmarket {
   protection_fee_growth_rate: number;
   protection_fee_request_interval: number;
   protection_fee_refusal_cooldown: number;
-  refusal_risk_per_time: number;
-  refusal_risk_cap: number;
   low_heat_safe_days: number;
   low_heat_price_bonus: number;
   undercover_sale_penalty: number;
@@ -797,8 +795,6 @@ export const GAME_CONFIG = {
     PROTECTION_FEE_GROWTH_RATE: tomlConfig.blackmarket.protection_fee_growth_rate,
     PROTECTION_FEE_REQUEST_INTERVAL: tomlConfig.blackmarket.protection_fee_request_interval,
     PROTECTION_FEE_REFUSAL_COOLDOWN: tomlConfig.blackmarket.protection_fee_refusal_cooldown,
-    REFUSAL_RISK_PER_TIME: tomlConfig.blackmarket.refusal_risk_per_time,
-    REFUSAL_RISK_CAP: tomlConfig.blackmarket.refusal_risk_cap,
     LOW_HEAT_SAFE_DAYS: tomlConfig.blackmarket.low_heat_safe_days,
     LOW_HEAT_PRICE_BONUS: tomlConfig.blackmarket.low_heat_price_bonus,
     UNDERCOVER_SALE_PENALTY: tomlConfig.blackmarket.undercover_sale_penalty,

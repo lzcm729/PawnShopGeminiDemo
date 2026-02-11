@@ -18,7 +18,7 @@ import { createTransientChain, getContractTypeFromRate, generateFillerCustomer, 
 import type { CustomerAppearance, CustomerMood, CustomerAge, CustomerGender } from '../systems/npc/fillerGenerator';
 import { generateDailyChallenge, checkChallengeCompletion } from '../systems/game/dailyChallenge';
 import type { DayChallengeContext } from '../systems/game/dailyChallenge';
-import { checkRiskEvent, getRefusalRiskBonus, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
+import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
 import { PhaseEvent } from '../systems/core/phases/types';
 import { checkForPoliceInvestigation, checkForHoldingPeriodEvent } from '../systems/police';
 import { calculateRedemptionTotal } from '../systems/economy/interest';
@@ -555,9 +555,7 @@ export const useGameEngine = () => {
     dispatch({ type: 'PREPARE_DAILY_APPOINTMENTS' });
 
     // 8. Black Market - Check for risk events and refresh daily state
-    // Include refusal risk bonus from consecutive protection fee refusals
-    const refusalBonus = state.blackmarket ? getRefusalRiskBonus(state.blackmarket.protectionFee) : 0;
-    const blackmarketRiskEvent = checkRiskEvent(state.blackmarket?.heat ?? 0, refusalBonus);
+    const blackmarketRiskEvent = checkRiskEvent(state.blackmarket?.heat ?? 0);
     dispatch({ type: 'BLACKMARKET_PROCESS_DAY_END', payload: { riskEvent: blackmarketRiskEvent } });
 
     // 9. Daily Challenge Completion Check (v2.1 Section 11.3)
