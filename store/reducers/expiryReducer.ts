@@ -64,9 +64,55 @@ export function expiryReducer(state: GameState, action: Action): GameState {
             switch (choice) {
                 case 'redeem_accept': {
                     if (event) {
-                        // S2-F3: 违约重铸检测 — 物品被重铸后客户赎回触发违约赔偿
+                        const workshopCfg = GAME_CONFIG.WORKSHOP;
+                        const repConfig = workshopCfg.REPUTATION;
+
+                        // 伪造违约检测（硬违约）— 伪造后客户赎回
+                        if (item.workState === 'FORGED' || item.wasForged) {
+                            const principal = item.pawnInfo?.principal || item.pawnAmount;
+                            const compensation = Math.ceil(principal * workshopCfg.BREACH_COMPENSATION_MULTIPLIER);
+                            cashDelta = -compensation;
+                            repDelta = {
+                                [ReputationType.HUMANITY]: repConfig.counterfeit_breach_humanity ?? -15,
+                                [ReputationType.CREDIBILITY]: repConfig.counterfeit_breach_credibility ?? -12,
+                                [ReputationType.INNOCENCE]: repConfig.counterfeit_breach_innocence ?? -5,
+                            };
+                            log = `[伪造违约] ${event.npcName} 发现 ${item.name} 已被伪造，支付违约赔偿 $${compensation}`;
+                            newInventory = newInventory.map(i =>
+                                i.id === itemId
+                                    ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || [])] }
+                                    : i
+                            );
+                            departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
+                            satisfaction = 'DESPERATE';
+                            playSfx('FAIL');
+
+                            if (state.stats.cash + cashDelta < 0) {
+                                return {
+                                    ...state,
+                                    phase: { type: 'GAME_OVER', reason: `无力支付违约赔偿金 $${compensation}，${event.npcName} 将此事告知了所有人。` },
+                                    stats: { ...state.stats, cash: 0 },
+                                    reputation: (() => {
+                                        const newRep = { ...state.reputation };
+                                        newRep[ReputationType.HUMANITY] += repConfig.counterfeit_breach_humanity ?? -15;
+                                        newRep[ReputationType.CREDIBILITY] += repConfig.counterfeit_breach_credibility ?? -12;
+                                        newRep[ReputationType.INNOCENCE] += repConfig.counterfeit_breach_innocence ?? -5;
+                                        clampReputation(newRep);
+                                        return newRep;
+                                    })(),
+                                    inventory: newInventory,
+                                    currentExpiryEvent: null,
+                                    dayEvents: [...state.dayEvents, log],
+                                    lastSatisfaction: satisfaction,
+                                    lastDepartureSatisfaction: departureSatisfaction,
+                                };
+                            }
+                            break;
+                        }
+
+                        // 重铸归还检测（善意僭越）— 重铸后客户赎回触发不确定性判定
+                        // TODO: 善意僭越判定（四种结果）将在后续实现
                         if (item.workState === 'REFORGED' || item.wasReforged) {
-                            const workshopCfg = GAME_CONFIG.WORKSHOP;
                             const principal = item.pawnInfo?.principal || item.pawnAmount;
                             const compensation = Math.ceil(principal * workshopCfg.BREACH_COMPENSATION_MULTIPLIER);
                             cashDelta = -compensation;
@@ -85,7 +131,6 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                             satisfaction = 'DESPERATE';
                             playSfx('FAIL');
 
-                            // 资金不足以赔偿时触发 GAME_OVER
                             if (state.stats.cash + cashDelta < 0) {
                                 return {
                                     ...state,
@@ -109,6 +154,36 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                             break;
                         }
 
+                        // 修复归还特殊流程 — 替代标准赎回（不叠加）
+                        if (item.wasRestored && item.workState === 'RESTORED') {
+                            cashDelta = event.redemptionCost.total;
+                            const redeemLog = generateRedeemLog(event.npcName, item, state.stats.day, cashDelta);
+                            const choiceLog = generatePlayerChoiceLog(state.stats.day, 'EXPIRY_DECISION', {
+                                decision: 'redeem_accept', customerName: event.npcName,
+                            });
+                            const echoLog = generateEchoLog(state.stats.day, 'NPC_REDEEMED', item.relatedChainId || '');
+                            newInventory = newInventory.map(i =>
+                                i.id === itemId
+                                    ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || []), redeemLog, choiceLog, echoLog] }
+                                    : i
+                            );
+                            // 修复归还声誉：人情+10, 商誉+1（替代标准赎回的商誉+1，不叠加）
+                            repDelta = {
+                                [ReputationType.HUMANITY]: repConfig.restore_return_humanity ?? 10,
+                                [ReputationType.CREDIBILITY]: repConfig.restore_return_credibility ?? 1,
+                            };
+                            log = `${item.name} 被赎回 (收款 $${cashDelta}) [修复归还: 人情+${repConfig.restore_return_humanity ?? 10}, 商誉+${repConfig.restore_return_credibility ?? 1}]`;
+                            const redeemLevel = evaluateRedeemSatisfaction(
+                                event.interestRate,
+                                event.redemptionCost.total,
+                                event.redemptionCost.principal
+                            );
+                            departureSatisfaction = { scene: 'REDEEM', level: redeemLevel };
+                            satisfaction = mapToBaseSatisfaction('REDEEM', redeemLevel);
+                            playSfx('CASH');
+                            break;
+                        }
+
                         // 正常赎回路径
                         cashDelta = event.redemptionCost.total;
                         const redeemLog = generateRedeemLog(event.npcName, item, state.stats.day, cashDelta);
@@ -125,11 +200,7 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                         );
                         // #59: Per design doc, redemption success gives Credibility +1 only
                         repDelta = { [ReputationType.CREDIBILITY]: 1 };
-                        // S2-F4: 修复后归还声誉奖励 人情+10
-                        if (item.wasRestored) {
-                            repDelta[ReputationType.HUMANITY] = (repDelta[ReputationType.HUMANITY] || 0) + 10;
-                        }
-                        log = `${item.name} 被赎回 (收款 $${cashDelta})${item.wasRestored ? ' [修复归还: 人情+10]' : ''}`;
+                        log = `${item.name} 被赎回 (收款 $${cashDelta})`;
                         const redeemLevel = evaluateRedeemSatisfaction(
                             event.interestRate,
                             event.redemptionCost.total,

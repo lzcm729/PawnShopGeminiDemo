@@ -1,8 +1,13 @@
 /**
  * 工作台配方定义 (Workshop Recipes)
  *
- * 定义所有可用的修复和重铸配方。
- * 参考设计文档 3.2/3.3节。
+ * 定义所有可用的修复、伪造和重铸配方。
+ * 参考设计文档 v2.1 §5。
+ *
+ * 三分法：
+ * - 修复 (RESTORE): 移除负面标签，恢复原貌
+ * - 伪造 (COUNTERFEIT): 添加虚假标签，制造谎言
+ * - 重铸 (REFORGE): 添加增值标签，合法改良
  *
  * 数据来源：
  * - 文本（name, description, riskNote）→ assets/data/texts/workshop_recipes.csv
@@ -10,7 +15,7 @@
  * - 代码标识（tags, booleans）→ 本文件硬编码（程序员维护）
  */
 
-import { RestoreRecipe, ReforgeRecipe, Recipe, QualityOutcome } from './types';
+import { RestoreRecipe, ReforgeRecipe, CounterfeitRecipe, Recipe, QualityOutcome } from './types';
 import { GAME_CONFIG } from '../game/config';
 import { parseCSV, CSVSchema, stringCol } from '../utils/csvReader';
 import recipesCSV from '@/assets/data/texts/workshop_recipes.csv?raw';
@@ -75,7 +80,7 @@ function buildQualityOutcomes(id: string): QualityOutcome[] | undefined {
 }
 
 // ============================================================================
-// 修复配方（设计文档 3.2节）
+// 修复配方（设计文档 §5.2）
 // ============================================================================
 
 function buildRestoreRecipes(): RestoreRecipe[] {
@@ -132,26 +137,51 @@ function buildRestoreRecipes(): RestoreRecipe[] {
 }
 
 // ============================================================================
-// 重铸配方（设计文档 3.3节）
+// 伪造配方（设计文档 §5.3）- counterfeit_ 前缀
+// ============================================================================
+
+function buildCounterfeitRecipes(): CounterfeitRecipe[] {
+  const t = getText;
+  const c = getRecipeConfig;
+  return [
+    {
+      id: 'counterfeit_fake_history',
+      type: 'COUNTERFEIT',
+      name: t('counterfeit_fake_history').name,
+      description: t('counterfeit_fake_history').description,
+      resultTag: 'FAKE_HISTORY',
+      resultVariant: 'forged_state',
+      valueMultiplier: 2.5,
+      baseCost: { craft: c('counterfeit_fake_history').craft, time: c('counterfeit_fake_history').time },
+      energyCost: c('counterfeit_fake_history').energy_cost,
+      requiredCategories: undefined,
+      excludedTags: ['FAKE_HISTORY', 'IMPERIAL'],
+    },
+    {
+      id: 'counterfeit_master_forgery',
+      type: 'COUNTERFEIT',
+      name: t('counterfeit_master_forgery').name,
+      description: t('counterfeit_master_forgery').description,
+      resultTag: 'IMPERIAL',
+      resultVariant: 'forged_state',
+      valueMultiplier: 4.0,
+      baseCost: { craft: c('counterfeit_master_forgery').craft, time: c('counterfeit_master_forgery').time, vibe: c('counterfeit_master_forgery').vibe },
+      energyCost: c('counterfeit_master_forgery').energy_cost,
+      nightsRequired: c('counterfeit_master_forgery').nights_required,
+      requiredCategories: undefined,
+      excludedTags: ['IMPERIAL', 'FAKE_HISTORY'],
+    },
+  ];
+}
+
+// ============================================================================
+// 重铸配方（设计文档 §5.4）- 仅合法改良
 // ============================================================================
 
 function buildReforgeRecipes(): ReforgeRecipe[] {
   const t = getText;
   const c = getRecipeConfig;
   return [
-    // ---- EARLY RECIPES (Day 1+): Deterministic, guaranteed results ----
-    {
-      id: 'reforge_fake_history',
-      type: 'REFORGE',
-      name: t('reforge_fake_history').name,
-      description: t('reforge_fake_history').description,
-      resultTag: 'FAKE_HISTORY',
-      baseCost: { craft: c('reforge_fake_history').craft, time: c('reforge_fake_history').time },
-      energyCost: c('reforge_fake_history').energy_cost,
-      requiredTags: ['VINTAGE_REAL'],
-      excludedTags: ['FAKE_HISTORY', 'IMPERIAL'],
-      riskNote: t('reforge_fake_history').riskNote,
-    },
     {
       id: 'reforge_art_enhanced',
       type: 'REFORGE',
@@ -165,8 +195,6 @@ function buildReforgeRecipes(): ReforgeRecipe[] {
       riskNote: t('reforge_art_enhanced').riskNote,
       surpriseDiscoveryChance: c('reforge_art_enhanced').surprise_discovery_chance,
     },
-
-    // ---- MID-GAME RECIPES (Day 15+): Probabilistic, quality variance ----
     {
       id: 'reforge_imperial',
       type: 'REFORGE',
@@ -183,25 +211,6 @@ function buildReforgeRecipes(): ReforgeRecipe[] {
       qualityOutcomes: buildQualityOutcomes('reforge_imperial'),
       surpriseDiscoveryChance: c('reforge_imperial').surprise_discovery_chance,
     },
-
-    // ---- LATE-GAME RECIPES (Day 22+): High risk, high reward ----
-    {
-      id: 'reforge_master_forgery',
-      type: 'REFORGE',
-      name: t('reforge_master_forgery').name,
-      description: t('reforge_master_forgery').description,
-      resultTag: 'IMPERIAL',
-      baseCost: { craft: c('reforge_master_forgery').craft, time: c('reforge_master_forgery').time, vibe: c('reforge_master_forgery').vibe },
-      energyCost: c('reforge_master_forgery').energy_cost,
-      nightsRequired: c('reforge_master_forgery').nights_required,
-      requiredTags: ['VINTAGE_REAL'],
-      excludedTags: ['IMPERIAL', 'FAKE_HISTORY'],
-      riskNote: t('reforge_master_forgery').riskNote,
-      minDay: c('reforge_master_forgery').min_day,
-      probabilistic: true,
-      qualityOutcomes: buildQualityOutcomes('reforge_master_forgery'),
-      surpriseDiscoveryChance: c('reforge_master_forgery').surprise_discovery_chance,
-    },
   ];
 }
 
@@ -210,8 +219,9 @@ function buildReforgeRecipes(): ReforgeRecipe[] {
 // ============================================================================
 
 export const RESTORE_RECIPES: RestoreRecipe[] = buildRestoreRecipes();
+export const COUNTERFEIT_RECIPES: CounterfeitRecipe[] = buildCounterfeitRecipes();
 export const REFORGE_RECIPES: ReforgeRecipe[] = buildReforgeRecipes();
-export const ALL_RECIPES: Recipe[] = [...RESTORE_RECIPES, ...REFORGE_RECIPES];
+export const ALL_RECIPES: Recipe[] = [...RESTORE_RECIPES, ...COUNTERFEIT_RECIPES, ...REFORGE_RECIPES];
 
 export function getRecipeById(id: string): Recipe | undefined {
   return ALL_RECIPES.find(r => r.id === id);

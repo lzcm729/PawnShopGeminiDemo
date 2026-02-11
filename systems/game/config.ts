@@ -381,6 +381,30 @@ interface TomlForgery {
   innocence_cost_sale: number;
 }
 
+interface TomlWorkshopEssenceConversion {
+  ratio: number;
+}
+
+interface TomlWorkshopReputation {
+  restore_return_humanity: number;
+  restore_return_credibility: number;
+  restore_sale_credibility: number;
+  counterfeit_active_innocence: number;
+  counterfeit_sale_innocence: number;
+  counterfeit_detected_credibility: number;
+  counterfeit_breach_humanity: number;
+  counterfeit_breach_credibility: number;
+  counterfeit_breach_innocence: number;
+  reforge_sale_credibility: number;
+  reforge_return_admiration_humanity: number;
+  reforge_return_admiration_credibility: number;
+  reforge_return_acceptance_credibility: number;
+  reforge_return_unease_humanity: number;
+  reforge_return_unease_credibility: number;
+  reforge_return_anger_humanity: number;
+  reforge_return_anger_credibility: number;
+}
+
 interface TomlWorkshop {
   extra_negative_tag_cost_ratio: number;
   high_value_threshold: number;
@@ -392,6 +416,8 @@ interface TomlWorkshop {
   breach_innocence_loss: number;
   recipes: Record<string, TomlRecipeCost>;
   forgery: TomlForgery;
+  essence_conversion: TomlWorkshopEssenceConversion;
+  reputation: TomlWorkshopReputation;
 }
 
 interface TomlMilestoneTrigger {
@@ -837,6 +863,10 @@ export const GAME_CONFIG = {
       INNOCENCE_COST_ACTIVE: tomlConfig.workshop.forgery.innocence_cost_active,
       INNOCENCE_COST_SALE: tomlConfig.workshop.forgery.innocence_cost_sale,
     },
+    ESSENCE_CONVERSION: {
+      RATIO: tomlConfig.workshop.essence_conversion.ratio,
+    },
+    REPUTATION: tomlConfig.workshop.reputation,
   },
 
   // --- REPUTATION MILESTONES (声誉里程碑) ---

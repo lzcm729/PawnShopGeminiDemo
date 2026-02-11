@@ -697,8 +697,8 @@ time = 20
 vibe = 10
 energy_cost = 3
 
-# 重铸：做旧伪造 (reforge_fake_history)
-[workshop.recipes.reforge_fake_history]
+# 伪造：做旧伪造 (counterfeit_fake_history)
+[workshop.recipes.counterfeit_fake_history]
 craft = 30
 time = 80
 energy_cost = 3
@@ -729,8 +729,8 @@ flawed_multiplier = 0.70
 failed_probability = 0.10
 failed_multiplier = 0.0
 
-# 重铸：大师级伪造 (reforge_master_forgery)
-[workshop.recipes.reforge_master_forgery]
+# 伪造：大师级伪造 (counterfeit_master_forgery)
+[workshop.recipes.counterfeit_master_forgery]
 craft = 80
 time = 100
 vibe = 60
@@ -747,6 +747,33 @@ flawed_probability = 0.25
 flawed_multiplier = 0.65
 failed_probability = 0.15
 failed_multiplier = 0.0
+
+# --- 精魄转换 (Essence Conversion) ---
+[workshop.essence_conversion]
+ratio = 3                                # 3:1 转换比率
+
+# --- 工作台声誉变化表 (Workshop Reputation Deltas) ---
+[workshop.reputation]
+# 修复路线
+restore_return_humanity = 10             # 修复归还 人情+10
+restore_return_credibility = 1           # 修复归还 商誉+1
+restore_sale_credibility = 1             # 修复出售(死当) 商誉+1
+# 伪造路线
+counterfeit_active_innocence = -3        # 伪造当期物品 清白-3
+counterfeit_sale_innocence = -4          # 出售伪造品 清白-4
+counterfeit_detected_credibility = -3    # 赝品被识破 商誉-3
+counterfeit_breach_humanity = -15        # 伪造违约 人情-15
+counterfeit_breach_credibility = -12     # 伪造违约 商誉-12
+counterfeit_breach_innocence = -5        # 伪造违约 清白-5
+# 重铸路线
+reforge_sale_credibility = 1             # 重铸出售(死当) 商誉+1
+reforge_return_admiration_humanity = 5   # 叹服 人情+5
+reforge_return_admiration_credibility = 8 # 叹服 商誉+8
+reforge_return_acceptance_credibility = 3 # 认可 商誉+3
+reforge_return_unease_humanity = -5      # 不安 人情-5
+reforge_return_unease_credibility = -2   # 不安 商誉-2
+reforge_return_anger_humanity = -12      # 愤怒 人情-12
+reforge_return_anger_credibility = -5    # 愤怒 商誉-5
 
 # ------------------------------------------------------------
 # 声誉里程碑阈值 (Reputation Milestones)

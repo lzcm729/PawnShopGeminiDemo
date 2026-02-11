@@ -69,6 +69,25 @@ export function nightReducer(state: GameState, action: Action): GameState {
             };
         }
 
+        case 'CONVERT_ESSENCE': {
+            const { from, to, amount } = action.payload;
+            const ratio = 3; // 3:1 conversion
+            const cost = amount * ratio;
+            const fromKey = from.toLowerCase() as 'craft' | 'time' | 'vibe';
+            const toKey = to.toLowerCase() as 'craft' | 'time' | 'vibe';
+            if (fromKey === toKey || state.essenceBalance[fromKey] < cost) {
+                return state;
+            }
+            return {
+                ...state,
+                essenceBalance: {
+                    ...state.essenceBalance,
+                    [fromKey]: state.essenceBalance[fromKey] - cost,
+                    [toKey]: state.essenceBalance[toKey] + amount,
+                }
+            };
+        }
+
         case 'CONSUME_NIGHT_ENERGY': {
             const amount = action.payload;
             const newEnergy = state.nightState.energy - amount;

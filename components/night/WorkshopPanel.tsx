@@ -1,14 +1,17 @@
 /**
  * 工作台面板 (Workshop Panel)
  *
- * 夜间工作台系统的UI组件，允许玩家修复和重铸物品。
+ * 夜间工作台系统的UI组件，允许玩家修复、伪造和重铸物品。
+ * 三路线：手(修复) / 眼(伪造) / 心(重铸)
  *
- * S2-I1: 违约风险预警弹窗
- * S2-I2: 凝视时刻 UI
- * S2-I3: 互斥状态 UI 反馈
+ * v2.0: 三路线重构
+ * - 三列布局：手/眼/心
+ * - 伪造违约弹窗（比重铸更严厉）
+ * - 伪造凝视时刻（首次5秒不可跳过）
+ * - 三向互斥锁定
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { HelpTooltip } from '../ui/Tooltip';
 import { Button } from '../ui/Button';
@@ -28,15 +31,123 @@ import {
   Hammer,
   Wand2,
   Eye,
+  Heart,
   Lock,
   Clock,
   Star,
   Gift,
+  Hand,
 } from 'lucide-react';
 import { ESSENCE_ICONS, EssenceCost } from '../../systems/economy/essence';
-import { RecipeStatus, WorkshopResult, RestoreRecipe, ReforgeRecipe, InProgressRecipe, ViolationWarning, QualityOutcome, ReforgeQuality } from '../../systems/workshop/types';
+import {
+  RecipeStatus,
+  WorkshopResult,
+  RestoreRecipe,
+  CounterfeitRecipe,
+  ReforgeRecipe,
+  InProgressRecipe,
+  ViolationWarning,
+  QualityOutcome,
+  ReforgeQuality,
+  RecipeType,
+} from '../../systems/workshop/types';
 import { getQualityDisplayName } from '../../systems/workshop/workshopLogic';
 import { getDisplayName } from '../../systems/items/tagUtils';
+
+// ============================================================================
+// Route theme config
+// ============================================================================
+
+type RouteType = 'restore' | 'counterfeit' | 'reforge';
+
+interface RouteTheme {
+  label: string;
+  symbol: string;
+  subtitle: string;
+  icon: React.FC<{ className?: string }>;
+  color: string;
+  colorActive: string;
+  colorBorder: string;
+  colorBorderHover: string;
+  colorBg: string;
+  btnBg: string;
+  btnBgHover: string;
+  btnBorder: string;
+  noRecipeMsg: string;
+  lockedByRestore: string;
+  lockedByCounterfeit: string;
+  lockedByReforge: string;
+}
+
+const ROUTE_THEMES: Record<RouteType, RouteTheme> = {
+  restore: {
+    label: '修复',
+    symbol: '手',
+    subtitle: '恢复原貌',
+    icon: Hand,
+    color: 'text-emerald-400',
+    colorActive: 'text-emerald-300',
+    colorBorder: 'border-emerald-800',
+    colorBorderHover: 'hover:border-emerald-600',
+    colorBg: 'bg-emerald-950/30',
+    btnBg: 'bg-emerald-900',
+    btnBgHover: 'hover:bg-emerald-800',
+    btnBorder: 'border-emerald-700',
+    noRecipeMsg: '物品没有需要修复的状态',
+    lockedByRestore: '',
+    lockedByCounterfeit: '已选择伪造路线，不可修复',
+    lockedByReforge: '已选择重铸路线，不可修复',
+  },
+  counterfeit: {
+    label: '伪造',
+    symbol: '眼',
+    subtitle: '制造谎言',
+    icon: Eye,
+    color: 'text-rose-400',
+    colorActive: 'text-rose-300',
+    colorBorder: 'border-rose-800',
+    colorBorderHover: 'hover:border-rose-600',
+    colorBg: 'bg-rose-950/30',
+    btnBg: 'bg-rose-900',
+    btnBgHover: 'hover:bg-rose-800',
+    btnBorder: 'border-rose-700',
+    noRecipeMsg: '物品不适合伪造',
+    lockedByRestore: '已选择修复路线，不可伪造',
+    lockedByCounterfeit: '',
+    lockedByReforge: '已选择重铸路线，不可伪造',
+  },
+  reforge: {
+    label: '重铸',
+    symbol: '心',
+    subtitle: '改变本质',
+    icon: Heart,
+    color: 'text-purple-400',
+    colorActive: 'text-purple-300',
+    colorBorder: 'border-purple-800',
+    colorBorderHover: 'hover:border-purple-600',
+    colorBg: 'bg-purple-950/30',
+    btnBg: 'bg-purple-900',
+    btnBgHover: 'hover:bg-purple-800',
+    btnBorder: 'border-purple-700',
+    noRecipeMsg: '物品不适合重铸',
+    lockedByRestore: '已选择修复路线，不可重铸',
+    lockedByCounterfeit: '已选择伪造路线，不可重铸',
+    lockedByReforge: '',
+  },
+};
+
+// Map WorkState to lock reason key
+function getLockReason(route: RouteType, workState?: string): string | null {
+  if (!workState || workState === 'DEFAULT') return null;
+  if (workState === 'RESTORED' && route !== 'restore') return `lockedByRestore`;
+  if (workState === 'FORGED' && route !== 'counterfeit') return `lockedByCounterfeit`;
+  if (workState === 'REFORGED' && route !== 'reforge') return `lockedByReforge`;
+  return null;
+}
+
+// ============================================================================
+// Main Panel
+// ============================================================================
 
 interface WorkshopPanelProps {
   isOpen: boolean;
@@ -52,20 +163,30 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     maxEnergy,
     inProgressRecipes,
     doRestore,
+    doCounterfeit,
     doReforge,
     advanceInProgressRecipe,
     getReasonText,
     getWarning,
+    getCounterfeitWarning,
   } = useWorkshop();
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<WorkshopResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  // S2-I1: Violation warning state
+  // Violation warning state (used by both counterfeit and reforge)
   const [violationWarning, setViolationWarning] = useState<ViolationWarning | null>(null);
-  const [pendingReforgeRecipeId, setPendingReforgeRecipeId] = useState<string | null>(null);
-  // S2-I2: Gaze moment state
-  const [gazeState, setGazeState] = useState<{ text: string; visible: boolean } | null>(null);
+  const [violationRoute, setViolationRoute] = useState<RouteType | null>(null);
+  const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
+  // Gaze moment state
+  const [gazeState, setGazeState] = useState<{
+    text: string;
+    visible: boolean;
+    isCounterfeit: boolean;
+    canSkip: boolean;
+  } | null>(null);
+  const gazeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const gazeResultRef = useRef<WorkshopResult | null>(null);
 
   // Auto-select item from pending selection when panel opens
   useEffect(() => {
@@ -81,44 +202,71 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   }, [isOpen, state.pendingSelectedItemId, workshopableItems, dispatch]);
 
   const selectedItem = workshopableItems.find(w => w.item.id === selectedItemId);
-  const restoreRecipe = selectedItem?.restoreRecipe;
-  const reforgeRecipe = selectedItem?.reforgeRecipe;
 
   // Multi-night: check if selected item has an in-progress recipe
   const itemInProgress = selectedItemId
     ? inProgressRecipes.find(r => r.itemId === selectedItemId) ?? null
     : null;
 
-  // S2-I3: Check mutual exclusion for display
-  const isRestoreLocked = selectedItem?.item.workState === 'REFORGED';
-  const isReforgeLocked = selectedItem?.item.workState === 'RESTORED';
+  // ========== Handlers ==========
 
   const handleRestore = () => {
-    if (!selectedItemId || !restoreRecipe) return;
+    const recipe = selectedItem?.restoreRecipe;
+    if (!selectedItemId || !recipe) return;
     setIsProcessing(true);
-    const output = doRestore(selectedItemId, restoreRecipe.recipe.id);
+    const output = doRestore(selectedItemId, recipe.recipe.id);
     if (output?.success && output.result) {
-      // S2-I2: Show gaze moment before result
-      triggerGaze(output.result);
+      triggerGaze(output.result, false);
+    }
+    setIsProcessing(false);
+  };
+
+  const handleCounterfeit = () => {
+    const recipe = selectedItem?.counterfeitRecipe;
+    if (!selectedItemId || !recipe) return;
+
+    // Check for counterfeit violation warning (active items)
+    const item = selectedItem?.item;
+    if (item) {
+      const warning = getCounterfeitWarning(item);
+      if (warning) {
+        setViolationWarning(warning);
+        setViolationRoute('counterfeit');
+        setPendingRecipeId(recipe.recipe.id);
+        return;
+      }
+    }
+
+    executeCounterfeit(recipe.recipe.id);
+  };
+
+  const executeCounterfeit = (recipeId: string) => {
+    if (!selectedItemId) return;
+    setIsProcessing(true);
+    const output = doCounterfeit(selectedItemId, recipeId);
+    if (output?.success && output.result) {
+      triggerGaze(output.result, true);
     }
     setIsProcessing(false);
   };
 
   const handleReforge = () => {
-    if (!selectedItemId || !reforgeRecipe) return;
+    const recipe = selectedItem?.reforgeRecipe;
+    if (!selectedItemId || !recipe) return;
 
-    // S2-I1: Check for violation warning
+    // Check for reforge violation warning (active items)
     const item = selectedItem?.item;
     if (item) {
       const warning = getWarning(item);
       if (warning) {
         setViolationWarning(warning);
-        setPendingReforgeRecipeId(reforgeRecipe.recipe.id);
+        setViolationRoute('reforge');
+        setPendingRecipeId(recipe.recipe.id);
         return;
       }
     }
 
-    executeReforge(reforgeRecipe.recipe.id);
+    executeReforge(recipe.recipe.id);
   };
 
   const executeReforge = (recipeId: string) => {
@@ -126,23 +274,31 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(true);
     const output = doReforge(selectedItemId, recipeId);
     if (output?.success && output.result) {
-      triggerGaze(output.result);
+      triggerGaze(output.result, false);
     }
     setIsProcessing(false);
   };
 
-  // S2-I1: Confirm violation
+  // Confirm violation (both counterfeit and reforge)
   const handleViolationConfirm = () => {
+    const route = violationRoute;
+    const recipeId = pendingRecipeId;
     setViolationWarning(null);
-    if (pendingReforgeRecipeId) {
-      executeReforge(pendingReforgeRecipeId);
-      setPendingReforgeRecipeId(null);
+    setViolationRoute(null);
+    setPendingRecipeId(null);
+
+    if (!recipeId) return;
+    if (route === 'counterfeit') {
+      executeCounterfeit(recipeId);
+    } else if (route === 'reforge') {
+      executeReforge(recipeId);
     }
   };
 
   const handleViolationCancel = () => {
     setViolationWarning(null);
-    setPendingReforgeRecipeId(null);
+    setViolationRoute(null);
+    setPendingRecipeId(null);
   };
 
   // Multi-night: advance in-progress recipe
@@ -151,28 +307,46 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(true);
     const output = advanceInProgressRecipe(selectedItemId);
     if (output?.success && output.result) {
-      triggerGaze(output.result);
+      triggerGaze(output.result, output.result.isCounterfeit ?? false);
     }
     setIsProcessing(false);
   };
 
-  // S2-I2: Gaze moment trigger
-  const triggerGaze = useCallback((result: WorkshopResult) => {
-    setGazeState({ text: result.narrative.gazeText, visible: false });
-    // Start fade-in after brief delay
+  // Gaze moment trigger with counterfeit-specific 5-second non-skippable
+  const triggerGaze = useCallback((result: WorkshopResult, isCounterfeit: boolean) => {
+    const duration = isCounterfeit ? 5000 : 4000;
+    const canSkipInitially = !isCounterfeit;
+
+    gazeResultRef.current = result;
+    setGazeState({ text: result.narrative.gazeText, visible: false, isCounterfeit, canSkip: canSkipInitially });
+
+    // Start fade-in
     setTimeout(() => setGazeState(prev => prev ? { ...prev, visible: true } : null), 100);
-    // Auto-close after 4 seconds
-    setTimeout(() => {
+
+    // For counterfeit: enable skip after 5 seconds (but auto-close also at 5s)
+    // For others: auto-close after 4 seconds
+    if (gazeTimerRef.current) clearTimeout(gazeTimerRef.current);
+    gazeTimerRef.current = setTimeout(() => {
       setGazeState(null);
-      setLastResult(result);
-    }, 4000);
+      setLastResult(gazeResultRef.current);
+      gazeResultRef.current = null;
+    }, duration);
+
+    // For counterfeit: enable skip button after the mandatory period
+    if (isCounterfeit) {
+      setTimeout(() => {
+        setGazeState(prev => prev ? { ...prev, canSkip: true } : null);
+      }, duration);
+    }
   }, []);
 
-  // S2-I2: Click to skip gaze
+  // Click to skip gaze (only if allowed)
   const skipGaze = useCallback(() => {
-    if (gazeState) {
-      // Find the pending result - it will be set when gaze closes
+    if (gazeState && gazeState.canSkip) {
+      if (gazeTimerRef.current) clearTimeout(gazeTimerRef.current);
       setGazeState(null);
+      setLastResult(gazeResultRef.current);
+      gazeResultRef.current = null;
     }
   }, [gazeState]);
 
@@ -188,7 +362,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
         <span className="flex items-center gap-2">
           <Wrench className="w-5 h-5" />
           工作台 (Workshop)
-          <HelpTooltip text="修复损坏物品或重铸提升价值。修复消除负面特征恢复估价，重铸增加正面特征。消耗精魄和精力。每件物品只能走修复或重铸路线之一。" />
+          <HelpTooltip text="修复、伪造或重铸物品。每件物品只能走三条路线之一，选择后不可更改。修复恢复原貌(手)，伪造制造谎言(眼)，重铸改变本质(心)。" />
         </span>
       }
       size="xl"
@@ -214,15 +388,22 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
           </div>
         </div>
 
-        {/* S2-I2: Gaze Moment Overlay */}
+        {/* Gaze Moment Overlay */}
         {gazeState && (
-          <GazeMoment text={gazeState.text} visible={gazeState.visible} onSkip={skipGaze} />
+          <GazeMoment
+            text={gazeState.text}
+            visible={gazeState.visible}
+            canSkip={gazeState.canSkip}
+            isCounterfeit={gazeState.isCounterfeit}
+            onSkip={skipGaze}
+          />
         )}
 
-        {/* S2-I1: Violation Warning Modal */}
-        {violationWarning && (
+        {/* Violation Warning Modal */}
+        {violationWarning && violationRoute && (
           <ViolationWarningModal
             warning={violationWarning}
+            route={violationRoute}
             onConfirm={handleViolationConfirm}
             onCancel={handleViolationCancel}
           />
@@ -285,10 +466,15 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                             可修复 {restoreCount} 处
                           </span>
                         )}
-                        {/* S2-I3: Show work state badges */}
+                        {/* Work state badges */}
                         {item.workState === 'RESTORED' && (
                           <span className="text-[9px] px-1 py-0.5 bg-emerald-900/50 text-emerald-300 rounded border border-emerald-700">
                             已修复
+                          </span>
+                        )}
+                        {item.workState === 'FORGED' && (
+                          <span className="text-[9px] px-1 py-0.5 bg-rose-900/50 text-rose-300 rounded border border-rose-700">
+                            已伪造
                           </span>
                         )}
                         {item.workState === 'REFORGED' && (
@@ -325,7 +511,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
             {selectedItem ? (
               <div>
                 {/* Item Header */}
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-noir-400">
+                <div className="flex items-center gap-3 mb-4 pb-3 border-b border-noir-400">
                   <div className="w-12 h-12 bg-noir-300 border border-noir-400 flex items-center justify-center shrink-0 overflow-hidden rounded">
                     <img
                       src={getItemIcon(selectedItem.item)}
@@ -344,16 +530,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-lg">{getDisplayName(selectedItem.item)}</h3>
-                      {selectedItem.item.workState === 'RESTORED' && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-emerald-900/50 text-emerald-300 rounded border border-emerald-700">
-                          已选择修复路线
-                        </span>
-                      )}
-                      {selectedItem.item.workState === 'REFORGED' && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-purple-900/50 text-purple-300 rounded border border-purple-700">
-                          已选择重铸路线
-                        </span>
-                      )}
+                      <WorkStateBadge workState={selectedItem.item.workState} />
                     </div>
                     <div className="flex gap-2 mt-1">
                       {selectedItem.item.tags?.map(tag => (
@@ -365,45 +542,39 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="space-y-4">
+                {/* Mutual exclusion warning */}
+                {selectedItem.item.workState && selectedItem.item.workState !== 'DEFAULT' && (
+                  <div className="mb-3 px-3 py-2 rounded border border-noir-400 bg-noir-300/30">
+                    <p className="text-[10px] text-stone-500 flex items-center gap-1.5">
+                      <Lock className="w-3 h-3" />
+                      每件物品只能选择一条路线，选择后不可更改。
+                    </p>
+                  </div>
+                )}
+
+                {/* Action Cards */}
+                <div className="space-y-3">
                   {itemInProgress ? (
                     <InProgressCard
                       progress={itemInProgress}
                       onAdvance={handleAdvance}
                       isProcessing={isProcessing}
-                      energyCost={reforgeRecipe?.recipe.energyCost ?? 0}
+                      energyCost={
+                        selectedItem.reforgeRecipe?.recipe.energyCost
+                        ?? selectedItem.counterfeitRecipe?.recipe.energyCost
+                        ?? 0
+                      }
                       currentEnergy={currentEnergy}
                     />
                   ) : (
-                    <>
-                      {/* S2-I3: Show lock indicator for mutually excluded actions */}
-                      {isRestoreLocked ? (
-                        <LockedActionCard type="restore" reason="已选择重铸路线，不可修复" />
-                      ) : (
-                        <ActionCard
-                          type="restore"
-                          recipe={restoreRecipe?.recipe}
-                          status={restoreRecipe?.status}
-                          onApply={handleRestore}
-                          isProcessing={isProcessing}
-                          getReasonText={getReasonText}
-                        />
-                      )}
-
-                      {isReforgeLocked ? (
-                        <LockedActionCard type="reforge" reason="已选择修复路线，不可重铸" />
-                      ) : (
-                        <ActionCard
-                          type="reforge"
-                          recipe={reforgeRecipe?.recipe}
-                          status={reforgeRecipe?.status}
-                          onApply={handleReforge}
-                          isProcessing={isProcessing}
-                          getReasonText={getReasonText}
-                        />
-                      )}
-                    </>
+                    <ThreeRouteDisplay
+                      selectedItem={selectedItem}
+                      isProcessing={isProcessing}
+                      onRestore={handleRestore}
+                      onCounterfeit={handleCounterfeit}
+                      onReforge={handleReforge}
+                      getReasonText={getReasonText}
+                    />
                   )}
                 </div>
               </div>
@@ -423,7 +594,273 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
 };
 
 // ============================================================================
-// Sub-components
+// Three-Route Display (Hand / Eye / Heart)
+// ============================================================================
+
+interface ThreeRouteDisplayProps {
+  selectedItem: {
+    item: { workState?: string };
+    restoreRecipe: { recipe: RestoreRecipe; status: RecipeStatus } | null;
+    counterfeitRecipe: { recipe: CounterfeitRecipe; status: RecipeStatus } | null;
+    reforgeRecipe: { recipe: ReforgeRecipe; status: RecipeStatus } | null;
+  };
+  isProcessing: boolean;
+  onRestore: () => void;
+  onCounterfeit: () => void;
+  onReforge: () => void;
+  getReasonText: (reason: string) => string;
+}
+
+const ThreeRouteDisplay: React.FC<ThreeRouteDisplayProps> = ({
+  selectedItem,
+  isProcessing,
+  onRestore,
+  onCounterfeit,
+  onReforge,
+  getReasonText,
+}) => {
+  const workState = selectedItem.item.workState;
+
+  const routes: Array<{
+    type: RouteType;
+    recipe: RestoreRecipe | CounterfeitRecipe | ReforgeRecipe | undefined;
+    status: RecipeStatus | undefined;
+    onApply: () => void;
+  }> = [
+    {
+      type: 'restore',
+      recipe: selectedItem.restoreRecipe?.recipe,
+      status: selectedItem.restoreRecipe?.status,
+      onApply: onRestore,
+    },
+    {
+      type: 'counterfeit',
+      recipe: selectedItem.counterfeitRecipe?.recipe,
+      status: selectedItem.counterfeitRecipe?.status,
+      onApply: onCounterfeit,
+    },
+    {
+      type: 'reforge',
+      recipe: selectedItem.reforgeRecipe?.recipe,
+      status: selectedItem.reforgeRecipe?.status,
+      onApply: onReforge,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      {routes.map(({ type, recipe, status, onApply }) => {
+        const theme = ROUTE_THEMES[type];
+        const lockKey = getLockReason(type, workState);
+
+        if (lockKey) {
+          const reason = theme[lockKey as keyof RouteTheme] as string;
+          return (
+            <RouteLockedCard key={type} route={type} reason={reason} />
+          );
+        }
+
+        return (
+          <RouteActionCard
+            key={type}
+            route={type}
+            recipe={recipe}
+            status={status}
+            onApply={onApply}
+            isProcessing={isProcessing}
+            getReasonText={getReasonText}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
+// ============================================================================
+// Route Header (shared between cards)
+// ============================================================================
+
+const RouteHeader: React.FC<{ route: RouteType; dimmed?: boolean }> = ({ route, dimmed }) => {
+  const theme = ROUTE_THEMES[route];
+  const Icon = theme.icon;
+  return (
+    <div className={cn("text-center mb-3 pb-2 border-b border-noir-400", dimmed && "opacity-40")}>
+      <Icon className={cn("w-5 h-5 mx-auto mb-1", dimmed ? "text-stone-600" : theme.color)} />
+      <div className={cn("text-xs font-bold", dimmed ? "text-stone-600" : theme.color)}>
+        {theme.symbol}
+      </div>
+      <div className={cn("text-sm font-bold", dimmed ? "text-stone-600" : theme.color)}>
+        {theme.label}
+      </div>
+      <div className="text-[10px] text-stone-500">{theme.subtitle}</div>
+    </div>
+  );
+};
+
+// ============================================================================
+// Route Locked Card
+// ============================================================================
+
+const RouteLockedCard: React.FC<{ route: RouteType; reason: string }> = ({ route, reason }) => {
+  return (
+    <div className="p-3 rounded border border-noir-400 bg-noir-200/30 opacity-40">
+      <RouteHeader route={route} dimmed />
+      <div className="flex items-center gap-2 justify-center">
+        <Lock className="w-4 h-4 text-stone-600" />
+        <p className="text-[10px] text-stone-600 text-center">{reason}</p>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// Route Action Card
+// ============================================================================
+
+interface RouteActionCardProps {
+  route: RouteType;
+  recipe?: RestoreRecipe | CounterfeitRecipe | ReforgeRecipe;
+  status?: RecipeStatus;
+  onApply: () => void;
+  isProcessing: boolean;
+  getReasonText: (reason: string) => string;
+}
+
+const RouteActionCard: React.FC<RouteActionCardProps> = ({
+  route,
+  recipe,
+  status,
+  onApply,
+  isProcessing,
+  getReasonText,
+}) => {
+  const theme = ROUTE_THEMES[route];
+  const canApply = status?.canApply ?? false;
+
+  // No recipe available for this route
+  if (!recipe || !status) {
+    return (
+      <div className="p-3 rounded border border-noir-400 bg-noir-200/50 opacity-50">
+        <RouteHeader route={route} dimmed />
+        <p className="text-[10px] text-stone-600 text-center">{theme.noRecipeMsg}</p>
+      </div>
+    );
+  }
+
+  // Has recipe but cannot apply (insufficient resources, etc.)
+  if (!canApply) {
+    return (
+      <div className="p-3 rounded border border-noir-400 bg-noir-200/50">
+        <RouteHeader route={route} />
+        <div className="space-y-2">
+          <h4 className="font-bold text-xs text-stone-400 truncate">{recipe.name}</h4>
+          <p className="text-[10px] text-stone-600 leading-snug">{recipe.description}</p>
+          <div className="text-[10px] text-red-400">
+            {status.reason && getReasonText(status.reason)}
+          </div>
+          <div className="pt-2 border-t border-noir-400 space-y-1">
+            <CostDisplay cost={status.actualCost} deficit={status.deficit} compact />
+            <div className="text-[10px] text-stone-500 flex items-center gap-1">
+              <Zap className="w-3 h-3" />
+              {recipe.energyCost} 精力
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Can apply -- active card
+  return (
+    <div
+      className={cn(
+        "p-3 rounded border bg-noir-200 transition-all",
+        theme.colorBorder, theme.colorBorderHover
+      )}
+    >
+      <RouteHeader route={route} />
+      <div className="space-y-2">
+        <h4 className={cn("font-bold text-xs", theme.color)}>
+          {recipe.name}
+          {recipe.nightsRequired && recipe.nightsRequired > 1 && (
+            <span className="ml-1 text-[10px] font-normal text-amber-400 inline-flex items-center gap-0.5">
+              <Clock className="w-3 h-3" />
+              {recipe.nightsRequired}夜
+            </span>
+          )}
+        </h4>
+        <p className="text-[10px] text-stone-500 leading-snug">{recipe.description}</p>
+
+        {/* Counterfeit value multiplier */}
+        {'valueMultiplier' in recipe && (
+          <div className="text-[10px] text-rose-400 font-mono">
+            价值系数: x{(recipe as CounterfeitRecipe).valueMultiplier.toFixed(1)}
+          </div>
+        )}
+
+        {/* Cost section */}
+        <div className="pt-2 border-t border-noir-400 space-y-1">
+          <CostDisplay cost={status.actualCost} deficit={status.deficit} compact />
+          <div className="text-[10px] text-stone-500 flex items-center gap-1">
+            <Zap className="w-3 h-3" />
+            {recipe.energyCost} 精力
+          </div>
+        </div>
+
+        {/* Risk note */}
+        {'riskNote' in recipe && recipe.riskNote && (
+          <div className="text-[10px] text-amber-500/70 flex items-start gap-1">
+            <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+            <span>{recipe.riskNote}</span>
+          </div>
+        )}
+
+        {/* Quality outcome probabilities */}
+        {status.isProbabilistic && status.qualityOutcomes && (
+          <QualityOutcomesPreview outcomes={status.qualityOutcomes} />
+        )}
+
+        {/* Execute button */}
+        <Button
+          onClick={onApply}
+          disabled={isProcessing || !canApply}
+          className={cn(
+            "w-full h-9 text-sm mt-2",
+            theme.btnBg, theme.btnBgHover, theme.btnBorder
+          )}
+        >
+          {isProcessing ? '...' : '执行'}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// WorkState Badge
+// ============================================================================
+
+const WorkStateBadge: React.FC<{ workState?: string }> = ({ workState }) => {
+  if (!workState || workState === 'DEFAULT') return null;
+
+  const config: Record<string, { label: string; bg: string; text: string; border: string }> = {
+    RESTORED: { label: '已选择修复路线', bg: 'bg-emerald-900/50', text: 'text-emerald-300', border: 'border-emerald-700' },
+    FORGED: { label: '已选择伪造路线', bg: 'bg-rose-900/50', text: 'text-rose-300', border: 'border-rose-700' },
+    REFORGED: { label: '已选择重铸路线', bg: 'bg-purple-900/50', text: 'text-purple-300', border: 'border-purple-700' },
+  };
+
+  const c = config[workState];
+  if (!c) return null;
+
+  return (
+    <span className={cn("text-[10px] px-1.5 py-0.5 rounded border", c.bg, c.text, c.border)}>
+      {c.label}
+    </span>
+  );
+};
+
+// ============================================================================
+// Sub-components (shared)
 // ============================================================================
 
 interface EssenceDisplayProps {
@@ -440,176 +877,13 @@ const EssenceDisplay: React.FC<EssenceDisplayProps> = ({ type, amount }) => {
   );
 };
 
-// S2-I3: Locked action card for mutual exclusion
-interface LockedActionCardProps {
-  type: 'restore' | 'reforge';
-  reason: string;
-}
-
-const LockedActionCard: React.FC<LockedActionCardProps> = ({ type, reason }) => {
-  const isRestore = type === 'restore';
-  return (
-    <div className="p-4 rounded border border-noir-400 bg-noir-200/30 opacity-40">
-      <div className="flex items-center gap-3">
-        <Lock className="w-6 h-6 text-stone-600" />
-        <div className="flex-1">
-          <h4 className="font-bold text-stone-600">
-            {isRestore ? '修复' : '重铸'}
-          </h4>
-          <p className="text-xs text-stone-600 mt-1">{reason}</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-interface ActionCardProps {
-  type: 'restore' | 'reforge';
-  recipe?: RestoreRecipe | ReforgeRecipe;
-  status?: RecipeStatus;
-  onApply: () => void;
-  isProcessing: boolean;
-  getReasonText: (reason: string) => string;
-}
-
-const ActionCard: React.FC<ActionCardProps> = ({
-  type,
-  recipe,
-  status,
-  onApply,
-  isProcessing,
-  getReasonText,
-}) => {
-  const isRestore = type === 'restore';
-  const canApply = status?.canApply ?? false;
-
-  if (!recipe || !status) {
-    return (
-      <div className="p-4 rounded border border-noir-400 bg-noir-200/50 opacity-50">
-        <div className="flex items-center gap-3">
-          {isRestore ? (
-            <Hammer className="w-6 h-6 text-stone-500" />
-          ) : (
-            <Wand2 className="w-6 h-6 text-stone-500" />
-          )}
-          <div className="flex-1">
-            <h4 className="font-bold text-stone-500">
-              {isRestore ? '修复' : '重铸'}
-            </h4>
-            <p className="text-xs text-stone-600 mt-1">
-              {isRestore ? '物品没有需要修复的状态' : '物品不适合重铸'}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!canApply) {
-    return (
-      <div className="p-4 rounded border border-noir-400 bg-noir-200/50">
-        <div className="flex items-center gap-3">
-          {isRestore ? (
-            <Hammer className="w-6 h-6 text-stone-500" />
-          ) : (
-            <Wand2 className="w-6 h-6 text-stone-500" />
-          )}
-          <div className="flex-1">
-            <h4 className="font-bold text-stone-500">{recipe.name}</h4>
-            <p className="text-xs text-stone-600 mt-1">{recipe.description}</p>
-          </div>
-          <div className="text-xs text-red-400">
-            {status.reason && getReasonText(status.reason)}
-          </div>
-        </div>
-        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-noir-400">
-          <div className="text-[10px] text-stone-500 uppercase">成本:</div>
-          <CostDisplay cost={status.actualCost} deficit={status.deficit} />
-          <div className="text-[10px] text-stone-500 flex items-center gap-1">
-            <Zap className="w-3 h-3" />
-            {recipe.energyCost} 精力
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        "p-4 rounded border bg-noir-200 transition-all",
-        isRestore
-          ? "border-emerald-800 hover:border-emerald-600"
-          : "border-purple-800 hover:border-purple-600"
-      )}
-    >
-      <div className="flex items-center gap-3">
-        {isRestore ? (
-          <Hammer className="w-6 h-6 text-emerald-400" />
-        ) : (
-          <Wand2 className="w-6 h-6 text-purple-400" />
-        )}
-
-        <div className="flex-1">
-          <h4 className={cn(
-            "font-bold",
-            isRestore ? "text-emerald-400" : "text-purple-400"
-          )}>
-            {recipe.name}
-            {recipe.nightsRequired && recipe.nightsRequired > 1 && (
-              <span className="ml-2 text-[10px] font-normal text-amber-400 inline-flex items-center gap-0.5">
-                <Clock className="w-3 h-3" />
-                需要 {recipe.nightsRequired} 夜
-              </span>
-            )}
-          </h4>
-          <p className="text-xs text-stone-500 mt-1">{recipe.description}</p>
-        </div>
-
-        <Button
-          onClick={onApply}
-          disabled={isProcessing || !canApply}
-          className={cn(
-            "h-10 px-4",
-            isRestore
-              ? "bg-emerald-900 hover:bg-emerald-800 border-emerald-700"
-              : "bg-purple-900 hover:bg-purple-800 border-purple-700"
-          )}
-        >
-          {isProcessing ? '...' : '执行'}
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-noir-400">
-        <div className="text-[10px] text-stone-500 uppercase">成本:</div>
-        <CostDisplay cost={status.actualCost} deficit={status.deficit} />
-        <div className="text-[10px] text-stone-500 flex items-center gap-1">
-          <Zap className="w-3 h-3" />
-          {recipe.energyCost} 精力
-        </div>
-      </div>
-
-      {'riskNote' in recipe && recipe.riskNote && (
-        <div className="mt-2 text-[10px] text-amber-500/70 flex items-center gap-1">
-          <AlertCircle className="w-3 h-3" />
-          {recipe.riskNote}
-        </div>
-      )}
-
-      {/* Quality outcome probabilities for probabilistic recipes */}
-      {status.isProbabilistic && status.qualityOutcomes && (
-        <QualityOutcomesPreview outcomes={status.qualityOutcomes} />
-      )}
-    </div>
-  );
-};
-
 interface CostDisplayProps {
   cost: EssenceCost;
   deficit?: EssenceCost;
+  compact?: boolean;
 }
 
-const CostDisplay: React.FC<CostDisplayProps> = ({ cost, deficit }) => {
+const CostDisplay: React.FC<CostDisplayProps> = ({ cost, deficit, compact }) => {
   const items: Array<{ type: 'CRAFT' | 'TIME' | 'VIBE'; amount: number; missing: number }> = [];
 
   if (cost.craft) items.push({ type: 'CRAFT', amount: cost.craft, missing: deficit?.craft || 0 });
@@ -617,15 +891,19 @@ const CostDisplay: React.FC<CostDisplayProps> = ({ cost, deficit }) => {
   if (cost.vibe) items.push({ type: 'VIBE', amount: cost.vibe, missing: deficit?.vibe || 0 });
 
   if (items.length === 0) {
-    return <span className="text-xs text-stone-500">仅消耗精力</span>;
+    return <span className="text-[10px] text-stone-500">仅消耗精力</span>;
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className={cn("flex items-center", compact ? "gap-2" : "gap-3")}>
       {items.map(({ type, amount, missing }) => (
         <div key={type} className="flex items-center gap-1">
-          <span className="text-sm">{ESSENCE_ICONS[type]}</span>
-          <span className={cn("text-xs font-mono", missing > 0 ? "text-red-400" : "text-stone-300")}>
+          <span className={compact ? "text-xs" : "text-sm"}>{ESSENCE_ICONS[type]}</span>
+          <span className={cn(
+            "font-mono",
+            compact ? "text-[10px]" : "text-xs",
+            missing > 0 ? "text-red-400" : "text-stone-300"
+          )}>
             {amount}
             {missing > 0 && <span className="text-[10px]"> (-{missing})</span>}
           </span>
@@ -636,16 +914,19 @@ const CostDisplay: React.FC<CostDisplayProps> = ({ cost, deficit }) => {
 };
 
 // ============================================================================
-// S2-I1: Violation Warning Modal
+// Violation Warning Modal (supports both counterfeit and reforge)
 // ============================================================================
 
 interface ViolationWarningModalProps {
   warning: ViolationWarning;
+  route: RouteType;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, onConfirm, onCancel }) => {
+const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, route, onConfirm, onCancel }) => {
+  const isCounterfeit = route === 'counterfeit';
+
   return (
     <Modal
       isOpen={true}
@@ -660,7 +941,10 @@ const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, 
     >
       <div className="space-y-4">
         <p className="text-sm text-stone-300">
-          这件物品仍在当期内。重铸将改变其本质，客户赎回时将视为违约。
+          {isCounterfeit
+            ? '这件物品仍在当期内。伪造将制造谎言，客户赎回时将视为严重违约。'
+            : '这件物品仍在当期内。重铸将改变其本质，客户赎回时的反应无法预测。'
+          }
         </p>
 
         {/* 可预见后果 */}
@@ -668,7 +952,15 @@ const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, 
           <div className="text-[10px] uppercase text-red-400 mb-2">可预见后果</div>
           <div className="space-y-1.5 text-sm text-stone-300">
             <div>违约赔偿: <span className="text-red-400 font-mono">${warning.compensationAmount}</span> (当金 x200%)</div>
-            <div>声誉损失: <span className="text-red-400">人情 {warning.reputationLoss.humanity}</span> / <span className="text-red-400">商誉 {warning.reputationLoss.credibility}</span></div>
+            <div>
+              声誉损失:{' '}
+              <span className="text-red-400">人情 {warning.reputationLoss.humanity}</span>
+              {' / '}
+              <span className="text-red-400">商誉 {warning.reputationLoss.credibility}</span>
+              {warning.reputationLoss.innocence != null && (
+                <>{' / '}<span className="text-red-400">清白 {warning.reputationLoss.innocence}</span></>
+              )}
+            </div>
             <div>客户关系: <span className="text-red-400">不可修复</span></div>
           </div>
         </div>
@@ -696,23 +988,33 @@ const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, 
 };
 
 // ============================================================================
-// S2-I2: Gaze Moment Overlay
+// Gaze Moment Overlay (with counterfeit non-skippable support)
 // ============================================================================
 
 interface GazeMomentProps {
   text: string;
   visible: boolean;
+  canSkip: boolean;
+  isCounterfeit: boolean;
   onSkip: () => void;
 }
 
-const GazeMoment: React.FC<GazeMomentProps> = ({ text, visible, onSkip }) => {
+const GazeMoment: React.FC<GazeMomentProps> = ({ text, visible, canSkip, isCounterfeit, onSkip }) => {
+  const IconComponent = isCounterfeit ? Eye : Eye;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-pointer"
-      onClick={onSkip}
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center bg-black/80",
+        canSkip ? "cursor-pointer" : "cursor-default"
+      )}
+      onClick={canSkip ? onSkip : undefined}
     >
       <div className="max-w-md text-center px-8">
-        <Eye className="w-8 h-8 text-amber-400/40 mx-auto mb-6" />
+        <IconComponent className={cn(
+          "w-8 h-8 mx-auto mb-6",
+          isCounterfeit ? "text-rose-400/40" : "text-amber-400/40"
+        )} />
         <p
           className={cn(
             "text-lg text-stone-300 italic leading-relaxed transition-opacity duration-1000",
@@ -722,10 +1024,11 @@ const GazeMoment: React.FC<GazeMomentProps> = ({ text, visible, onSkip }) => {
           "{text}"
         </p>
         <p className={cn(
-          "text-[10px] text-stone-600 mt-8 transition-opacity duration-1000 delay-500",
-          visible ? "opacity-100" : "opacity-0"
+          "text-[10px] mt-8 transition-opacity duration-1000 delay-500",
+          visible ? "opacity-100" : "opacity-0",
+          canSkip ? "text-stone-600" : "text-stone-700"
         )}>
-          点击任意处跳过
+          {canSkip ? '点击任意处跳过' : '...'}
         </p>
       </div>
     </div>
@@ -733,7 +1036,7 @@ const GazeMoment: React.FC<GazeMomentProps> = ({ text, visible, onSkip }) => {
 };
 
 // ============================================================================
-// Workshop Result Modal
+// Workshop Result Modal (supports three routes)
 // ============================================================================
 
 interface WorkshopResultModalProps {
@@ -745,45 +1048,44 @@ const WorkshopResultModal: React.FC<WorkshopResultModalProps> = ({ result, onClo
   if (!result) return null;
 
   const isRestore = result.type === 'RESTORE';
+  const isCounterfeit = result.type === 'COUNTERFEIT';
   const quality = result.reforgeQuality;
+
+  const getTitleContent = () => {
+    if (isRestore) {
+      return { icon: <Hand className="w-5 h-5" />, text: '修复完成', colorClass: 'text-emerald-300' };
+    }
+    if (isCounterfeit) {
+      return { icon: <Eye className="w-5 h-5" />, text: '伪造完成', colorClass: 'text-rose-300' };
+    }
+    return { icon: <Heart className="w-5 h-5" />, text: '重铸完成', colorClass: 'text-purple-300' };
+  };
+
+  const titleContent = getTitleContent();
+
+  const getGradientClass = () => {
+    if (isRestore) return "bg-gradient-to-r from-emerald-950/50 to-noir-300/50 border-emerald-800";
+    if (isCounterfeit) return "bg-gradient-to-r from-rose-950/50 to-noir-300/50 border-rose-800";
+    if (quality === 'MASTERWORK') return "bg-gradient-to-r from-amber-950/50 to-purple-950/30 border-amber-700";
+    if (quality === 'FLAWED') return "bg-gradient-to-r from-red-950/30 to-noir-300/50 border-red-900";
+    if (quality === 'FAILED') return "bg-gradient-to-r from-stone-900/50 to-noir-300/50 border-stone-700";
+    return "bg-gradient-to-r from-purple-950/50 to-noir-300/50 border-purple-800";
+  };
 
   return (
     <Modal
       isOpen={!!result}
       onClose={onClose}
       title={
-        <span className={cn(
-          "flex items-center gap-2",
-          isRestore ? "text-emerald-300" : "text-purple-300"
-        )}>
-          {isRestore ? (
-            <>
-              <Hammer className="w-5 h-5" />
-              修复完成
-            </>
-          ) : (
-            <>
-              <Wand2 className="w-5 h-5" />
-              重铸完成
-            </>
-          )}
+        <span className={cn("flex items-center gap-2", titleContent.colorClass)}>
+          {titleContent.icon}
+          {titleContent.text}
           {quality && <QualityBadge quality={quality} />}
         </span>
       }
       size="md"
     >
-      <div className={cn(
-        "p-6 rounded border",
-        isRestore
-          ? "bg-gradient-to-r from-emerald-950/50 to-noir-300/50 border-emerald-800"
-          : quality === 'MASTERWORK'
-            ? "bg-gradient-to-r from-amber-950/50 to-purple-950/30 border-amber-700"
-            : quality === 'FLAWED'
-              ? "bg-gradient-to-r from-red-950/30 to-noir-300/50 border-red-900"
-              : quality === 'FAILED'
-                ? "bg-gradient-to-r from-stone-900/50 to-noir-300/50 border-stone-700"
-                : "bg-gradient-to-r from-purple-950/50 to-noir-300/50 border-purple-800"
-      )}>
+      <div className={cn("p-6 rounded border", getGradientClass())}>
         <div className="space-y-3 mb-6 text-stone-300 text-sm italic">
           <p>{result.narrative.actionText}</p>
           <p>{result.narrative.resultText}</p>
@@ -803,6 +1105,11 @@ const WorkshopResultModal: React.FC<WorkshopResultModalProps> = ({ result, onClo
             {quality && quality !== 'NORMAL' && result.qualityMultiplier && (
               <span className="text-[10px] text-stone-500 ml-2">
                 (品质系数: x{result.qualityMultiplier.toFixed(1)})
+              </span>
+            )}
+            {result.counterfeitValueMultiplier && (
+              <span className="text-[10px] text-rose-400 ml-2">
+                (伪造系数: x{result.counterfeitValueMultiplier.toFixed(1)})
               </span>
             )}
           </div>
@@ -938,26 +1245,26 @@ interface QualityOutcomesPreviewProps {
 
 const QualityOutcomesPreview: React.FC<QualityOutcomesPreviewProps> = ({ outcomes }) => {
   return (
-    <div className="mt-3 pt-3 border-t border-noir-400">
-      <div className="text-[10px] text-stone-500 uppercase mb-2">品质概率</div>
-      <div className="flex gap-2">
+    <div className="pt-2 border-t border-noir-400">
+      <div className="text-[10px] text-stone-500 uppercase mb-1">品质概率</div>
+      <div className="grid grid-cols-2 gap-1">
         {outcomes.map(({ quality, probability, valueMultiplier }) => {
           const style = QUALITY_STYLES[quality];
           return (
             <div
               key={quality}
               className={cn(
-                "flex-1 p-2 rounded border text-center",
+                "p-1 rounded border text-center",
                 style.bg, style.border
               )}
             >
-              <div className={cn("text-[10px] font-bold", style.text)}>
+              <div className={cn("text-[9px] font-bold", style.text)}>
                 {getQualityDisplayName(quality)}
               </div>
-              <div className="text-xs font-mono text-stone-400 mt-0.5">
+              <div className="text-[10px] font-mono text-stone-400">
                 {Math.round(probability * 100)}%
               </div>
-              <div className={cn("text-[10px] mt-0.5", valueMultiplier >= 1 ? "text-green-500" : "text-red-400")}>
+              <div className={cn("text-[9px]", valueMultiplier >= 1 ? "text-green-500" : "text-red-400")}>
                 x{valueMultiplier.toFixed(1)}
               </div>
             </div>

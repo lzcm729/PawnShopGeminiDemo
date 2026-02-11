@@ -159,7 +159,8 @@ export type Action =
   } }
     | { type: 'RESET_NIGHTLY_INSIGHT_FLAGS' }
     | { type: 'RECORD_NIGHT_ACTION'; payload: string }
-    | { type: 'UPDATE_ITEM_TAGS'; payload: { itemId: string; tags?: ItemTag[]; wasRestored?: boolean; wasReforged?: boolean; workState?: WorkState } }
+    | { type: 'UPDATE_ITEM_TAGS'; payload: { itemId: string; tags?: ItemTag[]; wasRestored?: boolean; wasForged?: boolean; wasReforged?: boolean; workState?: WorkState } }
+    | { type: 'CONVERT_ESSENCE'; payload: { from: EssenceType; to: EssenceType; amount: number } }
 
     // Shop Upgrades
     | { type: 'TOGGLE_UPGRADE_SHOP' }

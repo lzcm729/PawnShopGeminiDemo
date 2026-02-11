@@ -506,7 +506,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
         }
 
         case 'UPDATE_ITEM_TAGS': {
-            const { itemId, tags, wasRestored, wasReforged, workState } = action.payload;
+            const { itemId, tags, wasRestored, wasForged, wasReforged, workState } = action.payload;
             return {
                 ...state,
                 inventory: state.inventory.map(item => {
@@ -516,6 +516,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                         ...item,
                         tags: tags !== undefined ? tags : item.tags,
                         wasRestored: wasRestored !== undefined ? wasRestored : item.wasRestored,
+                        wasForged: wasForged !== undefined ? wasForged : item.wasForged,
                         wasReforged: wasReforged !== undefined ? wasReforged : item.wasReforged,
                         workState: workState !== undefined ? workState : item.workState,
                     };
@@ -525,8 +526,11 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                         updatedItem.realValue = calculateTaggedValue(updatedItem);
                     }
 
-                    // 重铸后 uncertainty 重置为高值（物品本质已改变）
+                    // 重铸/伪造后 uncertainty 重置为高值（物品本质已改变）
                     if (wasReforged === true || workState === 'REFORGED') {
+                        updatedItem.uncertainty = 0.8;
+                    }
+                    if (wasForged === true || workState === 'FORGED') {
                         updatedItem.uncertainty = 0.8;
                     }
                     // 修复后 uncertainty 保持不变（修复不改变了解程度）

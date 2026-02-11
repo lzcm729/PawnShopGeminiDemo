@@ -4,14 +4,16 @@
  * 提供工作台操作的核心函数：
  * - 检查配方是否可以应用
  * - 计算实际成本
- * - 执行修复/重铸操作
+ * - 执行修复/伪造/重铸操作
  * - 生成叙事文本（含凝视时刻）
- * - 违约重铸风险预警
+ * - 违约风险预警（伪造/重铸）
+ * - 标签叠加公式（递减加法）
+ * - 精魄 3:1 转换
  */
 
 import { Item, ItemStatus, WorkState } from '../items/types';
 import { ItemTag, StateTag, EssenceTag, STATE_TAGS } from '../items/tags';
-import { EssenceBalance, EssenceCost } from '../economy/essence';
+import { EssenceBalance, EssenceCost, EssenceType } from '../economy/essence';
 import { NightState } from '../game/types';
 import { addTag, removeTag, hasTags, hasAnyTag, calculateTaggedValue } from '../items/tagUtils';
 import { canAfford, getDeficit, spendEssenceBatch } from '../economy/essenceUtils';
@@ -19,6 +21,7 @@ import {
   Recipe,
   RestoreRecipe,
   ReforgeRecipe,
+  CounterfeitRecipe,
   RecipeStatus,
   WorkshopResult,
   WorkshopNarrative,
@@ -30,6 +33,7 @@ import {
   InProgressRecipe,
   isRestoreRecipe,
   isReforgeRecipe,
+  isCounterfeitRecipe,
 } from './types';
 import { getRecipeById } from './recipes';
 import { createTextRegistry, TextRegistry } from '../utils/textRegistry';
@@ -47,6 +51,69 @@ function getTexts(): TextRegistry {
     workshopTexts = createTextRegistry('workshop', workshopTextsCSV);
   }
   return workshopTexts;
+}
+
+// ============================================================================
+// 标签叠加公式（设计文档 §5.5）
+// ============================================================================
+
+/**
+ * 计算标签叠加后的最终价值系数
+ *
+ * 使用递减加法：max(标签系数) + (次高标签系数 - 1.0) * 0.5
+ * 硬上限：x5.0
+ *
+ * @param tagMultipliers 所有有效标签的价值系数数组
+ * @returns 最终合成系数
+ */
+export function calculateTagStackMultiplier(tagMultipliers: number[]): number {
+  if (tagMultipliers.length === 0) return 1.0;
+  if (tagMultipliers.length === 1) return tagMultipliers[0];
+  const sorted = [...tagMultipliers].sort((a, b) => b - a);
+  const result = sorted[0] + (sorted[1] - 1.0) * 0.5;
+  return Math.min(result, 5.0); // 硬上限 x5.0
+}
+
+// ============================================================================
+// 精魄 3:1 转换（设计文档 §5.8）
+// ============================================================================
+
+/**
+ * 将一种精魄转换为另一种精魄，转换比率 3:1
+ *
+ * @param from 源精魄类型
+ * @param to 目标精魄类型
+ * @param amount 目标精魄数量（消耗 = amount * 3）
+ * @param balance 当前精魄余额
+ * @returns { success, newBalance }
+ */
+export function convertEssence(
+  from: EssenceType,
+  to: EssenceType,
+  amount: number,
+  balance: EssenceBalance
+): { success: boolean; newBalance: EssenceBalance } {
+  if (from === to || amount <= 0) {
+    return { success: false, newBalance: balance };
+  }
+
+  const ratio = GAME_CONFIG.WORKSHOP.ESSENCE_CONVERSION.RATIO;
+  const cost = amount * ratio;
+  const fromKey = from.toLowerCase() as keyof EssenceBalance;
+  const toKey = to.toLowerCase() as keyof EssenceBalance;
+
+  if (balance[fromKey] < cost) {
+    return { success: false, newBalance: balance };
+  }
+
+  return {
+    success: true,
+    newBalance: {
+      ...balance,
+      [fromKey]: balance[fromKey] - cost,
+      [toKey]: balance[toKey] + amount,
+    },
+  };
 }
 
 // ============================================================================
@@ -106,6 +173,8 @@ function checkBlockReason(
 
   if (isRestoreRecipe(recipe)) {
     return checkRestoreBlockReason(recipe, item);
+  } else if (isCounterfeitRecipe(recipe)) {
+    return checkCounterfeitBlockReason(recipe, item);
   } else if (isReforgeRecipe(recipe)) {
     return checkReforgeBlockReason(recipe, item, currentDay);
   }
@@ -122,10 +191,9 @@ function checkRestoreBlockReason(
 ): WorkshopBlockReason | null {
   const tags = item.tags || [];
 
-  // S2-F2: 互斥检查 - 已被重铸的物品不能修复
-  if (item.workState === 'REFORGED') {
-    return 'ALREADY_REFORGED';
-  }
+  // 互斥检查 - 已被重铸或伪造的物品不能修复
+  if (item.workState === 'REFORGED') return 'ALREADY_REFORGED';
+  if (item.workState === 'FORGED') return 'ALREADY_FORGED';
 
   // 全面翻新配方：检查物品是否有任何负面标签
   if (recipe.targetAll) {
@@ -152,6 +220,39 @@ function checkRestoreBlockReason(
 }
 
 /**
+ * 检查伪造配方的阻止原因
+ */
+function checkCounterfeitBlockReason(
+  recipe: CounterfeitRecipe,
+  item: Item
+): WorkshopBlockReason | null {
+  // 互斥检查 - 三选一
+  if (item.workState === 'RESTORED') return 'ALREADY_RESTORED';
+  if (item.workState === 'REFORGED') return 'ALREADY_REFORGED';
+  if (item.workState === 'FORGED') return 'ALREADY_FORGED';
+
+  // 检查类别
+  if (recipe.requiredCategories && recipe.requiredCategories.length > 0) {
+    if (!recipe.requiredCategories.includes(item.category)) {
+      return 'WRONG_CATEGORY';
+    }
+  }
+
+  // 检查排除标签
+  if (recipe.excludedTags && recipe.excludedTags.length > 0) {
+    const tags = item.tags || [];
+    if (recipe.excludedTags.some(tag => tags.includes(tag as ItemTag))) {
+      return 'HAS_EXCLUDED';
+    }
+  }
+
+  // 已伪造过
+  if (item.wasForged) return 'ALREADY_FORGED';
+
+  return null;
+}
+
+/**
  * 检查重铸配方的阻止原因
  */
 function checkReforgeBlockReason(
@@ -164,10 +265,9 @@ function checkReforgeBlockReason(
     return 'NOT_UNLOCKED';
   }
 
-  // S2-F2: 互斥检查 - 已被修复的物品不能重铸
-  if (item.workState === 'RESTORED') {
-    return 'ALREADY_RESTORED';
-  }
+  // 互斥检查 - 三选一
+  if (item.workState === 'RESTORED') return 'ALREADY_RESTORED';
+  if (item.workState === 'FORGED') return 'ALREADY_FORGED';
 
   // 检查前置标签
   if (recipe.requiredTags && recipe.requiredTags.length > 0) {
@@ -246,12 +346,49 @@ export function calculateActualCost(recipe: Recipe, item: Item): EssenceCost {
 }
 
 // ============================================================================
-// 违约重铸风险预警 (S2-F3)
+// 违约风险预警
 // ============================================================================
 
 /**
- * 获取违约重铸风险预警
- * 当物品仍在当期(ACTIVE)时，重铸会触发违约
+ * 获取伪造违约风险预警
+ * 当物品仍在当期(ACTIVE)时，伪造属于硬违约
+ */
+export function getCounterfeitViolationWarning(item: Item): ViolationWarning | null {
+  if (item.status !== ItemStatus.ACTIVE) {
+    return null;
+  }
+
+  const principal = item.pawnInfo?.principal || item.pawnAmount;
+  const compensationAmount = Math.ceil(principal * GAME_CONFIG.WORKSHOP.BREACH_COMPENSATION_MULTIPLIER);
+
+  const repConfig = GAME_CONFIG.WORKSHOP.REPUTATION;
+  const texts = getTexts();
+  const vars = { item_name: item.name };
+
+  let intuitionText: string;
+  if (item.relatedChainId) {
+    intuitionText = texts.getWithVars('violation:counterfeit:related', vars)
+      || `这件${item.name}的主人还在等着赎回...你脑海中浮现出他的脸。伪造它，就是彻底的背叛。`;
+  } else {
+    intuitionText = texts.get('violation:counterfeit:generic')
+      || '伪造受托之物...这不是冒险，是预谋。';
+  }
+
+  return {
+    compensationAmount,
+    reputationLoss: {
+      humanity: repConfig.counterfeit_breach_humanity ?? -15,
+      credibility: repConfig.counterfeit_breach_credibility ?? -12,
+      innocence: repConfig.counterfeit_breach_innocence ?? -5,
+    },
+    intuitionText,
+    isActive: true,
+  };
+}
+
+/**
+ * 获取重铸不确定性提示
+ * 当物品仍在当期(ACTIVE)时，重铸归还结果不确定
  */
 export function getViolationWarning(item: Item): ViolationWarning | null {
   if (item.status !== ItemStatus.ACTIVE) {
@@ -259,9 +396,8 @@ export function getViolationWarning(item: Item): ViolationWarning | null {
   }
 
   const principal = item.pawnInfo?.principal || item.pawnAmount;
-  const compensationAmount = Math.ceil(principal * 2);
+  const compensationAmount = Math.ceil(principal * GAME_CONFIG.WORKSHOP.BREACH_COMPENSATION_MULTIPLIER);
 
-  // 商人直觉文本：有故事关联时使用情感化提示
   const texts = getTexts();
   const vars = { item_name: item.name };
   let intuitionText: string;
@@ -273,7 +409,10 @@ export function getViolationWarning(item: Item): ViolationWarning | null {
 
   return {
     compensationAmount,
-    reputationLoss: { humanity: -15, credibility: -10 },
+    reputationLoss: {
+      humanity: GAME_CONFIG.WORKSHOP.BREACH_HUMANITY_LOSS,
+      credibility: GAME_CONFIG.WORKSHOP.BREACH_CREDIBILITY_LOSS,
+    },
     intuitionText,
     isActive: true,
   };
@@ -346,6 +485,67 @@ export function performRestore(
     newValue,
     valueIncrease,
     narrative,
+  };
+
+  return { result, updatedItem, newBalance };
+}
+
+/**
+ * 执行伪造操作
+ *
+ * 伪造流程：
+ * 1. 检查互斥（已 RESTORED/REFORGED/FORGED 不可伪造）
+ * 2. 扣除精魄（以旧影为主 80-90%）
+ * 3. 添加虚假标签（resultTag）
+ * 4. 切换 variant 到 forged_state
+ * 5. 设置 wasForged=true, workState='FORGED'
+ * 6. 生成叙事文本
+ */
+export function performCounterfeit(
+  recipe: CounterfeitRecipe,
+  item: Item,
+  essenceBalance: EssenceBalance,
+  nightState: NightState
+): { result: WorkshopResult; updatedItem: Item; newBalance: EssenceBalance } | null {
+  const status = getRecipeStatus(recipe, item, essenceBalance, nightState);
+  if (!status.canApply) {
+    return null;
+  }
+
+  // 扣除精魄
+  const newBalance = spendEssenceBatch(essenceBalance, status.actualCost);
+  if (!newBalance) return null;
+
+  // 添加虚假标签
+  let updatedItem = addTag(item, recipe.resultTag as ItemTag);
+
+  // 设置伪造状态
+  updatedItem = {
+    ...updatedItem,
+    wasForged: true,
+    workState: 'FORGED' as WorkState,
+  };
+
+  // 计算伪造后价值（使用 valueMultiplier，无折扣）
+  const baseValue = item.baseValue ?? item.realValue;
+  const newValue = Math.round(baseValue * recipe.valueMultiplier);
+  const valueIncrease = newValue - item.realValue;
+
+  // 生成叙事
+  const narrative = generateCounterfeitNarrative(recipe, item);
+
+  const result: WorkshopResult = {
+    success: true,
+    type: 'COUNTERFEIT',
+    recipeId: recipe.id,
+    essenceSpent: status.actualCost,
+    energySpent: recipe.energyCost,
+    addedTags: [recipe.resultTag as ItemTag],
+    newValue,
+    valueIncrease,
+    narrative,
+    isCounterfeit: true,
+    counterfeitValueMultiplier: recipe.valueMultiplier,
   };
 
   return { result, updatedItem, newBalance };
@@ -473,6 +673,8 @@ export function performWorkshop(
 
   if (isRestoreRecipe(recipe)) {
     return performRestore(recipe, item, essenceBalance, nightState);
+  } else if (isCounterfeitRecipe(recipe)) {
+    return performCounterfeit(recipe, item, essenceBalance, nightState);
   } else if (isReforgeRecipe(recipe)) {
     return performReforge(recipe, item, essenceBalance, nightState, currentDay);
   }
@@ -481,7 +683,7 @@ export function performWorkshop(
 }
 
 // ============================================================================
-// 叙事生成 (凝视时刻文本 S2-F5 从 CSV 加载)
+// 叙事生成 (凝视时刻文本从 CSV 加载)
 // ============================================================================
 
 /**
@@ -515,6 +717,32 @@ function generateRestoreNarrative(recipe: RestoreRecipe, item: Item): WorkshopNa
   const gazeText = texts.getRandom('gaze:restore') || '修复完成。';
 
   return { actionText, resultText, gazeText };
+}
+
+/**
+ * 生成伪造操作的叙事（含凝视时刻）
+ */
+function generateCounterfeitNarrative(recipe: CounterfeitRecipe, item: Item): WorkshopNarrative {
+  const texts = getTexts();
+  const vars = { item_name: item.name };
+
+  const tag = recipe.resultTag;
+  const actionText = texts.resolve([`narrative:counterfeit:${tag}:action`, 'narrative:counterfeit:_default:action'], vars)
+    || `你开始为${item.name}伪造历史...`;
+
+  const resultText = texts.resolve([`narrative:counterfeit:${tag}:result`, 'narrative:counterfeit:_default:result'])
+    || '赝品制成。谎言被精心编织在每一道纹路中。';
+
+  // 伪造当期物品的道德提醒
+  let moralNote: string | undefined;
+  if (item.status === ItemStatus.ACTIVE && item.pawnInfo) {
+    moralNote = texts.getWithVars('moral:counterfeit:active', vars)
+      || `...这件物品的主人还在等着赎回。伪造它，意味着彻底的背叛。`;
+  }
+
+  const gazeText = texts.getRandom('gaze:counterfeit') || '赝品在灯光下闪烁，和真品别无二致。';
+
+  return { actionText, resultText, moralNote, gazeText };
 }
 
 /**
@@ -553,14 +781,11 @@ function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item, quality?: R
 }
 
 // ============================================================================
-// 概率系统 (Probabilistic Reforge - 设计文档 8.2节)
+// 概率系统 (Probabilistic Reforge - 设计文档 §5.6)
 // ============================================================================
 
 /**
  * 根据品质分布掷骰，返回最终品质
- *
- * 使用加权随机：遍历 outcomes，累计概率，
- * 当随机值落入某个区间时返回对应品质。
  */
 export function rollQualityOutcome(outcomes: QualityOutcome[]): QualityOutcome {
   const roll = Math.random();
@@ -579,9 +804,6 @@ export function rollQualityOutcome(outcomes: QualityOutcome[]): QualityOutcome {
 
 /**
  * 意外发现：小概率在重铸时发现隐藏属性标签
- *
- * 从物品尚未拥有的属性标签中随机选择一个。
- * 如果物品已拥有所有属性标签，则不触发。
  */
 function rollSurpriseDiscovery(item: Item): SurpriseDiscovery | null {
   const currentTags = item.tags || [];
@@ -679,7 +901,3 @@ export function hasInProgressRecipe(
 ): boolean {
   return inProgressRecipes.some(r => r.itemId === itemId);
 }
-
-/**
- * 获取物品可用的修复配方
- */

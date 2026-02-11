@@ -276,6 +276,7 @@ export type WorkshopBlockReason =
   | 'WRONG_CATEGORY'      // 类别不匹配
   | 'ALREADY_RESTORED'    // 已被修复过
   | 'ALREADY_REFORGED'    // 已被重铸过
+  | 'ALREADY_FORGED'      // 已被伪造过
   | 'ITEM_ACTIVE'         // 物品仍在典当中（所有权冲突）
   | 'ITEM_REDEEMED'       // 物品已被赎回
   | 'ITEM_SOLD'           // 物品已卖出

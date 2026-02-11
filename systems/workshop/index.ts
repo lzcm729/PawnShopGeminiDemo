@@ -33,6 +33,7 @@ export {
 // 配方导出
 export {
   RESTORE_RECIPES,
+  COUNTERFEIT_RECIPES,
   REFORGE_RECIPES,
   ALL_RECIPES,
   getRecipeById,
@@ -43,10 +44,14 @@ export {
   getRecipeStatus,
   calculateActualCost,
   performRestore,
+  performCounterfeit,
   performReforge,
   performWorkshop,
   getBlockReasonText,
   getViolationWarning,
+  getCounterfeitViolationWarning,
+  calculateTagStackMultiplier,
+  convertEssence,
   rollQualityOutcome,
   getQualityDisplayName,
   isMultiNightRecipe,
