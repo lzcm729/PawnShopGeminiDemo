@@ -7,6 +7,8 @@ import type { ItemTag } from '../items/tags';
 import { STATE_TAGS, ATTRIBUTE_TAGS, ESSENCE_TAGS } from '../items/tags';
 import { createItemFromTemplate, getAllItemTemplates, getTraitDefinition, createTraitFromDefinition } from '../items/csvLoader';
 import { generateFillerCustomer, ForcedJumpTrait } from '../npc/fillerGenerator';
+import type { Customer } from '../npc/types';
+import type { Dialogue } from '../narrative/types';
 import { AVAILABLE_UPGRADES, getUpgradeConfig } from '../upgrades/config';
 import type { OwnedUpgrade } from '../upgrades/types';
 
@@ -1551,16 +1553,52 @@ function handleTriggerCommand(
         isCoreItem: false,
       };
 
-      // Append to expiryQueue — will be processed after current customer departs
-      // (DepartureView.handleNext checks expiryQueue and calls processNextExpiryEvent)
-      const existingQueue = state.expiryQueue || [];
-      dispatch({ type: 'SET_EXPIRY_QUEUE', payload: [...existingQueue, expiryEvent] });
+      // Build dialogue and customer for immediate settlement display
+      const redemptionCost = expiryEvent.redemptionCost;
+
+      const dialogue: Dialogue = {
+        greeting: '我来取回我的东西。',
+        pawnReason: '',
+        redemptionPlea: subType === 'redeem' ? '我想赎回这件物品。' : '我想续当这件物品。',
+        negotiationDynamic: '',
+        accepted: { fair: '谢谢。', fleeced: '好吧...', premium: '太感谢了！' },
+        rejected: '算了。',
+        rejectionLines: { standard: '那好吧。', angry: '你这是什么态度！' },
+        exitDialogues: { grateful: '谢谢你。', neutral: '再见。', resentful: '哼。', desperate: '求求你...' },
+      };
+
+      const customer: Customer = {
+        id: crypto.randomUUID(),
+        name: '测试客户',
+        description: '到期结算',
+        avatarSeed: 'debug-expiry',
+        dialogue,
+        redemptionResolve: subType === 'redeem' ? 'Strong' : 'Medium',
+        behaviorTags: ['SAVVY'],
+        patience: 3,
+        mood: 'Neutral',
+        identityTags: ['Settlement'],
+        item: targetItem,
+        desiredAmount: 0,
+        minimumAmount: 0,
+        maxRepayment: redemptionCost.total,
+        interactionType: 'REDEEM',
+        redemptionIntent: subType === 'redeem' ? 'REDEEM' : 'EXTEND',
+        currentWallet: redemptionCost.total + 100,
+        chainId: targetItem.relatedChainId || 'debug_test',
+      };
+
+      // 1. Set expiryQueue (SettlementInterface reads from this)
+      dispatch({ type: 'SET_EXPIRY_QUEUE', payload: [expiryEvent] });
+      // 2. Set customer
+      dispatch({ type: 'SET_CUSTOMER', payload: customer });
+      // 3. Set phase to NEGOTIATION REDEEM (App.tsx checks this to render SettlementInterface)
+      dispatch({ type: 'SET_PHASE', payload: { type: 'NEGOTIATION', mode: 'REDEEM' } });
 
       const label = subType === 'redeem' ? 'Redeem' : 'Renew';
-      const queuePos = existingQueue.length + 1;
       return {
         success: true,
-        message: `Queued expiry event: ${label} (position #${queuePos} in queue)\n  Item: ${targetItem.name} (${targetItem.id})\n  Principal: $${principal}, Interest: $${interest}, Total: $${principal + interest}\n  Will appear after current customer departs.`
+        message: `Triggered expiry settlement: ${label}\n  Item: ${targetItem.name} (${targetItem.id})\n  Principal: $${principal}, Interest: $${interest}, Total: $${redemptionCost.total}\n  Customer and NEGOTIATION/REDEEM phase set directly.`
       };
     }
 
