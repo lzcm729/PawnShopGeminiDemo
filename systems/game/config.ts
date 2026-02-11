@@ -370,6 +370,17 @@ interface TomlRecipeCost {
   failed_multiplier?: number;
 }
 
+interface TomlForgery {
+  base_detection_rate: number;
+  detection_increment: number;
+  detection_cap: number;
+  detected_price_penalty: number;
+  detected_heat_increase: number;
+  detected_credibility_loss: number;
+  innocence_cost_active: number;
+  innocence_cost_sale: number;
+}
+
 interface TomlWorkshop {
   extra_negative_tag_cost_ratio: number;
   high_value_threshold: number;
@@ -380,6 +391,7 @@ interface TomlWorkshop {
   breach_credibility_loss: number;
   breach_innocence_loss: number;
   recipes: Record<string, TomlRecipeCost>;
+  forgery: TomlForgery;
 }
 
 interface TomlMilestoneTrigger {
@@ -815,6 +827,16 @@ export const GAME_CONFIG = {
     BREACH_CREDIBILITY_LOSS: tomlConfig.workshop.breach_credibility_loss,
     BREACH_INNOCENCE_LOSS: tomlConfig.workshop.breach_innocence_loss,
     RECIPES: tomlConfig.workshop.recipes,
+    FORGERY: {
+      BASE_DETECTION_RATE: tomlConfig.workshop.forgery.base_detection_rate,
+      DETECTION_INCREMENT: tomlConfig.workshop.forgery.detection_increment,
+      DETECTION_CAP: tomlConfig.workshop.forgery.detection_cap,
+      DETECTED_PRICE_PENALTY: tomlConfig.workshop.forgery.detected_price_penalty,
+      DETECTED_HEAT_INCREASE: tomlConfig.workshop.forgery.detected_heat_increase,
+      DETECTED_CREDIBILITY_LOSS: tomlConfig.workshop.forgery.detected_credibility_loss,
+      INNOCENCE_COST_ACTIVE: tomlConfig.workshop.forgery.innocence_cost_active,
+      INNOCENCE_COST_SALE: tomlConfig.workshop.forgery.innocence_cost_sale,
+    },
   },
 
   // --- REPUTATION MILESTONES (声誉里程碑) ---

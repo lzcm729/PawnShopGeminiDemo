@@ -7,11 +7,15 @@ export type {
   RecipeType,
   RecipeBase,
   RestoreRecipe,
+  CounterfeitRecipe,
   ReforgeRecipe,
   Recipe,
   ReforgeQuality,
   QualityOutcome,
   SurpriseDiscovery,
+  ForgeryNotorietyStage,
+  ForgeryNotorietyState,
+  ReturnResult,
   InProgressRecipe,
   WorkshopResult,
   WorkshopBlockReason,
@@ -22,6 +26,7 @@ export type {
 
 export {
   isRestoreRecipe,
+  isCounterfeitRecipe,
   isReforgeRecipe,
 } from './types';
 

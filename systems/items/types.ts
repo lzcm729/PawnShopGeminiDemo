@@ -3,7 +3,7 @@ import type { ReforgeQuality } from '../workshop/types';
 export type { ItemTag, ItemVariant, KnowledgePool };
 
 // 物品加工状态（互斥）
-export type WorkState = 'DEFAULT' | 'RESTORED' | 'REFORGED';
+export type WorkState = 'DEFAULT' | 'RESTORED' | 'FORGED' | 'REFORGED';
 
 export enum ItemStatus {
   ACTIVE = 'ACTIVE',       // Formerly PAWNED. In vault, interest accruing.
@@ -80,6 +80,21 @@ export interface PawnInfo {
   extensionCount?: number; // How many times has this been extended?
 }
 
+/**
+ * 交易结算时从 Customer 对象提取的快照，附着到物品上
+ * 用于夜间工作台决策（归还弹窗、商人直觉、概率计算）
+ */
+export interface PawnCustomerSnapshot {
+  customerId: string;            // 查找事件链
+  customerName: string;          // 商人直觉文案
+  behaviorTags: string[];        // 归还概率计算（性格映射）- 使用 string[] 避免循环依赖
+  pawnReason?: string;           // 道德提示文案（典当原因）
+  emotionalWeight: 'unknown' | 'low' | 'mid' | 'high';  // 归还结果矩阵因素1（三档离散值 + unknown默认）
+  insightDepth: 0 | 1 | 2 | 3;  // 白天洞察层数
+  isNarrative: boolean;          // 叙事 vs 填充客户
+  emotionalAttachment?: boolean; // 设计师标记（叙事客户专用）
+}
+
 export interface Item {
   id: string;
   name: string;
@@ -137,6 +152,7 @@ export interface Item {
 
   // --- WORKSHOP FLAGS (工作台系统) ---
   wasRestored?: boolean;         // 是否被修复过
+  wasForged?: boolean;           // 是否被伪造过
   wasReforged?: boolean;         // 是否被重铸过（用于检测所有权冲突）
   workState?: WorkState;         // 加工状态（DEFAULT | RESTORED | REFORGED）
   reforgeQuality?: ReforgeQuality;  // 重铸品质（概率配方的结果）
@@ -154,4 +170,7 @@ export interface Item {
 
   // --- BREACH SALE TRACKING ---
   breachSaleDay?: number;        // Day item was sold as breach (while still ACTIVE)
+
+  // --- CUSTOMER SNAPSHOT (典当时客户快照) ---
+  customerSnapshot?: PawnCustomerSnapshot;  // 典当时的客户快照（工作台决策用）
 }

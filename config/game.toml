@@ -654,6 +654,17 @@ breach_humanity_loss = -15
 breach_credibility_loss = -10
 breach_innocence_loss = -5
 
+# Forgery / Counterfeit parameters
+[workshop.forgery]
+base_detection_rate = 0.15          # 基础鉴伪概率 15%
+detection_increment = 0.03          # 每次伪造出售 +3%
+detection_cap = 0.33                # 鉴伪概率上限 33%
+detected_price_penalty = 0.50       # 被识破后售价系数（原价x0.50）
+detected_heat_increase = 3          # 被识破后热度增加
+detected_credibility_loss = -3      # 被识破后商誉损失
+innocence_cost_active = -3          # 伪造当期物品清白成本
+innocence_cost_sale = -4            # 出售伪造品清白成本
+
 # --- 配方成本数据 (Recipe Costs) ---
 
 # 修复：清洁 (restore_clean)

@@ -58,7 +58,7 @@ export interface SurpriseDiscovery {
 /**
  * 配方类型
  */
-export type RecipeType = 'RESTORE' | 'REFORGE';
+export type RecipeType = 'RESTORE' | 'COUNTERFEIT' | 'REFORGE';
 
 /**
  * 配方基础接口
@@ -142,9 +142,50 @@ export interface ReforgeRecipe extends RecipeBase {
 }
 
 /**
+ * 伪造配方 - 添加虚假标签，切换 variant 到 forged_state
+ * 每件物品仅一个伪造配方，效果由物品属性在数据层预定义
+ */
+export interface CounterfeitRecipe extends RecipeBase {
+  type: 'COUNTERFEIT';
+
+  /** 伪造后添加的标签（如 FAKE_HISTORY, IMPERIAL） */
+  resultTag: string;
+
+  /** 伪造后的物品变体 ID */
+  resultVariant: string;
+
+  /** 伪造价值系数（x2.5~x4.0） */
+  valueMultiplier: number;
+
+  /** 适用物品类别限制 */
+  requiredCategories?: string[];
+
+  /** 排除已有这些标签的物品 */
+  excludedTags?: string[];
+}
+
+/**
  * 所有配方的联合类型
  */
-export type Recipe = RestoreRecipe | ReforgeRecipe;
+export type Recipe = RestoreRecipe | CounterfeitRecipe | ReforgeRecipe;
+
+// ============================================================================
+// 伪造声名系统 (Forgery Notoriety)
+// ============================================================================
+
+/** 伪造声名阶段 */
+export type ForgeryNotorietyStage = 'NOVICE' | 'PRACTITIONER' | 'VETERAN' | 'NOTORIOUS';
+
+/** 伪造声名状态 */
+export interface ForgeryNotorietyState {
+  /** 累计伪造出售次数（不可衰减） */
+  totalCounterfeitSales: number;
+  /** 当前鉴伪概率（15%~33%） */
+  currentDetectionRate: number;
+}
+
+/** 归还结果类型 */
+export type ReturnResult = 'ADMIRATION' | 'ACCEPTANCE' | 'UNEASE' | 'ANGER';
 
 // ============================================================================
 // 多夜工序进度追踪 (Multi-Night Recipe Progress)
@@ -215,6 +256,12 @@ export interface WorkshopResult {
 
   /** 意外发现（小概率触发） */
   surpriseDiscovery?: SurpriseDiscovery;
+
+  /** 是否为伪造操作 */
+  isCounterfeit?: boolean;
+
+  /** 伪造价值系数 */
+  counterfeitValueMultiplier?: number;
 }
 
 /**
@@ -293,7 +340,7 @@ export interface ViolationWarning {
   compensationAmount: number;
 
   /** 声誉损失 */
-  reputationLoss: { humanity: number; credibility: number };
+  reputationLoss: { humanity: number; credibility: number; innocence?: number };
 
   /** 商人直觉文本 */
   intuitionText: string;
@@ -308,6 +355,10 @@ export interface ViolationWarning {
 
 export function isRestoreRecipe(recipe: Recipe): recipe is RestoreRecipe {
   return recipe.type === 'RESTORE';
+}
+
+export function isCounterfeitRecipe(recipe: Recipe): recipe is CounterfeitRecipe {
+  return recipe.type === 'COUNTERFEIT';
 }
 
 export function isReforgeRecipe(recipe: Recipe): recipe is ReforgeRecipe {
