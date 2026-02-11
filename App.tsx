@@ -134,7 +134,7 @@ const GameContent: React.FC = () => {
   // It will call MARK_NO_MORE_CUSTOMERS when done
   useEffect(() => {
     const isBusiness = PhaseIs.business(state.phase);
-    const isIdle = !state.isLoading && !state.currentCustomer;
+    const isIdle = !state.isLoading && !state.currentCustomer && !state.currentItemDerivedEvent;
     // Effective max = max(4, narrativeServed) to allow all narrative customers
     const narrativeServed = state.narrativeCustomersServedToday;
     const effectiveMax = Math.max(state.maxCustomersPerDay, narrativeServed);
@@ -144,7 +144,7 @@ const GameContent: React.FC = () => {
       setLoadingText("Someone is approaching the counter...");
       generateDailyEvent();
     }
-  }, [state.phase, state.isLoading, state.currentCustomer, state.customersServedToday, state.narrativeCustomersServedToday, state.maxCustomersPerDay, generateDailyEvent]);
+  }, [state.phase, state.isLoading, state.currentCustomer, state.currentItemDerivedEvent, state.customersServedToday, state.narrativeCustomersServedToday, state.maxCustomersPerDay, generateDailyEvent]);
 
   // Sync Customer Status
   useEffect(() => {
