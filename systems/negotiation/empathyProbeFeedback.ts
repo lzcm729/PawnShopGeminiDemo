@@ -117,9 +117,11 @@ export function getProbeFeedback(
 
 /**
  * Get localized label for a concession tier.
+ * Returns empty string if tier is null (offer >= ask price, direct acceptance).
  * Falls back to English placeholder if CSV not loaded.
  */
 export function getConcessionTierLabel(tier: ConcessionTier): string {
+  if (tier === null) return ''; // No concession tier needed when offer >= ask price
   const registry = getRegistry();
   const key = `PROBE:concession_tier:${tier}`;
   return registry.get(key) || `[CONCESSION_${tier.toUpperCase()}]`;

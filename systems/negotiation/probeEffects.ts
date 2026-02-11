@@ -17,8 +17,8 @@ import { BehaviorTag } from '../../types';
 // Types
 // ============================================================================
 
-/** Concession probability tier */
-export type ConcessionTier = 'low' | 'medium' | 'high';
+/** Concession probability tier (null when offer >= ask, as NPC will directly accept) */
+export type ConcessionTier = 'low' | 'medium' | 'high' | null;
 
 /** Complete probe reveal result */
 export interface ProbeRevealResult {
@@ -37,12 +37,17 @@ export interface ProbeRevealResult {
 /**
  * Determine the concession probability tier from a raw chance value.
  *
+ * Returns null if concessionChance is null (indicating offer >= ask price).
+ *
  * Tiers (configurable via game.toml):
  * - low:    chance < concession_tier_low (default 20%)
  * - medium: concession_tier_low <= chance < concession_tier_high (default 20%-40%)
  * - high:   chance >= concession_tier_high (default 40%)
+ * - null:   when offer >= ask price (NPC will directly accept, no concession needed)
  */
-export function getConcessionTier(concessionChance: number): ConcessionTier {
+export function getConcessionTier(concessionChance: number | null): ConcessionTier {
+  if (concessionChance === null) return null;
+
   const { CONCESSION_TIER_LOW, CONCESSION_TIER_HIGH } = GAME_CONFIG.NEGOTIATION.PROBE;
 
   if (concessionChance < CONCESSION_TIER_LOW) return 'low';

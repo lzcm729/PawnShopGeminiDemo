@@ -603,8 +603,15 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
   }, []);
 
   // B-10: Compute concession probability tier for skill-gated display
+  // When offer >= ask price, NPC will directly accept (no concession tier needed), return null
   const concessionTier = useMemo((): ConcessionTier => {
     if (!customer) return 'low';
+
+    // If offer >= currentAskPrice, NPC will accept directly - no concession tier
+    if (offerPrincipal >= currentAskPrice) {
+      return null;
+    }
+
     const chance = queryConcessionChance(
       customer.behaviorTags,
       offerPrincipal,
@@ -614,7 +621,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       insightConcessionModifier
     );
     return getConcessionTier(chance);
-  }, [customer, offerPrincipal, persistCount, npcConcessionCount, insightConcessionModifier]);
+  }, [customer, offerPrincipal, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier]);
 
   // #34: Generate insight-aware NPC response text when insight is active
   const insightAwareText = useMemo((): string | null => {
