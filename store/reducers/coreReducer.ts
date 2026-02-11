@@ -68,6 +68,7 @@ function extractCustomerSnapshot(customer: Customer | null, isNarrative: boolean
     return {
         customerId: customer.id,
         customerName: customer.name,
+        portraitUrl: customer.portraits?.neutral,
         behaviorTags: customer.behaviorTags as string[],
         pawnReason: customer.item?.historySnippet,
         emotionalWeight: 'unknown',

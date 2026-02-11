@@ -28,6 +28,7 @@ import {
     ChevronDown,
     ChevronUp,
     HelpCircle,
+    User,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getDisplayName, getItemTagsDisplay, getHiddenTagCount } from '../../systems/items/tagUtils';
@@ -380,6 +381,29 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                                 </span>
                             )}
                         </div>
+
+                        {/* Pawner Info */}
+                        {item.customerSnapshot && (
+                            <div className="mt-2 pt-2 border-t border-noir-400/50 flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full border border-noir-400 overflow-hidden shrink-0 bg-noir-300">
+                                    {item.customerSnapshot.portraitUrl ? (
+                                        <img
+                                            src={item.customerSnapshot.portraitUrl}
+                                            alt={item.customerSnapshot.customerName}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).style.display = 'none';
+                                            }}
+                                        />
+                                    ) : (
+                                        <User className="w-3 h-3 m-1.5 text-noir-txt-muted" />
+                                    )}
+                                </div>
+                                <span className="text-xs text-noir-txt-secondary">{item.customerSnapshot.customerName}</span>
+                                <span className="text-[10px] text-noir-txt-muted">·</span>
+                                <span className="text-[10px] text-noir-txt-muted font-mono uppercase">ID: {item.customerSnapshot.customerId.replace(/^filler_/, '').slice(0, 8)}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 

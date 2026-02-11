@@ -87,6 +87,7 @@ export interface PawnInfo {
 export interface PawnCustomerSnapshot {
   customerId: string;            // 查找事件链
   customerName: string;          // 商人直觉文案
+  portraitUrl?: string;          // 中性头像URL（用于详情页显示）
   behaviorTags: string[];        // 归还概率计算（性格映射）- 使用 string[] 避免循环依赖
   pawnReason?: string;           // 道德提示文案（典当原因）
   emotionalWeight: 'unknown' | 'low' | 'mid' | 'high';  // 归还结果矩阵因素1（三档离散值 + unknown默认）

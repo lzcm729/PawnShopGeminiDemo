@@ -46,6 +46,9 @@ const getItemVisualFilter = (item: Item, currentDay: number): string => {
 
 // Design doc E: Derive NPC portrait from relatedChainId
 const getNpcAvatarUrl = (item: Item): string | null => {
+    // Prefer snapshot portrait (captured at transaction time, always correct)
+    if (item.customerSnapshot?.portraitUrl) return item.customerSnapshot.portraitUrl;
+    // Fall back to deriving from relatedChainId (old saves without snapshot)
     if (!item.relatedChainId) return null;
     const charId = item.relatedChainId.replace(/^chain_/, '');
     return getCharacterPortraitPath(charId, 'neutral');
@@ -53,9 +56,11 @@ const getNpcAvatarUrl = (item: Item): string | null => {
 
 // S3-C3: NPC badge tooltip text - derive readable name from chain ID
 const getNpcBadgeTooltip = (item: Item): string => {
+    if (item.customerSnapshot?.customerName) {
+        return `${item.customerSnapshot.customerName} 的物品`;
+    }
     if (!item.relatedChainId) return '';
     const charId = item.relatedChainId.replace(/^chain_/, '');
-    // Capitalize first letter for display
     const displayName = charId.charAt(0).toUpperCase() + charId.slice(1);
     return `${displayName} 的物品`;
 };
