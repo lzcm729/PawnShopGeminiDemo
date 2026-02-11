@@ -707,7 +707,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               id: `probe-${Date.now()}`,
               sender: 'player' as const,
               text: `[试探] ${feedback.text}`,
-              subtext: `$${reveal.floorRange.low}-$${reveal.floorRange.high} | ${tierLabel}`,
+              subtext: `底价 $${reveal.floorPrice} | ${tierLabel}`,
               sentiment: 'positive' as const,
               type: 'INNER_MONOLOGUE' as const,
           }]);

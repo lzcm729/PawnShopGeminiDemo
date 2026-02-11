@@ -3,9 +3,8 @@
  *
  * When probe correctly matches customer disposition (bluffing/firm),
  * reveals:
- * 1. Floor price fuzzy range (minimumAmount +/-15%)
+ * 1. Exact floor price (minimumAmount)
  * 2. Concession probability tier (low/medium/high)
- * 3. Midpoint shortcut for quick-offer button
  *
  * All threshold values loaded from game.toml via GAME_CONFIG.
  */
@@ -18,49 +17,17 @@ import { BehaviorTag } from '../../types';
 // Types
 // ============================================================================
 
-/** Fuzzy floor price range revealed by successful probe */
-export interface FloorRange {
-  /** Lower bound of the revealed range */
-  low: number;
-  /** Upper bound of the revealed range */
-  high: number;
-  /** Midpoint (used for the quick-offer shortcut button) */
-  midpoint: number;
-}
-
 /** Concession probability tier */
 export type ConcessionTier = 'low' | 'medium' | 'high';
 
 /** Complete probe reveal result */
 export interface ProbeRevealResult {
-  /** Fuzzy floor price range */
-  floorRange: FloorRange;
+  /** Exact floor price revealed by probe */
+  floorPrice: number;
   /** Concession probability tier */
   concessionTier: ConcessionTier;
   /** Raw concession chance (for debug/logging) */
   concessionChance: number;
-}
-
-// ============================================================================
-// Floor Range Calculation
-// ============================================================================
-
-/**
- * Calculate the fuzzy floor price range revealed by a successful probe.
- *
- * The range is minimumAmount +/- floor_range_percent (default 15%).
- * Values are clamped to be non-negative and the low bound is floored,
- * high bound is ceiled for integer currency.
- */
-export function calculateFloorRange(minimumAmount: number): FloorRange {
-  const rangePercent = GAME_CONFIG.NEGOTIATION.PROBE.FLOOR_RANGE_PERCENT;
-  const offset = minimumAmount * rangePercent;
-
-  const low = Math.max(0, Math.floor(minimumAmount - offset));
-  const high = Math.ceil(minimumAmount + offset);
-  const midpoint = Math.round((low + high) / 2);
-
-  return { low, high, midpoint };
 }
 
 // ============================================================================
@@ -145,7 +112,7 @@ export function queryConcessionChance(
  * @param persistCount Consecutive persist count
  * @param concessionCount NPC concession count so far
  * @param insightConcessionModifier Optional insight modifier
- * @returns ProbeRevealResult with floor range and concession tier
+ * @returns ProbeRevealResult with exact floor price and concession tier
  */
 export function generateProbeReveal(
   minimumAmount: number,
@@ -155,8 +122,6 @@ export function generateProbeReveal(
   concessionCount: number,
   insightConcessionModifier: number = 0
 ): ProbeRevealResult {
-  const floorRange = calculateFloorRange(minimumAmount);
-
   const concessionChance = queryConcessionChance(
     behaviorTags,
     currentOffer,
@@ -169,7 +134,7 @@ export function generateProbeReveal(
   const concessionTier = getConcessionTier(concessionChance);
 
   return {
-    floorRange,
+    floorPrice: minimumAmount,
     concessionTier,
     concessionChance,
   };

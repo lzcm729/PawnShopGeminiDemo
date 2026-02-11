@@ -179,17 +179,6 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
         setOfferPrincipal(Math.min(estimatedValue, cashAvailable));
     };
 
-    const handleQuickFloor = () => {
-        playSfx('CLICK');
-        setOfferPrincipal(Math.min(currentCustomer.minimumAmount, cashAvailable));
-    };
-
-    const handleProbeFloor = () => {
-        if (!probeReveal) return;
-        playSfx('CLICK');
-        setOfferPrincipal(Math.min(probeReveal.floorRange.midpoint, cashAvailable));
-    };
-
     const getTierColor = (tier: ConcessionTier): string => {
         if (tier === 'low') return 'text-red-400';
         if (tier === 'medium') return 'text-amber-400';
@@ -465,10 +454,15 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                           </button>
 
                           {(() => {
-                              const floorRevealed = revealedMinimum || debugRevealFloor;
+                              const floorRevealed = revealedMinimum || debugRevealFloor || !!probeReveal;
+                              const floorPrice = probeReveal?.floorPrice ?? currentCustomer.minimumAmount;
+                              const handleFloorClick = () => {
+                                  playSfx('CLICK');
+                                  setOfferPrincipal(Math.min(floorPrice, cashAvailable));
+                              };
                               return (
                                   <button
-                                      onClick={floorRevealed ? handleQuickFloor : undefined}
+                                      onClick={floorRevealed ? handleFloorClick : undefined}
                                       disabled={!floorRevealed || !canInteract}
                                       className={cn(
                                           "flex-1 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all flex items-center justify-center gap-1",
@@ -478,25 +472,38 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                                       )}
                                   >
                                       {!floorRevealed && <Lock className="w-2.5 h-2.5" />}
+                                      {floorRevealed && probeReveal && <Crosshair className="w-2.5 h-2.5" />}
                                       <span className={cn("text-[9px]", floorRevealed ? "text-red-500/70" : "text-stone-600")}>已知底价</span>
-                                      <span>{floorRevealed ? `$${currentCustomer.minimumAmount}` : '???'}</span>
+                                      <span>{floorRevealed ? `$${floorPrice}` : '???'}</span>
                                   </button>
                               );
                           })()}
-
-                          {/* Probe Floor Shortcut - appears after successful probe */}
-                          {probeReveal && (
-                              <button
-                                  onClick={handleProbeFloor}
-                                  disabled={!canInteract}
-                                  className="flex-1 bg-cyan-950/30 hover:bg-cyan-900/40 text-cyan-400 hover:text-cyan-300 border border-cyan-900/50 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1 animate-in fade-in slide-in-from-right-2 duration-300"
-                              >
-                                  <Crosshair className="w-2.5 h-2.5" />
-                                  <span className="text-cyan-500/70 text-[9px]">${probeReveal.floorRange.low}-{probeReveal.floorRange.high}</span>
-                                  <span>${probeReveal.floorRange.midpoint}</span>
-                              </button>
-                          )}
                        </div>
+
+                       {/* Negotiation Range Indicator - shows floor-to-ask spread when floor is known */}
+                       {(() => {
+                           const floorKnown = revealedMinimum || debugRevealFloor || !!probeReveal;
+                           if (!floorKnown) return null;
+                           const floorPrice = probeReveal?.floorPrice ?? currentCustomer.minimumAmount;
+                           const spread = currentAskPrice - floorPrice;
+                           if (spread <= 0) return null;
+                           const offerPercent = Math.max(0, Math.min(100,
+                               ((offerPrincipal - floorPrice) / spread) * 100
+                           ));
+                           return (
+                               <div className="flex items-center text-[10px] font-mono text-noir-txt-muted h-6 animate-in fade-in duration-300">
+                                   <span className="text-red-400/80 whitespace-nowrap">底线 ${floorPrice}</span>
+                                   <div className="relative flex-1 h-1.5 bg-stone-800 rounded-full mx-2">
+                                       {/* Offer position marker */}
+                                       <div
+                                           className="absolute h-3.5 w-1 bg-amber-500 -top-[4px] rounded-sm shadow-[0_0_4px_rgba(245,158,11,0.5)] transition-all duration-200"
+                                           style={{ left: `${offerPercent}%` }}
+                                       />
+                                   </div>
+                                   <span className="text-stone-500 whitespace-nowrap">要价 ${currentAskPrice}</span>
+                               </div>
+                           );
+                       })()}
 
                        {/* Probe: Live Concession Tier Indicator */}
                        {probeReveal && liveConcessionTier && (

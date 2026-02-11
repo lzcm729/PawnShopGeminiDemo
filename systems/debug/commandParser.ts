@@ -120,6 +120,8 @@ export function executeCommand(
   spawn filler bargain  - Spawn filler with JACKPOT trait for 捡漏 testing
   spawn filler stolen   - Spawn filler with stolen item for 赃物 testing
   trigger police [itemId] - Trigger police investigation on a stolen item
+  trigger holding <owner|thief> [itemId] - Trigger holding period event (auto-creates item if needed)
+  trigger expiry <redeem|renew> [itemId] - Trigger expiry settlement event (auto-creates item if needed)
   blackmarket lock <n>  - Lock blackmarket for N days
   blackmarket unlock    - Unlock blackmarket
   blackmarket refresh   - Force refresh daily purchase requests
@@ -1318,6 +1320,59 @@ function handleSpawnCommand(
 }
 
 /**
+ * Create a minimal test pawn item for debug trigger commands.
+ * Used when no itemId is provided and no suitable item exists in inventory.
+ */
+function createTestPawnItem(currentDay: number): Item {
+  const itemId = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const testValue = 1000;
+  const dueDate = currentDay + 7;
+
+  const pawnInfo: PawnInfo = {
+    principal: testValue,
+    interestRate: 0.10,
+    startDate: currentDay,
+    termDays: 7,
+    dueDate: dueDate,
+    valuation: testValue,
+    extensionCount: 0,
+  };
+
+  return {
+    id: itemId,
+    name: '测试手表',
+    category: '钟表',
+    condition: '良好',
+    visualDescription: '一只用于测试的手表。',
+    historySnippet: '测试用途。',
+    appraisalNote: '测试物品。',
+    archiveSummary: '测试物品。',
+    isStolen: false,
+    isFake: false,
+    sentimentalValue: false,
+    appraised: true,
+    pawnDate: currentDay,
+    status: ItemStatus.ACTIVE,
+    pawnAmount: testValue,
+    pawnInfo: pawnInfo,
+    realValue: testValue,
+    perceivedValue: testValue,
+    uncertainty: 0,
+    currentRange: [testValue, testValue],
+    initialRange: [testValue, testValue],
+    hiddenTraits: [],
+    revealedTraits: [],
+    usedTraitIds: [],
+    logs: [{
+      id: `log-${Date.now()}`,
+      day: currentDay,
+      content: '[DevConsole] Auto-created test item for trigger command',
+      type: 'ENTRY',
+    }],
+  };
+}
+
+/**
  * Handle 'trigger' command - manually trigger events for testing
  */
 function handleTriggerCommand(
@@ -1326,7 +1381,12 @@ function handleTriggerCommand(
   getState: () => any
 ): CommandResult {
   if (args.length < 1) {
-    return { success: false, message: 'Usage: trigger <event> [args]\n  trigger police [itemId] - Trigger police investigation on a stolen item' };
+    return { success: false, message: `Usage: trigger <event> [args]
+  trigger police [itemId]          - Trigger police investigation on a stolen item
+  trigger holding owner [itemId]   - Trigger original owner claim event
+  trigger holding thief [itemId]   - Trigger thief confession event
+  trigger expiry redeem [itemId]   - Trigger expiry redeem event
+  trigger expiry renew [itemId]    - Trigger expiry renew event` };
   }
 
   const eventType = args[0].toLowerCase();
@@ -1373,8 +1433,135 @@ function handleTriggerCommand(
       };
     }
 
+    case 'holding': {
+      // trigger holding owner [itemId] | trigger holding thief [itemId]
+      const subType = args[1]?.toLowerCase();
+      if (subType !== 'owner' && subType !== 'thief') {
+        return { success: false, message: 'Usage: trigger holding <owner|thief> [itemId]' };
+      }
+
+      const holdingEventType = subType === 'owner' ? 'ORIGINAL_OWNER' : 'THIEF_REGRET';
+      const providedItemId = args[2];
+
+      let targetItemId: string;
+      let targetItemName: string;
+
+      if (providedItemId) {
+        // Find the item in inventory
+        const item = state.inventory.find((i: Item) => i.id === providedItemId);
+        if (!item) {
+          return { success: false, message: `Item not found: ${providedItemId}` };
+        }
+        targetItemId = item.id;
+        targetItemName = item.name;
+      } else {
+        // Try to find an existing ACTIVE item
+        const activeItem = state.inventory.find((i: Item) => i.status === ItemStatus.ACTIVE);
+        if (activeItem) {
+          targetItemId = activeItem.id;
+          targetItemName = activeItem.name;
+        } else {
+          // Auto-create a test item
+          const testItem = createTestPawnItem(state.stats.day);
+          const newState = {
+            ...state,
+            inventory: [...state.inventory, testItem]
+          };
+          dispatch({ type: 'LOAD_GAME', payload: newState });
+          targetItemId = testItem.id;
+          targetItemName = testItem.name;
+        }
+      }
+
+      dispatch({
+        type: 'TRIGGER_HOLDING_PERIOD_EVENT',
+        payload: {
+          type: holdingEventType,
+          itemId: targetItemId,
+          itemName: targetItemName,
+        }
+      });
+
+      const label = subType === 'owner' ? 'Original Owner Claim' : 'Thief Confession';
+      return {
+        success: true,
+        message: `Triggered holding period event: ${label}\n  Item: ${targetItemName} (${targetItemId})`
+      };
+    }
+
+    case 'expiry': {
+      // trigger expiry redeem [itemId] | trigger expiry renew [itemId]
+      const subType = args[1]?.toLowerCase();
+      if (subType !== 'redeem' && subType !== 'renew') {
+        return { success: false, message: 'Usage: trigger expiry <redeem|renew> [itemId]' };
+      }
+
+      const expiryBehavior = subType === 'redeem' ? 'REDEEM' : 'RENEW';
+      const providedItemId = args[2];
+
+      let targetItem: Item;
+
+      if (providedItemId) {
+        const item = state.inventory.find((i: Item) => i.id === providedItemId);
+        if (!item) {
+          return { success: false, message: `Item not found: ${providedItemId}` };
+        }
+        targetItem = item;
+      } else {
+        // Try to find an existing ACTIVE item with pawnInfo
+        const activeItem = state.inventory.find((i: Item) => i.status === ItemStatus.ACTIVE && i.pawnInfo);
+        if (activeItem) {
+          targetItem = activeItem;
+        } else {
+          // Auto-create a test item
+          const testItem = createTestPawnItem(state.stats.day);
+          const newState = {
+            ...state,
+            inventory: [...state.inventory, testItem]
+          };
+          dispatch({ type: 'LOAD_GAME', payload: newState });
+          targetItem = testItem;
+        }
+      }
+
+      // Build ExpiryEvent from item data
+      const pawnInfo = targetItem.pawnInfo;
+      const principal = pawnInfo?.principal ?? targetItem.pawnAmount ?? 1000;
+      const interestRate = pawnInfo?.interestRate ?? 0.10;
+      const interest = Math.ceil(principal * interestRate);
+      const valuation = pawnInfo?.valuation ?? targetItem.perceivedValue ?? principal;
+      const dueDate = pawnInfo?.dueDate ?? state.stats.day;
+
+      const expiryEvent = {
+        type: 'EXPIRY_CHECK' as const,
+        chainId: targetItem.relatedChainId || 'debug_test',
+        npcName: '测试客户',
+        itemId: targetItem.id,
+        itemName: targetItem.name,
+        behavior: expiryBehavior as 'REDEEM' | 'RENEW',
+        redemptionCost: {
+          principal,
+          interest,
+          total: principal + interest,
+        },
+        valuation,
+        interestRate,
+        realValue: targetItem.realValue ?? valuation,
+        dueDate,
+        isCoreItem: false,
+      };
+
+      dispatch({ type: 'TRIGGER_EXPIRY_EVENT', payload: expiryEvent });
+
+      const label = subType === 'redeem' ? 'Redeem' : 'Renew';
+      return {
+        success: true,
+        message: `Triggered expiry event: ${label}\n  Item: ${targetItem.name} (${targetItem.id})\n  Principal: $${principal}, Interest: $${interest}, Total: $${principal + interest}`
+      };
+    }
+
     default:
-      return { success: false, message: `Unknown event type: ${eventType}. Available: police` };
+      return { success: false, message: `Unknown event type: ${eventType}. Available: police, holding, expiry` };
   }
 }
 
@@ -1574,6 +1761,18 @@ export function getAvailableCommands(): CommandDef[] {
       examples: [`trigger police`, `trigger police item-12345`]
     },
     {
+      command: 'trigger holding',
+      description: 'Trigger holding period event (original owner claim or thief confession). Auto-creates test item if no itemId provided and no ACTIVE item exists.',
+      usage: 'trigger holding <owner|thief> [itemId]',
+      examples: [`trigger holding owner`, `trigger holding thief`, `trigger holding owner item-12345`]
+    },
+    {
+      command: 'trigger expiry',
+      description: 'Trigger expiry settlement event (redeem or renew). Auto-creates test item if no itemId provided and no ACTIVE item exists.',
+      usage: 'trigger expiry <redeem|renew> [itemId]',
+      examples: [`trigger expiry redeem`, `trigger expiry renew`, `trigger expiry redeem item-12345`]
+    },
+    {
       command: 'test dsl',
       description: 'Validate loaded DSL story files',
       usage: 'test dsl [story]',
@@ -1626,7 +1825,10 @@ export function getCommandOptions(): Record<string, string[]> {
     workStates: ['DEFAULT', 'RESTORED', 'REFORGED'],
     templateIds: templates.map(t => t.id),
     billStatuses: ['PAID', 'PENDING', 'OVERDUE'],
-    upgradeIds: AVAILABLE_UPGRADES.map(u => u.id)
+    upgradeIds: AVAILABLE_UPGRADES.map(u => u.id),
+    triggerEvents: ['police', 'holding', 'expiry'],
+    holdingTypes: ['owner', 'thief'],
+    expiryTypes: ['redeem', 'renew']
   };
 }
 
