@@ -1976,8 +1976,13 @@ export const useGameEngine = () => {
           const storyEvent = ALL_STORY_EVENTS.find(e => e.id === event.storyEventId);
           if (storyEvent) {
               if (choiceId === 'accept' && storyEvent.outcomes) {
-                  // Use 'accept' outcome key, or fall back to onComplete
-                  const acceptEffects = storyEvent.outcomes['accept'] || storyEvent.onComplete;
+                  // DSL outcomes use deal-tier keys (deal_standard, deal_charity, etc.), not 'accept'
+                  const acceptEffects = storyEvent.outcomes['accept']
+                      || storyEvent.outcomes['deal_standard']
+                      || storyEvent.outcomes['deal_charity']
+                      || storyEvent.outcomes['deal_aid']
+                      || storyEvent.outcomes['deal_shark']
+                      || storyEvent.onComplete;
                   if (acceptEffects) applyChainEffects(event.chainId, acceptEffects);
               } else if (choiceId === 'refuse') {
                   if (storyEvent.onReject) {
