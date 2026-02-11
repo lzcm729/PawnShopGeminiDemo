@@ -58,8 +58,11 @@ export const TRANSITIONS: TransitionRule[] = [
         from: (p) => p.type === 'DAY_START' && p.subphase === 'EXPIRY_CHECK',
         event: 'EXPIRY_CHECK_DONE',
         guard: (_, e) => (e as { hasExpiry: boolean }).hasExpiry === true,
-        to: () => ({ type: 'DAY_START', subphase: 'EXPIRY_SETTLEMENT' }),
-        effects: [actions.createExpiryCustomer]
+        // Route expiry settlement through NEGOTIATION.REDEEM so the existing
+        // SettlementInterface rendering path handles it (isNegotiating && interactionType === 'REDEEM').
+        // Customer creation is handled by useGameEngine.startNewDay() before this event is sent.
+        to: () => ({ type: 'NEGOTIATION', mode: 'REDEEM' }),
+        effects: [actions.resetDailyCounters]
     },
     {
         from: (p) => p.type === 'DAY_START' && p.subphase === 'EXPIRY_CHECK',
@@ -70,6 +73,7 @@ export const TRANSITIONS: TransitionRule[] = [
     },
 
     // ========== DAY_START: EXPIRY_SETTLEMENT ==========
+    // (Kept for backward compatibility but now primarily routed through NEGOTIATION.REDEEM)
     {
         from: (p) => p.type === 'DAY_START' && p.subphase === 'EXPIRY_SETTLEMENT',
         event: 'SETTLEMENT_COMPLETE',
@@ -81,8 +85,10 @@ export const TRANSITIONS: TransitionRule[] = [
         from: (p) => p.type === 'DEPARTURE',
         event: 'DISMISS',
         guard: (state) => state.expiryQueue.length > 1,
-        to: () => ({ type: 'DAY_START', subphase: 'EXPIRY_SETTLEMENT' }),
-        effects: [actions.popExpiryQueue, actions.createExpiryCustomer]
+        // Loop back to NEGOTIATION.REDEEM for next expiry event.
+        // Customer creation is handled by processNextExpiryEvent() in useGameEngine.
+        to: () => ({ type: 'NEGOTIATION', mode: 'REDEEM' }),
+        effects: [actions.popExpiryQueue]
     },
     {
         from: (p) => p.type === 'DEPARTURE',

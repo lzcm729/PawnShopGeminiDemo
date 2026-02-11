@@ -948,6 +948,8 @@ export const useGameEngine = () => {
             const customer = createExpiryCustomer(normalEvents[0]);
             if (customer) {
                 dispatch({ type: 'SET_CUSTOMER', payload: customer });
+                // Transition state machine: DAY_START.EXPIRY_CHECK -> NEGOTIATION.REDEEM
+                send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: true });
             } else {
                 // No valid customer created, signal expiry check done with no expiry
                 send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: false });
@@ -967,24 +969,28 @@ export const useGameEngine = () => {
     send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: false });
   };
 
-  // Process next expiry event in queue or continue to normal day
+  // Process next expiry event in queue or continue to normal day.
+  // Called from DepartureView after DISMISS; the state machine DISMISS transition
+  // already handles phase changes (DEPARTURE -> NEGOTIATION.REDEEM if more events,
+  // or DEPARTURE -> BUSINESS.IDLE if done), so this function only manages
+  // customer creation and queue cleanup.
   const processNextExpiryEvent = () => {
       const queue = state.expiryQueue;
       if (queue.length > 1) {
-          // More events to process
+          // More events to process - create customer for next event.
+          // The DISMISS transition already popped the queue and moved to NEGOTIATION.REDEEM.
           const remaining = queue.slice(1);
           dispatch({ type: 'SET_EXPIRY_QUEUE', payload: remaining });
           const customer = createExpiryCustomer(remaining[0]);
           if (customer) {
               dispatch({ type: 'SET_CUSTOMER', payload: customer });
-          } else {
-              // No valid customer, signal expiry check done
-              send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: false });
           }
+          // If no valid customer, the state machine is already in NEGOTIATION.REDEEM
+          // but with no customer - the UI will show an error state from SettlementInterface.
       } else {
-          // All expiry events handled, continue to normal day via state machine
+          // All expiry events handled. The DISMISS transition already moved to BUSINESS.IDLE
+          // and cleared the queue via clearExpiryQueue + clearCustomer effects.
           dispatch({ type: 'SET_EXPIRY_QUEUE', payload: [] });
-          send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: false });
       }
   };
 
