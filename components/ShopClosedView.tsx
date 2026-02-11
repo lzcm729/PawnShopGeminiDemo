@@ -367,8 +367,10 @@ export const DepartureView: React.FC = () => {
                   <div className="flex items-center justify-between gap-4">
                       {/* Cash */}
                       <div className="flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-red-500" />
-                          <span className="text-red-500 font-mono font-bold">${Math.abs(lastDealSummary.cashDelta)}</span>
+                          <DollarSign className={cn("w-4 h-4", lastDealSummary.cashDelta >= 0 ? "text-green-500" : "text-red-500")} />
+                          <span className={cn("font-mono font-bold", lastDealSummary.cashDelta >= 0 ? "text-green-500" : "text-red-500")}>
+                              {lastDealSummary.cashDelta >= 0 ? '+' : '-'}${Math.abs(lastDealSummary.cashDelta)}
+                          </span>
                       </div>
 
                       {/* Reputation Changes */}
