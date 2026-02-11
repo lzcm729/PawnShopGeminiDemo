@@ -22,7 +22,7 @@ weekly_medical_cost = 1000
 bill_cycle = 7
 
 # 每日基础运营成本（每日扣除，设施维护费自动叠加）
-daily_expenses = 0
+daily_expenses = 50
 
 # 店铺周租（当前禁用：游戏聚焦于医药费压力）
 weekly_rent = 0
@@ -123,15 +123,15 @@ gewu_lv3_energy_max = 5
 # ------------------------------------------------------------
 [pawn_business]
 # 续当拒绝惩罚 (Renewal Refusal Penalties)
-# 按续约次数递增: -2/-4/-6/-8
-renewal_refusal_penalty_0 = -2      # 第1次拒绝 人情-2
-renewal_refusal_penalty_1 = -4      # 第2次拒绝 人情-4
-renewal_refusal_penalty_2 = -6      # 第3次拒绝 人情-6
-renewal_refusal_penalty_3_plus = -8 # 第4次及以上拒绝 人情-8
+# 按续约次数递增: -10/-15/-20/-25
+renewal_refusal_penalty_0 = -10     # 第1次拒绝 人情-10
+renewal_refusal_penalty_1 = -15     # 第2次拒绝 人情-15
+renewal_refusal_penalty_2 = -20     # 第3次拒绝 人情-20
+renewal_refusal_penalty_3_plus = -25 # 第4次及以上拒绝 人情-25
 # 续当拒绝时商誉奖励
 renewal_refusal_credibility = 1     # 固定商誉奖励
-# 续当接受声誉变化 (设计文档: 宽容加分但较小, 延期合同略微损害商誉)
-renewal_accept_humanity = 1         # 续当接受 +1 人情
+# 续当接受声誉变化 (设计文档: +5 人情)
+renewal_accept_humanity = 5         # 续当接受 +5 人情
 renewal_accept_credibility = 0      # 续当接受不影响商誉
 # 拒绝取消典当的声誉惩罚 (#23: 客户请求取消但被拒)
 refuse_cancel_humanity = -5         # 拒绝取消 -5 人情
@@ -323,12 +323,12 @@ precision_bm_purchase_worst = 0.85
 # ------------------------------------------------------------
 [reputation_deltas]
 # 慈善档(0%)
-charity_generous_humanity = 2         # 大额慈善 +人情
-charity_normal_humanity = 1           # 普通慈善 +人情
-# 援助档(5%)
-aid_credibility = 1                   # 援助 +商誉
-aid_extra_credibility = 1             # 援助额外 +商誉补偿 (#38: 设计文档 v1.3 变更B)
-aid_generous_humanity = 1             # 大额援助 +人情
+charity_generous_humanity = 5         # 慈善 +5 人情（设计文档: 固定+5）
+charity_normal_humanity = 5           # 慈善 +5 人情（设计文档: 固定+5）
+# 援助档(5%)（设计文档: 中性，无声誉变化）
+aid_credibility = 0                   # 援助 无声誉变化
+aid_extra_credibility = 0             # 援助 无声誉变化
+aid_generous_humanity = 0             # 援助 无声誉变化
 # 标准档(10%)
 standard_credibility = 1              # 标准 +商誉
 # 高利贷档(20%)
@@ -347,7 +347,7 @@ crackdown_innocence = -5              # 严打 -清白
 # 赝品
 fake_credibility = -5                 # 赝品 -商誉
 # 赎回/赔偿
-redemption_success_credibility = 1    # 赎回成功 +商誉 (#59: 设计文档为 +1)
+redemption_success_credibility = 2    # 赎回成功 +商誉 (#63: 设计文档为 +2)
 charity_return_humanity = 15          # 慈善归还 +人情
 compensation_humanity = -15           # 赔偿 -人情
 compensation_credibility = -10        # 赔偿 -商誉

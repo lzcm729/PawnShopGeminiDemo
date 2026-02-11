@@ -1254,15 +1254,14 @@ export const useGameEngine = () => {
 
     const repDelta: any = { [ReputationType.HUMANITY]: 0, [ReputationType.CREDIBILITY]: 0, [ReputationType.INNOCENCE]: 0 };
 
-    // Contract tier × generosity matrix (design doc v2.2 - 声誉系统):
+    // Contract tier reputation effects (design doc - 声誉系统):
     // Generous = offer exceeds customer's ask price (desiredAmount)
-    // Only ≤5% rates get humanity bonus for generous offers
     const isGenerous = offer > desiredAmount;
     if (rate === 0) {
-        // 0% Charity: Humanity +normal or +generous
+        // 0% Charity: flat +5 Humanity (generous/normal values both 5 in TOML)
         repDelta[ReputationType.HUMANITY] += isGenerous ? GAME_CONFIG.REPUTATION_DELTAS.CHARITY_GENEROUS_HUMANITY : GAME_CONFIG.REPUTATION_DELTAS.CHARITY_NORMAL_HUMANITY;
     } else if (rate > 0 && rate < 0.10) {
-        // 5% Aid: Credibility always + extra credibility bonus (#38: v1.3 change B); Humanity if generous
+        // 5% Aid: neutral — no reputation changes (all values 0 in TOML)
         repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.AID_CREDIBILITY;
         repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.AID_EXTRA_CREDIBILITY;
         if (isGenerous) {
