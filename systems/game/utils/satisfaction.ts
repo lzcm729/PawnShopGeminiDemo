@@ -1,5 +1,5 @@
 
-import { SatisfactionLevel, RedeemSatisfaction, RenewalSatisfaction, PostForfeitSatisfaction } from '../../narrative/types';
+import { SatisfactionLevel, RedeemSatisfaction, RenewalSatisfaction, PostForfeitSatisfaction, DepartureSatisfaction, ExitLines } from '../../narrative/types';
 
 /**
  * Determines the emotional state of the customer upon departure
@@ -169,4 +169,34 @@ export const mapToBaseSatisfaction = (
         PLEADING: 'DESPERATE',
     };
     return mapping[level] || 'NEUTRAL';
+};
+
+/**
+ * Select the appropriate exit line from ExitLines based on departure satisfaction.
+ * Falls back to base satisfaction keys (grateful/neutral/resentful/desperate/conflicted)
+ * when scene-specific keys are not defined in the ExitLines.
+ */
+export const getSceneExitLine = (
+    exitLines: ExitLines,
+    departureSatisfaction: DepartureSatisfaction
+): string => {
+    const { scene, level } = departureSatisfaction;
+
+    // For PAWN scene, use the base keys directly
+    if (scene === 'PAWN') {
+        const key = level.toLowerCase() as keyof ExitLines;
+        return (exitLines[key] as string) ?? exitLines.neutral;
+    }
+
+    // For multi-scene departures, try scene-specific key first
+    const sceneKey = level.toLowerCase() as keyof ExitLines;
+    const sceneSpecificLine = exitLines[sceneKey] as string | undefined;
+    if (sceneSpecificLine) {
+        return sceneSpecificLine;
+    }
+
+    // Fallback: map to base satisfaction and use those keys
+    const baseSatisfaction = mapToBaseSatisfaction(scene, level);
+    const baseKey = baseSatisfaction.toLowerCase() as keyof ExitLines;
+    return (exitLines[baseKey] as string) ?? exitLines.neutral;
 };

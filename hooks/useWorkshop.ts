@@ -17,6 +17,7 @@ import { EssenceBalance, EssenceType } from '../systems/economy/essence';
 import { GAME_CONFIG } from '../systems/game/config';
 import {
   Recipe,
+  RecipeType,
   RestoreRecipe,
   CounterfeitRecipe,
   ReforgeRecipe,
@@ -24,6 +25,7 @@ import {
   WorkshopResult,
   InProgressRecipe,
   ViolationWarning,
+  RouteConfirmation,
   isRestoreRecipe,
   isCounterfeitRecipe,
   isReforgeRecipe,
@@ -32,6 +34,7 @@ import {
   getBlockReasonText,
   getViolationWarning,
   getCounterfeitViolationWarning,
+  getRouteConfirmation,
   convertEssence,
   isMultiNightRecipe,
   getInProgressRecipe,
@@ -108,12 +111,17 @@ interface UseWorkshopReturn {
 
   /** 获取伪造违约风险预警（当期物品） */
   getCounterfeitWarning: (item: Item) => ViolationWarning | null;
+
+  /** 获取路线确认提示（首次路线选择时显示叙事化确认） */
+  getConfirmation: (route: RecipeType, item: Item) => RouteConfirmation | null;
 }
 
 interface WorkshopOperationResult {
   success: boolean;
   result?: WorkshopResult;
   errorReason?: string;
+  /** Reputation delta applied during this operation (for UI feedback overlay) */
+  repDelta?: { humanity?: number; credibility?: number; innocence?: number };
 }
 
 // ============================================================================
@@ -307,6 +315,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
     return getCounterfeitViolationWarning(item);
   }, []);
 
+  const getConfirmation = useCallback((route: RecipeType, item: Item): RouteConfirmation | null => {
+    return getRouteConfirmation(route, item);
+  }, []);
+
   // 通用执行函数
   function executeWorkshop(
     itemId: string,
@@ -393,6 +405,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     });
 
     // #45/#68: Counterfeit active pawn item -> immediate Innocence penalty
+    let operationRepDelta: { humanity?: number; credibility?: number; innocence?: number } | undefined;
     if (type === 'counterfeit' && item.status === ItemStatus.ACTIVE) {
       const innocenceCost = GAME_CONFIG.WORKSHOP.FORGERY.INNOCENCE_COST_ACTIVE;
       dispatch({
@@ -405,9 +418,11 @@ export const useWorkshop = (): UseWorkshopReturn => {
           customerName: 'System',
         },
       });
+      // #69: Populate repDelta for UI feedback overlay
+      operationRepDelta = { innocence: innocenceCost };
     }
 
-    return { success: true, result };
+    return { success: true, result, repDelta: operationRepDelta };
   }
 
   const doRestore = useCallback(
@@ -499,6 +514,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
         });
 
         // #45/#68: Multi-night counterfeit on active pawn -> Innocence penalty
+        let multiNightRepDelta: { humanity?: number; credibility?: number; innocence?: number } | undefined;
         if (isCounterfeitRecipe(recipe) && item.status === ItemStatus.ACTIVE) {
           const innocenceCost = GAME_CONFIG.WORKSHOP.FORGERY.INNOCENCE_COST_ACTIVE;
           dispatch({
@@ -511,9 +527,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
               customerName: 'System',
             },
           });
+          multiNightRepDelta = { innocence: innocenceCost };
         }
 
-        return { success: true, result };
+        return { success: true, result, repDelta: multiNightRepDelta };
       } else {
         dispatch({ type: 'ADVANCE_MULTI_NIGHT_RECIPE', payload: { itemId } });
 
@@ -557,5 +574,6 @@ export const useWorkshop = (): UseWorkshopReturn => {
     getReasonText,
     getWarning,
     getCounterfeitWarning,
+    getConfirmation,
   };
 };

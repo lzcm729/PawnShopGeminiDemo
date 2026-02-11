@@ -202,6 +202,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     getReasonText,
     getWarning,
     getCounterfeitWarning,
+    getConfirmation,
   } = useWorkshop();
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -213,6 +214,13 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
   // Reputation micro-feedback animation state
   const [repFeedback, setRepFeedback] = useState<{ humanity?: number; credibility?: number; innocence?: number } | null>(null);
+  // #63: Route confirmation dialog state (first-time route selection)
+  const [routeConfirmation, setRouteConfirmation] = useState<{
+    text: string;
+    route: RecipeType;
+    riskLevel: 'low' | 'medium' | 'high';
+    recipeId: string;
+  } | null>(null);
   // Training monologue state (invisible scaffolding)
   const [trainingText, setTrainingText] = useState<string | null>(null);
   // Gaze moment state (notoriety-aware)
@@ -286,8 +294,24 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   const handleRestore = () => {
     const recipe = selectedItem?.restoreRecipe;
     if (!selectedItemId || !recipe) return;
+
+    // #63: Route confirmation for first-time route selection
+    const item = selectedItem?.item;
+    if (item) {
+      const confirmation = getConfirmation('RESTORE', item);
+      if (confirmation) {
+        setRouteConfirmation({ text: confirmation.text, route: confirmation.route, riskLevel: confirmation.riskLevel, recipeId: recipe.recipe.id });
+        return;
+      }
+    }
+
+    executeRestore(recipe.recipe.id);
+  };
+
+  const executeRestore = (recipeId: string) => {
+    if (!selectedItemId) return;
     setIsProcessing(true);
-    const output = doRestore(selectedItemId, recipe.recipe.id);
+    const output = doRestore(selectedItemId, recipeId);
     if (output?.success && output.result) {
       afterWorkshopAction(output.result);
       triggerGaze(output.result);
@@ -299,8 +323,17 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     const recipe = selectedItem?.counterfeitRecipe;
     if (!selectedItemId || !recipe) return;
 
-    // Check for counterfeit violation warning (active items)
+    // #63: Route confirmation for first-time route selection
     const item = selectedItem?.item;
+    if (item) {
+      const confirmation = getConfirmation('COUNTERFEIT', item);
+      if (confirmation) {
+        setRouteConfirmation({ text: confirmation.text, route: confirmation.route, riskLevel: confirmation.riskLevel, recipeId: recipe.recipe.id });
+        return;
+      }
+    }
+
+    // Check for counterfeit violation warning (active items)
     if (item) {
       const warning = getCounterfeitWarning(item);
       if (warning) {
@@ -329,8 +362,17 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     const recipe = selectedItem?.reforgeRecipe;
     if (!selectedItemId || !recipe) return;
 
-    // Check for reforge violation warning (active items)
+    // #63: Route confirmation for first-time route selection
     const item = selectedItem?.item;
+    if (item) {
+      const confirmation = getConfirmation('REFORGE', item);
+      if (confirmation) {
+        setRouteConfirmation({ text: confirmation.text, route: confirmation.route, riskLevel: confirmation.riskLevel, recipeId: recipe.recipe.id });
+        return;
+      }
+    }
+
+    // Check for reforge violation warning (active items)
     if (item) {
       const warning = getWarning(item);
       if (warning) {
@@ -387,6 +429,45 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setViolationWarning(null);
     setViolationRoute(null);
     setPendingRecipeId(null);
+  };
+
+  // #63: Route confirmation handlers
+  const handleRouteConfirm = () => {
+    if (!routeConfirmation) return;
+    const { route, recipeId } = routeConfirmation;
+    setRouteConfirmation(null);
+
+    // After confirmation, proceed to the regular flow (which may also trigger violation warning)
+    const item = selectedItem?.item;
+    if (route === 'RESTORE') {
+      executeRestore(recipeId);
+    } else if (route === 'COUNTERFEIT') {
+      if (item) {
+        const warning = getCounterfeitWarning(item);
+        if (warning) {
+          setViolationWarning(warning);
+          setViolationRoute('counterfeit');
+          setPendingRecipeId(recipeId);
+          return;
+        }
+      }
+      executeCounterfeit(recipeId);
+    } else if (route === 'REFORGE') {
+      if (item) {
+        const warning = getWarning(item);
+        if (warning) {
+          setViolationWarning(warning);
+          setViolationRoute('reforge');
+          setPendingRecipeId(recipeId);
+          return;
+        }
+      }
+      executeReforge(recipeId);
+    }
+  };
+
+  const handleRouteConfirmCancel = () => {
+    setRouteConfirmation(null);
   };
 
   // Multi-night: advance in-progress recipe
@@ -497,6 +578,56 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
             onConfirm={handleViolationConfirm}
             onCancel={handleViolationCancel}
           />
+        )}
+
+        {/* #63: Route Confirmation Dialog (first-time route selection) */}
+        {routeConfirmation && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className={cn(
+              "max-w-md w-full p-6 rounded-lg border shadow-2xl",
+              routeConfirmation.riskLevel === 'high'
+                ? "bg-red-950/90 border-red-800/60"
+                : routeConfirmation.riskLevel === 'medium'
+                ? "bg-amber-950/90 border-amber-800/60"
+                : "bg-stone-900/90 border-stone-700/60"
+            )}>
+              <div className="flex items-center gap-2 mb-4">
+                <AlertTriangle className={cn(
+                  "w-5 h-5",
+                  routeConfirmation.riskLevel === 'high' ? "text-red-400" :
+                  routeConfirmation.riskLevel === 'medium' ? "text-amber-400" : "text-stone-400"
+                )} />
+                <h3 className="font-bold text-sm text-stone-200">
+                  {routeConfirmation.route === 'RESTORE' ? '修复确认' :
+                   routeConfirmation.route === 'COUNTERFEIT' ? '伪造确认' : '重铸确认'}
+                </h3>
+              </div>
+              <p className="text-sm text-stone-300 font-serif italic leading-relaxed mb-6">
+                "{routeConfirmation.text}"
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleRouteConfirmCancel}
+                  className="flex-1 bg-stone-800 hover:bg-stone-700 border-stone-600"
+                >
+                  再想想
+                </Button>
+                <Button
+                  onClick={handleRouteConfirm}
+                  className={cn(
+                    "flex-1",
+                    routeConfirmation.riskLevel === 'high'
+                      ? "bg-red-900 hover:bg-red-800 border-red-700"
+                      : routeConfirmation.riskLevel === 'medium'
+                      ? "bg-amber-900 hover:bg-amber-800 border-amber-700"
+                      : "bg-emerald-900 hover:bg-emerald-800 border-emerald-700"
+                  )}
+                >
+                  {routeConfirmation.route === 'REFORGE' ? '按我的判断来' : '确认'}
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Reputation Micro-Feedback (predicted risk from violation) */}

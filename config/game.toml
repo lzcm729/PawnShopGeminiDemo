@@ -82,6 +82,15 @@ energy_levels = [3, 4, 5]
 # 顿悟后残留不确定性（5%区间）
 epiphany_residual_uncertainty = 0.05
 
+# 顿悟仪式时长缩放 (Epiphany Duration Scaling)
+# 基于格物等级（层深）缩放顿悟仪式展示时长
+# 格物等级1/2/3 对应的时长乘数
+epiphany_duration_lv1 = 1.0          # Lv1: 基础时长 (3s)
+epiphany_duration_lv2 = 1.5          # Lv2: 1.5倍 (4.5s)
+epiphany_duration_lv3 = 2.0          # Lv3: 2倍 (6s)
+# 基础顿悟时长（毫秒）
+epiphany_base_duration_ms = 3000
+
 # ------------------------------------------------------------
 # 夜间鉴定参数 (Night Appraisal)
 # ------------------------------------------------------------
@@ -124,6 +133,8 @@ renewal_refusal_credibility = 1     # 固定商誉奖励
 # 续当接受声誉变化 (设计文档: 宽容加分但较小, 延期合同略微损害商誉)
 renewal_accept_humanity = 1         # 续当接受 +1 人情
 renewal_accept_credibility = 0      # 续当接受不影响商誉
+# 拒绝取消典当的声誉惩罚 (#23: 客户请求取消但被拒)
+refuse_cancel_humanity = -5         # 拒绝取消 -5 人情
 
 # ------------------------------------------------------------
 # 母亲状态初始值 (Mother Status)
@@ -445,6 +456,17 @@ near_floor_concession_bonus = 0.20
 # 攻心让步概率加成
 heart_strike_concession_bonus = 0.30
 
+# 近Ask耐心减免：出价接近NPC Ask价格时减少耐心消耗概率 (#41)
+near_ask_ratio = 0.90                     # offer >= ask * 此值 视为"接近Ask"
+near_ask_patience_reduction = 0.20        # 耐心消耗概率 -20%
+
+# SLY风格虚高Ask倍率 (#46)：狡猾型NPC初始Ask虚高
+sly_ask_inflation = 0.20                  # Ask价格 +20%
+
+# 商誉→高端客户阈值 (#32)
+credibility_high_end_threshold = 60       # 商誉高于此值时吸引高价值客户
+credibility_high_end_value_boost = 0.25   # 高价值物品出现概率提升25%
+
 # ------------------------------------------------------------
 # 黑市系统 (Black Market)
 # ------------------------------------------------------------
@@ -493,6 +515,22 @@ stolen_extra_heat = 1
 direct_sell_credibility_loss = 1
 # 新闻情绪修正幅度（正面/负面新闻 ±5%）
 news_sentiment_modifier = 0.05
+# 便衣暗访热度降低
+undercover_heat_reduction = 1
+# 搜查警告罚款热度降低
+search_fine_heat_reduction = 2
+# 搜查警告接受锁定热度降低
+search_lockdown_heat_reduction = 3
+# 保护费冷却期收购限额减少
+protection_cooldown_limit_reduction = 1
+# 保护费冷却期热度衰减额外加速
+protection_cooldown_extra_decay = 1
+# 危险任务触发清白阈值
+dangerous_task_innocence_threshold = 20
+# 危险任务每日触发概率
+dangerous_task_daily_chance = 0.10
+# 新闻活跃时收购系数上限
+news_active_purchase_cap = 1.50
 
 # --- 客户生态转变 (P1-10: Customer Ecology Shift) ---
 # 清白阈值：低于此值开始吸引灰色客户

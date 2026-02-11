@@ -1,6 +1,8 @@
 
 import { GameState } from '../game/types';
 import { SatisfactionLevel, DepartureSatisfaction, RedeemSatisfaction, RenewalSatisfaction, PostForfeitSatisfaction } from './types';
+import { parseCSV, CSVSchema, stringCol, numberCol } from '../utils/csvReader';
+import departureTextsCSV from '@/assets/data/texts/departure_texts.csv?raw';
 
 export interface InnerVoice {
     id: string;
@@ -9,167 +11,158 @@ export interface InnerVoice {
     condition: (state: GameState) => boolean;
 }
 
-export const BEDTIME_THOUGHTS: InnerVoice[] = [
-    // --- CRITICAL SURVIVAL ---
-    {
-        id: 'bedtime_broke_critical',
-        text: "账上的数字变成了红色。如果下周交不上租金，我和妈妈就会被赶到街上... 必须想办法。",
-        priority: 100,
-        condition: (state) => state.stats.cash < 100
-    },
-    {
-        id: 'bedtime_mother_critical',
-        text: "医院刚才发来了催款单。如果停药... 我不敢想下去。在这个城市，命是用钱买的。",
-        priority: 95,
-        condition: (state) => state.stats.motherStatus.status === 'Critical' || state.stats.medicalBill.status === 'OVERDUE'
-    },
+// ============================================================================
+// CSV Loading
+// ============================================================================
 
-    // --- FINANCIAL ---
-    {
-        id: 'bedtime_rich',
-        text: "今天的保险柜比往常沉了一些。但这还不够... 手术费是个天文数字。我不能松懈。",
-        priority: 50,
-        condition: (state) => state.stats.cash > 5000 && state.stats.cash < state.stats.targetSavings
-    },
-    {
-        id: 'bedtime_surviving',
-        text: "又撑过了一天。只要还有明天，就还有希望。",
-        priority: 10,
-        condition: () => true // Fallback
-    },
+interface DepartureTextRow {
+    category: string;
+    key: string;
+    text: string;
+    priority: number;
+    condition: string;
+}
 
-    // --- MORAL ALIGNMENT ---
-    {
-        id: 'bedtime_guilt_high',
-        text: "我今天看见了那个人离开时的眼神... 我是不是做得太绝了？不，我没得选。为了活下去，良心是奢侈品。",
-        priority: 80,
-        condition: (state) => state.lastSatisfaction === 'RESENTFUL' || state.lastSatisfaction === 'DESPERATE'
-    },
-    {
-        id: 'bedtime_good_karma',
-        text: "那个顾客走的时候笑了。也许即使是在这泥潭里，人也能拉别人一把... 希望好人有好报吧。",
-        priority: 80,
-        condition: (state) => state.lastSatisfaction === 'GRATEFUL'
-    },
-
-    // --- SPECIFIC EVENTS ---
-    {
-        id: 'bedtime_police_risk',
-        text: "警车的声音在街角响了一整晚。那个违禁品... 我是不是该尽早处理掉？手心一直在冒汗。",
-        priority: 90,
-        condition: (state) => state.violationFlags.includes('police_risk_ignored')
-    }
-];
-
-export const DEPARTURE_THOUGHTS: Record<SatisfactionLevel, string[]> = {
-    'GRATEFUL': [
-        "至少这次，我做对了。",
-        "希望这点钱能帮到他。",
-        "这就是所谓的... 问心无愧吗？",
-        "看着他的背影，我竟感到一丝轻松。"
-    ],
-    'NEUTRAL': [
-        "生意就是生意。",
-        "下一位。",
-        "钱货两清，各取所需。",
-        "只是这城市里又一笔普通的交易。"
-    ],
-    'RESENTFUL': [
-        "别怪我... 我也要吃饭。",
-        "那种眼神... 我以前见过。",
-        "我不是慈善家。",
-        "他恨我。但我活下来了。"
-    ],
-    'DESPERATE': [
-        "我是不是... 做得太绝了？",
-        "刚才那一瞬间，我看到了自己。",
-        "我没办法... 我真的没办法。",
-        "抱歉... 在这个世界，同情心会害死人。"
-    ],
-    'CONFLICTED': [
-        "...这笔交易算好还是坏？我自己也说不清。",
-        "做了正确的事，还是自欺欺人？",
-        "他的表情...同时有恨，又有感激。",
-        "也许没有所谓的正确答案吧。"
-    ]
+const DEPARTURE_TEXT_SCHEMA: CSVSchema = {
+    'category': stringCol('category'),
+    'key': stringCol('key'),
+    'text': stringCol('text'),
+    'priority': numberCol('priority', 0),
+    'condition': stringCol('condition', ''),
 };
 
-// Scene-specific departure thoughts
+/** Parsed departure texts, lazily initialized */
+let _bedtimeTexts: Map<string, { text: string; priority: number }> | null = null;
+let _departureThoughts: Record<string, string[]> | null = null;
+let _sceneThoughts: {
+    REDEEM: Record<string, string[]>;
+    RENEWAL: Record<string, string[]>;
+    POST_FORFEIT: Record<string, string[]>;
+} | null = null;
+
+function loadDepartureTexts(): void {
+    if (_bedtimeTexts) return;
+
+    _bedtimeTexts = new Map();
+    _departureThoughts = {};
+    _sceneThoughts = { REDEEM: {}, RENEWAL: {}, POST_FORFEIT: {} };
+
+    const rows = parseCSV<DepartureTextRow>(departureTextsCSV, DEPARTURE_TEXT_SCHEMA, {
+        warnUnknownColumns: false,
+    });
+
+    for (const row of rows) {
+        if (!row.category || !row.text) continue;
+
+        if (row.category === 'bedtime') {
+            _bedtimeTexts.set(row.key, { text: row.text, priority: row.priority });
+        } else if (row.category === 'departure') {
+            if (!_departureThoughts[row.key]) {
+                _departureThoughts[row.key] = [];
+            }
+            _departureThoughts[row.key].push(row.text);
+        } else if (row.category === 'scene_redeem') {
+            if (!_sceneThoughts.REDEEM[row.key]) {
+                _sceneThoughts.REDEEM[row.key] = [];
+            }
+            _sceneThoughts.REDEEM[row.key].push(row.text);
+        } else if (row.category === 'scene_renewal') {
+            if (!_sceneThoughts.RENEWAL[row.key]) {
+                _sceneThoughts.RENEWAL[row.key] = [];
+            }
+            _sceneThoughts.RENEWAL[row.key].push(row.text);
+        } else if (row.category === 'scene_post_forfeit') {
+            if (!_sceneThoughts.POST_FORFEIT[row.key]) {
+                _sceneThoughts.POST_FORFEIT[row.key] = [];
+            }
+            _sceneThoughts.POST_FORFEIT[row.key].push(row.text);
+        }
+    }
+}
+
+function getBedtimeText(key: string): { text: string; priority: number } | undefined {
+    loadDepartureTexts();
+    return _bedtimeTexts!.get(key);
+}
+
+function getDepartureThoughtsMap(): Record<string, string[]> {
+    loadDepartureTexts();
+    return _departureThoughts!;
+}
+
+function getSceneThoughtsMap(): typeof _sceneThoughts {
+    loadDepartureTexts();
+    return _sceneThoughts!;
+}
+
+// ============================================================================
+// Bedtime Thoughts (conditions stay in code, text from CSV)
+// ============================================================================
+
+/**
+ * Bedtime condition registry: maps bedtime keys to their condition functions.
+ * Text and priority come from CSV; conditions must remain in code (they reference GameState).
+ */
+const BEDTIME_CONDITIONS: Record<string, (state: GameState) => boolean> = {
+    'broke_critical': (state) => state.stats.cash < 100,
+    'mother_critical': (state) => state.stats.motherStatus.status === 'Critical' || state.stats.medicalBill.status === 'OVERDUE',
+    'rich': (state) => state.stats.cash > 5000 && state.stats.cash < state.stats.targetSavings,
+    'surviving': () => true,
+    'guilt_high': (state) => state.lastSatisfaction === 'RESENTFUL' || state.lastSatisfaction === 'DESPERATE',
+    'good_karma': (state) => state.lastSatisfaction === 'GRATEFUL',
+    'police_risk': (state) => state.violationFlags.includes('police_risk_ignored'),
+};
+
+export function buildBedtimeThoughts(): InnerVoice[] {
+    const thoughts: InnerVoice[] = [];
+    for (const [key, conditionFn] of Object.entries(BEDTIME_CONDITIONS)) {
+        const entry = getBedtimeText(key);
+        if (entry) {
+            thoughts.push({
+                id: `bedtime_${key}`,
+                text: entry.text,
+                priority: entry.priority,
+                condition: conditionFn,
+            });
+        }
+    }
+    return thoughts;
+}
+
+/** @deprecated Use buildBedtimeThoughts() for lazy CSV loading. Kept for backward compatibility. */
+export const BEDTIME_THOUGHTS: InnerVoice[] = [];
+
+// ============================================================================
+// Departure Thoughts (all from CSV)
+// ============================================================================
+
+/** @deprecated Access via getDepartureThoughtsMap(). Kept for type compatibility. */
+export const DEPARTURE_THOUGHTS: Record<SatisfactionLevel, string[]> = {
+    'GRATEFUL': [],
+    'NEUTRAL': [],
+    'RESENTFUL': [],
+    'DESPERATE': [],
+    'CONFLICTED': [],
+};
+
+/** @deprecated Access via getSceneThoughtsMap(). Kept for type compatibility. */
 export const SCENE_DEPARTURE_THOUGHTS: {
     REDEEM: Record<RedeemSatisfaction, string[]>;
     RENEWAL: Record<RenewalSatisfaction, string[]>;
     POST_FORFEIT: Record<PostForfeitSatisfaction, string[]>;
 } = {
-    REDEEM: {
-        RELIEVED: [
-            "他回来了。至少这一次，故事有个好结局。",
-            "赎回了... 这就对了。",
-            "看着他拿回自己的东西，我竟松了口气。",
-        ],
-        GRATEFUL: [
-            "他回来了，而且... 是带着笑的。也许当初少收那点利息，值了。",
-            "他说了谢谢。真心的那种。",
-            "也许这行当偶尔也能做点好事。",
-        ],
-        BITTER: [
-            "他拿回了东西，但那表情... 像是在恨我。",
-            "利息是按规矩收的... 为什么我心里不是滋味。",
-            "他走的时候，连头都没回。",
-        ],
-        BITTERSWEET: [
-            "物归原主了。可他的眼神里，说的不只是'谢谢'。",
-            "他拿着那东西站了很久... 像是在看一个旧朋友。",
-            "故事结束了。但我不确定这算好结局还是坏结局。",
-        ],
-    },
-    RENEWAL: {
-        WEARY: [
-            "又续了。他还能续几次？",
-            "同样的手续，同样的签字... 只是他的背又弯了一点。",
-            "续当，续当，续当... 这日子什么时候是个头。",
-        ],
-        ANXIOUS: [
-            "他的手在签字时一直在抖...",
-            "他问了三遍'还有多少天'。我没忍心告诉他实话。",
-            "时间快到了... 他知道，我也知道。",
-        ],
-        NUMB: [
-            "和上次说的一模一样的话。连表情都没变过。",
-            "他来了，签了字，走了。像一台机器。",
-            "第几次了？我已经记不清了。",
-        ],
-        HOPEFUL: [
-            "也许这次真的会不一样。",
-            "他说快了... 我选择相信他。",
-            "他走的时候步子比上次轻了些。也许真有转机。",
-        ],
-    },
-    POST_FORFEIT: {
-        GRIEF: [
-            "那东西还在柜子里。我每次看到它... 都会想起他的脸。",
-            "他走后，店里安静得可怕。",
-            "有些东西，钱买不回来。我比谁都清楚。",
-        ],
-        RESIGNED: [
-            "这是生意。这是生意。...这真的只是生意吗？",
-            "规矩就是规矩。他也说了'认了'。可我...",
-            "又一件绝当品。柜子里又多了一个故事。",
-        ],
-        HOSTILE: [
-            "他恨我。也许他有理由恨我。",
-            "他摔门的声音还在耳边回响。",
-            "那眼神... 我今晚大概睡不着了。",
-        ],
-        PLEADING: [
-            "他走的时候回头看了三次... 我装作没看见。",
-            "'再给我两天'... 我能给他什么？我自己都朝不保夕。",
-            "他最后没说话。但那个眼神比任何话都重。",
-        ],
-    },
+    REDEEM: { RELIEVED: [], GRATEFUL: [], BITTER: [], BITTERSWEET: [] },
+    RENEWAL: { WEARY: [], ANXIOUS: [], NUMB: [], HOPEFUL: [] },
+    POST_FORFEIT: { GRIEF: [], RESIGNED: [], HOSTILE: [], PLEADING: [] },
 };
 
+// ============================================================================
+// Public API
+// ============================================================================
+
 export const getBedtimeMonologue = (state: GameState): string => {
-    const candidates = BEDTIME_THOUGHTS.filter(t => t.condition(state));
+    const thoughts = buildBedtimeThoughts();
+    const candidates = thoughts.filter(t => t.condition(state));
     candidates.sort((a, b) => b.priority - a.priority);
     return candidates.length > 0 ? candidates[0].text : "......";
 };
@@ -185,18 +178,22 @@ export const getDepartureMonologue = (
 ): string => {
     // Try scene-specific thoughts when available
     if (departureSatisfaction && departureSatisfaction.scene !== 'PAWN') {
-        const sceneKey = departureSatisfaction.scene as keyof typeof SCENE_DEPARTURE_THOUGHTS;
-        const sceneThoughts = SCENE_DEPARTURE_THOUGHTS[sceneKey];
-        if (sceneThoughts) {
-            const options = (sceneThoughts as Record<string, string[]>)[departureSatisfaction.level];
-            if (options && options.length > 0) {
-                return options[Math.floor(Math.random() * options.length)];
+        const sceneMap = getSceneThoughtsMap();
+        if (sceneMap) {
+            const sceneKey = departureSatisfaction.scene as keyof typeof sceneMap;
+            const sceneThoughts = sceneMap[sceneKey];
+            if (sceneThoughts) {
+                const options = (sceneThoughts as Record<string, string[]>)[departureSatisfaction.level];
+                if (options && options.length > 0) {
+                    return options[Math.floor(Math.random() * options.length)];
+                }
             }
         }
     }
 
     // Fallback to base satisfaction thoughts
-    const options = DEPARTURE_THOUGHTS[satisfaction];
-    if (!options) return "...";
+    const thoughtsMap = getDepartureThoughtsMap();
+    const options = thoughtsMap[satisfaction];
+    if (!options || options.length === 0) return "...";
     return options[Math.floor(Math.random() * options.length)];
 };

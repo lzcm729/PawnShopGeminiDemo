@@ -91,6 +91,8 @@ export type Action =
 
     // Cancel Pawn (#35: Customer withdraws contract during holding period)
     | { type: 'CANCEL_PAWN'; payload: { itemId: string; refundAmount: number; fee: number; name: string } }
+    // Refuse Cancel Pawn (#23: Player refuses customer's cancellation request)
+    | { type: 'REFUSE_CANCEL_PAWN'; payload: { itemId: string; name: string } }
 
     // Holding Period Events (#32, #33, #34)
     | { type: 'TRIGGER_HOLDING_PERIOD_EVENT'; payload: { type: import('../../systems/npc/types').HoldingPeriodEventType; itemId: string; itemName: string; chainId?: string } }
@@ -207,6 +209,7 @@ export type Action =
         innocenceLoss: number;
         updatedNotoriety: ForgeryNotorietyState;
       } }
+    | { type: 'BLACKMARKET_CLEAR_MORAL_ECHOES' }
 
     // Stolen goods & Police investigation (赃物收购 & 警方调查)
     | { type: 'STOLEN_ITEM_DECISION'; payload: { accept: boolean } }

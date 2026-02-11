@@ -1547,9 +1547,12 @@ export function generateFillerCustomer(
         // Re-infer tags after mood change to pick up SENTIMENTAL
         behaviorTags = inferBehaviorTags(customerProfile);
     }
-    // cred_expert (Credibility >= 60): increase high-value item customers
-    // -> Shift appearance toward 'decent'/'fancy' (higher-value items) with 25% probability
-    if (milestones.includes('cred_expert') && Math.random() < 0.25) {
+    // #32: Credibility -> high-end customers
+    // High credibility directly biases appearance toward higher tiers (independent of milestone)
+    const credibility = qualityOptions?.credibility ?? 50;
+    const credThreshold = GAME_CONFIG.NEGOTIATION.CREDIBILITY_HIGH_END_THRESHOLD;
+    const credBoost = GAME_CONFIG.NEGOTIATION.CREDIBILITY_HIGH_END_VALUE_BOOST;
+    if (credibility > credThreshold && Math.random() < credBoost) {
         const upgradeMap: Record<CustomerAppearance, CustomerAppearance> = {
             'shabby': 'plain',
             'plain': 'decent',
@@ -1557,6 +1560,17 @@ export function generateFillerCustomer(
             'fancy': 'fancy'
         };
         customerProfile = { ...customerProfile, appearance: upgradeMap[customerProfile.appearance] };
+    }
+    // cred_expert milestone (Credibility >= 60): additional high-value customer boost
+    // Stacks with the direct credibility check above for stronger effect at milestone
+    if (milestones.includes('cred_expert') && Math.random() < 0.25) {
+        const upgradeMap2: Record<CustomerAppearance, CustomerAppearance> = {
+            'shabby': 'plain',
+            'plain': 'decent',
+            'decent': 'fancy',
+            'fancy': 'fancy'
+        };
+        customerProfile = { ...customerProfile, appearance: upgradeMap2[customerProfile.appearance] };
     }
 
     // #48: Low innocence -> cautious customers (harder to negotiate with)

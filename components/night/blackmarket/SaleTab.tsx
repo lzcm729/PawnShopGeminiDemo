@@ -61,6 +61,7 @@ export const SaleTab: React.FC<SaleTabProps> = ({
             disabled={inPurchaseList}
             disabledReason="在收购清单中"
             commissionRate={commissionRate}
+            hasPrecisionModifier={true}
             onSelect={() => !inPurchaseList && onSelectItem(isSelected ? null : item.id)}
             onSell={() => onSell(item)}
           />

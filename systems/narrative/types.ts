@@ -93,6 +93,23 @@ export interface ExitLines {
   resentful_silent?: string;
   desperate_silent?: string;
   conflicted_silent?: string;
+
+  // === MULTI-SCENE EXIT DIALOGUES (design doc 8.4) ===
+  // REDEEM scenario exit lines
+  relieved?: string;
+  // grateful already exists (shared with PAWN)
+  bitter?: string;
+  bittersweet?: string;
+  // RENEWAL scenario exit lines
+  weary?: string;
+  anxious?: string;
+  numb?: string;
+  hopeful?: string;
+  // POST_FORFEIT scenario exit lines
+  grief?: string;
+  resigned?: string;
+  hostile?: string;
+  pleading?: string;
 }
 
 export interface TriggerCondition {
@@ -130,6 +147,20 @@ export interface DialogueTemplate {
       resentful: DialogueText;
       desperate: DialogueText;
       conflicted?: DialogueText;
+      // REDEEM scenario
+      relieved?: DialogueText;
+      bitter?: DialogueText;
+      bittersweet?: DialogueText;
+      // RENEWAL scenario
+      weary?: DialogueText;
+      anxious?: DialogueText;
+      numb?: DialogueText;
+      hopeful?: DialogueText;
+      // POST_FORFEIT scenario
+      grief?: DialogueText;
+      resigned?: DialogueText;
+      hostile?: DialogueText;
+      pleading?: DialogueText;
   };
 }
 

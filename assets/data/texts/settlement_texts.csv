@@ -1,0 +1,4 @@
+﻿category,key,text
+settlement,COMFORTABLE,母亲又撑过了一周。账上还有余量......但别放松。
+settlement,TIGHT,母亲又撑过了一周。但下一周...... ${amount} 够吗？
+settlement,BARELY_SURVIVED,母亲又撑过了一周。但你的手在发抖——口袋里几乎什么都不剩了。

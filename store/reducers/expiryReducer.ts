@@ -16,6 +16,7 @@ import type { DealSummary } from '../../systems/game/types';
 import { calculateEmotionalWeight } from '../../systems/workshop/emotionalWeight';
 import { inferPersonality, rollReturnResult, getReturnReputationDelta } from '../../systems/workshop/returnMatrix';
 import type { ReturnResult } from '../../systems/workshop/types';
+import { calculateForfeitSettlementPrice } from '../../systems/blackmarket/blackmarketService';
 
 /** Helper: merge a fate entry into the npcFateLog (upsert by npcId) */
 function mergeFateEntry(log: NpcFateEntry[], entry: NpcFateEntry): NpcFateEntry[] {
@@ -127,8 +128,9 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                                 : ewResult.weight;
 
                             // 2. Infer customer personality from behavior tags
+                            // #65/#66: Pass emotionalWeight so DESPERATE maps correctly
                             const personalityTags = item.customerSnapshot?.behaviorTags || [];
-                            const personality = inferPersonality(personalityTags);
+                            const personality = inferPersonality(personalityTags, effectiveWeight);
 
                             // 3. Roll return result
                             const returnResult: ReturnResult = rollReturnResult(effectiveWeight, personality);
@@ -337,7 +339,19 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                     break;
                 }
                 case 'noshow_sell': {
-                    const price = salePrice || Math.floor(item.realValue * 0.8);
+                    // #27: Use blackmarket sale price formula for forfeit settlement
+                    // (realValue * saleMultiplier * (1-commission) with uncertainty volatility)
+                    let price: number;
+                    if (salePrice) {
+                        price = salePrice; // Explicit override (e.g., from DevConsole)
+                    } else if (state.blackmarket?.daily) {
+                        const bmTrust = 100 - (state.reputation[ReputationType.INNOCENCE] ?? 100);
+                        price = calculateForfeitSettlementPrice(
+                            item, state.blackmarket.daily, bmTrust, state.stats.day
+                        );
+                    } else {
+                        price = Math.floor(item.realValue * 0.8); // Fallback
+                    }
                     cashDelta = price;
                     const soldLog = generateSoldLog(item, state.stats.day, price);
                     // S3-F1: Player choice log + S3-F2: Echo for expired no-redeem

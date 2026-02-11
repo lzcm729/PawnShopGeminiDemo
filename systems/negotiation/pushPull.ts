@@ -171,6 +171,12 @@ export const calculatePatienceLossChance = (
         case 'PERSIST': chance += 0.10; break;
     }
 
+    // #41: Near-ask patience reduction
+    // When offer is close to NPC ask price (>= ask * near_ask_ratio), reduce patience loss
+    if (currentAsk > 0 && currentOffer >= currentAsk * GAME_CONFIG.NEGOTIATION.NEAR_ASK_RATIO) {
+        chance -= GAME_CONFIG.NEGOTIATION.NEAR_ASK_PATIENCE_REDUCTION;
+    }
+
     // Clamp to [0.20, 0.95]
     return Math.max(0.20, Math.min(0.95, chance));
 };

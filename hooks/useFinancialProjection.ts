@@ -6,6 +6,7 @@ import { ItemStatus } from '../systems/items/types';
 import { calculateInterest } from '../systems/economy/interest';
 import { GAME_CONFIG } from '../systems/game/config';
 import { getNewsMarkers } from '../systems/news/engine';
+import { getSettlementText } from '../systems/game/settlementTexts';
 
 // Map NPC redemptionResolve to calendar IncomeCertainty tier
 function resolveToIncomeCertainty(resolve: string | undefined): IncomeCertainty {
@@ -40,15 +41,16 @@ export const useFinancialProjection = () => {
         const MEDICAL_INTERVAL = GAME_CONFIG.BILL_CYCLE;
         const START_OFFSET = -2; // Start grid from 2 days ago
 
-        // Build news marker lookup: day -> labels[]
+        // Build news marker lookup: day -> { label, tooltip? }[]
         const newsMarkers = getNewsMarkers(dailyNews || [], stats.day, pendingNews || []);
-        const markersByDay = new Map<number, string[]>();
+        const markersByDay = new Map<number, { label: string; tooltip?: string }[]>();
         for (const m of newsMarkers) {
             const existing = markersByDay.get(m.day);
+            const entry = { label: m.label, tooltip: m.tooltip };
             if (existing) {
-                existing.push(m.label);
+                existing.push(entry);
             } else {
-                markersByDay.set(m.day, [m.label]);
+                markersByDay.set(m.day, [entry]);
             }
         }
         
@@ -172,15 +174,16 @@ export const useFinancialProjection = () => {
 
             // 5. Mails are NOT shown on calendar
 
-            // 5b. News narrative markers (STORY_MOMENT)
+            // 5b. News narrative markers (STORY_MOMENT) with per-tag gameplay-impact tooltips
             const dayMarkers = markersByDay.get(currentProjectionDay);
             if (dayMarkers) {
-                for (const label of dayMarkers) {
+                for (const marker of dayMarkers) {
                     dailyEvents.push({
                         type: 'STORY_MOMENT',
                         amount: 0,
-                        label,
-                        isCertain: true
+                        label: marker.label,
+                        isCertain: true,
+                        tooltip: marker.tooltip
                     });
                 }
             }
@@ -229,13 +232,13 @@ export const useSettlementCeremony = (): SettlementCeremonyData => {
             narrativeLine = '';
             severityTier = 'BARELY_SURVIVED';
         } else if (balanceAfterPayment > nextWeekMedical * 2) {
-            narrativeLine = '母亲又撑过了一周。账上还有余量......但别放松。';
+            narrativeLine = getSettlementText('COMFORTABLE');
             severityTier = 'COMFORTABLE';
         } else if (balanceAfterPayment >= 100) {
-            narrativeLine = '母亲又撑过了一周。但下一周...... $' + balanceAfterPayment + ' 够吗？';
+            narrativeLine = getSettlementText('TIGHT', balanceAfterPayment);
             severityTier = 'TIGHT';
         } else {
-            narrativeLine = '母亲又撑过了一周。但你的手在发抖——口袋里几乎什么都不剩了。';
+            narrativeLine = getSettlementText('BARELY_SURVIVED');
             severityTier = 'BARELY_SURVIVED';
         }
 

@@ -24,6 +24,9 @@ export interface BlackmarketItemCardProps {
   disabled?: boolean;
   disabledReason?: string;
   commissionRate?: number; // 0.0 - 0.30, fraction taken as fee
+  /** #54: Attribution flags for price modifier sources */
+  hasMarketSentiment?: boolean;
+  hasPrecisionModifier?: boolean;
   onSelect: () => void;
   onSell: () => void;
 }
@@ -39,6 +42,8 @@ export const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
   disabled = false,
   disabledReason,
   commissionRate,
+  hasMarketSentiment = false,
+  hasPrecisionModifier = false,
   onSelect,
   onSell,
 }) => {
@@ -120,7 +125,25 @@ export const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
           )}
         </div>
         <div className="text-right">
-          <div className="text-xs text-stone-500">售价</div>
+          <div className="text-xs text-stone-500 flex items-center justify-end gap-1">
+            售价
+            {/* #54: Attribution micro-icons for price modifier sources */}
+            {hasMarketSentiment && (
+              <span title="市场情绪影响价格" className="text-[#00ff41]/60 cursor-help">
+                <svg className="w-3 h-3 inline" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M1 8 Q4 4 8 8 Q12 12 15 8" />
+                </svg>
+              </span>
+            )}
+            {hasPrecisionModifier && (
+              <span title="鉴定精度影响价格波动" className="text-amber-500/60 cursor-help">
+                <svg className="w-3 h-3 inline" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="7" cy="7" r="4" />
+                  <line x1="10" y1="10" x2="14" y2="14" />
+                </svg>
+              </span>
+            )}
+          </div>
           <div className={cn('text-lg font-mono font-bold', disabled ? 'text-stone-500' : colorScheme.price)}>
             ${price}
           </div>

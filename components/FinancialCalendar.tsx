@@ -254,10 +254,10 @@ const CalendarCell: React.FC<{ data: CalendarDayData; index: number }> = ({ data
                                             物品已被重铸，客户无法赎回
                                         </span>
                                     )}
-                                    {/* S2-I3: Narrative tooltip impact */}
+                                    {/* S2-I3: Narrative tooltip impact (#16: per-marker tooltip) */}
                                     {e.type === 'STORY_MOMENT' && (
                                         <span className="text-[8px] text-amber-500/60 italic">
-                                            可能影响客户行为
+                                            {e.tooltip || '可能影响客户行为'}
                                         </span>
                                     )}
                                 </div>
@@ -268,8 +268,41 @@ const CalendarCell: React.FC<{ data: CalendarDayData; index: number }> = ({ data
                     <div className="text-xs text-stone-600 italic text-center py-1">No events</div>
                 )}
 
-                {/* Footer Balance */}
-                <div className="border-t border-stone-800 pt-2 mt-1">
+                {/* #11: Calculation Breakdown + Footer Balance */}
+                <div className="border-t border-stone-800 pt-2 mt-1 space-y-1">
+                     {/* Income/Expense breakdown */}
+                     {(() => {
+                       const income = data.events
+                         .filter(e => e.amount > 0)
+                         .reduce((s, e) => s + e.amount, 0);
+                       const expense = data.events
+                         .filter(e => e.amount < 0)
+                         .reduce((s, e) => s + e.amount, 0);
+                       return (income > 0 || expense < 0) && !isPast ? (
+                         <div className="space-y-0.5">
+                           {income > 0 && (
+                             <div className="flex justify-between text-[9px] font-mono">
+                               <span className="text-stone-500">Income</span>
+                               <span className="text-green-500">+${income}</span>
+                             </div>
+                           )}
+                           {expense < 0 && (
+                             <div className="flex justify-between text-[9px] font-mono">
+                               <span className="text-stone-500">Expense</span>
+                               <span className="text-red-500">${expense}</span>
+                             </div>
+                           )}
+                           {income > 0 && expense < 0 && (
+                             <div className="flex justify-between text-[9px] font-mono border-t border-stone-800/50 pt-0.5">
+                               <span className="text-stone-500">Net</span>
+                               <span className={income + expense >= 0 ? 'text-green-500' : 'text-red-500'}>
+                                 {income + expense >= 0 ? '+' : ''}${income + expense}
+                               </span>
+                             </div>
+                           )}
+                         </div>
+                       ) : null;
+                     })()}
                      <div className="flex justify-between text-xs font-mono font-bold">
                         <span className="text-stone-400">{isPast ? 'End Bal' : 'Proj. Bal'}</span>
                         <span className={

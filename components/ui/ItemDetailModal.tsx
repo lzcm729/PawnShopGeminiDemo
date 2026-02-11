@@ -497,9 +497,27 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                     </div>
                 )}
 
+                {/* #25: Archive folder metaphor for forfeited/sold/redeemed items */}
                 {/* Life Cycle Log - Full History with S3-I1 icon prefix + S3-I2 expand/collapse */}
-                <div className="bg-noir-200 border border-noir-400 p-4 rounded">
-                    <h3 className="text-sm font-bold text-noir-txt-secondary mb-4 flex items-center gap-2">
+                <div className={cn(
+                    "border p-4 rounded relative",
+                    (isForfeit || isSold || isRedeemed)
+                        ? "bg-[#1a1712] border-amber-900/40 shadow-inner"
+                        : "bg-noir-200 border-noir-400"
+                )}>
+                    {/* #25: Folder tab for archived items */}
+                    {(isForfeit || isSold || isRedeemed) && (
+                        <div className="absolute -top-3 left-4 flex items-center gap-1.5 bg-amber-950/80 border border-amber-900/50 rounded-t px-2.5 py-0.5">
+                            <Package className="w-3 h-3 text-amber-600/70" />
+                            <span className="text-[9px] font-mono text-amber-600/70 uppercase tracking-wider">
+                                {isForfeit ? 'Forfeited' : isSold ? 'Sold' : 'Redeemed'}
+                            </span>
+                        </div>
+                    )}
+                    <h3 className={cn(
+                        "text-sm font-bold mb-4 flex items-center gap-2",
+                        (isForfeit || isSold || isRedeemed) ? "text-amber-700/80 mt-1" : "text-noir-txt-secondary"
+                    )}>
                         <BookOpen className="w-4 h-4" /> LIFE CYCLE LOG
                         {logs.length > 0 && (
                             <span className="text-[10px] text-noir-txt-muted font-normal ml-auto">

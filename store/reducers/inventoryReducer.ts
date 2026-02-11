@@ -12,6 +12,7 @@ import { generateRedeemLog, generateForfeitLog, generateSoldLog } from '../../sy
 import { GamePhase } from '../../systems/core/phases';
 import { calculateTaggedValue } from '../../systems/items/tagUtils';
 import { getRenewalRefusalPenalty } from '../../systems/economy/renewalPenalty';
+import { GAME_CONFIG } from '../../systems/game/config';
 
 export function inventoryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -194,6 +195,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
         case 'SELL_FORFEIT_ITEM': {
             const { itemId, amount, name } = action.payload;
             playSfx('CASH');
+            const soldItem = state.inventory.find(i => i.id === itemId);
             const soldInventory = state.inventory.map(item => {
                 if (item.id === itemId) {
                     const soldLog = generateSoldLog(item, state.stats.day, amount);
@@ -207,12 +209,28 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 amount: amount,
                 type: 'SELL'
             };
+
+            // #43/#50: Restored/reforged sale gives Credibility +1
+            const newRep = { ...state.reputation };
+            let repLog = '';
+            if (soldItem && (soldItem.workState === 'RESTORED' || soldItem.wasRestored)) {
+                const credBonus = GAME_CONFIG.WORKSHOP.REPUTATION.restore_sale_credibility ?? 1;
+                newRep[ReputationType.CREDIBILITY] += credBonus;
+                repLog = `，商誉+${credBonus} (修复品出售)`;
+            } else if (soldItem && (soldItem.workState === 'REFORGED' || soldItem.wasReforged)) {
+                const credBonus = GAME_CONFIG.WORKSHOP.REPUTATION.reforge_sale_credibility ?? 1;
+                newRep[ReputationType.CREDIBILITY] += credBonus;
+                repLog = `，商誉+${credBonus} (重铸品出售)`;
+            }
+            clampReputation(newRep);
+
             return {
                 ...state,
                 stats: { ...state.stats, cash: state.stats.cash + amount },
+                reputation: newRep,
                 inventory: soldInventory,
                 todayTransactions: [...state.todayTransactions, saleRecord],
-                dayEvents: [...state.dayEvents, `清算绝当品: ${name} (+$${amount})`]
+                dayEvents: [...state.dayEvents, `清算绝当品: ${name} (+$${amount})${repLog}`]
             };
         }
 
@@ -405,6 +423,24 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 inventory: cancelInventory,
                 todayTransactions: [...state.todayTransactions, cancelRecord],
                 dayEvents: [...state.dayEvents, `客户取消典当: ${name} (退还 $${refundAmount}, 手续费 $${fee}, 商誉 +1)`]
+            };
+        }
+
+        // #23: Refuse Cancel Pawn — player declines customer's cancellation request
+        // Contract remains active, customer departs resentfully (Humanity -5)
+        case 'REFUSE_CANCEL_PAWN': {
+            const { itemId: refuseItemId, name: refuseName } = action.payload;
+            playSfx('FAIL');
+
+            const refuseRep = { ...state.reputation };
+            const refuseHumanityLoss = GAME_CONFIG.PAWN_BUSINESS?.REFUSE_CANCEL_HUMANITY ?? -5;
+            refuseRep[ReputationType.HUMANITY] = Math.max(0, refuseRep[ReputationType.HUMANITY] + refuseHumanityLoss);
+            clampReputation(refuseRep);
+
+            return {
+                ...state,
+                reputation: refuseRep,
+                dayEvents: [...state.dayEvents, `拒绝客户取消典当: ${refuseName} (人情 ${refuseHumanityLoss})`]
             };
         }
 

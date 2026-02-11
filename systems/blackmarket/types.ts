@@ -57,6 +57,7 @@ export interface RiskEvent {
   reputationLoss?: number;    // Credibility loss
   suspendHeatDecay?: boolean; // v3.6 [#31]: Suspend next-day heat decay
   salePenalty?: number;       // v3.6 [#31]: Next-day sale price penalty (e.g., 0.05 = -5%)
+  heatReduction?: number;     // Immediate heat reduction when event triggers
 }
 
 // ============================================================================
@@ -90,6 +91,9 @@ export interface BlackmarketDailyState {
 
   // v3.6 [BM-4]: Undercover visit aftermath effects
   salePenaltyPercent: number; // 0.05 = -5% on sale prices for the day
+
+  // #30: Extra revealed tag from EXTRA_INTEL low heat reward
+  extraRevealedTag: ItemTag | null;
 }
 
 /**
@@ -146,6 +150,17 @@ export interface MoralEchoBlackmarketEffect {
 }
 
 /**
+ * #37: Dangerous task (favor) from contacts when innocence is very low
+ */
+export interface DangerousTask {
+  id: string;
+  description: string;        // Contact's request text
+  riskClues: RiskClue[];       // Readable clues about actual risk
+  actualRisk: 'LOW' | 'MEDIUM' | 'HIGH';
+  generatedDay: number;
+}
+
+/**
  * Complete black market state
  */
 export interface BlackmarketState {
@@ -182,6 +197,9 @@ export interface BlackmarketState {
 
   // v3.6 [BM-10]: Pending moral echo effects
   pendingMoralEchoes: MoralEchoBlackmarketEffect[];
+
+  // #37: Pending dangerous task
+  pendingDangerousTask: DangerousTask | null;
 }
 
 // ============================================================================
@@ -225,7 +243,8 @@ export const INITIAL_BLACKMARKET_STATE: BlackmarketState = {
     saleMultiplierMin: 0.60,
     saleMultiplierMax: 0.85,
     revealedTag: null,
-    salePenaltyPercent: 0
+    salePenaltyPercent: 0,
+    extraRevealedTag: null
   },
   todaySales: [],
   lastRiskEvent: null,
@@ -244,7 +263,8 @@ export const INITIAL_BLACKMARKET_STATE: BlackmarketState = {
     cooldownUntilDay: 0,
     lastRequestDay: 0
   },
-  pendingMoralEchoes: []
+  pendingMoralEchoes: [],
+  pendingDangerousTask: null
 };
 
 // ============================================================================

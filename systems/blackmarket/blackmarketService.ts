@@ -27,7 +27,8 @@ import {
   LowHeatRewardState,
   LowHeatRewardType,
   ProtectionFeeState,
-  MoralEchoBlackmarketEffect
+  MoralEchoBlackmarketEffect,
+  DangerousTask
 } from './types';
 import { BlackMarketLevelConfig } from '../upgrades/types';
 import { BLACK_MARKET_LEVELS } from '../upgrades/config';
@@ -95,15 +96,18 @@ const DEMAND_INERTIA_BONUS = GAME_CONFIG.BLACKMARKET.DEMAND_INERTIA_BONUS;
  * Generate random purchase requests for the day
  * v3.6 [BM-2]: Supports demand inertia via tagHistory
  * P1-10: Supports ecology shift via innocence-based gray tag weighting
+ * #67: Supports purchase multiplier cap override from news
  * @param count Number of purchase requests to generate (equals daily purchase limit)
  * @param tagHistory Recent tag history for demand inertia (most recent first)
  * @param ecologyShift Gray customer percentage bonus from P1-10 (0.0 - 0.40)
+ * @param purchaseCapOverride Optional override for the purchase price cap (default: normal cap)
  * @returns Array of MarketPurchaseRequest, each with a unique tag and fulfilled: false
  */
 export function generateDailyPurchaseRequests(
   count: number,
   tagHistory: ItemTag[] = [],
-  ecologyShift: number = 0
+  ecologyShift: number = 0,
+  purchaseCapOverride?: number
 ): MarketPurchaseRequest[] {
   const tradeableTags = getTradeableTags();
 
@@ -145,8 +149,12 @@ export function generateDailyPurchaseRequests(
 
     selectedTags.push(tag);
 
-    // Random multiplier between PURCHASE_PRICE_MIN and PURCHASE_PRICE_MIN + PURCHASE_PRICE_RANGE
-    const priceMultiplier = GAME_CONFIG.BLACKMARKET.PURCHASE_PRICE_MIN + Math.random() * GAME_CONFIG.BLACKMARKET.PURCHASE_PRICE_RANGE;
+    // Random multiplier between PURCHASE_PRICE_MIN and cap
+    // #67: Cap may be overridden by news (e.g., 1.50 instead of 1.40)
+    const normalCap = GAME_CONFIG.BLACKMARKET.PURCHASE_PRICE_MIN + GAME_CONFIG.BLACKMARKET.PURCHASE_PRICE_RANGE;
+    const effectiveCap = purchaseCapOverride ?? normalCap;
+    const effectiveRange = effectiveCap - GAME_CONFIG.BLACKMARKET.PURCHASE_PRICE_MIN;
+    const priceMultiplier = GAME_CONFIG.BLACKMARKET.PURCHASE_PRICE_MIN + Math.random() * effectiveRange;
 
     requests.push({
       tag,
@@ -208,23 +216,27 @@ export function getHeatDecayRate(upgradeLevel: number): number {
  * Generate a fresh daily state
  * v3.6: Now accepts tagHistory for demand inertia and lastRiskEvent for sale penalty
  * P1-10: Now accepts ecologyShift for gray tag weighting
+ * #67: Now accepts purchaseCapOverride for news-driven cap increase
  * @param upgradeLevel Optional black market contact upgrade level (defaults to 1)
  * @param tagHistory Recent tag history for demand inertia
  * @param salePenaltyPercent Sale price penalty from previous risk event (e.g., undercover visit)
  * @param ecologyShift Gray customer percentage bonus from P1-10 (0.0 - 0.40)
+ * @param purchaseCapOverride Optional override for purchase multiplier cap from news
  */
 export function generateDailyBlackmarketState(
   upgradeLevel: number = 1,
   tagHistory: ItemTag[] = [],
   salePenaltyPercent: number = 0,
-  ecologyShift: number = 0
+  ecologyShift: number = 0,
+  purchaseCapOverride?: number
 ): BlackmarketDailyState {
   const { min, max } = generateDailySaleMultipliers();
   const purchaseLimit = getDailyPurchaseLimit(upgradeLevel);
 
   // v3.6 [BM-2]: Pass tagHistory for demand inertia
   // P1-10: Pass ecologyShift for gray tag weighting
-  const purchaseRequests = generateDailyPurchaseRequests(purchaseLimit, tagHistory, ecologyShift);
+  // #67: Pass purchaseCapOverride for news-driven cap
+  const purchaseRequests = generateDailyPurchaseRequests(purchaseLimit, tagHistory, ecologyShift, purchaseCapOverride);
 
   // v3.6 [BM-1]: Select one tag to reveal to news system (100% accurate)
   const revealedTag = purchaseRequests.length > 0
@@ -236,7 +248,8 @@ export function generateDailyBlackmarketState(
     saleMultiplierMin: min,
     saleMultiplierMax: max,
     revealedTag,
-    salePenaltyPercent
+    salePenaltyPercent,
+    extraRevealedTag: null  // Set by processEndOfDay when EXTRA_INTEL reward is active
   };
 }
 
@@ -357,6 +370,36 @@ export function getRandomSaleMultiplier(
 
   // Fallback to true random (for backwards compatibility)
   return saleMultiplierMin + Math.random() * (saleMultiplierMax - saleMultiplierMin);
+}
+
+// ============================================================================
+// Forfeit Settlement Price (#27)
+// ============================================================================
+
+/**
+ * Calculate the forfeit settlement price for an item using the black market
+ * sale price formula (realValue * saleMultiplier * (1-commission) with volatility).
+ *
+ * Design doc 2.4: "流当结算 = 按当天该物品的黑市出售价卖出（已包含 uncertainty 波动）"
+ *
+ * @param item The forfeited item
+ * @param daily Current daily blackmarket state
+ * @param underworldRep Player's underworld reputation (for commission)
+ * @param day Current game day
+ * @param newsSentiment Optional news sentiment modifier (default 1.0)
+ * @returns Settlement price
+ */
+export function calculateForfeitSettlementPrice(
+  item: Item,
+  daily: BlackmarketDailyState,
+  underworldRep: number,
+  day: number,
+  newsSentiment: number = 1.0
+): number {
+  const saleMultiplier = getRandomSaleMultiplier(daily, item.id, day);
+  // Apply any active sale penalty
+  const adjustedMultiplier = saleMultiplier * (1 - daily.salePenaltyPercent);
+  return calculateSalePrice(item, adjustedMultiplier, underworldRep, day, newsSentiment);
 }
 
 // ============================================================================
@@ -515,7 +558,8 @@ function generateRiskEvent(type: RiskEventType): RiskEvent {
         type: 'UNDERCOVER_VISIT',
         message: '联系人发来消息："今晚有眼睛盯着，暂时别动。"',
         suspendHeatDecay: true,  // v3.6 [#31]: Next day heat does not decay
-        salePenalty: GAME_CONFIG.BLACKMARKET.UNDERCOVER_SALE_PENALTY  // v3.6 [#31]: Next day sale price penalty
+        salePenalty: GAME_CONFIG.BLACKMARKET.UNDERCOVER_SALE_PENALTY,  // v3.6 [#31]: Next day sale price penalty
+        heatReduction: GAME_CONFIG.BLACKMARKET.UNDERCOVER_HEAT_REDUCTION  // #16: heat -1 on undercover visit
       };
 
     case 'SEARCH_WARNING': {
@@ -568,14 +612,21 @@ export function processEndOfDay(
   upgradeLevel: number = 1,
   innocence: number = 100
 ): { newState: BlackmarketState; riskEvent: RiskEvent | null } {
+  // #34: Check protection fee cooldown effects
+  const inCooldown = isInProtectionCooldown(state.protectionFee, currentDay);
+  const cooldownExtraDecay = inCooldown ? GAME_CONFIG.BLACKMARKET.PROTECTION_COOLDOWN_EXTRA_DECAY : 0;
+
   // v3.6 [BM-4]: Check if heat decay is suspended (from undercover visit)
   let newHeat: number;
   if (state.heatDecaySuspended) {
-    // Skip heat decay for this day
-    newHeat = state.heat;
+    // Skip heat decay for this day, but cooldown extra decay still applies
+    newHeat = inCooldown ? Math.max(0, state.heat - cooldownExtraDecay) : state.heat;
   } else {
-    // Apply heat decay (rate depends on upgrade level)
+    // Apply heat decay (rate depends on upgrade level) + cooldown extra decay
     newHeat = applyHeatDecay(state.heat, upgradeLevel);
+    if (cooldownExtraDecay > 0) {
+      newHeat = Math.max(0, newHeat - cooldownExtraDecay);
+    }
   }
 
   // Check if lock has expired
@@ -604,8 +655,18 @@ export function processEndOfDay(
   const nextHeatDecaySuspended = riskEvent?.suspendHeatDecay ?? false;
 
   // Generate new daily state with demand inertia and ecology shift
+  // #34: Reduce purchase limit by 1 during protection fee cooldown (minimum 1)
   const ecologyShift = getCustomerEcologyShift(innocence);
-  const newDaily = generateDailyBlackmarketState(upgradeLevel, newTagHistory, salePenaltyPercent, ecologyShift);
+  const effectiveUpgradeLevel = upgradeLevel;
+  const newDaily = generateDailyBlackmarketState(effectiveUpgradeLevel, newTagHistory, salePenaltyPercent, ecologyShift);
+  if (inCooldown) {
+    const reduction = GAME_CONFIG.BLACKMARKET.PROTECTION_COOLDOWN_LIMIT_REDUCTION;
+    const minRequests = 1;
+    const targetCount = Math.max(minRequests, newDaily.purchaseRequests.length - reduction);
+    if (newDaily.purchaseRequests.length > targetCount) {
+      newDaily.purchaseRequests = newDaily.purchaseRequests.slice(0, targetCount);
+    }
+  }
 
   // v3.6 [BM-2]: Lv3+ next day preview tag
   const nextDayPreviewTag = upgradeLevel >= 3 && newDaily.purchaseRequests.length > 0
@@ -615,9 +676,24 @@ export function processEndOfDay(
   // v3.6 [BM-7]: Track low heat reward
   const newLowHeatReward = updateLowHeatReward(state.lowHeatReward, newHeat);
 
+  // #30: EXTRA_INTEL reward reveals an additional purchase tag
+  if (newLowHeatReward.rewardActive && newLowHeatReward.rewardType === 'EXTRA_INTEL') {
+    const unrevealed = newDaily.purchaseRequests.filter(r => r.tag !== newDaily.revealedTag);
+    if (unrevealed.length > 0) {
+      newDaily.extraRevealedTag = unrevealed[Math.floor(Math.random() * unrevealed.length)].tag;
+    }
+  }
+
   // v3.6 [BM-10]: Process pending moral echoes (remove expired ones)
   const newMoralEchoes = state.pendingMoralEchoes.filter(
     echo => echo.day + echo.delay > currentDay
+  );
+
+  // #37: Check for dangerous task trigger
+  const dangerousTask = checkDangerousTask(
+    innocence,
+    currentDay,
+    state.pendingDangerousTask !== null
   );
 
   return {
@@ -633,7 +709,8 @@ export function processEndOfDay(
       nextDayPreviewTag,
       heatDecaySuspended: nextHeatDecaySuspended,
       lowHeatReward: newLowHeatReward,
-      pendingMoralEchoes: newMoralEchoes
+      pendingMoralEchoes: newMoralEchoes,
+      pendingDangerousTask: dangerousTask ?? state.pendingDangerousTask
     },
     riskEvent
   };
@@ -761,6 +838,54 @@ export function generateRiskClues(actualRisk: 'LOW' | 'MEDIUM' | 'HIGH'): RiskCl
     text,
     impliedRisk: actualRisk
   }));
+}
+
+// ============================================================================
+// #37: Dangerous Task Trigger Logic
+// ============================================================================
+
+/**
+ * Check if a dangerous task should be generated.
+ * Triggers when innocence <= threshold (default 20) with a daily random chance (default 10%).
+ * Only one pending task at a time.
+ *
+ * @param innocence Player's current innocence
+ * @param currentDay Current game day
+ * @param hasPendingTask Whether there's already a pending dangerous task
+ * @returns A DangerousTask if triggered, null otherwise
+ */
+export function checkDangerousTask(
+  innocence: number,
+  currentDay: number,
+  hasPendingTask: boolean
+): DangerousTask | null {
+  if (hasPendingTask) return null;
+
+  const threshold = GAME_CONFIG.BLACKMARKET.DANGEROUS_TASK_INNOCENCE_THRESHOLD;
+  const chance = GAME_CONFIG.BLACKMARKET.DANGEROUS_TASK_DAILY_CHANCE;
+
+  if (innocence > threshold) return null;
+  if (Math.random() >= chance) return null;
+
+  // Determine risk level - lower innocence skews toward higher risk
+  let actualRisk: 'LOW' | 'MEDIUM' | 'HIGH';
+  const riskRoll = Math.random();
+  if (innocence <= 10) {
+    actualRisk = riskRoll < 0.2 ? 'LOW' : riskRoll < 0.5 ? 'MEDIUM' : 'HIGH';
+  } else {
+    actualRisk = riskRoll < 0.4 ? 'LOW' : riskRoll < 0.8 ? 'MEDIUM' : 'HIGH';
+  }
+
+  const clues = generateRiskClues(actualRisk);
+  const description = clues.length > 0 ? clues[0].text : '联系人有件事想找你帮忙。';
+
+  return {
+    id: `dtask-${currentDay}-${Math.random().toString(36).slice(2, 8)}`,
+    description,
+    riskClues: clues,
+    actualRisk,
+    generatedDay: currentDay
+  };
 }
 
 // ============================================================================
@@ -915,6 +1040,54 @@ export function getNewsSentimentModifier(activeNews: ActiveNewsInstance[]): numb
 }
 
 // ============================================================================
+// #67: News-driven purchase multiplier cap override
+// ============================================================================
+
+/**
+ * Check if any active news indicates underground market activity,
+ * which raises the purchase multiplier cap from 1.40 to 1.50.
+ *
+ * Checks for news tags: 'blackmarket_active', 'underground_active'
+ * or effects targeting 'blackmarket' system.
+ *
+ * @param activeNews Current active news instances
+ * @returns true if the purchase multiplier cap should be raised
+ */
+export function hasBlackmarketActiveNews(activeNews: ActiveNewsInstance[]): boolean {
+  if (!activeNews || activeNews.length === 0) return false;
+
+  for (const news of activeNews) {
+    const tags = news.tags || [];
+    if (tags.includes('blackmarket_active') || tags.includes('underground_active')) {
+      return true;
+    }
+    // Check effects targeting blackmarket system
+    for (const effect of (news.effects || [])) {
+      if (effect.targetSystem === 'blackmarket' && effect.modifier > 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Get the effective purchase multiplier cap based on news state.
+ * Normal: PURCHASE_PRICE_MIN + PURCHASE_PRICE_RANGE (1.40)
+ * With active news: NEWS_ACTIVE_PURCHASE_CAP (1.50)
+ *
+ * @param activeNews Current active news instances
+ * @returns Maximum purchase price multiplier
+ */
+export function getEffectivePurchaseMultiplierCap(activeNews: ActiveNewsInstance[]): number {
+  const normalCap = GAME_CONFIG.BLACKMARKET.PURCHASE_PRICE_MIN + GAME_CONFIG.BLACKMARKET.PURCHASE_PRICE_RANGE;
+  if (hasBlackmarketActiveNews(activeNews)) {
+    return GAME_CONFIG.BLACKMARKET.NEWS_ACTIVE_PURCHASE_CAP;
+  }
+  return normalCap;
+}
+
+// ============================================================================
 // Market Trend Indicator (#53)
 // ============================================================================
 
@@ -937,6 +1110,91 @@ export function getMarketTrend(activeNews: ActiveNewsInstance[]): MarketTrendLev
 // ============================================================================
 // v3.6 [BM-10]: Moral Echo System
 // ============================================================================
+
+// #62: Moral echo text lookup table (loaded from CSV at module init)
+interface MoralEchoTextEntry {
+  type: string;
+  severity: number;
+  text: string;
+}
+
+let moralEchoTexts: MoralEchoTextEntry[] | null = null;
+
+function loadMoralEchoTexts(): MoralEchoTextEntry[] {
+  if (moralEchoTexts) return moralEchoTexts;
+  try {
+    const raw = (import.meta as any).glob?.('/assets/data/texts/blackmarket_echo.csv', { eager: true, query: '?raw' });
+    if (raw) {
+      const csvText = Object.values(raw)[0] as string;
+      const lines = csvText.trim().split('\n').slice(1); // skip header
+      moralEchoTexts = lines
+        .map(line => {
+          // Simple CSV parse (no commas in fields expected)
+          const parts = line.split(',');
+          if (parts.length >= 3) {
+            return { type: parts[0].trim(), severity: parseInt(parts[1].trim(), 10), text: parts.slice(2).join(',').trim() };
+          }
+          return null;
+        })
+        .filter((e): e is MoralEchoTextEntry => e !== null);
+      return moralEchoTexts;
+    }
+  } catch { /* fallback */ }
+
+  // Fallback if CSV not available
+  moralEchoTexts = [
+    { type: 'HEAT_INCREASE', severity: 1, text: '又一笔交易。' },
+    { type: 'RISK_ESCALATION', severity: 2, text: '联系人皱了皱眉。' },
+    { type: 'REPUTATION_LEAK', severity: 3, text: '又一次违约。' },
+  ];
+  return moralEchoTexts;
+}
+
+/**
+ * #62: Consume pending moral echoes and return display-ready text.
+ * Selects text entries from CSV matching each echo's type and severity.
+ * Returns an array of text strings to be displayed by UI (inner voice system).
+ * After calling this, the reducer should clear pendingMoralEchoes.
+ *
+ * @param echoes Pending moral echoes from blackmarket state
+ * @param innocence Current player innocence (for tone variation)
+ * @returns Array of display-ready text strings
+ */
+export function consumeMoralEchoes(
+  echoes: MoralEchoBlackmarketEffect[],
+  innocence: number
+): string[] {
+  if (echoes.length === 0) return [];
+
+  const texts = loadMoralEchoTexts();
+  const results: string[] = [];
+
+  for (const echo of echoes) {
+    // For low innocence, prefer NUMB type texts (emotional numbness)
+    const effectiveType = innocence < 30 ? 'NUMB' : echo.type;
+
+    // Find matching texts by type and severity
+    let candidates = texts.filter(
+      t => t.type === effectiveType && t.severity <= echo.severity
+    );
+
+    // Fallback to any matching type
+    if (candidates.length === 0) {
+      candidates = texts.filter(t => t.type === effectiveType);
+    }
+    // Fallback to original type
+    if (candidates.length === 0) {
+      candidates = texts.filter(t => t.type === echo.type);
+    }
+
+    if (candidates.length > 0) {
+      const picked = candidates[Math.floor(Math.random() * candidates.length)];
+      results.push(picked.text);
+    }
+  }
+
+  return results;
+}
 
 // ============================================================================
 // Counterfeit Sale Flow

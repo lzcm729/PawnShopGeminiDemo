@@ -179,6 +179,10 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
 
       if (state.stats.cash < amount) return state;
 
+      // #19: Paying fine reduces heat by configured amount (design: -2)
+      const fineHeatReduction = GAME_CONFIG.BLACKMARKET.SEARCH_FINE_HEAT_REDUCTION;
+      const heatAfterFine = Math.max(0, state.blackmarket.heat - fineHeatReduction);
+
       return {
         ...state,
         stats: {
@@ -187,11 +191,12 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         },
         blackmarket: {
           ...state.blackmarket,
+          heat: heatAfterFine,
           lastRiskEvent: null  // Clear the risk event
         },
         dayEvents: [
           ...state.dayEvents,
-          `[黑市] 支付了 $${amount} 避免搜查`
+          `[黑市] 支付了 $${amount} 避免搜查，热度 -${fineHeatReduction}`
         ]
       };
     }
@@ -199,31 +204,44 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
     case 'BLACKMARKET_ACCEPT_LOCKDOWN': {
       const { lockDays } = action.payload;
       const lockUntilDay = state.stats.day + lockDays;
+      const lastEvent = state.blackmarket.lastRiskEvent;
+      const isFormalInvestigation = !!lastEvent?.reputationLoss;
 
       // Apply reputation loss if it was a formal investigation
       let newReputation = state.reputation;
-      if (state.blackmarket.lastRiskEvent?.reputationLoss) {
+      if (isFormalInvestigation && lastEvent?.reputationLoss) {
         newReputation = {
           ...state.reputation,
           [ReputationType.CREDIBILITY]: Math.max(
             0,
-            state.reputation[ReputationType.CREDIBILITY] - state.blackmarket.lastRiskEvent.reputationLoss
+            state.reputation[ReputationType.CREDIBILITY] - lastEvent.reputationLoss
           )
         };
       }
+
+      // #20: Formal investigation resets heat to 0; search warning lockdown reduces by configured amount
+      let lockdownHeat: number;
+      if (isFormalInvestigation) {
+        lockdownHeat = 0;
+      } else {
+        lockdownHeat = Math.max(0, state.blackmarket.heat - GAME_CONFIG.BLACKMARKET.SEARCH_LOCKDOWN_HEAT_REDUCTION);
+      }
+
+      const heatNote = isFormalInvestigation ? '，热度归零' : `，热度 -${GAME_CONFIG.BLACKMARKET.SEARCH_LOCKDOWN_HEAT_REDUCTION}`;
 
       return {
         ...state,
         reputation: newReputation,
         blackmarket: {
           ...state.blackmarket,
+          heat: lockdownHeat,
           isLocked: true,
           lockUntilDay,
           lastRiskEvent: null
         },
         dayEvents: [
           ...state.dayEvents,
-          `[黑市] 黑市关闭 ${lockDays} 天`
+          `[黑市] 黑市关闭 ${lockDays} 天${heatNote}`
         ]
       };
     }
@@ -240,6 +258,11 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         newHeat = state.blackmarket.heat;
       } else {
         newHeat = applyHeatDecay(state.blackmarket.heat, upgradeLevel);
+      }
+
+      // #16: Apply immediate heat reduction from risk event (e.g., undercover visit -1)
+      if (riskEvent?.heatReduction) {
+        newHeat = Math.max(0, newHeat - riskEvent.heatReduction);
       }
 
       // v3.6 [BM-2]: Update tag history
@@ -308,6 +331,16 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       return {
         ...state,
         blackmarket: action.payload
+      };
+    }
+
+    case 'BLACKMARKET_CLEAR_MORAL_ECHOES': {
+      return {
+        ...state,
+        blackmarket: {
+          ...state.blackmarket,
+          pendingMoralEchoes: []
+        }
       };
     }
 

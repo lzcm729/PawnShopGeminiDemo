@@ -49,6 +49,11 @@ interface TomlNight {
   gewu_lv3_epiphany_threshold: number;
   gewu_lv2_energy_max: number;
   gewu_lv3_energy_max: number;
+  // Epiphany duration scaling
+  epiphany_duration_lv1: number;
+  epiphany_duration_lv2: number;
+  epiphany_duration_lv3: number;
+  epiphany_base_duration_ms: number;
 }
 
 interface TomlPawnBusiness {
@@ -59,6 +64,7 @@ interface TomlPawnBusiness {
   renewal_refusal_credibility: number;
   renewal_accept_humanity: number;
   renewal_accept_credibility: number;
+  refuse_cancel_humanity: number;
 }
 
 interface TomlMother {
@@ -249,6 +255,14 @@ interface TomlNegotiation {
   near_floor_ratio: number;
   near_floor_concession_bonus: number;
   heart_strike_concession_bonus: number;
+  // #41: Near-ask patience modifier
+  near_ask_ratio: number;
+  near_ask_patience_reduction: number;
+  // #46: SLY ask inflation
+  sly_ask_inflation: number;
+  // #32: Credibility -> high-end customers
+  credibility_high_end_threshold: number;
+  credibility_high_end_value_boost: number;
 }
 
 interface TomlBlackmarket {
@@ -283,6 +297,18 @@ interface TomlBlackmarket {
   stolen_extra_heat: number;
   direct_sell_credibility_loss: number;
   news_sentiment_modifier: number;
+  // Risk event heat reductions
+  undercover_heat_reduction: number;
+  search_fine_heat_reduction: number;
+  search_lockdown_heat_reduction: number;
+  // Protection fee cooldown effects
+  protection_cooldown_limit_reduction: number;
+  protection_cooldown_extra_decay: number;
+  // Dangerous tasks
+  dangerous_task_innocence_threshold: number;
+  dangerous_task_daily_chance: number;
+  // News active purchase cap
+  news_active_purchase_cap: number;
 }
 
 interface TomlMoralEcho {
@@ -575,6 +601,11 @@ export const GAME_CONFIG = {
     GEWU_LV3_EPIPHANY_THRESHOLD: tomlConfig.night.gewu_lv3_epiphany_threshold,
     GEWU_LV2_ENERGY_MAX: tomlConfig.night.gewu_lv2_energy_max,
     GEWU_LV3_ENERGY_MAX: tomlConfig.night.gewu_lv3_energy_max,
+    // Epiphany duration scaling
+    EPIPHANY_DURATION_LV1: tomlConfig.night.epiphany_duration_lv1,
+    EPIPHANY_DURATION_LV2: tomlConfig.night.epiphany_duration_lv2,
+    EPIPHANY_DURATION_LV3: tomlConfig.night.epiphany_duration_lv3,
+    EPIPHANY_BASE_DURATION_MS: tomlConfig.night.epiphany_base_duration_ms,
   },
 
   INITIAL_MOTHER_STATUS: {
@@ -775,6 +806,14 @@ export const GAME_CONFIG = {
     NEAR_FLOOR_RATIO: tomlConfig.negotiation.near_floor_ratio,
     NEAR_FLOOR_CONCESSION_BONUS: tomlConfig.negotiation.near_floor_concession_bonus,
     HEART_STRIKE_CONCESSION_BONUS: tomlConfig.negotiation.heart_strike_concession_bonus,
+    // #41: Near-ask patience modifier
+    NEAR_ASK_RATIO: tomlConfig.negotiation.near_ask_ratio,
+    NEAR_ASK_PATIENCE_REDUCTION: tomlConfig.negotiation.near_ask_patience_reduction,
+    // #46: SLY ask inflation
+    SLY_ASK_INFLATION: tomlConfig.negotiation.sly_ask_inflation,
+    // #32: Credibility -> high-end customers
+    CREDIBILITY_HIGH_END_THRESHOLD: tomlConfig.negotiation.credibility_high_end_threshold,
+    CREDIBILITY_HIGH_END_VALUE_BOOST: tomlConfig.negotiation.credibility_high_end_value_boost,
   },
 
   // --- BLACKMARKET (黑市系统) ---
@@ -810,6 +849,18 @@ export const GAME_CONFIG = {
     STOLEN_EXTRA_HEAT: tomlConfig.blackmarket.stolen_extra_heat,
     DIRECT_SELL_CREDIBILITY_LOSS: tomlConfig.blackmarket.direct_sell_credibility_loss,
     NEWS_SENTIMENT_MODIFIER: tomlConfig.blackmarket.news_sentiment_modifier,
+    // Risk event heat reductions
+    UNDERCOVER_HEAT_REDUCTION: tomlConfig.blackmarket.undercover_heat_reduction,
+    SEARCH_FINE_HEAT_REDUCTION: tomlConfig.blackmarket.search_fine_heat_reduction,
+    SEARCH_LOCKDOWN_HEAT_REDUCTION: tomlConfig.blackmarket.search_lockdown_heat_reduction,
+    // Protection fee cooldown effects
+    PROTECTION_COOLDOWN_LIMIT_REDUCTION: tomlConfig.blackmarket.protection_cooldown_limit_reduction,
+    PROTECTION_COOLDOWN_EXTRA_DECAY: tomlConfig.blackmarket.protection_cooldown_extra_decay,
+    // Dangerous tasks
+    DANGEROUS_TASK_INNOCENCE_THRESHOLD: tomlConfig.blackmarket.dangerous_task_innocence_threshold,
+    DANGEROUS_TASK_DAILY_CHANCE: tomlConfig.blackmarket.dangerous_task_daily_chance,
+    // News active purchase cap
+    NEWS_ACTIVE_PURCHASE_CAP: tomlConfig.blackmarket.news_active_purchase_cap,
   },
 
   // --- ABILITY (角色能力系统) ---
@@ -911,6 +962,7 @@ export const GAME_CONFIG = {
     RENEWAL_REFUSAL_CREDIBILITY: tomlConfig.pawn_business.renewal_refusal_credibility,
     RENEWAL_ACCEPT_HUMANITY: tomlConfig.pawn_business.renewal_accept_humanity,
     RENEWAL_ACCEPT_CREDIBILITY: tomlConfig.pawn_business.renewal_accept_credibility,
+    REFUSE_CANCEL_HUMANITY: tomlConfig.pawn_business.refuse_cancel_humanity,
   },
 
   // --- WORKSHOP (工作台系统) ---

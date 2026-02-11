@@ -38,6 +38,33 @@ import { LowHeatRewardBanner } from './blackmarket/LowHeatRewardBanner';
 import { ConfirmDialog } from './blackmarket/ConfirmDialog';
 import { CounterfeitSaleModal, CounterfeitSaleResult } from './blackmarket/CounterfeitSaleModal';
 import { MarketTrendBanner } from './blackmarket/MarketTrendBanner';
+import { TransactionHistoryTab } from './blackmarket/TransactionHistoryTab';
+
+/** #57: CRT typing effect component for contact messages */
+const TypewriterText: React.FC<{ text: string; speed?: number }> = ({ text, speed = 40 }) => {
+  const [displayLength, setDisplayLength] = useState(0);
+
+  useEffect(() => {
+    setDisplayLength(0);
+    if (!text) return;
+    let i = 0;
+    const timer = setInterval(() => {
+      i++;
+      setDisplayLength(i);
+      if (i >= text.length) clearInterval(timer);
+    }, speed);
+    return () => clearInterval(timer);
+  }, [text, speed]);
+
+  return (
+    <span>
+      {text.slice(0, displayLength)}
+      {displayLength < text.length && (
+        <span className="inline-block w-2 h-4 bg-[#00ff41] ml-0.5 animate-pulse align-text-bottom" />
+      )}
+    </span>
+  );
+};
 
 interface BlackmarketPanelProps {
   isOpen: boolean;
@@ -262,7 +289,9 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
       title={
         <span className="flex items-center gap-2 font-mono text-[#00ff41] animate-crt-flicker">
           <Skull className="w-5 h-5" />
-          <span className="tracking-wider">{'>'} BLACK_MARKET_v2.1</span>
+          <span className="tracking-wider">
+            <TypewriterText text="> BLACK_MARKET_v2.1" speed={35} />
+          </span>
           <HelpTooltip text="出售绝当物品获取现金。满足收购订单获得高价，直售价格较低。交易产生热度，热度过高会引来警方行动。" />
         </span>
       }
@@ -407,6 +436,12 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
         {blackmarket.todaySales.length > 0 && (
           <TodaySalesSummary sales={blackmarket.todaySales} />
         )}
+
+        {/* #61: Transaction History Tab */}
+        <TransactionHistoryTab
+          todaySales={blackmarket.todaySales}
+          currentDay={state.stats.day}
+        />
       </div>
 
       {/* Confirm Dialog */}

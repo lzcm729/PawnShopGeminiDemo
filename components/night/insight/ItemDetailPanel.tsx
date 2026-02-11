@@ -130,16 +130,16 @@ export const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
               <span className="text-stone-500">(必得)</span>
             </div>
 
-            {/* Range narrowing */}
+            {/* Range narrowing - #57: fade-out animation for completed rewards */}
             {!depletedRewards.valueLocked ? (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between transition-all duration-500">
                 <span className="text-stone-400">
                   估价收窄 ~{Math.round(GAME_CONFIG.NIGHT.INSIGHT_RANGE_SHRINK_RATE * 100)}%
                 </span>
                 <span className="text-stone-500">(必得)</span>
               </div>
             ) : (
-              <div className="flex items-center justify-between opacity-40">
+              <div className="flex items-center justify-between opacity-40 transition-opacity duration-1000 ease-out">
                 <span className="text-stone-500 line-through">估价收窄</span>
                 <span className="text-pawn-green text-[10px] flex items-center gap-1">
                   <Check className="w-3 h-3" /> 已完成
@@ -147,10 +147,10 @@ export const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
               </div>
             )}
 
-            {/* Trait discovery */}
+            {/* Trait discovery - #57: fade-out animation for completed rewards */}
             {!depletedRewards.allTraitsRevealed ? (
               hiddenTraitCount > 0 && (
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between transition-all duration-500">
                   <span className="text-stone-400">可能发现特征</span>
                   <span className="text-stone-500">
                     ({Math.round(GAME_CONFIG.NIGHT.INSIGHT_TRAIT_DISCOVERY_CHANCE * 100)}%)
@@ -158,7 +158,7 @@ export const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
                 </div>
               )
             ) : (
-              <div className="flex items-center justify-between opacity-40">
+              <div className="flex items-center justify-between opacity-40 transition-opacity duration-1000 ease-out">
                 <span className="text-stone-500 line-through">特征发现</span>
                 <span className="text-pawn-green text-[10px] flex items-center gap-1">
                   <Check className="w-3 h-3" /> 已完成
@@ -166,9 +166,9 @@ export const ItemDetailPanel: React.FC<ItemDetailPanelProps> = ({
               </div>
             )}
 
-            {/* Pure points mode indicator */}
+            {/* Pure points mode indicator - #57: fade-in transition */}
             {depletedRewards.onlyEssenceRemaining && (
-              <div className="flex items-center gap-2 mt-1 p-1.5 bg-stone-800/50 rounded border border-stone-700/50">
+              <div className="flex items-center gap-2 mt-1 p-1.5 bg-stone-800/50 rounded border border-stone-700/50 animate-fade-in-up">
                 <Gem className="w-3.5 h-3.5 text-stone-500" />
                 <span className="text-[10px] text-stone-500 italic">仅剩原矿可采</span>
               </div>

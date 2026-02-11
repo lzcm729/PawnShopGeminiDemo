@@ -7,6 +7,7 @@ import {
 import { ConsequenceSeverity, CHANNEL_ALLOCATION_MATRIX } from '../narrative/channelProtocol';
 import { ALL_NEWS_DATA, getViolationNewsTemplate } from './registry';
 import { GAME_CONFIG } from '../game/config';
+import { buildMarkerTooltip } from './markerTooltips';
 
 // ============================================================================
 // Condition Checking (unchanged from v1.0)
@@ -239,30 +240,40 @@ export function getCurrentNewsTags(activeNews: ActiveNewsInstance[]): string[] {
     return [...new Set(activeNews.flatMap(n => n.tags || []))];
 }
 
+/** Calendar marker with optional per-tag gameplay-impact tooltip */
+export interface NewsMarker {
+    day: number;
+    label: string;
+    tooltip?: string;
+}
+
 /**
  * S3-F3: Get calendar markers from active and pending news.
  * Active news spans from currentDay for daysRemaining days.
  * Pending news spans from displayDay for duration days.
+ * Each marker includes a per-tag gameplay-impact tooltip from CSV data.
  */
 export function getNewsMarkers(
     activeNews: ActiveNewsInstance[],
     currentDay: number,
     pendingNews?: PendingNewsItem[]
-): { day: number; label: string }[] {
-    const markers: { day: number; label: string }[] = [];
+): NewsMarker[] {
+    const markers: NewsMarker[] = [];
 
     for (const n of activeNews) {
         const label = `${n.sourceLabel} ${n.headline}`;
+        const tooltip = buildMarkerTooltip(n.tags);
         for (let d = 0; d < n.daysRemaining; d++) {
-            markers.push({ day: currentDay + d, label });
+            markers.push({ day: currentDay + d, label, tooltip });
         }
     }
 
     if (pendingNews) {
         for (const p of pendingNews) {
             const label = `${p.sourceLabel} ${p.headline}`;
+            const tooltip = buildMarkerTooltip(p.tags);
             for (let d = 0; d < p.duration; d++) {
-                markers.push({ day: p.displayDay + d, label });
+                markers.push({ day: p.displayDay + d, label, tooltip });
             }
         }
     }

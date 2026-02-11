@@ -420,6 +420,20 @@ export const usePawnShop = () => {
         });
     }, [dispatch]);
 
+    // #23: Refuse Cancel Pawn — player declines customer's cancellation request
+    // Contract remains active; customer departs resentfully (Humanity penalty from TOML)
+    const processRefuseCancelPawn = useCallback((item: Item) => {
+        if (!item.pawnInfo || item.status !== ItemStatus.ACTIVE) return;
+
+        dispatch({
+            type: 'REFUSE_CANCEL_PAWN',
+            payload: {
+                itemId: item.id,
+                name: item.name
+            }
+        });
+    }, [dispatch]);
+
     return {
         calculateRedemptionCost,
         calculatePenalty,
@@ -427,6 +441,7 @@ export const usePawnShop = () => {
         processExtension,
         processRefuseExtension,
         processCancelPawn,
+        processRefuseCancelPawn,
         checkDailyExpirations,
         checkOverdueItems,
         handleLateRedemption,

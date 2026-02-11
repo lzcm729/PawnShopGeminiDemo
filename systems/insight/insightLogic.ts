@@ -863,6 +863,27 @@ export function getPrimaryEssenceType(
 }
 
 /**
+ * Calculate scaled epiphany ritual duration based on Gewu level.
+ * Higher levels produce longer-lasting, more dramatic epiphany presentations.
+ * Design doc #58: duration scales with essence layer depth.
+ *
+ * @param gewuLevel Current Gewu level (1-3)
+ * @returns Duration in milliseconds
+ */
+export function getEpiphanyDuration(gewuLevel: number): number {
+  const baseDuration = GAME_CONFIG.NIGHT.EPIPHANY_BASE_DURATION_MS;
+  let multiplier: number;
+  if (gewuLevel >= 3) {
+    multiplier = GAME_CONFIG.NIGHT.EPIPHANY_DURATION_LV3;
+  } else if (gewuLevel >= 2) {
+    multiplier = GAME_CONFIG.NIGHT.EPIPHANY_DURATION_LV2;
+  } else {
+    multiplier = GAME_CONFIG.NIGHT.EPIPHANY_DURATION_LV1;
+  }
+  return Math.round(baseDuration * multiplier);
+}
+
+/**
  * 批量重置物品的"今晚已格物"标记
  * 在新的夜晚开始时调用
  */

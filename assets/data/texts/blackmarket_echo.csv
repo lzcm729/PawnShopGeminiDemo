@@ -1,0 +1,12 @@
+﻿type,severity,text
+HEAT_INCREASE,1,又一笔交易。联系人点了点头——仅此而已。
+HEAT_INCREASE,1,联系人收了货，没多说什么。
+HEAT_INCREASE,2,联系人低声说："你最近动作频繁，注意点。"
+RISK_ESCALATION,1,联系人提了一句："那批货来路不太干净。"
+RISK_ESCALATION,2,联系人皱了皱眉："这种东西少碰。"
+RISK_ESCALATION,2,你注意到联系人说话时不停看向门口。
+REPUTATION_LEAK,2,又一次违约。你甚至没有犹豫。
+REPUTATION_LEAK,3,联系人说："那个人来找过你。你不在。"
+REPUTATION_LEAK,3,你在想那个人会不会回来。然后你决定不想了。
+NUMB,1,生意就是生意。你已经不会为此失眠了。
+NUMB,2,一切都变得很自然。也许这就是代价。

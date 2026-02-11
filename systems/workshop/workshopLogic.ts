@@ -20,6 +20,7 @@ import { canAfford, getDeficit, spendEssenceBatch } from '../economy/essenceUtil
 import type { PerceptionTier } from './perceptionTier';
 import {
   Recipe,
+  RecipeType,
   RestoreRecipe,
   ReforgeRecipe,
   CounterfeitRecipe,
@@ -115,6 +116,62 @@ export function convertEssence(
       [toKey]: balance[toKey] + amount,
     },
   };
+}
+
+// ============================================================================
+// 路线确认提示 (Route Confirmation Prompts - #63)
+// ============================================================================
+
+export interface RouteConfirmation {
+  /** 叙事化确认文本 (physical explanation of irreversibility) */
+  text: string;
+  /** 路线类型 */
+  route: RecipeType;
+  /** 风险等级: low (修复), high (伪造), medium (重铸) */
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
+/**
+ * 获取路线确认提示
+ * 当物品首次选择某条路线时，返回叙事化的确认文本，
+ * 解释该操作的物理不可逆性（非机械性警告）。
+ *
+ * 仅在物品 workState === 'DEFAULT' 时触发（首次路线选择）
+ */
+export function getRouteConfirmation(
+  route: RecipeType,
+  item: Item,
+): RouteConfirmation | null {
+  // Only show confirmation on first route selection (item not yet committed)
+  if (item.workState && item.workState !== 'DEFAULT') {
+    return null;
+  }
+
+  const texts = getTexts();
+
+  switch (route) {
+    case 'RESTORE':
+      return {
+        text: texts.get('route_confirm:restore')
+          || '保护层一旦涂上，就没有回头路了。物品将无法再进行做旧或结构改造。',
+        route: 'RESTORE',
+        riskLevel: 'low',
+      };
+    case 'COUNTERFEIT':
+      return {
+        text: texts.get('route_confirm:counterfeit')
+          || '化学做旧会吞噬原本的纹路...一旦动手，真正的历史将被永久覆盖。',
+        route: 'COUNTERFEIT',
+        riskLevel: 'high',
+      };
+    case 'REFORGE':
+      return {
+        text: texts.get('route_confirm:reforge')
+          || '拆开之后，它就不再是原来的那件东西了。重铸意味着不可逆的改变。',
+        route: 'REFORGE',
+        riskLevel: 'medium',
+      };
+  }
 }
 
 // ============================================================================

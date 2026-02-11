@@ -6,6 +6,7 @@ import { useGameMachine } from '../hooks/useGameMachine';
 import { useCustomerInsight } from '../hooks/useCustomerInsight';
 import { useCharacterAbility } from '../hooks/useCharacterAbility';
 import { Button } from './ui/Button';
+import { cn } from '../lib/utils';
 import { XCircle } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
 import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
@@ -158,6 +159,17 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const scrollRef = useRef<HTMLDivElement>(null);
   const [rejectionState, setRejectionState] = useState<{show: boolean, text: string}>({show: false, text: ''});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // #6: Screen shake state on insult offers
+  const [isShaking, setIsShaking] = useState(false);
+
+  // #32: Push-pull instinct overlay text
+  const [pushPullOverlay, setPushPullOverlay] = useState<{ text: string; color: string } | null>(null);
+  const pushPullOverlayKeyRef = useRef(0);
+
+  // #45: First-impression text overlay on customer arrival
+  const [showFirstImpression, setShowFirstImpression] = useState(false);
+  const firstImpressionShownRef = useRef<string | null>(null);
 
   // Push-Pull: Track previous ask price for animation
   const [prevAskPrice, setPrevAskPrice] = useState<number>(currentAskPrice);
@@ -340,6 +352,16 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       floorCapShownRef.current = false;
   }, [currentCustomer?.id]);
 
+  // #45: Show first-impression overlay when a new customer arrives
+  useEffect(() => {
+    if (!currentCustomer?.id || firstImpressionShownRef.current === currentCustomer.id) return;
+    if (!currentCustomer.observation) return;
+    firstImpressionShownRef.current = currentCustomer.id;
+    setShowFirstImpression(true);
+    const timer = setTimeout(() => setShowFirstImpression(false), 3000);
+    return () => clearTimeout(timer);
+  }, [currentCustomer?.id, currentCustomer?.observation]);
+
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
       const defaultLines = { standard: "行吧，那我走了。", angry: "浪费时间！", desperate: "求求你了..." };
       const lines: RejectionLines = customer.dialogue?.rejectionLines || defaultLines;
@@ -412,6 +434,26 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           subtext: counterSubtext,
           sentiment: counterSentiment
       }]);
+
+      // #32: Show push-pull instinct overlay
+      let overlayText = '';
+      let overlayColor = 'text-stone-400';
+      if (conceded && !patienceLost) {
+          overlayText = '他松口了...还能再压一压';
+          overlayColor = 'text-pawn-green';
+      } else if (conceded && patienceLost) {
+          overlayText = '松口了，但他快没耐心了';
+          overlayColor = 'text-amber-400';
+      } else if (!conceded && !patienceLost) {
+          overlayText = '没有动摇，再试试';
+          overlayColor = 'text-stone-400';
+      } else {
+          overlayText = '对方很不耐烦了';
+          overlayColor = 'text-red-400';
+      }
+      pushPullOverlayKeyRef.current += 1;
+      setPushPullOverlay({ text: overlayText, color: overlayColor });
+      setTimeout(() => setPushPullOverlay(null), 2500);
   }, [lastPushPullResult]);
 
   // Track last insightAwareText to avoid duplicate entries
@@ -695,7 +737,12 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     } else {
         let penaltyLabel = "";
         if (result.status === 'PRINCIPAL_TOO_LOW') penaltyLabel = "LOWBALL";
-        if (result.status === 'INSULT') penaltyLabel = "INSULT";
+        if (result.status === 'INSULT') {
+          penaltyLabel = "INSULT";
+          // #6: Trigger screen shake on insulting offer
+          setIsShaking(true);
+          setTimeout(() => setIsShaking(false), 500);
+        }
         if (result.status === 'TOTAL_REPAYMENT_EXCEEDED') penaltyLabel = "USURY";
 
         const subtext = patienceLoss > 0 ? `Patience -${patienceLoss} [${penaltyLabel}]` : undefined;
@@ -783,7 +830,10 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const canInteract = !isWalkedAway && !rejectionState.show && !isSubmitting;
 
   return (
-    <div className="flex flex-col h-full relative bg-noir-100 border-l border-noir-400">
+    <div className={cn(
+      "flex flex-col h-full relative bg-noir-100 border-l border-noir-400",
+      isShaking && "animate-shake"
+    )}>
       <CustomerHeader
           customer={currentCustomer}
           patience={patience}
@@ -834,6 +884,30 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               onAccept={handleStolenAccept}
               onReject={handleStolenReject}
           />
+      )}
+
+      {/* #45: First-impression text overlay */}
+      {showFirstImpression && currentCustomer?.observation && (
+        <div className="absolute left-1/2 top-[45%] -translate-x-1/2 z-50 pointer-events-none animate-fade-in-up">
+          <span className="font-serif italic text-base text-amber-400/90 px-5 py-3 rounded-lg bg-black/80 backdrop-blur-sm shadow-xl border border-amber-800/30 max-w-[300px] text-center block">
+            "{currentCustomer.observation}"
+          </span>
+        </div>
+      )}
+
+      {/* #32: Push-pull instinct overlay */}
+      {pushPullOverlay && (
+        <div
+          key={pushPullOverlayKeyRef.current}
+          className="absolute left-1/2 top-1/3 -translate-x-1/2 z-50 pointer-events-none animate-fade-in-up"
+        >
+          <span className={cn(
+            "font-serif italic text-sm px-4 py-2 rounded bg-black/70 backdrop-blur-sm shadow-lg whitespace-nowrap",
+            pushPullOverlay.color
+          )}>
+            "{pushPullOverlay.text}"
+          </span>
+        </div>
       )}
 
       {/* Chat Log */}

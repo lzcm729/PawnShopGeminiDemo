@@ -40,6 +40,7 @@ export {
 } from './recipes';
 
 // 逻辑函数导出
+export type { RouteConfirmation } from './workshopLogic';
 export {
   getRecipeStatus,
   calculateActualCost,
@@ -50,6 +51,7 @@ export {
   getBlockReasonText,
   getViolationWarning,
   getCounterfeitViolationWarning,
+  getRouteConfirmation,
   calculateTagStackMultiplier,
   convertEssence,
   rollQualityOutcome,

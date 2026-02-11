@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Customer, InterestRate, BehaviorTag } from '../types';
-import { executePushPull, PushPullResult, PlayerMoveType, getPushPullStyle } from '../systems/negotiation/pushPull';
+import { executePushPull, PushPullResult, PlayerMoveType, getPushPullStyle, NpcPushPullStyle } from '../systems/negotiation/pushPull';
 import { GAME_CONFIG } from '../systems/game/config';
 import { getAskPriceModifier, getInsultModifier, getConcessionMultiplier } from '../systems/appraisal/precision';
 import { INSIGHT_AWARE_RESPONSES, getRandomText } from '../systems/negotiation/data';
@@ -207,7 +207,15 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       // A1: Apply ask price precision modifier
       const baseAsk = customer.currentAskPrice ?? customer.desiredAmount;
       const askModifier = getAskPriceModifier(itemUncertainty);
-      const adjustedAsk = Math.round(baseAsk * askModifier);
+      let adjustedAsk = Math.round(baseAsk * askModifier);
+
+      // #46: SLY NPC inflated ask — "会演戏，初始 Ask 虚高"
+      const npcStyle: NpcPushPullStyle = getPushPullStyle(customer.behaviorTags);
+      if (npcStyle === 'SLY') {
+        const inflation = GAME_CONFIG.NEGOTIATION.SLY_ASK_INFLATION;
+        adjustedAsk = Math.round(adjustedAsk * (1 + inflation));
+      }
+
       setOfferPrincipal(adjustedAsk);
       setSelectedRate(0.05);
       setCurrentAskPrice(adjustedAsk);
@@ -235,7 +243,15 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       // A1: Apply ask price precision modifier on reset too
       const baseAsk = customer.currentAskPrice ?? customer.desiredAmount;
       const askModifier = getAskPriceModifier(itemUncertainty);
-      const adjustedAsk = Math.round(baseAsk * askModifier);
+      let adjustedAsk = Math.round(baseAsk * askModifier);
+
+      // #46: SLY NPC inflated ask on reset too
+      const npcStyle: NpcPushPullStyle = getPushPullStyle(customer.behaviorTags);
+      if (npcStyle === 'SLY') {
+        const inflation = GAME_CONFIG.NEGOTIATION.SLY_ASK_INFLATION;
+        adjustedAsk = Math.round(adjustedAsk * (1 + inflation));
+      }
+
       setOfferPrincipal(adjustedAsk);
       setSelectedRate(0.05);
       setCurrentAskPrice(adjustedAsk);

@@ -45,6 +45,7 @@ export interface CalendarEvent {
   relatedId?: string;
   wasReforged?: boolean; // True if the related item has been reforged
   certainty?: IncomeCertainty; // Soft income certainty tier (S2-F2/F4)
+  tooltip?: string; // Per-marker gameplay-impact tooltip (STORY_MOMENT events)
 }
 
 // Three-level risk assessment per design doc Section 2.C

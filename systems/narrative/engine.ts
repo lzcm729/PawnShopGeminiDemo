@@ -2,6 +2,7 @@
 import { EventChainState, StoryEvent, TriggerCondition, Dialogue, DialogueText, SimOperation, Customer, Item, ItemStatus, DynamicFlowOutcome, ItemCondition } from '../../types';
 import { GameState } from '../game/types';
 import { calculateInterest, calculateRedemptionTotal } from '../economy/interest';
+import { sanitizeBehaviorTags } from './behaviorTagMapping';
 
 // Helper: Evaluate a single condition
 export const checkCondition = (condition: TriggerCondition, chain: EventChainState): boolean => {
@@ -378,8 +379,8 @@ export const instantiateStoryCustomer = (
         else intent = 'LEAVE';
     }
 
-    // Map behaviorTags with fallback from template or default
-    const behaviorTags = template.behaviorTags || ['SAVVY'];
+    // Map behaviorTags with fallback from template or default, then sanitize mutual exclusivity
+    const behaviorTags = sanitizeBehaviorTags(template.behaviorTags || ['SAVVY']);
 
     // Map identityTags from template
     const identityTags = template.identityTags || [];

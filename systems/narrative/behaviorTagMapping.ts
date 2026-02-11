@@ -135,3 +135,82 @@ export function resolvePushPullStyle(tags: BehaviorTag[]): PushPullStyle {
 
     return 'BALANCED';
 }
+
+// ============================================================================
+// BehaviorTag Mutual Exclusivity Validation (#24)
+// ============================================================================
+
+/**
+ * Mutually exclusive BehaviorTag pairs.
+ * These tags should not coexist on the same NPC/event because they represent
+ * contradictory behavioral dispositions.
+ */
+const EXCLUSIVE_PAIRS: [BehaviorTag, BehaviorTag][] = [
+    ['NAIVE', 'SAVVY'],         // Cannot be both market-naive and market-savvy
+    ['DESPERATE', 'STUBBORN'],  // Urgent need contradicts refusal to budge
+];
+
+/**
+ * Validation result for a single BehaviorTag conflict.
+ */
+export interface BehaviorTagConflict {
+    tag1: BehaviorTag;
+    tag2: BehaviorTag;
+    reason: string;
+}
+
+/**
+ * Validate BehaviorTag combinations for mutual exclusivity.
+ * Returns an array of conflicts found. Empty array means valid.
+ *
+ * Usage:
+ *   const conflicts = validateBehaviorTags(customer.behaviorTags);
+ *   if (conflicts.length > 0) { /* log warnings * / }
+ */
+export function validateBehaviorTags(tags: BehaviorTag[]): BehaviorTagConflict[] {
+    if (tags.length <= 1) return [];
+
+    const tagSet = new Set(tags);
+    const conflicts: BehaviorTagConflict[] = [];
+
+    for (const [tag1, tag2] of EXCLUSIVE_PAIRS) {
+        if (tagSet.has(tag1) && tagSet.has(tag2)) {
+            conflicts.push({
+                tag1,
+                tag2,
+                reason: `${tag1} and ${tag2} are mutually exclusive`,
+            });
+        }
+    }
+
+    return conflicts;
+}
+
+/**
+ * Sanitize BehaviorTag array by removing conflicting tags.
+ * When a conflict is detected, the first tag in the pair (higher priority) is kept.
+ * Logs a warning for each removed tag.
+ *
+ * @param tags Input BehaviorTag array (may contain conflicts)
+ * @returns Sanitized array with conflicts resolved
+ */
+export function sanitizeBehaviorTags(tags: BehaviorTag[]): BehaviorTag[] {
+    if (tags.length <= 1) return tags;
+
+    const result = [...tags];
+    const toRemove = new Set<BehaviorTag>();
+
+    for (const [tag1, tag2] of EXCLUSIVE_PAIRS) {
+        const has1 = result.includes(tag1);
+        const has2 = result.includes(tag2);
+        if (has1 && has2) {
+            // Keep tag1 (first in pair = higher priority), remove tag2
+            toRemove.add(tag2);
+            if (process.env.NODE_ENV !== 'production') {
+                console.warn(`[BehaviorTag] Conflict: ${tag1} + ${tag2} on same NPC. Removing ${tag2}.`);
+            }
+        }
+    }
+
+    return result.filter(t => !toRemove.has(t));
+}
