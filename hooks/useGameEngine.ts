@@ -39,6 +39,8 @@ import { NewsCategory } from '../systems/news/types';
 import { getEffectiveInventoryCapacity, hasPrecisionBench, checkItemAnomaly } from '../systems/upgrades/utils';
 import { getAnomalyMessage, getAnomalySeverity, getNormalConfirmationMessage } from '../systems/upgrades/spectrometerFeedback';
 import { playSfx } from '../systems/game/audio';
+import { getCharacterPortraits } from '../systems/assets';
+import type { CustomerPortraits } from '../systems/narrative/types';
 
 export const useGameEngine = () => {
   const { state, dispatch } = useGame();
@@ -750,11 +752,32 @@ export const useGameEngine = () => {
       const templateSource = redemptionEvent?.template || originalPawnEvent?.template;
       const eventSource = redemptionEvent || originalPawnEvent;
 
+      // Derive portraits for the expiry customer
+      let portraits: CustomerPortraits | undefined;
+      if (item.customerSnapshot?.portraitUrl) {
+          // Extract character folder from the neutral portrait URL
+          // e.g., "/characters/generic_male_old/neutral.png" -> "generic_male_old"
+          const match = item.customerSnapshot.portraitUrl.match(/\/characters\/([^/]+)\//);
+          if (match) {
+              portraits = getCharacterPortraits(match[1]);
+          }
+      } else if (chain && isTransientChain(chain)) {
+          // For transient chains, derive from stored customer metadata
+          const age = (chain.variables?.customerAge as string) || 'middle';
+          const gender = (chain.variables?.customerGender as string) || 'male';
+          const genderPart = gender === 'male' ? 'male' : 'female';
+          const agePart = age === 'young' ? 'young' : age === 'middle' ? 'middle' : 'old';
+          portraits = getCharacterPortraits(`generic_${genderPart}_${agePart}`);
+      } else if (templateSource?.portraits) {
+          portraits = templateSource.portraits;
+      }
+
       const customer: Customer = {
           id: crypto.randomUUID(),
           name: event.npcName,
           description: templateSource?.description || "到期结算",
           avatarSeed: templateSource?.avatarSeed || "default",
+          portraits,
           dialogue,
           redemptionResolve: intent === 'REDEEM' ? 'Strong' : 'Medium',
           behaviorTags: ['SAVVY'],

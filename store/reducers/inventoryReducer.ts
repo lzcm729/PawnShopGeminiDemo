@@ -13,6 +13,7 @@ import { GamePhase } from '../../systems/core/phases';
 import { calculateTaggedValue } from '../../systems/items/tagUtils';
 import { getRenewalRefusalPenalty } from '../../systems/economy/renewalPenalty';
 import { GAME_CONFIG } from '../../systems/game/config';
+import type { DealSummary } from '../../systems/game/types';
 
 export function inventoryReducer(state: GameState, action: Action): GameState {
     switch (action.type) {
@@ -287,6 +288,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
         case 'ACCEPT_RENEWAL': {
             const { itemId, extensionDays, interestBonus, name } = action.payload;
             playSfx('STAMP');
+            const renewalItem = state.inventory.find(i => i.id === itemId);
             const updatedInventory = state.inventory.map(item => {
                 if (item.id === itemId && item.pawnInfo) {
                     return {
@@ -309,6 +311,14 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 phase: { type: 'DEPARTURE' } as GamePhase,
                 lastSatisfaction: 'GRATEFUL',
                 lastDepartureSatisfaction: { scene: 'RENEWAL', level: 'HOPEFUL' as const },
+                lastDealSummary: renewalItem ? {
+                    cashDelta: 0,
+                    reputationDelta: {},
+                    itemName: renewalItem.name,
+                    itemCategory: renewalItem.category,
+                    dealQuality: 'fair' as const,
+                    interestRate: renewalItem.pawnInfo?.interestRate ?? 0.10,
+                } : null,
                 dayEvents: [...state.dayEvents, `同意续当请求: ${name} (利息 +${(interestBonus * 100).toFixed(0)}%)`]
             };
         }

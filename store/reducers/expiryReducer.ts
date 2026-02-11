@@ -93,6 +93,14 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                             const pfLevel = evaluatePostForfeitSatisfaction(event.isCoreItem, event.interestRate);
                             departureSatisfaction = { scene: 'POST_FORFEIT', level: pfLevel };
                             satisfaction = mapToBaseSatisfaction('POST_FORFEIT', pfLevel);
+                            dealSummary = {
+                                cashDelta,
+                                reputationDelta: repDelta,
+                                itemName: item.name,
+                                itemCategory: item.category,
+                                dealQuality: 'fleeced',
+                                interestRate: event.interestRate,
+                            };
                             playSfx('FAIL');
 
                             if (state.stats.cash + cashDelta < 0) {
@@ -218,6 +226,14 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                                 [ReputationType.CREDIBILITY]: repConfig.restore_return_credibility ?? 1,
                             };
                             log = `${item.name} 被赎回 (收款 $${cashDelta}) [修复归还: 人情+${repConfig.restore_return_humanity ?? 10}, 商誉+${repConfig.restore_return_credibility ?? 1}]`;
+                            dealSummary = {
+                                cashDelta,
+                                reputationDelta: repDelta,
+                                itemName: item.name,
+                                itemCategory: item.category,
+                                dealQuality: 'fair',
+                                interestRate: event.interestRate,
+                            };
                             const redeemLevel = evaluateRedeemSatisfaction(
                                 event.interestRate,
                                 event.redemptionCost.total,
@@ -246,6 +262,14 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                         // #59: Per design doc, redemption success gives Credibility +1 only
                         repDelta = { [ReputationType.CREDIBILITY]: 1 };
                         log = `${item.name} 被赎回 (收款 $${cashDelta})`;
+                        dealSummary = {
+                            cashDelta,
+                            reputationDelta: repDelta,
+                            itemName: item.name,
+                            itemCategory: item.category,
+                            dealQuality: 'fair',
+                            interestRate: event.interestRate,
+                        };
                         const redeemLevel = evaluateRedeemSatisfaction(
                             event.interestRate,
                             event.redemptionCost.total,
@@ -302,6 +326,14 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                             [ReputationType.CREDIBILITY]: GAME_CONFIG.PAWN_BUSINESS.RENEWAL_ACCEPT_CREDIBILITY,
                         };
                         log = `同意续当: ${item.name} (收取利息 $${interest}，延期至 Day ${newDueDate})`;
+                        dealSummary = {
+                            cashDelta: interest,
+                            reputationDelta: repDelta,
+                            itemName: item.name,
+                            itemCategory: item.category,
+                            dealQuality: 'fair',
+                            interestRate: item.pawnInfo.interestRate,
+                        };
                         const renewalCount = item.pawnInfo.extensionCount || 0;
                         const renewLevel = evaluateRenewalSatisfaction(renewalCount, item.pawnInfo.interestRate);
                         departureSatisfaction = { scene: 'RENEWAL', level: renewLevel };
