@@ -64,13 +64,25 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
             if (redeemItem?.wasRestored) {
                 redeemRep[ReputationType.HUMANITY] = Math.min(100, redeemRep[ReputationType.HUMANITY] + 10);
             }
+            // Build deal summary so departure view shows redemption info
+            const redeemDealSummary: DealSummary | null = redeemItem ? {
+                cashDelta: paymentAmount,
+                reputationDelta: redeemItem.wasRestored
+                    ? { [ReputationType.HUMANITY]: 10, [ReputationType.CREDIBILITY]: 1 }
+                    : { [ReputationType.CREDIBILITY]: GAME_CONFIG.REPUTATION_DELTAS.REDEMPTION_SUCCESS_CREDIBILITY },
+                itemName: redeemItem.name,
+                itemCategory: redeemItem.category,
+                dealQuality: 'fair',
+                interestRate: redeemItem.pawnInfo?.interestRate ?? 0.05,
+            } : null;
             return {
                 ...state,
                 stats: { ...state.stats, cash: state.stats.cash + paymentAmount },
                 reputation: redeemRep,
                 inventory: updatedInventory,
                 todayTransactions: [...state.todayTransactions, record],
-                dayEvents: [...state.dayEvents, `${name} 已被赎回 (收回资金 $${paymentAmount})${redeemItem?.wasRestored ? ' [修复归还: 人情+10]' : ''}`]
+                dayEvents: [...state.dayEvents, `${name} 已被赎回 (收回资金 $${paymentAmount})${redeemItem?.wasRestored ? ' [修复归还: 人情+10]' : ''}`],
+                lastDealSummary: redeemDealSummary,
             };
         }
 

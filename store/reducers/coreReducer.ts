@@ -321,7 +321,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 // phase transition removed - handled by state machine
                 completedScenarioIds: newCompletedIds,
                 violationFlags: newViolationFlags,
-                lastDealSummary: newDealSummary
+                lastDealSummary: newDealSummary ?? state.lastDealSummary
             };
         }
 
