@@ -173,6 +173,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
 
         case 'FORCE_FORFEIT': {
             const { itemId, name } = action.payload;
+            const forfeitItem = state.inventory.find(i => i.id === itemId);
             const updatedInventory = state.inventory.map(item => {
                 if (item.id === itemId) {
                     const log = generateForfeitLog(item, state.stats.day, "强制送客");
@@ -181,13 +182,28 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 return item;
             });
             const servedCount = state.customersServedToday + 1;
+            // Build deal summary so departure view shows forfeit outcome
+            const extensionCount = forfeitItem?.pawnInfo?.extensionCount || 0;
+            const renewRefusalPenalty = getRenewalRefusalPenalty(extensionCount);
+            const forfeitDealSummary: DealSummary | null = forfeitItem ? {
+                cashDelta: 0,
+                reputationDelta: {
+                    [ReputationType.HUMANITY]: renewRefusalPenalty,
+                    [ReputationType.CREDIBILITY]: 1,
+                },
+                itemName: forfeitItem.name,
+                itemCategory: forfeitItem.category,
+                dealQuality: 'fleeced',
+                interestRate: forfeitItem.pawnInfo?.interestRate ?? 0.05,
+            } : null;
             return {
                 ...state,
                 inventory: updatedInventory,
                 customersServedToday: servedCount,
                 phase: { type: 'DEPARTURE' } as GamePhase,
                 dayEvents: [...state.dayEvents, `送客处置: ${name} 强制收归店铺所有。`],
-                unseenForfeitItemIds: [...state.unseenForfeitItemIds, itemId]
+                unseenForfeitItemIds: [...state.unseenForfeitItemIds, itemId],
+                lastDealSummary: forfeitDealSummary,
             };
         }
 
