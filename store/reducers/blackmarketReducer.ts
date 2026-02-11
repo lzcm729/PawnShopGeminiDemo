@@ -340,6 +340,66 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       };
     }
 
+    case 'BLACKMARKET_COUNTERFEIT_SALE': {
+      const { itemId, itemName, amount, detected, heatGain, credibilityLoss, innocenceLoss, updatedNotoriety } = action.payload;
+
+      // Find item in inventory
+      const itemIndex = state.inventory.findIndex(i => i.id === itemId);
+      if (itemIndex === -1) return state;
+
+      const item = state.inventory[itemIndex];
+      // Only FORFEIT items with FORGED workState can be sold as counterfeit
+      if (item.status !== ItemStatus.FORFEIT || item.workState !== 'FORGED') return state;
+
+      // Mark item as sold
+      const newInventory = [...state.inventory];
+      newInventory[itemIndex] = {
+        ...item,
+        status: ItemStatus.SOLD,
+      };
+
+      // Update heat (capped at 10)
+      const newHeat = Math.min(10, state.blackmarket.heat + heatGain);
+
+      // Record transaction
+      const newTodaySales = [
+        ...state.blackmarket.todaySales,
+        { itemId, itemName, amount, type: 'SALE' as const }
+      ];
+
+      // Reputation changes: innocence always, credibility only if detected
+      const newReputation = { ...state.reputation };
+      newReputation[ReputationType.INNOCENCE] = Math.max(0, newReputation[ReputationType.INNOCENCE] + innocenceLoss);
+      if (credibilityLoss !== 0) {
+        newReputation[ReputationType.CREDIBILITY] = Math.max(0, newReputation[ReputationType.CREDIBILITY] + credibilityLoss);
+      }
+
+      const detectedNote = detected ? '（被识破，强制压价）' : '';
+      const repNote = detected
+        ? `清白 ${innocenceLoss}，商誉 ${credibilityLoss}`
+        : `清白 ${innocenceLoss}`;
+
+      return {
+        ...state,
+        inventory: newInventory,
+        reputation: newReputation,
+        stats: {
+          ...state.stats,
+          cash: state.stats.cash + amount
+        },
+        blackmarket: {
+          ...state.blackmarket,
+          heat: newHeat,
+          todaySales: newTodaySales
+        },
+        forgeryNotoriety: updatedNotoriety,
+        dayEvents: [
+          ...state.dayEvents,
+          `[黑市] 以 $${amount} 出售伪造品 ${itemName}${detectedNote}，${repNote}`
+        ]
+      };
+    }
+
     default:
       return state;
   }

@@ -58,3 +58,13 @@ export {
   getInProgressRecipe,
   hasInProgressRecipe,
 } from './workshopLogic';
+
+// 伪造声名导出
+export {
+  INITIAL_FORGERY_NOTORIETY,
+  getNotorietyStage,
+  getDetectionRate,
+  getGazeConfig,
+  advanceNotoriety,
+  getNotorietyStageConfig,
+} from './forgeryNotoriety';

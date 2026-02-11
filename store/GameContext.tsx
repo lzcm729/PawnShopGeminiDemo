@@ -28,6 +28,7 @@ import { INITIAL_ESSENCE_BALANCE } from '../systems/economy/essence';
 import { INITIAL_SHOP_UPGRADES } from '../systems/upgrades';
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../systems/appointment';
 import { createInitialBlackmarketState } from '../systems/blackmarket';
+import { INITIAL_FORGERY_NOTORIETY } from '../systems/workshop/forgeryNotoriety';
 import { createInitialAbilityState } from '../systems/characterAbility';
 import { EMMA_CHAIN_INIT, SUSAN_CHAIN_INIT, ZHAO_CHAIN_INIT, LIN_CHAIN_INIT } from '../systems/narrative/storyRegistry';
 
@@ -112,6 +113,8 @@ const initialState: GameState = {
     // === BLACK MARKET ===
     blackmarket: createInitialBlackmarketState(),
     showBlackmarket: false,
+    // === FORGERY NOTORIETY (伪造声名) ===
+    forgeryNotoriety: { ...INITIAL_FORGERY_NOTORIETY },
     // === NIGHT PANELS ===
     showWorkshop: false,
     showInsight: false,

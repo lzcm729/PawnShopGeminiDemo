@@ -19,7 +19,7 @@ import { CustomerInsightResult, InsightTrainingResult } from '../../systems/cust
 import { DailyChallenge } from '../../systems/game/dailyChallenge';
 import { DailySchedule } from '../../systems/npc/customerScheduler';
 import { SkillId, MoralEchoEvent, AbilityState, ConsequenceFlashResult } from '../../systems/characterAbility/types';
-import { InProgressRecipe } from '../../systems/workshop/types';
+import { InProgressRecipe, ForgeryNotorietyState } from '../../systems/workshop/types';
 import { NpcFateEntry } from '../../systems/narrative/types';
 
 // === Action Type Union ===
@@ -195,6 +195,16 @@ export type Action =
     | { type: 'SET_BLACKMARKET_STATE'; payload: BlackmarketState }
     | { type: 'BLACKMARKET_PAY_PROTECTION_FEE'; payload: { amount: number } }
     | { type: 'BLACKMARKET_REFUSE_PROTECTION_FEE' }
+    | { type: 'BLACKMARKET_COUNTERFEIT_SALE'; payload: {
+        itemId: string;
+        itemName: string;
+        amount: number;
+        detected: boolean;
+        heatGain: number;
+        credibilityLoss: number;
+        innocenceLoss: number;
+        updatedNotoriety: ForgeryNotorietyState;
+      } }
 
     // Stolen goods & Police investigation (赃物收购 & 警方调查)
     | { type: 'STOLEN_ITEM_DECISION'; payload: { accept: boolean } }

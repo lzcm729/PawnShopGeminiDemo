@@ -7,7 +7,7 @@ import { TransactionRecord } from '../economy/types';
 import { EventChainState, MailInstance, SatisfactionLevel, DepartureSatisfaction, ExpiryEvent, PoliceInvestigationEvent, NpcFateEntry } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier, PendingNewsItem } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
-import { InProgressRecipe } from '../workshop/types';
+import { InProgressRecipe, ForgeryNotorietyState } from '../workshop/types';
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
 import { GameNode } from '../../types/node';
 import { BlackmarketState } from '../blackmarket/types';
@@ -108,6 +108,9 @@ export interface GameState {
   // === BLACK MARKET (黑市系统) ===
   blackmarket: BlackmarketState;           // 黑市状态（热度、每日收购、锁定）
   showBlackmarket: boolean;                // 黑市界面显示状态
+
+  // === FORGERY NOTORIETY (伪造声名系统) ===
+  forgeryNotoriety: ForgeryNotorietyState; // 伪造声名追踪（累计次数、鉴伪概率）
 
   // === NIGHT PANELS (夜间面板) ===
   showWorkshop: boolean;                   // 工作台面板显示状态

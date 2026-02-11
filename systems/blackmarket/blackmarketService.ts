@@ -10,6 +10,8 @@
 
 import { Item, ItemStatus } from '../items/types';
 import { ItemTag, ATTRIBUTE_TAGS, ESSENCE_TAGS, STATE_TAGS } from '../items/tags';
+import { ForgeryNotorietyState } from '../workshop/types';
+import { getDetectionRate, advanceNotoriety } from '../workshop/forgeryNotoriety';
 import {
   BlackmarketState,
   BlackmarketDailyState,
@@ -875,6 +877,154 @@ export function getRefusalRiskBonus(feeState: ProtectionFeeState): number {
 // ============================================================================
 // v3.6 [BM-10]: Moral Echo System
 // ============================================================================
+
+// ============================================================================
+// Counterfeit Sale Flow
+// ============================================================================
+
+/**
+ * Result of a counterfeit sale attempt.
+ * Used by the reducer to apply state changes and by UI to display results.
+ */
+export interface CounterfeitSaleResult {
+  /** Final price received (after detection penalty if applicable) */
+  finalPrice: number;
+  /** Whether the counterfeit was detected by the contact */
+  detected: boolean;
+  /** Detection probability that was rolled against */
+  detectionRate: number;
+  /** Reputation changes to apply */
+  reputationDelta: {
+    innocence: number;
+    credibility: number;
+  };
+  /** Heat increase to apply */
+  heatDelta: number;
+  /** Updated notoriety state (totalSales +1, new detection rate) */
+  updatedNotoriety: ForgeryNotorietyState;
+}
+
+/**
+ * Execute a counterfeit sale through the black market.
+ * Design doc §6.5: Counterfeit sale economic chain.
+ *
+ * Pricing: baseValue * valueMultiplier * saleMultiplier * (1 - commission) * detectionPenalty
+ * Detection: probability = getDetectionRate(totalSales), detected => price * 0.50
+ * Innocence: -4 per sale (INNOCENCE_COST_SALE)
+ * Detection penalties: heat +3, credibility -3
+ *
+ * @param item The FORGED item being sold
+ * @param saleMultiplier The day's sale multiplier (from daily blackmarket state)
+ * @param underworldRep Player's underworld/innocence-mapped rep for commission
+ * @param forgeryNotoriety Current forgery notoriety state
+ * @param valueMultiplier The counterfeit value multiplier from the item's forging (e.g., x2.5-x4.0)
+ */
+export function executeCounterfeitSale(
+  item: Item,
+  saleMultiplier: number,
+  underworldRep: number,
+  forgeryNotoriety: ForgeryNotorietyState,
+  valueMultiplier: number = 1.0
+): CounterfeitSaleResult {
+  const forgeryConfig = GAME_CONFIG.WORKSHOP.FORGERY;
+
+  // Base price calculation: baseValue * valueMultiplier * saleMultiplier * (1 - commission)
+  const baseValue = item.baseValue ?? item.realValue;
+  const { commission } = getUnderworldCommission(underworldRep);
+  let price = baseValue * valueMultiplier * saleMultiplier * (1 - commission);
+
+  // Detection roll
+  const detectionRate = getDetectionRate(forgeryNotoriety.totalCounterfeitSales);
+  const detected = Math.random() < detectionRate;
+
+  // Detection penalty: price * 0.50
+  if (detected) {
+    price *= forgeryConfig.DETECTED_PRICE_PENALTY;
+  }
+
+  const finalPrice = Math.floor(price);
+
+  // Reputation changes
+  const innocenceLoss = forgeryConfig.INNOCENCE_COST_SALE;  // -4
+  const credibilityLoss = detected ? forgeryConfig.DETECTED_CREDIBILITY_LOSS : 0;  // -3 if detected
+
+  // Heat changes
+  const heatDelta = detected ? forgeryConfig.DETECTED_HEAT_INCREASE : 2;  // +3 if detected, +2 base (player sale track)
+
+  // Advance notoriety
+  const updatedNotoriety = advanceNotoriety(forgeryNotoriety);
+
+  return {
+    finalPrice,
+    detected,
+    detectionRate,
+    reputationDelta: {
+      innocence: innocenceLoss,
+      credibility: credibilityLoss,
+    },
+    heatDelta,
+    updatedNotoriety,
+  };
+}
+
+/**
+ * Execute counterfeit detection for a purchase order (收购订单).
+ * When a FORGED item fulfills a purchase request, detection still applies.
+ * Design doc §6.5: "收购订单：伪造品通过收购订单出售时，鉴伪概率同样为 33% 上限"
+ *
+ * @param item The FORGED item being sold via purchase order
+ * @param purchaseRequest The matching purchase request
+ * @param underworldRep Player's rep for commission
+ * @param forgeryNotoriety Current notoriety state
+ * @param upgradeLevel Black market upgrade level
+ * @param valueMultiplier The counterfeit value multiplier
+ */
+export function executeCounterfeitPurchaseOrder(
+  item: Item,
+  purchaseRequest: MarketPurchaseRequest,
+  underworldRep: number,
+  forgeryNotoriety: ForgeryNotorietyState,
+  upgradeLevel: number = 1,
+  valueMultiplier: number = 1.0
+): CounterfeitSaleResult {
+  const forgeryConfig = GAME_CONFIG.WORKSHOP.FORGERY;
+
+  // Purchase order price uses the purchase price track with counterfeit multiplier
+  const baseValue = item.baseValue ?? item.realValue;
+  const marketMultiplier = purchaseRequest.priceMultiplier;
+  const { commission } = getUnderworldCommission(underworldRep);
+  const priceBonus = getPurchasePriceBonus(upgradeLevel);
+
+  let price = baseValue * valueMultiplier * marketMultiplier * (1 + priceBonus) * (1 - commission);
+
+  // Detection roll (same mechanics as direct sale)
+  const detectionRate = getDetectionRate(forgeryNotoriety.totalCounterfeitSales);
+  const detected = Math.random() < detectionRate;
+
+  if (detected) {
+    price *= forgeryConfig.DETECTED_PRICE_PENALTY;
+  }
+
+  const finalPrice = Math.floor(price);
+
+  const innocenceLoss = forgeryConfig.INNOCENCE_COST_SALE;
+  const credibilityLoss = detected ? forgeryConfig.DETECTED_CREDIBILITY_LOSS : 0;
+  const heatDelta = detected ? forgeryConfig.DETECTED_HEAT_INCREASE : 1; // +3 if detected, +1 base (purchase track)
+
+  const updatedNotoriety = advanceNotoriety(forgeryNotoriety);
+
+  return {
+    finalPrice,
+    detected,
+    detectionRate,
+    reputationDelta: {
+      innocence: innocenceLoss,
+      credibility: credibilityLoss,
+    },
+    heatDelta,
+    updatedNotoriety,
+  };
+}
 
 /**
  * Generate a moral echo effect from a black market transaction

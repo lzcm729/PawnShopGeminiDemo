@@ -68,5 +68,11 @@ export {
   generateMoralEcho,
 
   // P1-10: Customer ecology shift
-  getCustomerEcologyShift
+  getCustomerEcologyShift,
+
+  // Counterfeit sale flow
+  executeCounterfeitSale,
+  executeCounterfeitPurchaseOrder
 } from './blackmarketService';
+
+export type { CounterfeitSaleResult } from './blackmarketService';

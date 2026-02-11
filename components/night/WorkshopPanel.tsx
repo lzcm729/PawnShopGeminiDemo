@@ -11,7 +11,7 @@
  * - 三向互斥锁定
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Modal } from '../ui/Modal';
 import { HelpTooltip } from '../ui/Tooltip';
 import { Button } from '../ui/Button';
@@ -53,6 +53,7 @@ import {
 } from '../../systems/workshop/types';
 import { getQualityDisplayName } from '../../systems/workshop/workshopLogic';
 import { getDisplayName } from '../../systems/items/tagUtils';
+import { getGazeConfig } from '../../systems/workshop/forgeryNotoriety';
 
 // ============================================================================
 // Route theme config
@@ -178,15 +179,15 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   const [violationWarning, setViolationWarning] = useState<ViolationWarning | null>(null);
   const [violationRoute, setViolationRoute] = useState<RouteType | null>(null);
   const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
-  // Gaze moment state
+  // Gaze moment state (notoriety-aware)
   const [gazeState, setGazeState] = useState<{
     text: string;
     visible: boolean;
     isCounterfeit: boolean;
-    canSkip: boolean;
+    skippable: boolean;
+    durationMs: number;
   } | null>(null);
-  const gazeTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const gazeResultRef = useRef<WorkshopResult | null>(null);
+  const [pendingResult, setPendingResult] = useState<WorkshopResult | null>(null);
 
   // Auto-select item from pending selection when panel opens
   useEffect(() => {
@@ -216,7 +217,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(true);
     const output = doRestore(selectedItemId, recipe.recipe.id);
     if (output?.success && output.result) {
-      triggerGaze(output.result, false);
+      triggerGaze(output.result);
     }
     setIsProcessing(false);
   };
@@ -245,7 +246,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(true);
     const output = doCounterfeit(selectedItemId, recipeId);
     if (output?.success && output.result) {
-      triggerGaze(output.result, true);
+      triggerGaze(output.result);
     }
     setIsProcessing(false);
   };
@@ -274,7 +275,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(true);
     const output = doReforge(selectedItemId, recipeId);
     if (output?.success && output.result) {
-      triggerGaze(output.result, false);
+      triggerGaze(output.result);
     }
     setIsProcessing(false);
   };
@@ -307,48 +308,47 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(true);
     const output = advanceInProgressRecipe(selectedItemId);
     if (output?.success && output.result) {
-      triggerGaze(output.result, output.result.isCounterfeit ?? false);
+      triggerGaze(output.result);
     }
     setIsProcessing(false);
   };
 
-  // Gaze moment trigger with counterfeit-specific 5-second non-skippable
-  const triggerGaze = useCallback((result: WorkshopResult, isCounterfeit: boolean) => {
-    const duration = isCounterfeit ? 5000 : 4000;
-    const canSkipInitially = !isCounterfeit;
+  // Gaze moment trigger (notoriety-aware for counterfeit operations)
+  const triggerGaze = useCallback((result: WorkshopResult) => {
+    // Determine gaze config based on operation type
+    let durationMs = 4000;
+    let skippable = true;
+    const isCounterfeit = result.isCounterfeit ?? false;
 
-    gazeResultRef.current = result;
-    setGazeState({ text: result.narrative.gazeText, visible: false, isCounterfeit, canSkip: canSkipInitially });
-
-    // Start fade-in
-    setTimeout(() => setGazeState(prev => prev ? { ...prev, visible: true } : null), 100);
-
-    // For counterfeit: enable skip after 5 seconds (but auto-close also at 5s)
-    // For others: auto-close after 4 seconds
-    if (gazeTimerRef.current) clearTimeout(gazeTimerRef.current);
-    gazeTimerRef.current = setTimeout(() => {
-      setGazeState(null);
-      setLastResult(gazeResultRef.current);
-      gazeResultRef.current = null;
-    }, duration);
-
-    // For counterfeit: enable skip button after the mandatory period
     if (isCounterfeit) {
-      setTimeout(() => {
-        setGazeState(prev => prev ? { ...prev, canSkip: true } : null);
-      }, duration);
+      // Counterfeit gaze evolves with forgery notoriety (design doc §9.3)
+      const gazeConfig = getGazeConfig(state.forgeryNotoriety.totalCounterfeitSales);
+      durationMs = gazeConfig.seconds * 1000;
+      skippable = gazeConfig.skippable;
     }
-  }, []);
 
-  // Click to skip gaze (only if allowed)
-  const skipGaze = useCallback(() => {
-    if (gazeState && gazeState.canSkip) {
-      if (gazeTimerRef.current) clearTimeout(gazeTimerRef.current);
+    setPendingResult(result);
+    setGazeState({ text: result.narrative.gazeText, visible: false, isCounterfeit, skippable, durationMs });
+    // Start fade-in after brief delay
+    setTimeout(() => setGazeState(prev => prev ? { ...prev, visible: true } : null), 100);
+    // Auto-close after duration
+    setTimeout(() => {
       setGazeState(null);
-      setLastResult(gazeResultRef.current);
-      gazeResultRef.current = null;
+      setPendingResult(null);
+      setLastResult(result);
+    }, durationMs);
+  }, [state.forgeryNotoriety.totalCounterfeitSales]);
+
+  // Click to skip gaze (only if skippable)
+  const skipGaze = useCallback(() => {
+    if (gazeState && gazeState.skippable) {
+      setGazeState(null);
+      if (pendingResult) {
+        setLastResult(pendingResult);
+        setPendingResult(null);
+      }
     }
-  }, [gazeState]);
+  }, [gazeState, pendingResult]);
 
   const clearResult = () => {
     setLastResult(null);
@@ -393,7 +393,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
           <GazeMoment
             text={gazeState.text}
             visible={gazeState.visible}
-            canSkip={gazeState.canSkip}
+            skippable={gazeState.skippable}
             isCounterfeit={gazeState.isCounterfeit}
             onSkip={skipGaze}
           />
@@ -994,21 +994,21 @@ const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, 
 interface GazeMomentProps {
   text: string;
   visible: boolean;
-  canSkip: boolean;
-  isCounterfeit: boolean;
+  skippable: boolean;
+  isCounterfeit?: boolean;
   onSkip: () => void;
 }
 
-const GazeMoment: React.FC<GazeMomentProps> = ({ text, visible, canSkip, isCounterfeit, onSkip }) => {
+const GazeMoment: React.FC<GazeMomentProps> = ({ text, visible, skippable, isCounterfeit, onSkip }) => {
   const IconComponent = isCounterfeit ? Eye : Eye;
 
   return (
     <div
       className={cn(
         "fixed inset-0 z-50 flex items-center justify-center bg-black/80",
-        canSkip ? "cursor-pointer" : "cursor-default"
+        skippable ? "cursor-pointer" : "cursor-default"
       )}
-      onClick={canSkip ? onSkip : undefined}
+      onClick={skippable ? onSkip : undefined}
     >
       <div className="max-w-md text-center px-8">
         <IconComponent className={cn(
@@ -1023,13 +1023,21 @@ const GazeMoment: React.FC<GazeMomentProps> = ({ text, visible, canSkip, isCount
         >
           "{text}"
         </p>
-        <p className={cn(
-          "text-[10px] mt-8 transition-opacity duration-1000 delay-500",
-          visible ? "opacity-100" : "opacity-0",
-          canSkip ? "text-stone-600" : "text-stone-700"
-        )}>
-          {canSkip ? '点击任意处跳过' : '...'}
-        </p>
+        {skippable ? (
+          <p className={cn(
+            "text-[10px] text-stone-600 mt-8 transition-opacity duration-1000 delay-500",
+            visible ? "opacity-100" : "opacity-0"
+          )}>
+            点击任意处跳过
+          </p>
+        ) : (
+          <p className={cn(
+            "text-[10px] text-stone-600/50 mt-8 transition-opacity duration-1000 delay-500",
+            visible ? "opacity-100" : "opacity-0"
+          )}>
+            ......
+          </p>
+        )}
       </div>
     </div>
   );
