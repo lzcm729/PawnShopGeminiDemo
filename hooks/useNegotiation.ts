@@ -362,31 +362,6 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       return { status: 'WALK_AWAY', message: "客户已经离开了。", patienceRemaining: 0 };
     }
 
-    // #3: Round limit check — at max rounds, player can only accept or reject
-    const maxRounds = GAME_CONFIG.NEGOTIATION.MAX_ROUNDS;
-    if (roundCount >= maxRounds) {
-        // At round limit: auto-accept if offer >= currentAskPrice, else final take-or-leave
-        if (offerPrincipal >= currentAskPrice) {
-            let acceptMsg = customer.dialogue.accepted.fair;
-            const ratio = offerPrincipal / customer.desiredAmount;
-            if (ratio < 0.85) acceptMsg = customer.dialogue.accepted.fleeced;
-            else if (ratio > 1.05) acceptMsg = customer.dialogue.accepted.premium;
-            setMood('Happy');
-            setOfferHistory(prev => [
-                { amount: offerPrincipal, rate: selectedRate, status: 'ACCEPTED', patienceCost: 0, timestamp: Date.now() },
-                ...prev.slice(0, 2)
-            ]);
-            return { status: 'ACCEPTED', message: acceptMsg, patienceRemaining: patience };
-        }
-        // Cannot continue negotiating — walk away
-        setIsWalkedAway(true);
-        return {
-            status: 'WALK_AWAY',
-            message: "谈了这么久还没结果，我不等了。",
-            patienceRemaining: 0
-        };
-    }
-
     // P0-7: Apply behavior tag floor modifiers to NPC minimum amount
     const minPrincipal = getFloorWithBehaviorMods(customer.behaviorTags, customer.minimumAmount);
     const maxRepayment = customer.maxRepayment || (minPrincipal * 1.2);
@@ -693,7 +668,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     concessionTier,
     // Round tracking
     roundCount,
-    isRoundLimitReached: roundCount >= GAME_CONFIG.NEGOTIATION.MAX_ROUNDS,
+    isRoundLimitReached: false, // Round hard limit removed; patience system is the sole pacing mechanism
     // Heart strike concession bonus
     heartStrikeConcessionBonus,
     setHeartStrikeConcessionBonus,

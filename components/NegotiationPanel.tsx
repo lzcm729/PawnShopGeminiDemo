@@ -62,7 +62,6 @@ interface NegotiationStateProps {
         concessionTier: ConcessionTier;
         // Round tracking
         roundCount: number;
-        isRoundLimitReached: boolean;
         // Empathy patience modifier
         empathyPatienceModifier: number;
         setEmpathyPatienceModifier: React.Dispatch<React.SetStateAction<number>>;
@@ -177,7 +176,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     concessionTier,
     // Round tracking
     roundCount,
-    isRoundLimitReached,
     // Empathy patience modifier
     empathyPatienceModifier,
     setEmpathyPatienceModifier,
@@ -735,13 +733,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       playSfx('CLICK');
   };
 
-  // Auto-set offerPrincipal to currentAskPrice when round limit is reached
-  useEffect(() => {
-    if (isRoundLimitReached) {
-      setOfferPrincipal(currentAskPrice);
-    }
-  }, [isRoundLimitReached, currentAskPrice, setOfferPrincipal]);
-
   const handleOffer = () => {
     if (isWalkedAway || isSubmitting) return;
 
@@ -975,7 +966,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           heartStrikeUsed={heartStrikeUsed}
           onHeartStrike={heartStrikeSkillAvailable ? handleHeartStrike : undefined}
           roundCount={roundCount}
-          isRoundLimitReached={isRoundLimitReached}
           probeReveal={probeReveal}
           liveConcessionTier={liveConcessionTier}
           concessionTier={concessionTier}

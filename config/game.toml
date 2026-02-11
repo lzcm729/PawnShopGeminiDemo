@@ -375,9 +375,6 @@ persist_bonus_per_count = 0.10
 # 坚持加成上限
 persist_bonus_cap = 0.30
 
-# 回合上限（防止拖沓）
-max_rounds = 5
-
 # 侮辱惩罚：侮辱不固定扣耐心，而是增加 push-pull 耐心流失概率
 insult_patience_loss_bonus = 0.25
 

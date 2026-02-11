@@ -1551,12 +1551,16 @@ function handleTriggerCommand(
         isCoreItem: false,
       };
 
-      dispatch({ type: 'TRIGGER_EXPIRY_EVENT', payload: expiryEvent });
+      // Append to expiryQueue — will be processed after current customer departs
+      // (DepartureView.handleNext checks expiryQueue and calls processNextExpiryEvent)
+      const existingQueue = state.expiryQueue || [];
+      dispatch({ type: 'SET_EXPIRY_QUEUE', payload: [...existingQueue, expiryEvent] });
 
       const label = subType === 'redeem' ? 'Redeem' : 'Renew';
+      const queuePos = existingQueue.length + 1;
       return {
         success: true,
-        message: `Triggered expiry event: ${label}\n  Item: ${targetItem.name} (${targetItem.id})\n  Principal: $${principal}, Interest: $${interest}, Total: $${principal + interest}`
+        message: `Queued expiry event: ${label} (position #${queuePos} in queue)\n  Item: ${targetItem.name} (${targetItem.id})\n  Principal: $${principal}, Interest: $${interest}, Total: $${principal + interest}\n  Will appear after current customer departs.`
       };
     }
 

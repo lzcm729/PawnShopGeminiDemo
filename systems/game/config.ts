@@ -258,7 +258,6 @@ interface TomlNegotiation {
     SLY: TomlPushPullStrategy;
     CALM: TomlPushPullStrategy;
   };
-  max_rounds: number;
   insult_patience_loss_bonus: number;
   mercy_threshold: number;
   mercy_concession_bonus: number;
@@ -821,7 +820,9 @@ export const GAME_CONFIG = {
         BASE_PATIENCE_LOSS_CHANCE: tomlConfig.negotiation.push_pull.CALM.base_patience_loss_chance,
       },
     },
-    MAX_ROUNDS: tomlConfig.negotiation.max_rounds,
+    // DEPRECATED: Round hard limit removed. Patience system is the sole pacing mechanism.
+    // Kept as Infinity for backward compatibility with UI components that still reference it.
+    MAX_ROUNDS: Infinity,
     INSULT_PATIENCE_LOSS_BONUS: tomlConfig.negotiation.insult_patience_loss_bonus,
     MERCY_THRESHOLD: tomlConfig.negotiation.mercy_threshold,
     MERCY_CONCESSION_BONUS: tomlConfig.negotiation.mercy_concession_bonus,

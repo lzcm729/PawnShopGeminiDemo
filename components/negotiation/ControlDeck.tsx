@@ -3,13 +3,12 @@ import React, { useMemo, useRef } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { RollingNumber } from '../ui/RollingNumber';
-import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack, AlertTriangle, ArrowDown, ArrowRight, ArrowUp, Crosshair } from 'lucide-react';
+import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack, ArrowDown, ArrowRight, ArrowUp, Crosshair } from 'lucide-react';
 import { InterestRate, Customer, Item } from '../../types';
 import { ContractTierHint } from '../../systems/characterAbility/types';
 import type { ProbeRevealResult, ConcessionTier } from '../../systems/negotiation/probeEffects';
 import { getConcessionTierLabel } from '../../systems/negotiation/empathyProbeFeedback';
 import { playSfx } from '../../systems/game/audio';
-import { GAME_CONFIG } from '../../systems/game/config';
 
 interface ControlDeckProps {
     // Customer/item data
@@ -64,7 +63,6 @@ interface ControlDeckProps {
 
     // Round tracking
     roundCount: number;
-    isRoundLimitReached: boolean;
 
     // Probe reveal (trial result from successful probe)
     probeReveal?: ProbeRevealResult | null;
@@ -111,7 +109,6 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     onHeartStrike,
     contractTierHints,
     roundCount,
-    isRoundLimitReached,
     probeReveal,
     liveConcessionTier,
     concessionTier,
@@ -125,7 +122,6 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     const profit = repaymentAmount - offerPrincipal;
     const estimatedValue = Math.floor((item.currentRange[0] + item.currentRange[1]) / 2);
 
-    const maxRounds = GAME_CONFIG.NEGOTIATION.MAX_ROUNDS;
     const gap = currentAskPrice - offerPrincipal;
     // Trend: compare current gap to previous gap (using lastOfferAmount as proxy)
     const prevGap = lastOfferAmount !== null ? (currentAskPrice - lastOfferAmount) : null;
@@ -292,17 +288,10 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                    {/* Round Counter + Gap/Trend Row */}
                    <div className="flex justify-between items-center text-xs font-mono bg-black/20 p-1.5 rounded border border-noir-300">
                         {/* Round Counter */}
-                        <div className={cn(
-                            "flex items-center gap-1.5 px-2 py-0.5 rounded",
-                            roundCount >= maxRounds - 1 ? "text-red-400 bg-red-950/30" : roundCount >= maxRounds - 2 ? "text-amber-400" : "text-noir-txt-muted"
-                        )}>
-                            {roundCount >= maxRounds - 1 && <AlertTriangle className="w-3 h-3" />}
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-noir-txt-muted">
                             <span>
-                                第 <span className="font-bold">{roundCount}</span>/<span>{maxRounds}</span> 回合
+                                第 <span className="font-bold">{roundCount}</span> 回合
                             </span>
-                            {roundCount >= maxRounds - 1 && !isRoundLimitReached && (
-                                <span className="text-[10px] text-red-400/80 ml-1">谈判即将结束</span>
-                            )}
                         </div>
 
                         {/* Gap + Trend */}
@@ -345,43 +334,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                         )}
                    </div>
 
-                   {/* Round Limit Warning */}
-                   {isRoundLimitReached && (
-                       <div className="bg-red-950/40 border border-red-900/60 rounded p-3 text-center">
-                           <p className="text-red-300 font-serif text-sm italic">
-                               "对方失去耐心，给出最终报价"
-                           </p>
-                           <p className="text-xs text-red-400/70 font-mono mt-1">
-                               最终报价: <span className="font-bold text-red-300">${currentAskPrice}</span>
-                           </p>
-                       </div>
-                   )}
-
-                   {isRoundLimitReached ? (
-                       /* Round Limit: Accept/Reject only */
-                       <div className="flex gap-3">
-                           <Button
-                               variant="danger"
-                               onClick={onManualReject}
-                               disabled={!canInteract}
-                               className="flex-1 h-14 text-lg tracking-widest"
-                           >
-                               <XCircle className="w-5 h-5 mr-2" />
-                               拒绝
-                           </Button>
-                           <Button
-                               variant="primary"
-                               onClick={onOffer}
-                               disabled={!canInteract || !canAfford}
-                               className="flex-[2] h-14 text-lg tracking-widest"
-                           >
-                               <Stamp className="w-5 h-5 mr-2" />
-                               接受 ${currentAskPrice}
-                           </Button>
-                       </div>
-                   ) : (
-                     <>
-                       {/* Rate Selectors */}
+                   {/* Rate Selectors */}
                        <div className="flex gap-2">
                           <RateToggle rate={0} label="Charity" />
                           <RateToggle rate={0.05} label="Std" />
@@ -620,8 +573,6 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                              )}
                           </Button>
                        </div>
-                     </>
-                   )}
                </div>
            )}
         </div>
