@@ -33,6 +33,7 @@ import {
   convertEssence,
   isMultiNightRecipe,
   getInProgressRecipe,
+  calculatePerceptionTier,
   RESTORE_RECIPES,
   COUNTERFEIT_RECIPES,
   REFORGE_RECIPES,
@@ -363,7 +364,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
     }
 
     // 单夜配方：直接执行
-    const output = performWorkshop(recipeId, item, essenceBalance, nightState);
+    const perceptionTier = calculatePerceptionTier(item);
+    const output = performWorkshop(recipeId, item, essenceBalance, nightState, undefined, perceptionTier);
     if (!output) {
       return { success: false, errorReason: '操作失败' };
     }
@@ -450,7 +452,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
       dispatch({ type: 'CONSUME_NIGHT_ENERGY', payload: recipe.energyCost });
 
       if (isComplete) {
-        const output = performWorkshop(progress.recipeId, item, essenceBalance, nightState);
+        const perceptionTier = calculatePerceptionTier(item);
+        const output = performWorkshop(progress.recipeId, item, essenceBalance, nightState, undefined, perceptionTier);
         if (!output) {
           dispatch({ type: 'COMPLETE_MULTI_NIGHT_RECIPE', payload: { itemId } });
           return { success: false, errorReason: '最终工序执行失败' };

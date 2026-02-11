@@ -17,6 +17,7 @@ import { EssenceBalance, EssenceCost, EssenceType } from '../economy/essence';
 import { NightState } from '../game/types';
 import { addTag, removeTag, hasTags, hasAnyTag, calculateTaggedValue } from '../items/tagUtils';
 import { canAfford, getDeficit, spendEssenceBatch } from '../economy/essenceUtils';
+import type { PerceptionTier } from './perceptionTier';
 import {
   Recipe,
   RestoreRecipe,
@@ -429,7 +430,8 @@ export function performRestore(
   recipe: RestoreRecipe,
   item: Item,
   essenceBalance: EssenceBalance,
-  nightState: NightState
+  nightState: NightState,
+  perceptionTier?: PerceptionTier
 ): { result: WorkshopResult; updatedItem: Item; newBalance: EssenceBalance } | null {
   const status = getRecipeStatus(recipe, item, essenceBalance, nightState);
   if (!status.canApply) {
@@ -472,7 +474,7 @@ export function performRestore(
   const valueIncrease = newValue - oldValue;
 
   // 生成叙事
-  const narrative = generateRestoreNarrative(recipe, item);
+  const narrative = generateRestoreNarrative(recipe, item, perceptionTier);
 
   const result: WorkshopResult = {
     success: true,
@@ -505,7 +507,8 @@ export function performCounterfeit(
   recipe: CounterfeitRecipe,
   item: Item,
   essenceBalance: EssenceBalance,
-  nightState: NightState
+  nightState: NightState,
+  perceptionTier?: PerceptionTier
 ): { result: WorkshopResult; updatedItem: Item; newBalance: EssenceBalance } | null {
   const status = getRecipeStatus(recipe, item, essenceBalance, nightState);
   if (!status.canApply) {
@@ -532,7 +535,7 @@ export function performCounterfeit(
   const valueIncrease = newValue - item.realValue;
 
   // 生成叙事
-  const narrative = generateCounterfeitNarrative(recipe, item);
+  const narrative = generateCounterfeitNarrative(recipe, item, perceptionTier);
 
   const result: WorkshopResult = {
     success: true,
@@ -560,7 +563,8 @@ export function performReforge(
   item: Item,
   essenceBalance: EssenceBalance,
   nightState: NightState,
-  currentDay?: number
+  currentDay?: number,
+  perceptionTier?: PerceptionTier
 ): { result: WorkshopResult; updatedItem: Item; newBalance: EssenceBalance } | null {
   const status = getRecipeStatus(recipe, item, essenceBalance, nightState, currentDay);
   if (!status.canApply) {
@@ -583,7 +587,7 @@ export function performReforge(
 
   // FAILED 结果：精魄消耗但物品不变
   if (reforgeQuality === 'FAILED') {
-    const narrative = generateReforgeNarrative(recipe, item, reforgeQuality);
+    const narrative = generateReforgeNarrative(recipe, item, reforgeQuality, perceptionTier);
 
     const result: WorkshopResult = {
       success: false,
@@ -637,7 +641,7 @@ export function performReforge(
   }
 
   // 生成叙事
-  const narrative = generateReforgeNarrative(recipe, item, reforgeQuality);
+  const narrative = generateReforgeNarrative(recipe, item, reforgeQuality, perceptionTier);
 
   const result: WorkshopResult = {
     success: true,
@@ -666,17 +670,18 @@ export function performWorkshop(
   item: Item,
   essenceBalance: EssenceBalance,
   nightState: NightState,
-  currentDay?: number
+  currentDay?: number,
+  perceptionTier?: PerceptionTier
 ): { result: WorkshopResult; updatedItem: Item; newBalance: EssenceBalance } | null {
   const recipe = getRecipeById(recipeId);
   if (!recipe) return null;
 
   if (isRestoreRecipe(recipe)) {
-    return performRestore(recipe, item, essenceBalance, nightState);
+    return performRestore(recipe, item, essenceBalance, nightState, perceptionTier);
   } else if (isCounterfeitRecipe(recipe)) {
-    return performCounterfeit(recipe, item, essenceBalance, nightState);
+    return performCounterfeit(recipe, item, essenceBalance, nightState, perceptionTier);
   } else if (isReforgeRecipe(recipe)) {
-    return performReforge(recipe, item, essenceBalance, nightState, currentDay);
+    return performReforge(recipe, item, essenceBalance, nightState, currentDay, perceptionTier);
   }
 
   return null;
@@ -689,7 +694,7 @@ export function performWorkshop(
 /**
  * 生成修复操作的叙事（含凝视时刻）
  */
-function generateRestoreNarrative(recipe: RestoreRecipe, item: Item): WorkshopNarrative {
+function generateRestoreNarrative(recipe: RestoreRecipe, item: Item, perceptionTier?: PerceptionTier): WorkshopNarrative {
   const texts = getTexts();
   const vars = { item_name: item.name };
 
@@ -714,7 +719,8 @@ function generateRestoreNarrative(recipe: RestoreRecipe, item: Item): WorkshopNa
     resultText = texts.resolve(resultKeys) || '修复完成。';
   }
 
-  const gazeText = texts.getRandom('gaze:restore') || '修复完成。';
+  const gazeText = (perceptionTier && texts.getRandom(`gaze:restore:${perceptionTier}`))
+    || texts.getRandom('gaze:restore') || '修复完成。';
 
   return { actionText, resultText, gazeText };
 }
@@ -722,7 +728,7 @@ function generateRestoreNarrative(recipe: RestoreRecipe, item: Item): WorkshopNa
 /**
  * 生成伪造操作的叙事（含凝视时刻）
  */
-function generateCounterfeitNarrative(recipe: CounterfeitRecipe, item: Item): WorkshopNarrative {
+function generateCounterfeitNarrative(recipe: CounterfeitRecipe, item: Item, perceptionTier?: PerceptionTier): WorkshopNarrative {
   const texts = getTexts();
   const vars = { item_name: item.name };
 
@@ -740,7 +746,8 @@ function generateCounterfeitNarrative(recipe: CounterfeitRecipe, item: Item): Wo
       || `...这件物品的主人还在等着赎回。伪造它，意味着彻底的背叛。`;
   }
 
-  const gazeText = texts.getRandom('gaze:counterfeit') || '赝品在灯光下闪烁，和真品别无二致。';
+  const gazeText = (perceptionTier && texts.getRandom(`gaze:counterfeit:${perceptionTier}`))
+    || texts.getRandom('gaze:counterfeit') || '赝品在灯光下闪烁，和真品别无二致。';
 
   return { actionText, resultText, moralNote, gazeText };
 }
@@ -748,7 +755,7 @@ function generateCounterfeitNarrative(recipe: CounterfeitRecipe, item: Item): Wo
 /**
  * 生成重铸操作的叙事（含凝视时刻）
  */
-function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item, quality?: ReforgeQuality): WorkshopNarrative {
+function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item, quality?: ReforgeQuality, perceptionTier?: PerceptionTier): WorkshopNarrative {
   const texts = getTexts();
   const vars = { item_name: item.name };
 
@@ -775,7 +782,8 @@ function generateReforgeNarrative(recipe: ReforgeRecipe, item: Item, quality?: R
       || `...这件物品的主人还在等着它。当他赎回时，会看到一个不一样的${item.name}。`;
   }
 
-  const gazeText = texts.getRandom('gaze:reforge') || '重铸完成。';
+  const gazeText = (perceptionTier && texts.getRandom(`gaze:reforge:${perceptionTier}`))
+    || texts.getRandom('gaze:reforge') || '重铸完成。';
 
   return { actionText, resultText, moralNote, gazeText };
 }
