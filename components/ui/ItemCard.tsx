@@ -121,7 +121,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions, o
         isNpcDimmed && "opacity-40"
       )}
       style={{
-        ...(npcBorderColor ? { borderLeft: `3px solid ${npcBorderColor}` } : {}),
         ...(isNpcHighlighted && npcBorderColor ? { '--tw-ring-color': npcBorderColor } as React.CSSProperties : {}),
       }}
     >
