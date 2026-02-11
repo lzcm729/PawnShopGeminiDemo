@@ -94,10 +94,15 @@ export type Action =
     // Refuse Cancel Pawn (#23: Player refuses customer's cancellation request)
     | { type: 'REFUSE_CANCEL_PAWN'; payload: { itemId: string; name: string } }
 
-    // Holding Period Events (#32, #33, #34)
-    | { type: 'TRIGGER_HOLDING_PERIOD_EVENT'; payload: { type: import('../../systems/npc/types').HoldingPeriodEventType; itemId: string; itemName: string; chainId?: string } }
-    | { type: 'RESOLVE_HOLDING_PERIOD_EVENT'; payload: { eventType: import('../../systems/npc/types').HoldingPeriodEventType; itemId: string; decision: 'SURRENDER' | 'REFUSE' } }
-    | { type: 'CLEAR_HOLDING_PERIOD_EVENT' }
+    // Item-Derived Events (统一物品衍生节点: 窃贼忏悔/原物主认领/收藏家收购)
+    | { type: 'TRIGGER_ITEM_DERIVED_EVENT'; payload: import('../../systems/npc/types').ItemDerivedEvent }
+    | { type: 'RESOLVE_ITEM_DERIVED_EVENT'; payload: {
+        eventType: import('../../systems/npc/types').ItemDerivedEventType;
+        itemId: string;
+        choiceId: string;  // 'accept' | 'refuse'
+        storyEventId?: string;
+        chainId?: string;
+      }}
 
     // Financial
     | { type: 'PAY_MEDICAL_BILL' }

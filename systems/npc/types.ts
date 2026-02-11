@@ -9,9 +9,47 @@ export type { BehaviorTag };
 // === POST-FORFEIT NPC VARIANTS (#23) ===
 export type PostForfeitVariant = 'pleading' | 'angry' | 'resigned';
 
-// === HOLDING PERIOD EVENTS (#32, #33) ===
+// === ITEM-DERIVED EVENT (统一物品衍生节点: 窃贼忏悔/原物主认领/收藏家收购) ===
+export type ItemDerivedEventType = 'THIEF_REGRET' | 'ORIGINAL_OWNER' | 'PURCHASE_OFFER';
+
+export interface ItemDerivedChoice {
+    id: string;             // 'accept' | 'refuse'
+    label: string;          // 中文主标签
+    subLabel: string;       // 英文副标签 (e.g. "COOPERATE")
+    description: string;    // 选项描述
+    effectLabels: string[]; // 效果标签 (e.g. ["Humanity +2", "归还物品"])
+}
+
+export interface ItemDerivedEvent {
+    eventType: ItemDerivedEventType;
+    itemId: string;
+    itemName: string;
+    // NPC
+    npcName: string;
+    npcDescription?: string;
+    npcAvatar?: string;
+    // 场景叙事
+    sceneNarrative: string;
+    npcQuote: string;
+    situationDesc: string;
+    // 选项（恰好两个）
+    choices: [ItemDerivedChoice, ItemDerivedChoice];
+    // 主题色
+    accentColor: 'purple' | 'amber' | 'emerald' | 'red';
+    // 链集成（DSL 事件用）
+    chainId?: string;
+    storyEventId?: string;
+    // PURCHASE_OFFER 专用
+    offerValue?: number;
+    // 触发元数据
+    triggerDay: number;
+}
+
+// === BACKWARD COMPAT ALIASES (deprecated) ===
+/** @deprecated Use ItemDerivedEventType */
 export type HoldingPeriodEventType = 'THIEF_REGRET' | 'ORIGINAL_OWNER';
 
+/** @deprecated Use ItemDerivedEvent */
 export interface HoldingPeriodEvent {
     type: HoldingPeriodEventType;
     itemId: string;

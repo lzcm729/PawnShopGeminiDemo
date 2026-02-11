@@ -1,75 +1,50 @@
 /**
- * HoldingPeriodEventModal
+ * ItemDerivedEventModal
  *
- * Full-screen immersive event node that appears when someone claims ownership
- * of a pawned item during the holding period. Redesigned as an item-derived
- * event node with narrative focus, typewriter text, and vertical choice cards.
+ * Full-screen immersive event node for item-derived events. Data-driven:
+ * all text, choices, and theme come from the ItemDerivedEvent object in state.
  *
- * Two event types:
+ * Supported event types:
  * - THIEF_REGRET: Someone claims they stole the item and wants to return it
  * - ORIGINAL_OWNER: Someone claims to be the original owner
+ * - PURCHASE_OFFER: A collector wants to buy the item
  */
 
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
+import { useGameEngine } from '../hooks/useGameEngine';
 import { TypewriterText } from './ui/TextEffects';
 import { cn } from '../lib/utils';
+import type { ItemDerivedEventType } from '../systems/npc/types';
 import {
     AlertTriangle,
-    HandHeart,
-    ShieldX,
     Heart,
     Handshake,
-    UserX,
     Scale,
+    UserX,
+    Banknote,
+    HandHeart,
+    ShieldX,
 } from 'lucide-react';
 
-const EVENT_CONFIG = {
+/** Header metadata per event type */
+const EVENT_HEADER: Record<ItemDerivedEventType, { headerLabel: string; headerSub: string; icon: React.FC<{ className?: string }> }> = {
     THIEF_REGRET: {
-        title: 'THIEF CONFESSION',
-        headerLabel: '窃贼忏悔',
+        headerLabel: '\u7A83\u8D3C\u5FC3\u6094',
         headerSub: 'STOLEN ITEM CLAIM',
         icon: UserX,
-        accentColor: 'purple' as const,
-        sceneNarrative: (itemName: string) =>
-            `门铃响了。一个低着头的年轻人走进店里，目光躲闪，双手紧攥着衣角。他的声音很轻，像是怕被什么人听见——`,
-        description: (itemName: string) =>
-            `他声称自己曾偷窃了「${itemName}」，现在良心不安，请求你归还原物。`,
-        quote: '"我做了错事... 这东西不该出现在这里。能还给我吗？我想把它物归原主。"',
-        surrenderLabel: '归还物品',
-        surrenderSub: 'COOPERATE',
-        surrenderDesc: '配合声称者，将物品归还。你会损失这件库存，但做了正确的事。',
-        surrenderEffects: ['归还物品给声称者', 'Humanity +2'],
-        surrenderEffectIcons: ['item', 'humanity'] as const,
-        refuseLabel: '拒绝归还',
-        refuseSub: 'DENY CLAIM',
-        refuseDesc: '你没有义务配合一个自称小偷的人。物品是合法收当的。',
-        refuseEffects: ['保留物品', 'Innocence -1'],
-        refuseEffectIcons: ['item', 'innocence'] as const,
     },
     ORIGINAL_OWNER: {
-        title: 'OWNERSHIP CLAIM',
-        headerLabel: '原主声索',
+        headerLabel: '\u539F\u4E3B\u58F0\u7D22',
         headerSub: 'ORIGINAL OWNER CLAIM',
         icon: Scale,
-        accentColor: 'amber' as const,
-        sceneNarrative: (itemName: string) =>
-            `一位衣着得体的来访者推开了店门，手里攥着几份文件。他的目光锁定在柜台后方的某件物品上，随即大步走向你——`,
-        description: (itemName: string) =>
-            `他声称自己是「${itemName}」的原主人，拿出了一些证明文件，要求你归还物品。`,
-        quote: '"这是我的东西！我有证据。它是被人偷走后典当到你这里的。请你做个好人，还给我吧。"',
-        surrenderLabel: '归还原主',
-        surrenderSub: 'RETURN TO OWNER',
-        surrenderDesc: '对方持有证据。归还物品意味着经济损失，但能赢得尊重和信誉。',
-        surrenderEffects: ['归还物品给原主人', 'Humanity +5', 'Credibility +2'],
-        surrenderEffectIcons: ['item', 'humanity', 'credibility'] as const,
-        refuseLabel: '拒绝归还',
-        refuseSub: 'DENY CLAIM',
-        refuseDesc: '物品是通过正规渠道收当的，你没有法律义务归还。但这会损害你的名声。',
-        refuseEffects: ['保留物品但损害声誉', 'Humanity -3', 'Credibility -2'],
-        refuseEffectIcons: ['item', 'humanity', 'credibility'] as const,
     },
-} as const;
+    PURCHASE_OFFER: {
+        headerLabel: '\u6536\u8D2D\u9080\u7EA6',
+        headerSub: 'PURCHASE OFFER',
+        icon: Banknote,
+    },
+};
 
 /** Color schemes keyed by accent */
 const ACCENT_STYLES = {
@@ -103,6 +78,36 @@ const ACCENT_STYLES = {
         surrenderBtnBg: 'bg-amber-700 hover:bg-amber-600 border-amber-600',
         surrenderBtnText: 'text-white',
     },
+    emerald: {
+        spotlight: 'from-emerald-500/8 to-transparent',
+        labelColor: 'text-emerald-400',
+        tagBg: 'bg-emerald-900/40 border-emerald-700/50 text-emerald-300',
+        itemBorder: 'border-emerald-800/60',
+        itemBg: 'bg-emerald-950/20',
+        itemIconBg: 'bg-emerald-900/30',
+        itemIconBorder: 'border-emerald-700/60',
+        itemIconColor: 'text-emerald-400',
+        surrenderBorder: 'border-emerald-800/50 hover:border-emerald-500',
+        surrenderBg: 'bg-emerald-950/20 hover:bg-emerald-900/30',
+        surrenderGlow: 'hover:shadow-[0_0_30px_rgba(16,185,129,0.2)]',
+        surrenderBtnBg: 'bg-emerald-700 hover:bg-emerald-600 border-emerald-600',
+        surrenderBtnText: 'text-white',
+    },
+    red: {
+        spotlight: 'from-red-500/8 to-transparent',
+        labelColor: 'text-red-400',
+        tagBg: 'bg-red-900/40 border-red-700/50 text-red-300',
+        itemBorder: 'border-red-800/60',
+        itemBg: 'bg-red-950/20',
+        itemIconBg: 'bg-red-900/30',
+        itemIconBorder: 'border-red-700/60',
+        itemIconColor: 'text-red-400',
+        surrenderBorder: 'border-red-800/50 hover:border-red-500',
+        surrenderBg: 'bg-red-950/20 hover:bg-red-900/30',
+        surrenderGlow: 'hover:shadow-[0_0_30px_rgba(239,68,68,0.2)]',
+        surrenderBtnBg: 'bg-red-700 hover:bg-red-600 border-red-600',
+        surrenderBtnText: 'text-white',
+    },
 };
 
 /** Map effect icon type to rendered icon */
@@ -117,6 +122,14 @@ const EffectIcon: React.FC<{ type: string; className?: string }> = ({ type, clas
         default:
             return <span className={cn("w-1.5 h-1.5 rounded-full bg-current inline-block", className)} />;
     }
+};
+
+/** Infer icon type from effect label text */
+const getEffectIconType = (effect: string): string => {
+    if (effect.includes('Humanity')) return 'humanity';
+    if (effect.includes('Credibility')) return 'credibility';
+    if (effect.includes('Innocence')) return 'innocence';
+    return 'default';
 };
 
 /** Color for each effect based on content */
@@ -134,38 +147,34 @@ const getEffectColor = (effect: string): string => {
     return 'text-stone-400';
 };
 
-export const HoldingPeriodEventModal: React.FC = () => {
-    const { state, dispatch } = useGame();
+/** Determine the trailing badge for the accept choice */
+const getAcceptBadge = (eventType: ItemDerivedEventType): { label: string; color: string; dotColor: string } | null => {
+    switch (eventType) {
+        case 'THIEF_REGRET':
+        case 'ORIGINAL_OWNER':
+            return { label: '\u7269\u54C1\u88AB\u5F52\u8FD8', color: 'text-red-400', dotColor: 'bg-red-500' };
+        case 'PURCHASE_OFFER':
+            return { label: '\u7269\u54C1\u51FA\u552E', color: 'text-emerald-400', dotColor: 'bg-emerald-500' };
+        default:
+            return null;
+    }
+};
+
+export const ItemDerivedEventModal: React.FC = () => {
+    const { state } = useGame();
+    const { resolveItemDerivedEvent } = useGameEngine();
     const [narrativeComplete, setNarrativeComplete] = useState(false);
 
-    const event = state.currentHoldingPeriodEvent;
+    const event = state.currentItemDerivedEvent;
     if (!event) return null;
 
-    const config = EVENT_CONFIG[event.type];
-    const IconComponent = config.icon;
-    const accent = ACCENT_STYLES[config.accentColor];
+    const header = EVENT_HEADER[event.eventType];
+    const IconComponent = header.icon;
+    const accent = ACCENT_STYLES[event.accentColor];
+    const acceptBadge = getAcceptBadge(event.eventType);
 
-    const handleSurrender = () => {
-        dispatch({
-            type: 'RESOLVE_HOLDING_PERIOD_EVENT',
-            payload: {
-                eventType: event.type,
-                itemId: event.itemId,
-                decision: 'SURRENDER',
-            },
-        });
-    };
-
-    const handleRefuse = () => {
-        dispatch({
-            type: 'RESOLVE_HOLDING_PERIOD_EVENT',
-            payload: {
-                eventType: event.type,
-                itemId: event.itemId,
-                decision: 'REFUSE',
-            },
-        });
-    };
+    const choiceA = event.choices[0];
+    const choiceB = event.choices[1];
 
     return (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in duration-700">
@@ -188,14 +197,14 @@ export const HoldingPeriodEventModal: React.FC = () => {
                     accent.tagBg,
                 )}>
                     <AlertTriangle className="w-3 h-3" />
-                    {config.headerSub}
+                    {header.headerSub}
                 </div>
 
                 {/* Scene Narrative -- typewriter for immersion */}
                 <div className="w-full mb-6 text-center">
                     <p className="font-serif italic text-stone-400 text-sm leading-relaxed">
                         <TypewriterText
-                            text={config.sceneNarrative(event.itemName)}
+                            text={event.sceneNarrative}
                             speed={25}
                             onComplete={() => setNarrativeComplete(true)}
                         />
@@ -232,22 +241,33 @@ export const HoldingPeriodEventModal: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* Offer Value (PURCHASE_OFFER only) */}
+                    {event.offerValue != null && (
+                        <div className={cn(
+                            "w-full text-center py-3 mb-4 rounded-lg border",
+                            accent.itemBorder, accent.itemBg,
+                        )}>
+                            <span className="text-stone-400 text-sm">{'\u62A5\u4EF7: '}</span>
+                            <span className="text-emerald-400 font-bold text-xl">${event.offerValue.toLocaleString()}</span>
+                        </div>
+                    )}
+
                     {/* Situation Description */}
                     <p className="text-sm text-stone-300 leading-relaxed text-center mb-4">
-                        {config.description(event.itemName)}
+                        {event.situationDesc}
                     </p>
 
                     {/* Quote */}
                     <blockquote className="w-full text-center font-serif italic text-stone-400/90 text-base leading-relaxed mb-8 px-4">
-                        {config.quote}
+                        {event.npcQuote}
                     </blockquote>
 
                     {/* Choices -- vertical stacked narrative cards */}
                     <div className="w-full space-y-4 mb-6">
 
-                        {/* Choice A: Surrender */}
+                        {/* Choice A: Accept (themed) */}
                         <button
-                            onClick={handleSurrender}
+                            onClick={() => resolveItemDerivedEvent(choiceA.id)}
                             className={cn(
                                 "w-full text-left rounded-lg border p-5 transition-all duration-300 group cursor-pointer",
                                 accent.surrenderBorder, accent.surrenderBg, accent.surrenderGlow,
@@ -263,18 +283,18 @@ export const HoldingPeriodEventModal: React.FC = () => {
                                 </div>
                                 <div>
                                     <div className="text-base font-bold text-stone-200 group-hover:text-white transition-colors">
-                                        {config.surrenderLabel}
+                                        {choiceA.label}
                                     </div>
                                     <div className={cn("text-[10px] font-mono uppercase tracking-[0.15em]", accent.labelColor)}>
-                                        {config.surrenderSub}
+                                        {choiceA.subLabel}
                                     </div>
                                 </div>
                             </div>
                             <p className="text-xs text-stone-400 leading-relaxed mb-3 pl-[52px]">
-                                {config.surrenderDesc}
+                                {choiceA.description}
                             </p>
                             <div className="flex flex-wrap items-center gap-2 pl-[52px]">
-                                {config.surrenderEffects.map((effect, i) => (
+                                {choiceA.effectLabels.map((effect, i) => (
                                     <span
                                         key={i}
                                         className={cn(
@@ -282,20 +302,25 @@ export const HoldingPeriodEventModal: React.FC = () => {
                                             getEffectColor(effect),
                                         )}
                                     >
-                                        <EffectIcon type={config.surrenderEffectIcons[i]} />
+                                        <EffectIcon type={getEffectIconType(effect)} />
                                         {effect}
                                     </span>
                                 ))}
-                                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-sm bg-black/30 border border-stone-800/50 text-red-400">
-                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                                    物品被归还
-                                </span>
+                                {acceptBadge && (
+                                    <span className={cn(
+                                        "inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-sm bg-black/30 border border-stone-800/50",
+                                        acceptBadge.color,
+                                    )}>
+                                        <span className={cn("w-1.5 h-1.5 rounded-full", acceptBadge.dotColor)} />
+                                        {acceptBadge.label}
+                                    </span>
+                                )}
                             </div>
                         </button>
 
-                        {/* Choice B: Refuse */}
+                        {/* Choice B: Refuse (gray/neutral) */}
                         <button
-                            onClick={handleRefuse}
+                            onClick={() => resolveItemDerivedEvent(choiceB.id)}
                             className="w-full text-left rounded-lg border p-5 transition-all duration-300 group cursor-pointer border-stone-700/50 bg-stone-950/30 hover:bg-stone-900/30 hover:border-stone-500 hover:shadow-[0_0_20px_rgba(120,113,108,0.1)]"
                         >
                             <div className="flex items-center gap-3 mb-3">
@@ -304,18 +329,18 @@ export const HoldingPeriodEventModal: React.FC = () => {
                                 </div>
                                 <div>
                                     <div className="text-base font-bold text-stone-300 group-hover:text-stone-100 transition-colors">
-                                        {config.refuseLabel}
+                                        {choiceB.label}
                                     </div>
                                     <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-stone-500">
-                                        {config.refuseSub}
+                                        {choiceB.subLabel}
                                     </div>
                                 </div>
                             </div>
                             <p className="text-xs text-stone-500 leading-relaxed mb-3 pl-[52px]">
-                                {config.refuseDesc}
+                                {choiceB.description}
                             </p>
                             <div className="flex flex-wrap items-center gap-2 pl-[52px]">
-                                {config.refuseEffects.map((effect, i) => (
+                                {choiceB.effectLabels.map((effect, i) => (
                                     <span
                                         key={i}
                                         className={cn(
@@ -323,7 +348,7 @@ export const HoldingPeriodEventModal: React.FC = () => {
                                             getEffectColor(effect),
                                         )}
                                     >
-                                        <EffectIcon type={config.refuseEffectIcons[i]} />
+                                        <EffectIcon type={getEffectIconType(effect)} />
                                         {effect}
                                     </span>
                                 ))}

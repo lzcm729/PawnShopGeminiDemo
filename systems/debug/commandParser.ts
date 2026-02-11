@@ -10,6 +10,7 @@ import { generateFillerCustomer, ForcedJumpTrait } from '../npc/fillerGenerator'
 import type { Customer } from '../npc/types';
 import type { Dialogue } from '../narrative/types';
 import { AVAILABLE_UPGRADES, getUpgradeConfig } from '../upgrades/config';
+import { buildRandomItemDerivedEvent } from '../police/itemDerivedEventTexts';
 import type { OwnedUpgrade } from '../upgrades/types';
 
 export interface CommandResult {
@@ -1475,19 +1476,21 @@ function handleTriggerCommand(
         }
       }
 
+      const derivedEvent = buildRandomItemDerivedEvent(
+        holdingEventType as 'THIEF_REGRET' | 'ORIGINAL_OWNER',
+        { id: targetItemId, name: targetItemName },
+        state.stats?.day || 1
+      );
+
       dispatch({
-        type: 'TRIGGER_HOLDING_PERIOD_EVENT',
-        payload: {
-          type: holdingEventType,
-          itemId: targetItemId,
-          itemName: targetItemName,
-        }
+        type: 'TRIGGER_ITEM_DERIVED_EVENT',
+        payload: derivedEvent
       });
 
       const label = subType === 'owner' ? 'Original Owner Claim' : 'Thief Confession';
       return {
         success: true,
-        message: `Triggered holding period event: ${label}\n  Item: ${targetItemName} (${targetItemId})`
+        message: `Triggered item-derived event: ${label}\n  Item: ${targetItemName} (${targetItemId})`
       };
     }
 

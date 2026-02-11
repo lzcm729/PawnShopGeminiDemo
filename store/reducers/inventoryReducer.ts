@@ -444,85 +444,88 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
             };
         }
 
-        // #32, #33: Holding Period Risk Events — trigger
-        case 'TRIGGER_HOLDING_PERIOD_EVENT': {
-            const { type: eventType, itemId, itemName, chainId } = action.payload;
+        // Item-Derived Events — trigger (unified: thief regret / original owner / purchase offer)
+        case 'TRIGGER_ITEM_DERIVED_EVENT': {
             playSfx('FAIL');
-            const triggerDay = state.stats.day;
             return {
                 ...state,
-                currentHoldingPeriodEvent: { type: eventType, itemId, itemName, chainId, triggerDay },
+                currentItemDerivedEvent: action.payload,
                 dayEvents: [
                     ...state.dayEvents,
-                    eventType === 'THIEF_REGRET'
-                        ? `[持有期事件] 有人声称 ${itemName} 是自己偷来的，请求归还...`
-                        : `[持有期事件] 有人声称自己是 ${itemName} 的原主人，要求归还...`
+                    `[物品衍生事件] ${action.payload.eventType}: ${action.payload.itemName}`
                 ]
             };
         }
 
-        // #32, #33: Holding Period Risk Events — resolve
-        case 'RESOLVE_HOLDING_PERIOD_EVENT': {
-            const { eventType, itemId, decision } = action.payload;
+        // Item-Derived Events — resolve
+        case 'RESOLVE_ITEM_DERIVED_EVENT': {
+            const { eventType, itemId, choiceId } = action.payload;
             const holdItem = state.inventory.find(i => i.id === itemId);
             if (!holdItem) {
-                return { ...state, currentHoldingPeriodEvent: null };
+                return { ...state, currentItemDerivedEvent: null };
             }
 
-            const holdRep = { ...state.reputation };
+            const newRep = { ...state.reputation };
+            let newInventory = [...state.inventory];
+            let cashDelta = 0;
             let holdLog = '';
 
-            if (decision === 'SURRENDER') {
-                // Return item to claimant
-                const surrenderInventory = state.inventory.map(i => {
-                    if (i.id === itemId) {
-                        return { ...i, status: ItemStatus.REDEEMED };
-                    }
-                    return i;
-                });
-
-                if (eventType === 'THIEF_REGRET') {
-                    // Surrendering stolen goods to the thief: morally ambiguous
-                    holdRep[ReputationType.HUMANITY] = Math.min(100, holdRep[ReputationType.HUMANITY] + 2);
+            if (eventType === 'THIEF_REGRET') {
+                if (choiceId === 'accept') {
+                    newInventory = newInventory.map(i =>
+                        i.id === itemId ? { ...i, status: ItemStatus.REDEEMED } : i
+                    );
+                    newRep[ReputationType.HUMANITY] = Math.min(100, newRep[ReputationType.HUMANITY] + 2);
                     holdLog = `[持有期事件] 归还 ${holdItem.name} 给声称者 (人情 +2)`;
                 } else {
-                    // Surrendering to original owner: strong moral action
-                    holdRep[ReputationType.HUMANITY] = Math.min(100, holdRep[ReputationType.HUMANITY] + 5);
-                    holdRep[ReputationType.CREDIBILITY] = Math.min(100, holdRep[ReputationType.CREDIBILITY] + 2);
-                    holdLog = `[持有期事件] 归还 ${holdItem.name} 给原主人 (人情 +5, 商誉 +2)`;
-                }
-
-                return {
-                    ...state,
-                    inventory: surrenderInventory,
-                    reputation: holdRep,
-                    currentHoldingPeriodEvent: null,
-                    dayEvents: [...state.dayEvents, holdLog]
-                };
-            } else {
-                // Refuse to return
-                if (eventType === 'THIEF_REGRET') {
-                    // Refusing thief: relatively neutral, slight innocence concern
-                    holdRep[ReputationType.INNOCENCE] = Math.max(0, holdRep[ReputationType.INNOCENCE] - 1);
+                    newRep[ReputationType.INNOCENCE] = Math.max(0, newRep[ReputationType.INNOCENCE] - 1);
                     holdLog = `[持有期事件] 拒绝归还 ${holdItem.name} (清白 -1)`;
+                }
+            } else if (eventType === 'ORIGINAL_OWNER') {
+                if (choiceId === 'accept') {
+                    newInventory = newInventory.map(i =>
+                        i.id === itemId ? { ...i, status: ItemStatus.REDEEMED } : i
+                    );
+                    newRep[ReputationType.HUMANITY] = Math.min(100, newRep[ReputationType.HUMANITY] + 5);
+                    newRep[ReputationType.CREDIBILITY] = Math.min(100, newRep[ReputationType.CREDIBILITY] + 2);
+                    holdLog = `[持有期事件] 归还 ${holdItem.name} 给原主人 (人情 +5, 商誉 +2)`;
                 } else {
-                    // Refusing original owner: loss of humanity and credibility
-                    holdRep[ReputationType.HUMANITY] = Math.max(0, holdRep[ReputationType.HUMANITY] - 3);
-                    holdRep[ReputationType.CREDIBILITY] = Math.max(0, holdRep[ReputationType.CREDIBILITY] - 2);
+                    newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 3);
+                    newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 2);
                     holdLog = `[持有期事件] 拒绝归还 ${holdItem.name} 给原主人 (人情 -3, 商誉 -2)`;
                 }
-
-                return {
-                    ...state,
-                    reputation: holdRep,
-                    currentHoldingPeriodEvent: null,
-                    dayEvents: [...state.dayEvents, holdLog]
-                };
+            } else if (eventType === 'PURCHASE_OFFER') {
+                const offerValue = state.currentItemDerivedEvent?.offerValue ?? 0;
+                if (choiceId === 'accept') {
+                    newInventory = newInventory.map(i =>
+                        i.id === itemId ? { ...i, status: ItemStatus.SOLD } : i
+                    );
+                    cashDelta = offerValue;
+                    holdLog = `[收藏家收购] 出售 ${holdItem.name} (+$${offerValue})`;
+                } else {
+                    holdLog = `[收藏家收购] 拒绝出售 ${holdItem.name}`;
+                }
             }
-        }
 
-        case 'CLEAR_HOLDING_PERIOD_EVENT': {
-            return { ...state, currentHoldingPeriodEvent: null };
+            clampReputation(newRep);
+
+            // Build transaction record for PURCHASE_OFFER
+            const transaction: TransactionRecord | null = cashDelta !== 0 ? {
+                id: crypto.randomUUID(),
+                description: `收藏家收购: ${holdItem.name}`,
+                amount: cashDelta,
+                type: 'SELL'
+            } : null;
+
+            return {
+                ...state,
+                stats: cashDelta !== 0 ? { ...state.stats, cash: state.stats.cash + cashDelta } : state.stats,
+                reputation: newRep,
+                inventory: newInventory,
+                currentItemDerivedEvent: null,
+                todayTransactions: transaction ? [...state.todayTransactions, transaction] : state.todayTransactions,
+                dayEvents: [...state.dayEvents, holdLog]
+            };
         }
 
         case 'APPEND_ITEM_LOGS': {

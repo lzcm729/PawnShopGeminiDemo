@@ -21,6 +21,7 @@ import type { DayChallengeContext } from '../systems/game/dailyChallenge';
 import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
 import { PhaseEvent } from '../systems/core/phases/types';
 import { checkForPoliceInvestigation, checkForHoldingPeriodEvent } from '../systems/police';
+import { buildRandomItemDerivedEvent, buildPurchaseOfferEvent } from '../systems/police/itemDerivedEventTexts';
 import { calculateRedemptionTotal } from '../systems/economy/interest';
 import { resolveMailDelay } from '../systems/narrative/mailUtils';
 import { getMailTemplate } from '../systems/narrative/mailRegistry';
@@ -870,14 +871,14 @@ export const useGameEngine = () => {
     if (!stolenItemToInvestigate) {  // Don't stack with police investigation
         const holdingEvent = checkForHoldingPeriodEvent(state.inventory, currentDay);
         if (holdingEvent) {
+            const derivedEvent = buildRandomItemDerivedEvent(
+                holdingEvent.type,
+                holdingEvent.item,
+                currentDay
+            );
             dispatch({
-                type: 'TRIGGER_HOLDING_PERIOD_EVENT',
-                payload: {
-                    type: holdingEvent.type,
-                    itemId: holdingEvent.item.id,
-                    itemName: holdingEvent.item.name,
-                    chainId: holdingEvent.item.relatedChainId
-                }
+                type: 'TRIGGER_ITEM_DERIVED_EVENT',
+                payload: derivedEvent
             });
         }
     }
@@ -1073,6 +1074,36 @@ export const useGameEngine = () => {
 
           const chainState = state.activeChains.find(c => c.id === narrativeEvent.chainId);
           const currentFunds = chainState?.variables?.funds;
+
+          // Intercept PURCHASE_OFFER: render as ItemDerivedEvent (immersive binary choice)
+          if (narrativeEvent.interaction?.type === 'PURCHASE_OFFER') {
+              const targetItemId = narrativeEvent.interaction.targetItemId || narrativeEvent.targetItemId;
+              const targetItem = targetItemId ? state.inventory.find(i => i.id === targetItemId) : null;
+
+              if (targetItem) {
+                  const template = narrativeEvent.template;
+                  const dialogue = template.dialogue;
+
+                  const derivedEvent = buildPurchaseOfferEvent({
+                      itemId: targetItem.id,
+                      itemName: targetItem.name,
+                      npcName: template.name || '收藏家',
+                      npcDescription: template.description,
+                      npcAvatar: template.avatarSeed,
+                      sceneNarrative: template.description || (typeof dialogue.greeting === 'string' ? dialogue.greeting : '') || '一位神秘的来客推开了门——',
+                      npcQuote: (typeof dialogue.pawnReason === 'string' ? dialogue.pawnReason : '') || narrativeEvent.interaction.reason || '"这件东西，我的客户非常想要。"',
+                      situationDesc: narrativeEvent.interaction.description || '一份收购合同。',
+                      offerValue: narrativeEvent.interaction.offerValue || 0,
+                      chainId: narrativeEvent.chainId,
+                      storyEventId: narrativeEvent.id,
+                      triggerDay: state.stats.day,
+                  });
+
+                  dispatch({ type: 'TRIGGER_ITEM_DERIVED_EVENT', payload: derivedEvent });
+                  dispatch({ type: 'SET_LOADING', payload: false });
+                  return;
+              }
+          }
 
           let storyCustomer = instantiateStoryCustomer(narrativeEvent, state.inventory, currentFunds, chainState);
 
@@ -1912,6 +1943,39 @@ export const useGameEngine = () => {
       return true;
   };
 
+  // Resolve an item-derived event (unified: thief regret / original owner / purchase offer)
+  const resolveItemDerivedEvent = useCallback((choiceId: string) => {
+      const event = state.currentItemDerivedEvent;
+      if (!event) return;
+
+      dispatch({
+          type: 'RESOLVE_ITEM_DERIVED_EVENT',
+          payload: {
+              eventType: event.eventType,
+              itemId: event.itemId,
+              choiceId,
+              storyEventId: event.storyEventId,
+              chainId: event.chainId,
+          }
+      });
+
+      // Apply chain effects for DSL events (PURCHASE_OFFER)
+      if (event.chainId && event.storyEventId) {
+          const storyEvent = ALL_STORY_EVENTS.find(e => e.id === event.storyEventId);
+          if (storyEvent) {
+              if (choiceId === 'accept' && storyEvent.outcomes) {
+                  // Use 'accept' outcome key, or fall back to onComplete
+                  const acceptEffects = storyEvent.outcomes['accept'] || storyEvent.onComplete;
+                  if (acceptEffects) applyChainEffects(event.chainId, acceptEffects);
+              } else if (choiceId === 'refuse') {
+                  if (storyEvent.onReject) {
+                      applyChainEffects(event.chainId, storyEvent.onReject);
+                  }
+              }
+          }
+      }
+  }, [state.currentItemDerivedEvent, dispatch]);
+
   return {
       startNewDay,
       performNightCycle,
@@ -1931,6 +1995,8 @@ export const useGameEngine = () => {
       // P1-6: Care purchase
       purchaseCare,
       // H-3: Mother visit dialogue
-      getMotherVisitDialogue
+      getMotherVisitDialogue,
+      // Item-derived event resolution
+      resolveItemDerivedEvent
   };
 };

@@ -20,7 +20,7 @@ import { FinancialCalendar } from './components/FinancialCalendar';
 import { MedicalModal } from './components/MedicalModal';
 import { HospitalVisitModal } from './components/HospitalVisitModal';
 import { PoliceInvestigationModal } from './components/PoliceInvestigationModal';
-import { HoldingPeriodEventModal } from './components/HoldingPeriodEventModal';
+import { ItemDerivedEventModal } from './components/ItemDerivedEventModal';
 import { DebugPanel } from './components/DebugPanel';
 import { DevConsole } from './components/DevConsole';
 import { DepartureView } from './components/ShopClosedView';
@@ -298,7 +298,7 @@ const GameContent: React.FC = () => {
             <MedicalModal />
             <HospitalVisitModal />
             <PoliceInvestigationModal />
-            <HoldingPeriodEventModal />
+            <ItemDerivedEventModal />
 
             <main className="flex-1 overflow-hidden relative">
                 {isDeparture && (

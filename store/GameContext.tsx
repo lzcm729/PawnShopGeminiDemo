@@ -126,8 +126,8 @@ const initialState: GameState = {
     lastInsightTrainingResult: null,
     // === POLICE INVESTIGATION ===
     currentPoliceInvestigation: null,
-    // === HOLDING PERIOD EVENTS ===
-    currentHoldingPeriodEvent: null,
+    // === ITEM-DERIVED EVENTS ===
+    currentItemDerivedEvent: null,
     // === DAILY CHALLENGE (每日挑战 v2.1) ===
     dailyChallenge: null,
     rejectedCustomersToday: 0,

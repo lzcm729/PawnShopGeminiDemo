@@ -93,7 +93,7 @@ export function isItemStolen(item: Item | undefined | null): boolean {
 // HOLDING PERIOD RISK EVENTS (#32, #33)
 // ============================================================================
 
-import { HoldingPeriodEventType } from '../npc/types';
+import { HoldingPeriodEventType, ItemDerivedEventType } from '../npc/types';
 
 export const HOLDING_PERIOD_CONFIG = {
     // #32: Chance per day that a thief regrets and comes back (per stolen item)
