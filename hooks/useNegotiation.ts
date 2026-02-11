@@ -5,6 +5,7 @@ import { executePushPull, PushPullResult, PlayerMoveType, getPushPullStyle, NpcP
 import { GAME_CONFIG } from '../systems/game/config';
 import { getAskPriceModifier, getInsultModifier, getConcessionMultiplier } from '../systems/appraisal/precision';
 import { INSIGHT_AWARE_RESPONSES, getRandomText } from '../systems/negotiation/data';
+import { queryConcessionChance, getConcessionTier, type ConcessionTier } from '../systems/negotiation/probeEffects';
 
 export type NegotiationMood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
 
@@ -69,6 +70,9 @@ interface UseNegotiationReturn {
 
   /** Insight-aware NPC response text (null if insight not used) */
   insightAwareText: string | null;
+
+  /** B-10: Current concession probability tier (always computed; UI gates display by skill) */
+  concessionTier: ConcessionTier;
 
   // Round tracking
   roundCount: number;
@@ -623,6 +627,20 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     });
   }, []);
 
+  // B-10: Compute concession probability tier for skill-gated display
+  const concessionTier = useMemo((): ConcessionTier => {
+    if (!customer) return 'low';
+    const chance = queryConcessionChance(
+      customer.behaviorTags,
+      offerPrincipal,
+      customer.minimumAmount,
+      persistCount,
+      npcConcessionCount,
+      insightConcessionModifier
+    );
+    return getConcessionTier(chance);
+  }, [customer, offerPrincipal, persistCount, npcConcessionCount, insightConcessionModifier]);
+
   // #34: Generate insight-aware NPC response text when insight is active
   const insightAwareText = useMemo((): string | null => {
     if (!insightUsed || !lastPushPullResult || !customer) return null;
@@ -671,6 +689,8 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     npcConcessionCount,
     lastPushPullResult,
     insightAwareText,
+    // B-10: Concession tier
+    concessionTier,
     // Round tracking
     roundCount,
     isRoundLimitReached: roundCount >= GAME_CONFIG.NEGOTIATION.MAX_ROUNDS,

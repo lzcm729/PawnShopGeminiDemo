@@ -65,3 +65,56 @@ export interface CalendarDayData {
   isToday: boolean;
   isPast?: boolean;
 }
+
+// --- PROFIT CALCULATION SYSTEM (B-14) ---
+
+/**
+ * Unified profit calculation structure for item-level P&L analysis.
+ * Used by filler generator, financial projection, and inventory analytics.
+ */
+export interface ProfitCalculation {
+  /** Cash given to customer (loan principal) */
+  pawnAmount: number;
+  /** Actual or projected sale price */
+  salePrice: number;
+  /** Accumulated storage cost (daily rate * days held) */
+  storageCost: number;
+  /** Workshop costs (repair/reforge/counterfeit) */
+  workshopCost: number;
+  /** Gross profit = salePrice - pawnAmount */
+  grossProfit: number;
+  /** Net profit = grossProfit - storageCost - workshopCost */
+  netProfit: number;
+  /** Profit margin = netProfit / pawnAmount (0 if pawnAmount is 0) */
+  profitMargin: number;
+}
+
+/**
+ * Calculate profit metrics for an item transaction.
+ *
+ * @param pawnAmount   Cash given to customer (loan principal)
+ * @param salePrice    Actual or projected sale price
+ * @param storageCost  Accumulated storage cost (default 0)
+ * @param workshopCost Workshop processing cost (default 0)
+ * @returns Complete ProfitCalculation with derived fields
+ */
+export function calculateProfit(
+  pawnAmount: number,
+  salePrice: number,
+  storageCost: number = 0,
+  workshopCost: number = 0
+): ProfitCalculation {
+  const grossProfit = salePrice - pawnAmount;
+  const netProfit = grossProfit - storageCost - workshopCost;
+  const profitMargin = pawnAmount > 0 ? netProfit / pawnAmount : 0;
+
+  return {
+    pawnAmount,
+    salePrice,
+    storageCost,
+    workshopCost,
+    grossProfit,
+    netProfit,
+    profitMargin,
+  };
+}
