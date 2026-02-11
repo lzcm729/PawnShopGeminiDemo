@@ -161,9 +161,11 @@ export interface Item {
   // --- NAME & DESC VARIANTS (名称变体系统) ---
   nameDefault?: string;          // 默认名称（典当时）
   nameRestored?: string;         // 修复后名称
+  nameCounterfeit?: string;      // 伪造后名称
   nameReforged?: string;         // 重铸后名称
   descDefault?: string;          // 默认描述
   descRestored?: string;         // 修复后描述
+  descCounterfeit?: string;      // 伪造后描述
   descReforged?: string;         // 重铸后描述
 
   // --- CSV TEMPLATE REFERENCE ---

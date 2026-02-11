@@ -116,7 +116,7 @@ export function executeCommand(
   add essence <n>       - Add essence to all types
   add item <name> --dueDate <day> [--chainId <id>] [--tags TAG1,TAG2] [--stolen] - Add test pawn item
   add forfeit <name> [--tags TAG1,TAG2] - Add forfeit item for blackmarket testing
-  add template <id> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|REFORGED] - Add item from CSV template
+  add template <id> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|FORGED|REFORGED] - Add item from CSV template
   spawn customer        - Force spawn a customer via game engine (business phase only)
   spawn filler          - Spawn a normal filler customer (business phase only)
   spawn filler mistake  - Spawn filler with FAKE trait for 打眼 testing
@@ -1056,7 +1056,7 @@ function handleAddForfeitCommand(
 }
 
 /**
- * Parse args for template command: <templateId> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|REFORGED]
+ * Parse args for template command: <templateId> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|FORGED|REFORGED]
  */
 function parseTemplateArgs(args: string[]): {
   templateId: string;
@@ -1081,7 +1081,7 @@ function parseTemplateArgs(args: string[]): {
       i += 2;
     } else if (arg === '--workState' || arg === '--workstate') {
       const nextArg = args[i + 1]?.toUpperCase();
-      if (nextArg === 'DEFAULT' || nextArg === 'RESTORED' || nextArg === 'REFORGED') {
+      if (nextArg === 'DEFAULT' || nextArg === 'RESTORED' || nextArg === 'FORGED' || nextArg === 'REFORGED') {
         workState = nextArg as WorkState;
       }
       i += 2;
@@ -1103,6 +1103,8 @@ function getNameForWorkState(item: Item): string {
   switch (item.workState) {
     case 'RESTORED':
       return item.nameRestored || item.name;
+    case 'FORGED':
+      return item.nameCounterfeit || item.name;
     case 'REFORGED':
       return item.nameReforged || item.name;
     default:
@@ -1123,7 +1125,7 @@ function handleAddTemplateCommand(
     const templateList = templates.map(t => `  ${t.id}: ${t.nameDefault}`).join('\n');
     return {
       success: false,
-      message: `Usage: add template <templateId> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|REFORGED]\n\nAvailable templates:\n${templateList || '  (no templates loaded)'}`
+      message: `Usage: add template <templateId> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|FORGED|REFORGED]\n\nAvailable templates:\n${templateList || '  (no templates loaded)'}`
     };
   }
 
@@ -1156,6 +1158,10 @@ function handleAddTemplateCommand(
     case 'RESTORED':
       item.visualDescription = item.descRestored || item.visualDescription;
       item.wasRestored = true;
+      break;
+    case 'FORGED':
+      item.visualDescription = item.descCounterfeit || item.visualDescription;
+      item.wasForged = true;
       break;
     case 'REFORGED':
       item.visualDescription = item.descReforged || item.visualDescription;
@@ -1742,12 +1748,13 @@ export function getAvailableCommands(): CommandDef[] {
     },
     {
       command: 'add template',
-      description: 'Add item from CSV template with full name variants (nameDefault, nameRestored, nameReforged)',
-      usage: 'add template <templateId> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|REFORGED]',
+      description: 'Add item from CSV template with full name variants (nameDefault, nameRestored, nameCounterfeit, nameReforged)',
+      usage: 'add template <templateId> [--status ACTIVE|FORFEIT] [--workState DEFAULT|RESTORED|FORGED|REFORGED]',
       examples: [
         `add template item_watch_01`,
         `add template item_watch_01 --status ACTIVE`,
         `add template item_watch_01 --workState RESTORED`,
+        `add template item_watch_01 --workState FORGED`,
         `add template item_watch_01 --status FORFEIT --workState REFORGED`
       ]
     },
@@ -1867,7 +1874,7 @@ export function getCommandOptions(): Record<string, string[]> {
     panels: Object.keys(PANEL_MAP),
     itemTags: ALL_VALID_TAGS,
     itemStatuses: ['ACTIVE', 'FORFEIT'],
-    workStates: ['DEFAULT', 'RESTORED', 'REFORGED'],
+    workStates: ['DEFAULT', 'RESTORED', 'FORGED', 'REFORGED'],
     templateIds: templates.map(t => t.id),
     billStatuses: ['PAID', 'PENDING', 'OVERDUE'],
     upgradeIds: AVAILABLE_UPGRADES.map(u => u.id),

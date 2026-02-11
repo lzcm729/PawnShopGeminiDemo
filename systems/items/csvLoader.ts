@@ -73,6 +73,7 @@ export interface ItemTemplate {
   id: string;
   nameDefault: string;
   nameRestored: string;
+  nameCounterfeit: string;
   nameReforged: string;
   category: string;
   realValue: number;
@@ -84,6 +85,7 @@ export interface ItemTemplate {
   knowCap: number;
   descDefault: string;
   descRestored: string;
+  descCounterfeit: string;
   descReforged: string;
   /** Fit tags for filler customer matching (age, appearance, item tags) */
   fitTags: string[];
@@ -113,6 +115,7 @@ interface RawItemTemplate {
   id: string;
   nameDefault: string;
   nameRestored: string;
+  nameCounterfeit: string;
   nameReforged: string;
   category: string;
   realValue: number;
@@ -124,6 +127,7 @@ interface RawItemTemplate {
   knowCap: number;
   descDefault: string;
   descRestored: string;
+  descCounterfeit: string;
   descReforged: string;
   fitTags: string[];
   fillerPool: boolean;
@@ -134,6 +138,7 @@ const ITEM_SCHEMA: CSVSchema = {
   'ID': stringCol('id'),
   'Name_Default': stringCol('nameDefault'),
   'Name_Restored': stringCol('nameRestored'),
+  'Name_Counterfeit': stringCol('nameCounterfeit'),
   'Name_Reforged': stringCol('nameReforged'),
   'Category': stringCol('category'),
   'Real_Value': numberCol('realValue', 0),
@@ -145,6 +150,7 @@ const ITEM_SCHEMA: CSVSchema = {
   'Know_Cap': numberCol('knowCap', 100),
   'Desc_Default': stringCol('descDefault'),
   'Desc_Restored': stringCol('descRestored'),
+  'Desc_Counterfeit': stringCol('descCounterfeit'),
   'Desc_Reforged': stringCol('descReforged'),
   'Fit_Tags': listCol('fitTags', ';'),
   'Filler_Pool': booleanCol('fillerPool', false),
@@ -203,8 +209,9 @@ export function loadItemTemplatesFromCSV(csvContent: string): void {
       ...raw,
       initStateTags: parseItemTags(raw.initStateTags),
       attrTags: parseItemTags(raw.attrTags),
-      // Use default description if restored/reforged are empty
+      // Use default description if restored/counterfeit/reforged are empty
       descRestored: raw.descRestored || raw.descDefault,
+      descCounterfeit: raw.descCounterfeit || raw.descDefault,
       descReforged: raw.descReforged || raw.descDefault,
     };
 
@@ -376,12 +383,14 @@ export function createItemFromTemplate(
     name: template.nameDefault,
     nameDefault: template.nameDefault,
     nameRestored: template.nameRestored,
+    nameCounterfeit: template.nameCounterfeit,
     nameReforged: template.nameReforged,
     category: template.category,
     condition: '',
     visualDescription: template.descDefault,
     descDefault: template.descDefault,
     descRestored: template.descRestored,
+    descCounterfeit: template.descCounterfeit,
     descReforged: template.descReforged,
     historySnippet: '',
     appraisalNote: '',

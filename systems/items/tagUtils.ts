@@ -286,10 +286,12 @@ export function getActiveVariant(item: Item): ItemVariant | null {
  * 如果新名称和原始名称相同，则不显示括号部分
  */
 export function getDisplayName(item: Item): string {
-  // 确定实际的工作状态（兼容旧存档：wasReforged/wasRestored 为 true 但 workState 未设置）
+  // 确定实际的工作状态（兼容旧存档：wasReforged/wasRestored/wasForged 为 true 但 workState 未设置）
   let workState = item.workState || 'DEFAULT';
   if (workState === 'DEFAULT' && item.wasReforged) {
     workState = 'REFORGED';
+  } else if (workState === 'DEFAULT' && item.wasForged) {
+    workState = 'FORGED';
   } else if (workState === 'DEFAULT' && item.wasRestored) {
     workState = 'RESTORED';
   }
@@ -322,6 +324,10 @@ export function getDisplayName(item: Item): string {
     const reforgedName = item.nameReforged || template?.nameReforged;
     if (reforgedName) return formatWithOriginal(reforgedName);
   }
+  if (workState === 'FORGED') {
+    const counterfeitName = item.nameCounterfeit || template?.nameCounterfeit;
+    if (counterfeitName) return formatWithOriginal(counterfeitName);
+  }
   if (workState === 'RESTORED') {
     const restoredName = item.nameRestored || template?.nameRestored;
     if (restoredName) return formatWithOriginal(restoredName);
@@ -350,10 +356,12 @@ export function getDisplayName(item: Item): string {
  * 优先级：WorkState 描述变体 > CSV模板 > 旧变体系统 > 原始描述
  */
 export function getDisplayDescription(item: Item): string {
-  // 确定实际的工作状态（兼容旧存档：wasReforged/wasRestored 为 true 但 workState 未设置）
+  // 确定实际的工作状态（兼容旧存档：wasReforged/wasRestored/wasForged 为 true 但 workState 未设置）
   let workState = item.workState || 'DEFAULT';
   if (workState === 'DEFAULT' && item.wasReforged) {
     workState = 'REFORGED';
+  } else if (workState === 'DEFAULT' && item.wasForged) {
+    workState = 'FORGED';
   } else if (workState === 'DEFAULT' && item.wasRestored) {
     workState = 'RESTORED';
   }
@@ -374,6 +382,10 @@ export function getDisplayDescription(item: Item): string {
   if (workState === 'REFORGED') {
     const reforgedDesc = item.descReforged || template?.descReforged;
     if (reforgedDesc) return reforgedDesc;
+  }
+  if (workState === 'FORGED') {
+    const counterfeitDesc = item.descCounterfeit || template?.descCounterfeit;
+    if (counterfeitDesc) return counterfeitDesc;
   }
   if (workState === 'RESTORED') {
     const restoredDesc = item.descRestored || template?.descRestored;

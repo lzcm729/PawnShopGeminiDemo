@@ -14,7 +14,7 @@ const ASSETS_BASE = '';
 // 物品图标
 // ============================================================================
 
-export type ItemState = 'default' | 'restored' | 'reforged';
+export type ItemState = 'default' | 'restored' | 'counterfeit' | 'reforged';
 
 /**
  * 获取物品图标路径
@@ -36,6 +36,8 @@ export function getItemIcon(item: Item): string {
 
   if (item.workState === 'REFORGED' || item.wasReforged) {
     state = 'reforged';
+  } else if (item.workState === 'FORGED' || item.wasForged) {
+    state = 'counterfeit';
   } else if (item.workState === 'RESTORED' || item.wasRestored) {
     state = 'restored';
   }
