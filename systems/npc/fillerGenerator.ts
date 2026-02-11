@@ -29,6 +29,59 @@ import {
   getMatchingReason,
 } from './fillerReasonLoader';
 import { GAME_CONFIG } from '../game/config';
+import { parseCSV, CSVSchema, stringCol } from '../utils/csvReader';
+import fillerTextsCSV from '@/assets/data/texts/filler_texts.csv?raw';
+
+// ============================================================================
+// CSV TEXT LOADING
+// ============================================================================
+
+interface FillerTextRow {
+    category: string;
+    key: string;
+    text: string;
+}
+
+const FILLER_TEXT_SCHEMA: CSVSchema = {
+    'category': stringCol('category'),
+    'key': stringCol('key'),
+    'text': stringCol('text'),
+};
+
+/** Parsed filler texts grouped by category+key, lazily initialized */
+let fillerTextMap: Map<string, string[]> | null = null;
+
+function getFillerTextMap(): Map<string, string[]> {
+    if (!fillerTextMap) {
+        fillerTextMap = new Map();
+        const rows = parseCSV<FillerTextRow>(fillerTextsCSV, FILLER_TEXT_SCHEMA, {
+            warnUnknownColumns: false,
+        });
+        for (const row of rows) {
+            if (!row.category || !row.text) continue;
+            const mapKey = row.key ? `${row.category}:${row.key}` : row.category;
+            const existing = fillerTextMap.get(mapKey);
+            if (existing) {
+                existing.push(row.text);
+            } else {
+                fillerTextMap.set(mapKey, [row.text]);
+            }
+        }
+    }
+    return fillerTextMap;
+}
+
+/** Get all text variants for a category+key combo */
+function getFillerTexts(category: string, key: string): string[] {
+    const mapKey = key ? `${category}:${key}` : category;
+    return getFillerTextMap().get(mapKey) || [];
+}
+
+/** Get a single text for a category+key combo (first match) */
+function getFillerText(category: string, key: string, fallback: string): string {
+    const texts = getFillerTexts(category, key);
+    return texts.length > 0 ? texts[0] : fallback;
+}
 
 // ============================================================================
 // TYPES
@@ -295,14 +348,18 @@ export function getPawnRatioCategory(pawnRatio: number): PawnRatioCategory {
 }
 
 /**
- * Contract type display labels (Chinese)
+ * Contract type display labels (Chinese) - loaded from CSV
  */
-const CONTRACT_LABELS: Record<ContractType, string> = {
+const CONTRACT_LABEL_FALLBACKS: Record<ContractType, string> = {
     'CHARITY': '慈善 (0%)',
     'AID': '援助 (5%)',
     'STANDARD': '标准 (10%)',
     'SHARK': '鲨鱼 (20%)'
 };
+
+function getContractLabel(type: ContractType): string {
+    return getFillerText('contract_label', type, CONTRACT_LABEL_FALLBACKS[type]);
+}
 
 /**
  * Calculate transaction feedback for UI display
@@ -322,7 +379,7 @@ export function calculateTransactionFeedback(
     const contractMod = CONTRACT_MODIFIERS[contractType];
     const contractModPercent = Math.round(contractMod.redeemMod * 100);
     items.push({
-        label: `合同类型：${CONTRACT_LABELS[contractType]}`,
+        label: `合同类型：${getContractLabel(contractType)}`,
         effect: contractModPercent === 0
             ? '赎回意愿 +/-0%'
             : `赎回意愿 ${contractModPercent > 0 ? '+' : ''}${contractModPercent}%`,
@@ -376,83 +433,58 @@ export function calculateTransactionFeedback(
  * Design doc Section 10: 填充专属文案风格
  */
 
-/** Monologues by contract tier - shopkeeper's reaction to the deal type */
-export const FILLER_MONOLOGUES_BY_CONTRACT: Record<ContractType, string[]> = {
-    'CHARITY': [
-        '算了，就当做个顺水人情。',
-        '不赚这点钱了，图个心安。',
-        '就当积德行善吧。',
-        '反正也不亏本，帮一把。',
-    ],
-    'AID': [
-        '合理的价格，大家都不亏。',
-        '中规中矩，公平交易。',
-        '这价钱，双方都能接受。',
-        '本分生意，求的就是个稳。',
-    ],
-    'STANDARD': [
-        '标准行情，公平交易。',
-        '这才是做生意该有的样子。',
-        '规矩价，赚个辛苦费。',
-        '利润合理，心里踏实。',
-    ],
-    'SHARK': [
-        '做生意嘛，不吃亏是本事。',
-        '嗯... 这笔不错。',
-        '低买高卖，天经地义。',
-        '这利润... 满意。',
-    ],
-};
+/**
+ * Monologue accessors - text loaded from CSV (filler_texts.csv)
+ * Fallback arrays used when CSV data is not available.
+ */
 
-/** Monologues by pawn ratio - shopkeeper's assessment of the deal risk */
-export const FILLER_MONOLOGUES_BY_PAWN_RATIO: Record<PawnRatioCategory, string[]> = {
-    'HIGH': [
-        '出这么多... 最好能来赎。',
-        '价出高了，赌他回来赎。',
-        '万一不来赎，我可亏了。',
-        '给多了... 但愿不走眼。',
-    ],
-    'NORMAL': [
-        '价钱合适，赚多赚少看运气。',
-        '不高不低，稳妥。',
-        '差不多得了，稳稳当当。',
-        '这价位，我心里有数。',
-    ],
-    'LOW': [
-        '这东西到我手里，值得冒这个险。',
-        '低价收进来，不亏。',
-        '捡了个便宜... 嘿。',
-        '就算不来赎，也不亏本。',
-    ],
-};
+/** Get monologues by contract tier from CSV */
+function getMonologuesByContract(contractType: ContractType): string[] {
+    const texts = getFillerTexts('monologue_contract', contractType);
+    return texts.length > 0 ? texts : ['...'];
+}
 
-/** Monologues by redemption prediction - shopkeeper's gut feeling */
-export const FILLER_MONOLOGUES_BY_REDEMPTION: Record<RedemptionResolve, string[]> = {
-    'Strong': [
-        '利息到手，稳稳的。',
-        '这人一看就会回来赎。',
-        '铁定回来，安心。',
-        '有来有往，好生意。',
-    ],
-    'Medium': [
-        '赎不赎... 走着看吧。',
-        '五五开，看他造化。',
-        '来不来赎都无所谓。',
-        '看情况再说。',
-    ],
-    'Weak': [
-        '看这人的样子，八成不会来赎了。',
-        '悬... 可能得砸手里。',
-        '来赎的话算惊喜。',
-        '做好砸手里的准备了。',
-    ],
-    'None': [
-        '这十有八九是卖了。',
-        '不会来赎的... 好在东西不亏。',
-        '就当直接收了件货。',
-        '来赎我还奇怪呢。',
-    ],
-};
+/** Get monologues by pawn ratio from CSV */
+function getMonologuesByPawnRatio(category: PawnRatioCategory): string[] {
+    const texts = getFillerTexts('monologue_pawn_ratio', category);
+    return texts.length > 0 ? texts : ['...'];
+}
+
+/** Get monologues by redemption prediction from CSV */
+function getMonologuesByRedemption(resolve: RedemptionResolve): string[] {
+    const texts = getFillerTexts('monologue_redemption', resolve);
+    return texts.length > 0 ? texts : ['...'];
+}
+
+/**
+ * Exported accessors for backward compatibility.
+ * These are lazy getters so that CSV is only parsed on first access.
+ */
+export function getFillerMonologuesByContract(): Record<ContractType, string[]> {
+    return {
+        'CHARITY': getMonologuesByContract('CHARITY'),
+        'AID': getMonologuesByContract('AID'),
+        'STANDARD': getMonologuesByContract('STANDARD'),
+        'SHARK': getMonologuesByContract('SHARK'),
+    };
+}
+
+export function getFillerMonologuesByPawnRatio(): Record<PawnRatioCategory, string[]> {
+    return {
+        'HIGH': getMonologuesByPawnRatio('HIGH'),
+        'NORMAL': getMonologuesByPawnRatio('NORMAL'),
+        'LOW': getMonologuesByPawnRatio('LOW'),
+    };
+}
+
+export function getFillerMonologuesByRedemption(): Record<RedemptionResolve, string[]> {
+    return {
+        'Strong': getMonologuesByRedemption('Strong'),
+        'Medium': getMonologuesByRedemption('Medium'),
+        'Weak': getMonologuesByRedemption('Weak'),
+        'None': getMonologuesByRedemption('None'),
+    };
+}
 
 // ============================================================================
 // v2.1 REDEMPTION VISIT DIALOGUE TEMPLATES (Section 7.5)
@@ -469,106 +501,45 @@ export const FILLER_MONOLOGUES_BY_REDEMPTION: Record<RedemptionResolve, string[]
  * - Consistent with "minimum info, maximum imagination" philosophy
  */
 
-/** Action/expression fragments by mood */
-const REDEMPTION_ACTIONS_BY_MOOD: Record<CustomerMood, string[]> = {
-    'anxious': [
-        '急匆匆地',
-        '松了口气地',
-        '手还在微微发抖地',
-        '长舒一口气地',
-    ],
-    'calm': [
-        '不慌不忙地',
-        '从容地',
-        '点了点头，',
-        '面带微笑地',
-    ],
-    'reluctant': [
-        '小心翼翼地',
-        '眼眶微红地',
-        '轻声地',
-        '小心地',
-    ],
-    'eager': [
-        '兴冲冲地',
-        '迫不及待地',
-        '满脸笑容地',
-        '大步走来，',
-    ],
-};
+/**
+ * Redemption visit text accessors - all loaded from CSV (filler_texts.csv)
+ */
 
-/** Item interaction fragments by item category */
-const REDEMPTION_ITEM_INTERACTIONS: Record<string, string[]> = {
-    '珠宝首饰': [
-        '把{item}戴回了手上。',
-        '仔细检查了{item}，满意地收好了。',
-        '将{item}贴在胸口，转身离去。',
-    ],
-    '钟表': [
-        '把{item}重新戴上了手腕。',
-        '检查了一下{item}的时间，还是准的。',
-        '将{item}放进口袋，脚步轻快地离开了。',
-    ],
-    '电子产品': [
-        '接过{item}检查了一下，松了口气。',
-        '打开{item}确认一切正常后离开了。',
-        '抱着{item}走了，嘴里念叨着什么。',
-    ],
-    '古董': [
-        '用布仔细包好{item}，小心翼翼地抱走了。',
-        '端详了{item}一会儿，像是在重逢。',
-        '将{item}裹好，步履蹒跚地离去。',
-    ],
-    '乐器': [
-        '接过{item}拨了两下弦，笑了。',
-        '把{item}背在肩上，哼着曲子走了。',
-        '紧紧抱着{item}，像找回了老朋友。',
-    ],
-    '服饰': [
-        '将{item}叠好放进袋子里。',
-        '拿起{item}比划了一下，满意地笑了。',
-        '把{item}搭在臂弯里离开了。',
-    ],
-    '箱包': [
-        '检查了{item}一遍，然后提着走了。',
-        '把{item}擦了又擦，背上离开了。',
-        '接过{item}，看了看里面，点点头走了。',
-    ],
-    '数码相机': [
-        '接过{item}检查了一下镜头，点了点头就走了。',
-        '按了两下{item}的快门，确认没问题后离开。',
-        '将{item}挂在脖子上，脚步比来时轻快多了。',
-    ],
-    '游戏设备': [
-        '抱着{item}两眼放光地走了。',
-        '接过{item}后摁了两下按键，露出笑容。',
-        '把{item}塞进背包，头也不回地走了。',
-    ],
-};
+/** Get action/expression fragments by mood from CSV */
+function getRedemptionActionsByMood(mood: CustomerMood): string[] {
+    const texts = getFillerTexts('redemption_action', mood);
+    return texts.length > 0 ? texts : [''];
+}
 
-/** Generic item interactions (fallback for unmatched categories) */
-const GENERIC_ITEM_INTERACTIONS: string[] = [
-    '拿走了{item}，头也不回地离开了。',
-    '接过{item}检查了一遍，放心地走了。',
-    '收好{item}后，道了声谢便离开了。',
-    '将{item}仔细收好，转身离去。',
-    '拿起{item}看了看，满意地点点头。',
-];
+/** Get item interaction fragments by category from CSV */
+function getRedemptionItemInteractions(category: string): string[] {
+    const texts = getFillerTexts('redemption_item', category);
+    return texts.length > 0 ? texts : [];
+}
 
-/** Appearance hints for customer description reconstruction */
-const APPEARANCE_HINTS: Record<CustomerAppearance, string[]> = {
-    'shabby': ['穿着破旧的人', '衣衫褴褛的来客', '那个穿得寒酸的人'],
-    'plain': ['穿着朴素的人', '那个普通打扮的人', '衣着平常的来客'],
-    'decent': ['穿着体面的人', '那个衣着整洁的人', '打扮得体的来客'],
-    'fancy': ['穿着讲究的人', '那个衣着光鲜的人', '打扮精致的来客'],
-};
+/** Get generic item interactions (fallback) from CSV */
+function getGenericItemInteractions(): string[] {
+    const texts = getFillerTexts('redemption_item_generic', '');
+    return texts.length > 0 ? texts : ['{item}'];
+}
 
-/** Age hints for customer description */
-const AGE_HINTS: Record<CustomerAge, string[]> = {
-    'young': ['年轻人', '小伙子', '姑娘'],
-    'middle': ['中年人', '那位先生', '那位女士'],
-    'elderly': ['老人', '大爷', '大妈'],
-};
+/** Get appearance hints from CSV */
+function getAppearanceHints(appearance: CustomerAppearance): string[] {
+    const texts = getFillerTexts('appearance_hint', appearance);
+    return texts.length > 0 ? texts : ['来客'];
+}
+
+/** Get age hints from CSV */
+function getAgeHints(age: CustomerAge): string[] {
+    const texts = getFillerTexts('age_hint', age);
+    return texts.length > 0 ? texts : ['来客'];
+}
+
+/** Get gendered age hints from CSV */
+function getGenderedAgeHints(age: CustomerAge, gender: CustomerGender): string[] {
+    const texts = getFillerTexts('age_hint_gendered', `${age}_${gender}`);
+    return texts.length > 0 ? texts : getAgeHints(age);
+}
 
 /**
  * Generate a redemption visit dialogue line for a filler customer
@@ -592,14 +563,14 @@ export function generateRedemptionVisitDialogue(
     itemName: string,
     itemCategory: string
 ): string {
-    // Pick customer description
-    const descPool = APPEARANCE_HINTS[appearance] || APPEARANCE_HINTS['plain'];
-    // Use gendered age hints for young/elderly
-    let agePool = AGE_HINTS[age] || AGE_HINTS['middle'];
-    if (age === 'young') {
-        agePool = gender === 'female' ? ['姑娘', '年轻女子'] : ['小伙子', '年轻人'];
-    } else if (age === 'elderly') {
-        agePool = gender === 'female' ? ['老太太', '大妈'] : ['老人', '大爷'];
+    // Pick customer description from CSV
+    const descPool = getAppearanceHints(appearance);
+    // Use gendered age hints for young/elderly from CSV
+    let agePool: string[];
+    if (age === 'young' || age === 'elderly') {
+        agePool = getGenderedAgeHints(age, gender);
+    } else {
+        agePool = getAgeHints(age);
     }
 
     // 50% chance to use appearance-based or age-based description
@@ -608,13 +579,14 @@ export function generateRedemptionVisitDialogue(
         ? descPool[Math.floor(Math.random() * descPool.length)]
         : agePool[Math.floor(Math.random() * agePool.length)];
 
-    // Pick action/expression
-    const actionPool = REDEMPTION_ACTIONS_BY_MOOD[mood] || REDEMPTION_ACTIONS_BY_MOOD['calm'];
+    // Pick action/expression from CSV
+    const actionPool = getRedemptionActionsByMood(mood);
     const action = actionPool[Math.floor(Math.random() * actionPool.length)];
 
-    // Pick item interaction
-    const categoryPool = REDEMPTION_ITEM_INTERACTIONS[itemCategory] || GENERIC_ITEM_INTERACTIONS;
-    const itemInteraction = categoryPool[Math.floor(Math.random() * categoryPool.length)]
+    // Pick item interaction from CSV
+    const categoryPool = getRedemptionItemInteractions(itemCategory);
+    const finalPool = categoryPool.length > 0 ? categoryPool : getGenericItemInteractions();
+    const itemInteraction = finalPool[Math.floor(Math.random() * finalPool.length)]
         .replace('{item}', itemName);
 
     return `${customerDesc}${action}${itemInteraction}`;
@@ -633,13 +605,13 @@ export function getFillerMerchantMonologue(
     let pool: string[] = [];
     switch (dimension) {
         case 'contract':
-            pool = FILLER_MONOLOGUES_BY_CONTRACT[contractType || 'STANDARD'];
+            pool = getMonologuesByContract(contractType || 'STANDARD');
             break;
         case 'pawnRatio':
-            pool = FILLER_MONOLOGUES_BY_PAWN_RATIO[pawnRatioCategory || 'NORMAL'];
+            pool = getMonologuesByPawnRatio(pawnRatioCategory || 'NORMAL');
             break;
         case 'redemption':
-            pool = FILLER_MONOLOGUES_BY_REDEMPTION[redemptionResolve || 'Medium'];
+            pool = getMonologuesByRedemption(redemptionResolve || 'Medium');
             break;
     }
     return pool[Math.floor(Math.random() * pool.length)];
@@ -1068,27 +1040,10 @@ function generateDescription(profile: FillerCustomerProfile): string {
 // #42: REPUTATION-BASED GREETING OVERRIDES
 // ============================================================================
 
-/** Reputation-based customer greeting overrides */
-const REPUTATION_GREETINGS: Record<string, string[]> = {
-    'high_humanity': [
-        '大家都说你是个好人，我才敢来找你...',
-        '听说老板心善，所以特意来的。',
-        '街坊邻居都说你讲信用，帮帮我吧。',
-        '有人推荐我来这里，说老板你为人厚道。',
-    ],
-    'high_credibility': [
-        '你的专业能力人尽皆知，我信得过你。',
-        '听说这里鉴定最准，特意来的。',
-        '朋友说你这里最公道，推荐我来的。',
-        '业界都认可你的眼光，我放心。',
-    ],
-    'low_innocence': [
-        '听说你这里...不太一样？',
-        '有人跟我说，你这里什么都收...',
-        '老板，我有个东西...不太方便去别的地方。',
-        '嘘...听说你这里规矩灵活？',
-    ],
-};
+/** Get reputation-based greeting texts from CSV */
+function getReputationGreetingTexts(reputationType: string): string[] {
+    return getFillerTexts('reputation_greeting', reputationType);
+}
 
 /**
  * Get a reputation-based greeting override, if applicable.
@@ -1105,16 +1060,16 @@ function getReputationGreeting(qualityOptions?: CustomerQualityOptions): string 
 
     // Priority: low innocence > high humanity > high credibility
     if (innocence < 30) {
-        const pool = REPUTATION_GREETINGS['low_innocence'];
-        return pool[Math.floor(Math.random() * pool.length)];
+        const pool = getReputationGreetingTexts('low_innocence');
+        if (pool.length > 0) return pool[Math.floor(Math.random() * pool.length)];
     }
     if (humanity > 60) {
-        const pool = REPUTATION_GREETINGS['high_humanity'];
-        return pool[Math.floor(Math.random() * pool.length)];
+        const pool = getReputationGreetingTexts('high_humanity');
+        if (pool.length > 0) return pool[Math.floor(Math.random() * pool.length)];
     }
     if (cred > 60) {
-        const pool = REPUTATION_GREETINGS['high_credibility'];
-        return pool[Math.floor(Math.random() * pool.length)];
+        const pool = getReputationGreetingTexts('high_credibility');
+        if (pool.length > 0) return pool[Math.floor(Math.random() * pool.length)];
     }
 
     return null;

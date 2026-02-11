@@ -9,6 +9,8 @@ import { cn } from '../lib/utils';
 import { getAvailableUpgradesWithStatus, getEffectiveInventoryCapacity, getEffectiveNightEnergy, BASE_INVENTORY_CAPACITY, getTotalMaintenanceCost, getPatienceBonus, getAnomalyDetectionThreshold } from '../systems/upgrades';
 import { GAME_CONFIG } from '../systems/game/config';
 import type { UpgradeLocation } from '../systems/upgrades/types';
+import { parseCSV, CSVSchema, stringCol, numberCol } from '../systems/utils/csvReader';
+import upgradeTextsCSV from '../assets/data/texts/upgrade_texts.csv?raw';
 
 // Location category configuration
 const LOCATION_CATEGORIES: { location: UpgradeLocation; nameCn: string; nameEn: string; color: string }[] = [
@@ -16,72 +18,65 @@ const LOCATION_CATEGORIES: { location: UpgradeLocation; nameCn: string; nameEn: 
     { location: 'COUNTER', nameCn: '柜台设备', nameEn: 'Counter', color: 'blue' },
 ];
 
+// ============================================================================
+// CSV Loading: upgrade texts (monologues + feature hints)
+// ============================================================================
 
-// Purchase feedback monologues per upgrade (keyed by upgradeId)
-const PURCHASE_MONOLOGUES: Record<string, string[]> = {
-    storage_expansion: [
-        '',
-        '"总算有地方放东西了..."',
-        '"空间宽敞多了，能接更多活了。"',
-        '"这后屋...快赶上仓库了。"',
-        '"想收什么就收什么，不用再挑挑拣拣。"',
-        '"整面墙都是架子...像个真正的当铺了。"',
-    ],
-    precision_bench: [
-        '',
-        '"有了工作台，手艺终于有用武之地了。"',
-        '"工坊扩建后，修复效率高多了。"',
-        '"这些工具...师傅看到会欣慰吧。"',
-    ],
-    tea_set: [
-        '',
-        '"一壶好茶，能让急躁的客人坐下来。"',
-        '"茶香四溢...谈生意也从容了。"',
-        '"上好的茶具，客人都不舍得走了。"',
-    ],
-    spectrometer: [
-        '',
-        '"有了这台仪器，假货无处遁形。"',
-        '"精度更高了...连细微的差异都能捕捉。"',
-        '"专业级设备，鉴定结果一目了然。"',
-    ],
-    appointment_board: [
-        '',
-        '"写个本子记一下，明天谁来。"',
-        '"有了档案柜，客户信息一目了然。"',
-        '"消息灵通了...连他们的情绪都能感知到。"',
-        '"预约热线开通！生意上门了。"',
-        '"VIP名册...这才是真正的人脉。"',
-    ],
-    black_market_contact: [
-        '',
-        '"...有些东西，正规渠道走不通。"',
-        '"关系越深，门路越广。"',
-        '"地下的规矩，我已经摸透了。"',
-    ],
+interface UpgradeTextRow {
+    type: string;
+    upgradeId: string;
+    level: number;
+    text: string;
+}
+
+const UPGRADE_TEXT_SCHEMA: CSVSchema = {
+    'type': stringCol('type'),
+    'upgradeId': stringCol('upgradeId'),
+    'level': numberCol('level'),
+    'text': stringCol('text'),
 };
 
-// Feature hints for upgrade levels - shows functional unlocks beyond numbers
-// Key: upgradeId, Value: Record<level, hint text> (only levels with functional changes)
-const UPGRADE_FEATURE_HINTS: Record<string, Record<number, string>> = {
-    storage_expansion: {
-        3: '解锁「分类摆放」：按类别自动整理库存',
-    },
-    precision_bench: {
-        3: '解锁新夜间活动类型',
-    },
-    appointment_board: {
-        2: '解锁：查看候选客户情绪状态',
-        3: '解锁：查看背景线索 + 新闻关联',
-        4: '可邀请人数增加为2人',
-        5: '解锁：客户筛选偏好设置',
-    },
-    black_market_contact: {
-        1: '解锁黑市交易渠道',
-        3: '解锁：情报网络，热度加速冷却',
-        5: '解锁：内部人士特权，最高收购价',
-    },
-};
+let _monologues: Record<string, string[]> | null = null;
+let _featureHints: Record<string, Record<number, string>> | null = null;
+
+function loadUpgradeTexts(): void {
+    if (_monologues) return;
+
+    _monologues = {};
+    _featureHints = {};
+
+    const rows = parseCSV<UpgradeTextRow>(upgradeTextsCSV, UPGRADE_TEXT_SCHEMA, {
+        warnUnknownColumns: false,
+    });
+
+    for (const row of rows) {
+        if (!row.upgradeId) continue;
+
+        if (row.type === 'monologue') {
+            if (!_monologues[row.upgradeId]) {
+                _monologues[row.upgradeId] = [];
+            }
+            // Level-indexed: array[level] = text for that level
+            _monologues[row.upgradeId][row.level] = row.text;
+        } else if (row.type === 'feature_hint') {
+            if (!row.text) continue;
+            if (!_featureHints[row.upgradeId]) {
+                _featureHints[row.upgradeId] = {};
+            }
+            _featureHints[row.upgradeId][row.level] = row.text;
+        }
+    }
+}
+
+function getPurchaseMonologues(): Record<string, string[]> {
+    loadUpgradeTexts();
+    return _monologues!;
+}
+
+function getUpgradeFeatureHints(): Record<string, Record<number, string>> {
+    loadUpgradeTexts();
+    return _featureHints!;
+}
 
 // PurchaseFlash overlay component
 interface PurchaseFlashProps {
@@ -262,7 +257,7 @@ export const UpgradeShopModal: React.FC = () => {
     const handlePurchase = (upgradeId: string, upgradeName: string, newLevel: number) => {
         dispatch({ type: 'PURCHASE_UPGRADE', payload: { upgradeId } });
         // S1-I1: Show purchase feedback
-        const monologues = PURCHASE_MONOLOGUES[upgradeId];
+        const monologues = getPurchaseMonologues()[upgradeId];
         const monologue = monologues?.[newLevel] || '';
         if (monologue) {
             setPurchaseFeedback({ monologue, upgradeName, level: newLevel });
@@ -467,11 +462,11 @@ export const UpgradeShopModal: React.FC = () => {
                                                                 )}
                                                             </div>
                                                             {/* Feature Hint - functional unlock preview */}
-                                                            {UPGRADE_FEATURE_HINTS[config.id]?.[currentLevel + 1] && (
+                                                            {getUpgradeFeatureHints()[config.id]?.[currentLevel + 1] && (
                                                                 <div className="flex items-center gap-2 ml-6">
                                                                     <Star className="w-3 h-3 text-yellow-500 shrink-0" />
                                                                     <span className="text-xs text-yellow-400/90 font-medium">
-                                                                        {UPGRADE_FEATURE_HINTS[config.id][currentLevel + 1]}
+                                                                        {getUpgradeFeatureHints()[config.id][currentLevel + 1]}
                                                                     </span>
                                                                 </div>
                                                             )}
