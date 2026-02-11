@@ -230,6 +230,16 @@ interface TomlReputationModifiers {
   credibility_60_patience_reduction: number;
 }
 
+interface TomlEmpathySkill {
+  patience_loss_modifier: number;
+}
+
+interface TomlProbeSkill {
+  floor_range_percent: number;
+  concession_tier_low: number;
+  concession_tier_high: number;
+}
+
 interface TomlNegotiation {
   base_insult_threshold: number;
   insult_clamp_min: number;
@@ -263,6 +273,8 @@ interface TomlNegotiation {
   // #32: Credibility -> high-end customers
   credibility_high_end_threshold: number;
   credibility_high_end_value_boost: number;
+  empathy: TomlEmpathySkill;
+  probe: TomlProbeSkill;
 }
 
 interface TomlBlackmarket {
@@ -814,6 +826,16 @@ export const GAME_CONFIG = {
     // #32: Credibility -> high-end customers
     CREDIBILITY_HIGH_END_THRESHOLD: tomlConfig.negotiation.credibility_high_end_threshold,
     CREDIBILITY_HIGH_END_VALUE_BOOST: tomlConfig.negotiation.credibility_high_end_value_boost,
+    // Empathy skill parameters
+    EMPATHY: {
+      PATIENCE_LOSS_MODIFIER: tomlConfig.negotiation.empathy.patience_loss_modifier,
+    },
+    // Probe skill parameters
+    PROBE: {
+      FLOOR_RANGE_PERCENT: tomlConfig.negotiation.probe.floor_range_percent,
+      CONCESSION_TIER_LOW: tomlConfig.negotiation.probe.concession_tier_low,
+      CONCESSION_TIER_HIGH: tomlConfig.negotiation.probe.concession_tier_high,
+    },
   },
 
   // --- BLACKMARKET (黑市系统) ---

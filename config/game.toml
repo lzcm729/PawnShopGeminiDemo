@@ -467,6 +467,19 @@ sly_ask_inflation = 0.20                  # Ask价格 +20%
 credibility_high_end_threshold = 60       # 商誉高于此值时吸引高价值客户
 credibility_high_end_value_boost = 0.25   # 高价值物品出现概率提升25%
 
+# --- 共情技能 (Empathy Skill) ---
+[negotiation.empathy]
+# 共情成功后耐心消耗概率修正（负值 = 消耗概率降低）
+patience_loss_modifier = -0.20
+
+# --- 试探技能 (Probe Skill) ---
+[negotiation.probe]
+# 底价区间精度 ±15%
+floor_range_percent = 0.15
+# 让步概率三档阈值
+concession_tier_low = 0.20
+concession_tier_high = 0.40
+
 # ------------------------------------------------------------
 # 黑市系统 (Black Market)
 # ------------------------------------------------------------

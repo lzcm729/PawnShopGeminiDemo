@@ -153,13 +153,15 @@ export const calculateConcessionAmount = (
  * @param playerMove 玩家行为类型
  * @param currentOffer 当前出价
  * @param currentAsk 当前 NPC Ask 价格
+ * @param patienceLossModifier 外部耐心消耗概率修正（如共情成功后 -0.20）
  * @returns 耐心消耗概率 (0.20 - 0.95)
  */
 export const calculatePatienceLossChance = (
     style: NpcPushPullStyle,
     playerMove: PlayerMoveType,
     currentOffer: number,
-    currentAsk: number
+    currentAsk: number,
+    patienceLossModifier: number = 0
 ): number => {
     const config = PUSH_PULL_CONFIG[style];
     let chance = config.basePatienceLossChance;
@@ -176,6 +178,9 @@ export const calculatePatienceLossChance = (
     if (currentAsk > 0 && currentOffer >= currentAsk * GAME_CONFIG.NEGOTIATION.NEAR_ASK_RATIO) {
         chance -= GAME_CONFIG.NEGOTIATION.NEAR_ASK_PATIENCE_REDUCTION;
     }
+
+    // Apply external modifier (e.g., empathy success: -0.20)
+    chance += patienceLossModifier;
 
     // Clamp to [0.20, 0.95]
     return Math.max(0.20, Math.min(0.95, chance));
@@ -200,6 +205,8 @@ export interface PushPullResult {
  *   e.g. +0.20 for desperate, +0.15 for bluffing, etc.
  * @param precisionConcessionMultiplier (D) Appraisal precision multiplier for concession amount.
  *   Low uncertainty = higher multiplier (NPC concedes more). Default 1.0.
+ * @param patienceLossModifier Optional modifier to patience loss chance.
+ *   e.g. -0.20 from empathy success (reduces patience consumption probability).
  */
 export const executePushPull = (
     behaviorTags: BehaviorTag[],
@@ -210,14 +217,15 @@ export const executePushPull = (
     persistCount: number,
     concessionCount: number,
     insightConcessionModifier: number = 0,
-    precisionConcessionMultiplier: number = 1.0
+    precisionConcessionMultiplier: number = 1.0,
+    patienceLossModifier: number = 0
 ): PushPullResult => {
     const style = getPushPullStyle(behaviorTags);
     const playerMove = determinePlayerMove(currentOffer, lastOffer);
     const config = PUSH_PULL_CONFIG[style];
 
     // 耐心骰（与让步骰完全独立）
-    const patienceLossChance = calculatePatienceLossChance(style, playerMove, currentOffer, currentAsk);
+    const patienceLossChance = calculatePatienceLossChance(style, playerMove, currentOffer, currentAsk, patienceLossModifier);
     const patienceLost = Math.random() < patienceLossChance;
 
     // 检查是否已到底限
