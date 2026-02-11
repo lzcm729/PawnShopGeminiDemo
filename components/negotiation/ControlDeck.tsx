@@ -70,6 +70,9 @@ interface ControlDeckProps {
     probeReveal?: ProbeRevealResult | null;
     liveConcessionTier?: ConcessionTier | null;
 
+    // B-10: Hook-computed concession tier (always available)
+    concessionTier?: ConcessionTier;
+
     // Handlers
     onOffer: () => void;
     onManualReject: () => void;
@@ -111,6 +114,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     isRoundLimitReached,
     probeReveal,
     liveConcessionTier,
+    concessionTier,
     onOffer,
     onManualReject,
     onBinaryAccept,
@@ -335,6 +339,19 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                                         <span className="text-[10px]">扩大</span>
                                     </span>
                                 )}
+                            </div>
+                        )}
+
+                        {/* B-10: Concession tier badge (when probe indicator is not active) */}
+                        {concessionTier && !probeReveal && offerHistoryLength > 0 && (
+                            <div className={cn(
+                                "flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-mono transition-all duration-300",
+                                getTierBgColor(concessionTier)
+                            )}>
+                                <Crosshair className={cn("w-2.5 h-2.5", getTierColor(concessionTier))} />
+                                <span className={getTierColor(concessionTier)}>
+                                    {getConcessionTierLabel(concessionTier)}
+                                </span>
                             </div>
                         )}
                    </div>

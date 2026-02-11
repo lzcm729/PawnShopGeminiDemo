@@ -17,7 +17,7 @@ import { PushPullResult } from '../systems/negotiation/pushPull';
 import { GAME_CONFIG } from '../systems/game/config';
 import { getEmpathyFeedback } from '../systems/negotiation/empathyProbeFeedback';
 import { getProbeFeedback, getConcessionTierLabel } from '../systems/negotiation/empathyProbeFeedback';
-import { generateProbeReveal, queryConcessionChance, getConcessionTier, type ProbeRevealResult } from '../systems/negotiation/probeEffects';
+import { generateProbeReveal, queryConcessionChance, getConcessionTier, type ProbeRevealResult, type ConcessionTier } from '../systems/negotiation/probeEffects';
 import { useRateDisplay } from './ui/RateDisplayContext';
 import { ChatLog, LogEntry } from './negotiation/ChatLog';
 import { ControlDeck } from './negotiation/ControlDeck';
@@ -58,6 +58,8 @@ interface NegotiationStateProps {
         lastPushPullResult: PushPullResult | null;
         // Insight-aware NPC response
         insightAwareText: string | null;
+        // B-10: Concession tier (always computed; UI gates display by skill)
+        concessionTier: ConcessionTier;
         // Round tracking
         roundCount: number;
         isRoundLimitReached: boolean;
@@ -70,7 +72,7 @@ interface NegotiationStateProps {
 
 // Appraisal feedback structure passed from ItemPanel
 export interface AppraisalFeedback {
-    type: 'TRAIT_DISCOVERED' | 'RANGE_NARROWED' | 'BREAKTHROUGH' | 'MISHAP' | 'IMPATIENT' | 'ALREADY_KNOWN';
+    type: 'TRAIT_DISCOVERED' | 'RANGE_NARROWED' | 'BREAKTHROUGH' | 'MISHAP' | 'IMPATIENT' | 'ALREADY_KNOWN' | 'ATTITUDE_SHIFT';
     text: string;
     traitId?: string;
     traitName?: string;
@@ -171,6 +173,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     lastPushPullResult,
     // Insight-aware NPC response
     insightAwareText,
+    // B-10: Concession tier
+    concessionTier,
     // Round tracking
     roundCount,
     isRoundLimitReached,
@@ -330,6 +334,18 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           if (feedback.type === 'TRAIT_DISCOVERED' && feedback.traitId) {
               if (discoveredTraitIdsRef.current.has(feedback.traitId)) continue;
               discoveredTraitIdsRef.current.add(feedback.traitId);
+          }
+
+          // B-8: Attitude shift appears as customer speech, not inner monologue
+          if (feedback.type === 'ATTITUDE_SHIFT') {
+              newEntries.push({
+                  id: feedbackId,
+                  sender: 'customer',
+                  text: feedback.text,
+                  sentiment: 'positive',
+                  data: { feedbackType: 'ATTITUDE_SHIFT' },
+              });
+              continue;
           }
 
           newEntries.push({
@@ -962,6 +978,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           isRoundLimitReached={isRoundLimitReached}
           probeReveal={probeReveal}
           liveConcessionTier={liveConcessionTier}
+          concessionTier={concessionTier}
           onOffer={handleOffer}
           onManualReject={handleManualReject}
           onBinaryAccept={handleBinaryAccept}

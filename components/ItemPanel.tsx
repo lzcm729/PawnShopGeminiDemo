@@ -8,6 +8,7 @@ import { ItemTrait } from '../types';
 import { playSfx } from '../systems/game/audio';
 import { checkItemAnomaly, getAnomalyDetectionThreshold } from '../systems/upgrades';
 import { getAnomalyMessage, getAnomalySeverity, getNormalConfirmationMessage } from '../systems/upgrades/spectrometerFeedback';
+import { getAttitudeShift } from '../systems/negotiation/attitudeShift';
 
 import { VirtualItemView } from './item/VirtualItemView';
 import { ItemAppraisalHeader } from './item/ItemAppraisalHeader';
@@ -38,10 +39,16 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
   const [newlyRevealedTraitIds, setNewlyRevealedTraitIds] = useState<Set<string>>(new Set());
   const effectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // B-8: Track previous uncertainty for attitude shift detection
+  const prevUncertaintyRef = useRef<number | null>(null);
+  const [attitudeShiftText, setAttitudeShiftText] = useState<string | null>(null);
+
   useEffect(() => {
     setFeedbackMsg(null);
     setAppraisalEffect('none');
     setNewlyRevealedTraitIds(new Set());
+    setAttitudeShiftText(null);
+    prevUncertaintyRef.current = null;
   }, [currentCustomer?.id]);
 
   useEffect(() => {
@@ -53,6 +60,40 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
         return () => clearTimeout(timer);
     }
   }, [feedbackMsg]);
+
+  // B-8: Detect uncertainty change and trigger NPC attitude shift
+  useEffect(() => {
+    if (!item || !currentCustomer) return;
+    const prevUnc = prevUncertaintyRef.current;
+    if (prevUnc === null) return; // No previous value stored yet
+
+    const currentUnc = item.uncertainty;
+    if (currentUnc === prevUnc) return; // No change
+
+    // Use first behavior tag as the primary tag for attitude lookup
+    const primaryTag = currentCustomer.behaviorTags[0];
+    if (!primaryTag) return;
+
+    const shiftText = getAttitudeShift(primaryTag, prevUnc, currentUnc);
+    if (shiftText) {
+      setAttitudeShiftText(shiftText);
+      onAppraisalFeedback?.({
+        type: 'ATTITUDE_SHIFT',
+        text: shiftText,
+      });
+    }
+
+    // Clear the ref so we don't re-trigger until next appraisal
+    prevUncertaintyRef.current = null;
+  }, [item?.uncertainty]);
+
+  // Auto-dismiss attitude shift text after display
+  useEffect(() => {
+    if (attitudeShiftText) {
+      const timer = setTimeout(() => setAttitudeShiftText(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [attitudeShiftText]);
 
   // Clear appraisal effect after animation completes
   useEffect(() => {
@@ -84,6 +125,10 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
       setAppraising(true);
       setFeedbackMsg(null);
       setAppraisalEffect('none');
+      setAttitudeShiftText(null);
+
+      // B-8: Capture uncertainty before appraisal for attitude shift detection
+      prevUncertaintyRef.current = item.uncertainty;
 
       setTimeout(() => {
           const result = performAppraisal();
@@ -247,6 +292,22 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
           normalMessage={normalMessage}
           onAppraise={handleAppraiseClick}
         />
+
+        {/* B-8: NPC attitude shift quote */}
+        {attitudeShiftText && (
+          <div className="mx-3 mb-1 animate-in fade-in slide-in-from-top-2 duration-500">
+            <div className="bg-indigo-950/40 border border-indigo-800/50 rounded px-3 py-2 relative">
+              <span className="absolute -top-1 -left-0.5 text-indigo-400/40 text-lg font-serif leading-none">&ldquo;</span>
+              <p className="text-xs font-serif italic text-indigo-200/90 pl-3 pr-1">
+                {attitudeShiftText}
+              </p>
+              <span className="absolute -bottom-1 -right-0.5 text-indigo-400/40 text-lg font-serif leading-none">&rdquo;</span>
+              <div className="text-[9px] text-indigo-400/60 font-mono uppercase tracking-wider mt-1 pl-3">
+                {currentCustomer.name} &middot; Attitude Shift
+              </div>
+            </div>
+          </div>
+        )}
 
         <TraitList
           item={item}
