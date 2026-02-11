@@ -126,6 +126,16 @@ export const DebugPanel: React.FC = () => {
                     {state.debugRevealFloor ? '隐藏底价' : '显示底价'}
                 </button>
                 <button
+                    onClick={() => dispatch({ type: 'DEBUG_TOGGLE_FILLER' })}
+                    className={`col-span-3 px-2 py-1.5 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors border ${
+                        state.debugDisableFiller
+                            ? 'bg-orange-900/30 border-orange-600/60 text-orange-400'
+                            : 'bg-orange-900/20 border-orange-700/50 hover:bg-orange-900/40 text-orange-400'
+                    }`}
+                >
+                    {state.debugDisableFiller ? '填充事件已禁用 ✕' : '禁用填充事件'}
+                </button>
+                <button
                     onClick={handleClearSave}
                     className="col-span-3 bg-red-900/20 border border-red-700/50 hover:bg-red-900/40 text-red-400 px-2 py-1.5 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
                 >

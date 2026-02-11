@@ -1186,6 +1186,12 @@ export const useGameEngine = () => {
       }
 
       // 4. Filler Customers (填充客户)
+      // Debug: skip filler generation if disabled
+      if (state.debugDisableFiller) {
+          dispatch({ type: 'SET_LOADING', payload: false });
+          dispatch({ type: 'MARK_NO_MORE_CUSTOMERS' });
+          return;
+      }
       // Generate filler customers when no story events are available
       // Logic: filler + narrative total cap is MAX_CUSTOMERS_PER_DAY (4)
       // If narrative >= 4, no filler (all slots taken by narrative)

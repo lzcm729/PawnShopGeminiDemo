@@ -166,4 +166,5 @@ export interface GameState {
 
   // === DEBUG FLAGS ===
   debugRevealFloor: boolean;  // 调试：显示客户底价
+  debugDisableFiller: boolean;  // 调试：禁用填充客户生成
 }

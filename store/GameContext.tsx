@@ -152,7 +152,8 @@ const initialState: GameState = {
     // === WORD OF MOUTH REFERRAL (口口相传推荐客户) ===
     pendingReferralCustomer: false,
     // === DEBUG FLAGS ===
-    debugRevealFloor: false
+    debugRevealFloor: false,
+    debugDisableFiller: false
 };
 
 // === Context ===

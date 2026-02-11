@@ -89,6 +89,9 @@ export function uiReducer(state: GameState, action: Action): GameState {
         case 'DEBUG_TOGGLE_FLOOR':
             return { ...state, debugRevealFloor: !state.debugRevealFloor };
 
+        case 'DEBUG_TOGGLE_FILLER':
+            return { ...state, debugDisableFiller: !state.debugDisableFiller };
+
         default:
             return state;
     }

@@ -280,4 +280,5 @@ export type Action =
     | { type: 'SET_PENDING_REFERRAL'; payload: boolean }
 
     // Debug flags
-    | { type: 'DEBUG_TOGGLE_FLOOR' };
+    | { type: 'DEBUG_TOGGLE_FLOOR' }
+    | { type: 'DEBUG_TOGGLE_FILLER' };
