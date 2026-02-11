@@ -4,7 +4,7 @@ import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { Button } from './ui/Button';
-import { Moon, Heart, Briefcase, Shield } from 'lucide-react';
+import { Moon, Heart, Briefcase, Shield, Zap } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { playSfx } from '../systems/game/audio';
 import { InnerVoiceDisplay } from './InnerVoiceDisplay';
@@ -206,6 +206,30 @@ export const NightDashboard: React.FC = () => {
                     <div className="text-center mb-6">
                         <div className="text-[10px] uppercase text-stone-600 mb-2 tracking-[0.2em]">Net Cash Position</div>
                         <div className="text-3xl font-mono text-stone-200">${stats.cash}</div>
+                    </div>
+
+                    {/* Night Energy */}
+                    <div className="text-center mb-6">
+                        <div className="text-[10px] uppercase text-stone-600 mb-2 tracking-[0.2em]">Night Energy</div>
+                        <div className="flex items-center justify-center gap-2">
+                            <Zap className="w-4 h-4 text-purple-400" />
+                            <span className="text-lg font-mono text-purple-300">
+                                {state.nightState.energy} / {state.nightState.maxEnergy}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-center gap-1.5 mt-2">
+                            {Array.from({ length: state.nightState.maxEnergy }).map((_, i) => (
+                                <div
+                                    key={i}
+                                    className={cn(
+                                        "w-3 h-3 rounded-sm transition-all duration-300",
+                                        i < state.nightState.energy
+                                            ? "bg-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.5)]"
+                                            : "bg-stone-800 border border-stone-700"
+                                    )}
+                                />
+                            ))}
+                        </div>
                     </div>
 
                     {/* Reputation Bars (with micro-feedback delta animation - I9) */}
