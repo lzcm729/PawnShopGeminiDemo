@@ -1,6 +1,6 @@
 
 import { Customer, Item, InterestRate, BehaviorTag } from '../../types';
-import { INSTINCT_MATRIX, getMatrixKey, getRandomText, InstinctRateZone, InstinctPriceZone, InstinctNpcStyle } from './data';
+import { INSTINCT_MATRIX, getMatrixKey, getRandomText, getInstinctTexts, InstinctRateZone, InstinctPriceZone, InstinctNpcStyle } from './data';
 import { getUncertaintyRisk } from '../items/utils';
 import { GAME_CONFIG } from '../game/config';
 import { normalizeUncertainty } from '../appraisal/precision';
@@ -50,18 +50,10 @@ const getPriceZone = (offer: number, minPrincipal: number, desiredAmount: number
 };
 
 // --- Precision-based instinct text (design doc 3.6) ---
-const PRECISION_INSTINCT_TEXTS = {
-  low: [
-    "这件东西我了如指掌，他糊弄不了我。",
-    "心中有数。价格由我掌控。",
-    "这东西值多少我比他清楚。",
-  ],
-  high: [
-    "说实话我也没看太明白，小心点。",
-    "这东西到底值多少... 我心里没底。",
-    "盲人摸象。要是看走眼就麻烦了。",
-  ],
-};
+// Loaded from negotiation_instinct.csv: keys precision_low / precision_high
+function getPrecisionInstinctTexts(level: 'low' | 'high'): string[] {
+  return getInstinctTexts(`precision_${level}`) ?? ['...'];
+}
 
 export const getMerchantInstinct = (
   offer: number,
@@ -81,8 +73,9 @@ export const getMerchantInstinct = (
 
   const uncertaintyRisk = getUncertaintyRisk(item.currentRange[0], item.currentRange[1]);
   if (uncertaintyRisk === 'HIGH') {
+      const highRiskTexts = getInstinctTexts('uncertainty_high_risk') ?? ['...'];
       return {
-          text: "这价格范围太宽了，盲收等于赌博。",
+          text: getRandomText(highRiskTexts, seed),
           color: "text-amber-500 font-bold"
       };
   }
@@ -94,7 +87,7 @@ export const getMerchantInstinct = (
   const precisionIntensity = Math.abs(precisionNorm - 0.5) * 2; // 0 at midpoint, 1 at extremes
   const precisionRoll = ((seed * 7 + 13) % 100) / 100;
   if (precisionRoll < precisionIntensity * 0.4) {
-    const texts = precisionNorm < 0.4 ? PRECISION_INSTINCT_TEXTS.low : PRECISION_INSTINCT_TEXTS.high;
+    const texts = getPrecisionInstinctTexts(precisionNorm < 0.4 ? 'low' : 'high');
     return {
       text: getRandomText(texts, seed),
       color: precisionNorm < 0.4 ? "text-emerald-400" : "text-amber-400"
@@ -120,9 +113,9 @@ export const getMerchantInstinct = (
       else if (priceZone === 'haggling') texts = INSTINCT_MATRIX['generic_haggling'];
       else if (priceZone === 'premium') texts = INSTINCT_MATRIX['generic_premium'];
       else {
-          if (rateZone === 'shark') texts = ["这是合法的抢劫。", "吃人不吐骨头。", "高风险高回报。"];
-          else if (rateZone === 'charity') texts = ["我在做慈善。", "希望好人有好报。", "这不是生意，是施舍。"];
-          else texts = ["这是生意，仅此而已。", "各取所需。", "钱货两清。"];
+          if (rateZone === 'shark') texts = getInstinctTexts('generic_shark') ?? ['...'];
+          else if (rateZone === 'charity') texts = getInstinctTexts('generic_charity') ?? ['...'];
+          else texts = getInstinctTexts('generic_standard') ?? ['...'];
       }
   }
 

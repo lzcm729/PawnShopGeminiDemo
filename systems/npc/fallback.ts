@@ -12,6 +12,7 @@ import { createItemFromTemplate } from "../items/csvLoader";
 import { initializeKnowledgePool } from "../items/tagUtils";
 import { parseCSV, CSVSchema, stringCol, numberCol, booleanCol } from '../utils/csvReader';
 import fallbackCsv from '@/assets/data/texts/fallback_customers.csv?raw';
+import defaultsCsv from '@/assets/data/texts/mail_defaults.csv?raw';
 
 // ============================================================================
 // CSV Loading
@@ -86,6 +87,39 @@ const FALLBACK_SCHEMA: CSVSchema = {
   'behaviorTags': stringCol('behaviorTags'),
   'identityTags': stringCol('identityTags'),
 };
+
+// ============================================================================
+// Default Texts (from mail_defaults.csv)
+// ============================================================================
+
+interface DefaultTextRow {
+  key: string;
+  text: string;
+}
+
+const DEFAULTS_SCHEMA: CSVSchema = {
+  'key': stringCol('key'),
+  'text': stringCol('text'),
+};
+
+let _defaults: Map<string, string> | null = null;
+
+function getDefaults(): Map<string, string> {
+  if (!_defaults) {
+    _defaults = new Map();
+    const rows = parseCSV<DefaultTextRow>(defaultsCsv, DEFAULTS_SCHEMA, {
+      warnUnknownColumns: false,
+    });
+    for (const row of rows) {
+      if (row.key) _defaults.set(row.key, row.text);
+    }
+  }
+  return _defaults;
+}
+
+function getDefaultText(key: string, fallback: string): string {
+  return getDefaults().get(key) ?? fallback;
+}
 
 // ============================================================================
 // Lazy Initialization
@@ -238,19 +272,21 @@ function createCustomerFromPreset(preset: FallbackCustomerPreset, day: number): 
  * 创建兜底物品（当模板加载失败时使用）
  */
 function createFallbackItem(day: number): Item {
+  const name = getDefaultText('fallback_item_name', 'Unknown Item');
+  const desc = getDefaultText('fallback_item_visualDescription', 'An item of unknown origin.');
   return {
     id: crypto.randomUUID(),
-    name: "未知物品",
-    nameDefault: "未知物品",
-    nameRestored: "修复的物品",
-    nameReforged: "重铸的物品",
-    category: "其他",
-    condition: "未知",
-    visualDescription: "一件来历不明的物品。",
-    descDefault: "一件来历不明的物品。",
+    name,
+    nameDefault: name,
+    nameRestored: getDefaultText('fallback_item_nameRestored', name),
+    nameReforged: getDefaultText('fallback_item_nameReforged', name),
+    category: getDefaultText('fallback_item_category', 'Other'),
+    condition: getDefaultText('fallback_item_condition', 'Unknown'),
+    visualDescription: desc,
+    descDefault: desc,
     historySnippet: "",
     appraisalNote: "",
-    archiveSummary: "未知物品",
+    archiveSummary: getDefaultText('fallback_item_archiveSummary', name),
     isStolen: false,
     isFake: false,
     sentimentalValue: false,

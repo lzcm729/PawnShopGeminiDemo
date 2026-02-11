@@ -9,7 +9,7 @@
 
 import { MailTemplate, MailToneVariant, MailTone } from '../../types';
 import { ALL_STORY_MAILS } from './storyRegistry';
-import { getThreatMailPool } from './mailUtils';
+import { getThreatMailPool, getDefault } from './mailUtils';
 import { parseCSV, CSVSchema, stringCol } from '../utils/csvReader';
 import systemMailsCsv from '@/assets/data/texts/system_mails.csv?raw';
 
@@ -107,7 +107,7 @@ function buildThreatMails(): Record<string, MailTemplate> {
   for (const entry of pool) {
     _threatMails[entry.id] = {
       id: entry.id,
-      sender: '未知',
+      sender: getDefault('threat_default_sender', 'Unknown'),
       subject: entry.subject,
       body: entry.body,
       delay: 'immediate',

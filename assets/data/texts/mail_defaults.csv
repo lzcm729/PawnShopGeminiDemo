@@ -2,3 +2,13 @@
 interpolation_itemName,那件物品
 interpolation_playerName,老板
 interpolation_npcName,顾客
+threat_replace_item,那件东西
+threat_replace_contraband,不该有的东西
+threat_default_sender,未知
+fallback_item_name,未知物品
+fallback_item_nameRestored,修复的物品
+fallback_item_nameReforged,重铸的物品
+fallback_item_category,其他
+fallback_item_condition,未知
+fallback_item_visualDescription,一件来历不明的物品。
+fallback_item_archiveSummary,未知物品

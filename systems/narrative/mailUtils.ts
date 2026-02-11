@@ -48,7 +48,7 @@ function getMailDefaults(): Map<string, string> {
   return _mailDefaults;
 }
 
-function getDefault(key: string, fallback: string): string {
+export function getDefault(key: string, fallback: string): string {
   return getMailDefaults().get(key) ?? fallback;
 }
 
@@ -373,13 +373,15 @@ export function generateThreatMail(context: ThreatMailContext): MailTemplate {
     // Optional: inject related item name into body
     let body = selected.body;
     if (context.relatedItemName) {
-        body = body.replace('那件东西', context.relatedItemName);
-        body = body.replace('不该有的东西', `不该有的东西 (${context.relatedItemName})`);
+        const replaceItem = getDefault('threat_replace_item', 'that item');
+        const replaceContraband = getDefault('threat_replace_contraband', 'contraband');
+        body = body.replace(replaceItem, context.relatedItemName);
+        body = body.replace(replaceContraband, `${replaceContraband} (${context.relatedItemName})`);
     }
 
     return {
         id: uniqueId,
-        sender: context.senderOverride ?? '未知',
+        sender: context.senderOverride ?? getDefault('threat_default_sender', 'Unknown'),
         subject: selected.subject,
         body,
         delay: 'immediate',
