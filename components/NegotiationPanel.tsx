@@ -317,6 +317,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   // Track discovered trait IDs to avoid duplicate trait entries
   const discoveredTraitIdsRef = useRef<Set<string>>(new Set());
   const processedCountRef = useRef<number>(0);
+  const lastInsightAwareTextRef = useRef<string | null>(null);
 
   // Convert appraisal feedbacks to inner monologue entries
   useEffect(() => {
@@ -480,9 +481,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       setPushPullOverlay({ text: overlayText, color: overlayColor });
       setTimeout(() => setPushPullOverlay(null), 2500);
   }, [lastPushPullResult]);
-
-  // Track last insightAwareText to avoid duplicate entries
-  const lastInsightAwareTextRef = useRef<string | null>(null);
 
   // Add insightAwareText to chat log when it changes
   useEffect(() => {
