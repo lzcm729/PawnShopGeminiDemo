@@ -265,6 +265,13 @@ export function abilityReducer(state: GameState, action: Action): GameState {
             };
         }
 
+        case 'SET_PENDING_REFERRAL': {
+            return {
+                ...state,
+                pendingReferralCustomer: action.payload,
+            };
+        }
+
         case 'APPLY_EXTRA_CARE': {
             const { hopeChange, humanityChange, chainId } = action.payload;
 

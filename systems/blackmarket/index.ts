@@ -72,7 +72,11 @@ export {
 
   // Counterfeit sale flow
   executeCounterfeitSale,
-  executeCounterfeitPurchaseOrder
+  executeCounterfeitPurchaseOrder,
+
+  // News sentiment & market trend (#24, #53)
+  getNewsSentimentModifier,
+  getMarketTrend
 } from './blackmarketService';
 
-export type { CounterfeitSaleResult } from './blackmarketService';
+export type { CounterfeitSaleResult, MarketTrendLevel } from './blackmarketService';

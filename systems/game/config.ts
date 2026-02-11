@@ -120,6 +120,20 @@ interface TomlReputation {
   humanity: number;
   credibility: number;
   innocence: number;
+  // #33: Industry exclusion warning
+  credibility_exclusion_threshold: number;
+  // #48: Cautious customers
+  cautious_customer_thresholds: number[];
+  cautious_customer_chances: number[];
+  // #49: Dark path customer reduction
+  dark_path_customer_reduction_threshold: number;
+  // #50: Dark path enforcement
+  dark_path_enforcement_threshold: number;
+  dark_path_enforcement_chance: number;
+  dark_path_enforcement_fine_base: number;
+  dark_path_enforcement_fine_range: number;
+  dark_path_enforcement_credibility: number;
+  dark_path_enforcement_innocence: number;
 }
 
 interface TomlAppraisalEvents {
@@ -167,6 +181,7 @@ interface TomlReputationDeltas {
   charity_normal_humanity: number;
   // 援助档(5%)
   aid_credibility: number;
+  aid_extra_credibility: number;
   aid_generous_humanity: number;
   // 标准档(10%)
   standard_credibility: number;
@@ -266,6 +281,10 @@ interface TomlBlackmarket {
   ecology_mild_max_innocence: number;
   ecology_moderate_max_innocence: number;
   ecology_severe_max_innocence: number;
+  // Stolen goods extra heat, direct sell credibility loss, news sentiment
+  stolen_extra_heat: number;
+  direct_sell_credibility_loss: number;
+  news_sentiment_modifier: number;
 }
 
 interface TomlMoralEcho {
@@ -291,6 +310,8 @@ interface TomlAbility {
   wom_base_chance: number;
   wom_increment: number;
   wom_guarantee_streak: number;
+  wom_referral_min_value: number;
+  wom_referral_max_value: number;
   foresight_fatigue_threshold: number;
   foresight_hope_threshold: number;
   moral_echo: TomlMoralEcho;
@@ -443,6 +464,8 @@ interface TomlWorkshop {
   breach_humanity_loss: number;
   breach_credibility_loss: number;
   breach_innocence_loss: number;
+  insight_hint_chance: number;
+  morning_hint_chance: number;
   recipes: Record<string, TomlRecipeCost>;
   forgery: TomlForgery;
   essence_conversion: TomlWorkshopEssenceConversion;
@@ -619,7 +642,21 @@ export const GAME_CONFIG = {
   INITIAL_REPUTATION: {
     HUMANITY: tomlConfig.reputation.humanity,
     CREDIBILITY: tomlConfig.reputation.credibility,
-    INNOCENCE: tomlConfig.reputation.innocence
+    INNOCENCE: tomlConfig.reputation.innocence,
+  },
+
+  // --- REPUTATION THRESHOLDS (#33, #48, #49, #50) ---
+  REPUTATION_THRESHOLDS: {
+    CREDIBILITY_EXCLUSION_THRESHOLD: tomlConfig.reputation.credibility_exclusion_threshold,
+    CAUTIOUS_CUSTOMER_THRESHOLDS: tomlConfig.reputation.cautious_customer_thresholds,
+    CAUTIOUS_CUSTOMER_CHANCES: tomlConfig.reputation.cautious_customer_chances,
+    DARK_PATH_CUSTOMER_REDUCTION_THRESHOLD: tomlConfig.reputation.dark_path_customer_reduction_threshold,
+    DARK_PATH_ENFORCEMENT_THRESHOLD: tomlConfig.reputation.dark_path_enforcement_threshold,
+    DARK_PATH_ENFORCEMENT_CHANCE: tomlConfig.reputation.dark_path_enforcement_chance,
+    DARK_PATH_ENFORCEMENT_FINE_BASE: tomlConfig.reputation.dark_path_enforcement_fine_base,
+    DARK_PATH_ENFORCEMENT_FINE_RANGE: tomlConfig.reputation.dark_path_enforcement_fine_range,
+    DARK_PATH_ENFORCEMENT_CREDIBILITY: tomlConfig.reputation.dark_path_enforcement_credibility,
+    DARK_PATH_ENFORCEMENT_INNOCENCE: tomlConfig.reputation.dark_path_enforcement_innocence,
   },
 
   // --- APPRAISAL EVENTS (鉴定意外事件) ---
@@ -668,6 +705,7 @@ export const GAME_CONFIG = {
     CHARITY_GENEROUS_HUMANITY: tomlConfig.reputation_deltas.charity_generous_humanity,
     CHARITY_NORMAL_HUMANITY: tomlConfig.reputation_deltas.charity_normal_humanity,
     AID_CREDIBILITY: tomlConfig.reputation_deltas.aid_credibility,
+    AID_EXTRA_CREDIBILITY: tomlConfig.reputation_deltas.aid_extra_credibility,
     AID_GENEROUS_HUMANITY: tomlConfig.reputation_deltas.aid_generous_humanity,
     STANDARD_CREDIBILITY: tomlConfig.reputation_deltas.standard_credibility,
     SHARK_HUMANITY: tomlConfig.reputation_deltas.shark_humanity,
@@ -772,6 +810,10 @@ export const GAME_CONFIG = {
     ECOLOGY_MILD_MAX_INNOCENCE: tomlConfig.blackmarket.ecology_mild_max_innocence,
     ECOLOGY_MODERATE_MAX_INNOCENCE: tomlConfig.blackmarket.ecology_moderate_max_innocence,
     ECOLOGY_SEVERE_MAX_INNOCENCE: tomlConfig.blackmarket.ecology_severe_max_innocence,
+    // Stolen goods extra heat, direct sell credibility loss, news sentiment
+    STOLEN_EXTRA_HEAT: tomlConfig.blackmarket.stolen_extra_heat,
+    DIRECT_SELL_CREDIBILITY_LOSS: tomlConfig.blackmarket.direct_sell_credibility_loss,
+    NEWS_SENTIMENT_MODIFIER: tomlConfig.blackmarket.news_sentiment_modifier,
   },
 
   // --- ABILITY (角色能力系统) ---
@@ -786,6 +828,8 @@ export const GAME_CONFIG = {
     WOM_BASE_CHANCE: tomlConfig.ability.wom_base_chance,
     WOM_INCREMENT: tomlConfig.ability.wom_increment,
     WOM_GUARANTEE_STREAK: tomlConfig.ability.wom_guarantee_streak,
+    WOM_REFERRAL_MIN_VALUE: tomlConfig.ability.wom_referral_min_value,
+    WOM_REFERRAL_MAX_VALUE: tomlConfig.ability.wom_referral_max_value,
     FORESIGHT_FATIGUE_THRESHOLD: tomlConfig.ability.foresight_fatigue_threshold,
     FORESIGHT_HOPE_THRESHOLD: tomlConfig.ability.foresight_hope_threshold,
     MORAL_ECHO: {
@@ -883,6 +927,8 @@ export const GAME_CONFIG = {
     BREACH_HUMANITY_LOSS: tomlConfig.workshop.breach_humanity_loss,
     BREACH_CREDIBILITY_LOSS: tomlConfig.workshop.breach_credibility_loss,
     BREACH_INNOCENCE_LOSS: tomlConfig.workshop.breach_innocence_loss,
+    INSIGHT_HINT_CHANCE: tomlConfig.workshop.insight_hint_chance,
+    MORNING_HINT_CHANCE: tomlConfig.workshop.morning_hint_chance,
     RECIPES: tomlConfig.workshop.recipes,
     FORGERY: {
       BASE_DETECTION_RATE: tomlConfig.workshop.forgery.base_detection_rate,

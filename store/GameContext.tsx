@@ -149,6 +149,8 @@ const initialState: GameState = {
     // === WORKSHOP (工作台归还结果) ===
     lastReturnResult: null,
     workshopUsageCount: 0,
+    // === WORD OF MOUTH REFERRAL (口口相传推荐客户) ===
+    pendingReferralCustomer: false,
     // === DEBUG FLAGS ===
     debugRevealFloor: false
 };

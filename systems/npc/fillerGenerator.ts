@@ -1559,6 +1559,28 @@ export function generateFillerCustomer(
         customerProfile = { ...customerProfile, appearance: upgradeMap[customerProfile.appearance] };
     }
 
+    // #48: Low innocence -> cautious customers (harder to negotiate with)
+    const innocence = qualityOptions?.innocence ?? 50;
+    const cautiousThresholds = GAME_CONFIG.REPUTATION_THRESHOLDS.CAUTIOUS_CUSTOMER_THRESHOLDS;
+    const cautiousChances = GAME_CONFIG.REPUTATION_THRESHOLDS.CAUTIOUS_CUSTOMER_CHANCES;
+    let cautiousChance = 0;
+    for (let i = cautiousThresholds.length - 1; i >= 0; i--) {
+        if (innocence < cautiousThresholds[i]) {
+            cautiousChance = cautiousChances[i];
+            break;
+        }
+    }
+    if (cautiousChance > 0 && Math.random() < cautiousChance) {
+        // Make customer suspicious and stubborn
+        if (!behaviorTags.includes('SUSPICIOUS')) {
+            behaviorTags = [...behaviorTags.filter(t => t !== 'NAIVE'), 'SUSPICIOUS'];
+        }
+        if (!behaviorTags.includes('STUBBORN')) {
+            behaviorTags = [...behaviorTags.filter(t => t !== 'DESPERATE'), 'STUBBORN'];
+        }
+        redemptionResolve = 'Medium'; // cautious customers are less likely to redeem
+    }
+
     const name = generateName(customerProfile);
     const description = generateDescription(customerProfile);
     const dialogue = generateFillerDialogue(customerProfile, qualityOptions);
@@ -1698,4 +1720,69 @@ export function getContractTypeFromRate(rate: number): ContractType {
     if (rate <= 0.05) return 'AID';
     if (rate <= 0.10) return 'STANDARD';
     return 'SHARK';
+}
+
+/**
+ * Get a random referral greeting text from CSV (filler_texts.csv, category: referral_greeting)
+ */
+function getReferralGreeting(): string {
+    const texts = getFillerTexts('referral_greeting', 'default');
+    if (texts.length === 0) return '有人跟我提起过你的店，所以来看看。';
+    return texts[Math.floor(Math.random() * texts.length)];
+}
+
+/**
+ * #25: Generate a word-of-mouth referral customer.
+ * These customers carry higher-value items (within TOML-configured range)
+ * and are flagged as referrals for narrative presentation (#26).
+ *
+ * Strategy: Generate with decent/fancy profile (biased toward higher-value items),
+ * then filter by value range. Falls back to standard filler if no matching item found.
+ * Prepends a referral greeting to the customer's dialogue.
+ */
+export function generateReferralCustomer(
+    day: number,
+    excludeTemplateIds: Set<string> = new Set(),
+    qualityOptions?: CustomerQualityOptions
+): Customer {
+    const minValue = GAME_CONFIG.ABILITY.WOM_REFERRAL_MIN_VALUE;
+    const maxValue = GAME_CONFIG.ABILITY.WOM_REFERRAL_MAX_VALUE;
+
+    // Use decent/fancy profile to bias toward higher-value items
+    const referralProfile: FillerCustomerProfile = {
+        age: Math.random() < 0.5 ? 'middle' : 'young',
+        gender: Math.random() < 0.5 ? 'male' : 'female',
+        appearance: Math.random() < 0.6 ? 'decent' : 'fancy',
+        mood: 'calm',
+    };
+
+    // Try up to 3 times to get an item within value range
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const customer = generateFillerCustomer(
+            day,
+            attempt === 0 ? referralProfile : undefined,
+            excludeTemplateIds,
+            null,
+            qualityOptions
+        );
+        const itemValue = customer.item.perceivedValue ?? customer.item.realValue;
+        if (itemValue >= minValue && itemValue <= maxValue) {
+            applyReferralMarkers(customer);
+            return customer;
+        }
+    }
+
+    // Fallback: use whatever we get, still mark as referral
+    const fallback = generateFillerCustomer(day, referralProfile, excludeTemplateIds, null, qualityOptions);
+    applyReferralMarkers(fallback);
+    return fallback;
+}
+
+/** Apply referral flag and greeting to a customer */
+function applyReferralMarkers(customer: Customer): void {
+    customer.isReferral = true;
+    // #26: Prepend referral greeting to customer's dialogue
+    const referralGreeting = getReferralGreeting();
+    const originalGreeting = customer.dialogue.greeting;
+    customer.dialogue.greeting = `${referralGreeting}\n\n${originalGreeting}`;
 }

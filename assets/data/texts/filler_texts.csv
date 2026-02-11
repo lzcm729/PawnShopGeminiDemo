@@ -136,3 +136,8 @@ contract_label,CHARITY,慈善 (0%)
 contract_label,AID,援助 (5%)
 contract_label,STANDARD,标准 (10%)
 contract_label,SHARK,鲨鱼 (20%)
+referral_greeting,default,有人跟我提起过你的店。听说这里诚信经营，所以慕名而来。
+referral_greeting,default,朋友推荐我来的。说你这里公道，值得信赖。
+referral_greeting,default,有个熟人说在你这里典当过东西，体验不错。我也想来看看。
+referral_greeting,default,听说附近的人都说你这老板厚道，我今天专程过来的。
+referral_greeting,default,有位朋友赎回了在你这里的典当品，对你赞不绝口。

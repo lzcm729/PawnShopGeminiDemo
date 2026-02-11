@@ -73,7 +73,7 @@ interface UseCharacterAbilityReturn {
   canUseInNegotiation: (skillId: SkillId) => boolean;
   applyPressure: (originalFloor: number, currentFloor: number, afterConcession: boolean, existingReduction: number) => FloorReductionResult;
   applyHeartStrike: (originalFloor: number, currentFloor: number, behaviorTags: BehaviorTag[], afterConcession: boolean, existingReduction: number) => FloorReductionResult;
-  getHeartStrikeConcessionBonus: () => HeartStrikeResult;
+  getHeartStrikeConcessionBonus: (behaviorTags?: BehaviorTag[]) => HeartStrikeResult;
   getSharpScrutinyReduction: (originalFloor: number, currentFloor: number, flawCount: number, existingReduction: number) => FloorReductionResult;
   isCapReached: (existingReduction: number) => boolean;
 
@@ -195,8 +195,9 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
   );
 
   // New concession bonus interface (used by useNegotiation)
+  // Accepts behaviorTags for NPC-type differentiation (design doc v1.4 sec 4.2)
   const getHeartStrikeConcessionBonus = useCallback(
-    () => calculateHeartStrikeEffect(reputation),
+    (behaviorTags: BehaviorTag[] = []) => calculateHeartStrikeEffect(reputation, behaviorTags),
     [reputation]
   );
 

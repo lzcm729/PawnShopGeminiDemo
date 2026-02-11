@@ -15,6 +15,7 @@ import {
   getCustomerEcologyShift
 } from '../../systems/blackmarket/blackmarketService';
 import { getBlackMarketContactLevel } from '../../systems/upgrades/utils';
+import { GAME_CONFIG } from '../../systems/game/config';
 
 export function blackmarketReducer(state: GameState, action: Action): GameState {
   switch (action.type) {
@@ -54,8 +55,11 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         ...(isBreach ? { breachSaleDay: state.stats.day } : {})
       };
 
+      // #12/#40: Stolen goods add extra heat
+      const stolenExtraHeat = item.isStolen ? GAME_CONFIG.BLACKMARKET.STOLEN_EXTRA_HEAT : 0;
+
       // Update heat (capped at 10)
-      const newHeat = Math.min(10, state.blackmarket.heat + heatGain);
+      const newHeat = Math.min(10, state.blackmarket.heat + heatGain + stolenExtraHeat);
 
       // Record transaction
       const newTodaySales = [
@@ -78,6 +82,7 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
       };
 
       const breachNote = isBreach ? ' (违约出售，待结算时扣减声誉)' : '';
+      const stolenNote = item.isStolen ? `，赃物热度 +${stolenExtraHeat}` : '';
 
       return {
         ...state,
@@ -98,7 +103,7 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         },
         dayEvents: [
           ...state.dayEvents,
-          `[黑市] 以收购价 $${amount} 出售了 ${itemName} (${tag})，清白 -1${breachNote}`
+          `[黑市] 以收购价 $${amount} 出售了 ${itemName} (${tag})，清白 -1${stolenNote}${breachNote}`
         ]
       };
     }
@@ -125,8 +130,11 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         ...(isBreach ? { breachSaleDay: state.stats.day } : {})
       };
 
+      // #12/#40: Stolen goods add extra heat
+      const stolenExtraHeat = item.isStolen ? GAME_CONFIG.BLACKMARKET.STOLEN_EXTRA_HEAT : 0;
+
       // Update heat (capped at 10)
-      const newHeat = Math.min(10, state.blackmarket.heat + heatGain);
+      const newHeat = Math.min(10, state.blackmarket.heat + heatGain + stolenExtraHeat);
 
       // Record transaction
       const newTodaySales = [
@@ -134,14 +142,17 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         { itemId, itemName, amount, type: 'SALE' as const }
       ];
 
-      // Blackmarket sales reduce Innocence (法律清白度) by 1
+      // #65: Direct sell reduces both Innocence -1 and Credibility -1
       // Breach penalty (Humanity -3, Credibility -1) is deferred until customer returns to redeem
+      const credLoss = GAME_CONFIG.BLACKMARKET.DIRECT_SELL_CREDIBILITY_LOSS;
       const newReputation = {
         ...state.reputation,
-        [ReputationType.INNOCENCE]: Math.max(0, state.reputation[ReputationType.INNOCENCE] - 1)
+        [ReputationType.INNOCENCE]: Math.max(0, state.reputation[ReputationType.INNOCENCE] - 1),
+        [ReputationType.CREDIBILITY]: Math.max(0, state.reputation[ReputationType.CREDIBILITY] - credLoss)
       };
 
       const breachNote = isBreach ? ' (违约出售，待结算时扣减声誉)' : '';
+      const stolenNote = item.isStolen ? `，赃物热度 +${stolenExtraHeat}` : '';
 
       return {
         ...state,
@@ -158,7 +169,7 @@ export function blackmarketReducer(state: GameState, action: Action): GameState 
         },
         dayEvents: [
           ...state.dayEvents,
-          `[黑市] 以出售价 $${amount} 出售了 ${itemName}，清白 -1${breachNote}`
+          `[黑市] 以出售价 $${amount} 出售了 ${itemName}，清白 -1，商誉 -${credLoss}${stolenNote}${breachNote}`
         ]
       };
     }

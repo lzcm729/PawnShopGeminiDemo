@@ -219,6 +219,25 @@ credibility = 50
 # 清白（高 = 法律干净，做坏事会减少）
 innocence = 50
 
+# --- 行业排斥警告 (#33) ---
+credibility_exclusion_threshold = 15  # 商誉低于此值触发行业排斥警告邮件
+
+# --- 暗路代价：谨慎客户 (#48) ---
+# innocence < 阈值时，按概率生成更难对付的客户
+cautious_customer_thresholds = [45, 40, 35, 30]
+cautious_customer_chances = [0.0, 0.15, 0.25, 0.40]
+
+# --- 暗路代价：客户减少 (#49) ---
+dark_path_customer_reduction_threshold = 30  # innocence < 此值时每日客户 -1
+
+# --- 暗路代价：执法事件 (#50) ---
+dark_path_enforcement_threshold = 15         # innocence < 此值时可能触发执法事件
+dark_path_enforcement_chance = 0.20          # 每日触发执法搜查概率
+dark_path_enforcement_fine_base = 500        # 执法搜查基础罚款
+dark_path_enforcement_fine_range = 300       # 执法搜查罚款随机范围
+dark_path_enforcement_credibility = -5       # 执法搜查商誉损失
+dark_path_enforcement_innocence = -3         # 执法搜查清白损失
+
 # ------------------------------------------------------------
 # 鉴定意外事件 (Appraisal Events) — d100 单骰互斥
 # ------------------------------------------------------------
@@ -297,6 +316,7 @@ charity_generous_humanity = 2         # 大额慈善 +人情
 charity_normal_humanity = 1           # 普通慈善 +人情
 # 援助档(5%)
 aid_credibility = 1                   # 援助 +商誉
+aid_extra_credibility = 1             # 援助额外 +商誉补偿 (#38: 设计文档 v1.3 变更B)
 aid_generous_humanity = 1             # 大额援助 +人情
 # 标准档(10%)
 standard_credibility = 1              # 标准 +商誉
@@ -471,6 +491,12 @@ low_heat_safe_days = 3
 low_heat_price_bonus = 0.05
 # 卧底出售惩罚
 undercover_sale_penalty = 0.05
+# 赃物额外热度增加
+stolen_extra_heat = 1
+# 玩家直售商誉损失
+direct_sell_credibility_loss = 1
+# 新闻情绪修正幅度（正面/负面新闻 ±5%）
+news_sentiment_modifier = 0.05
 
 # --- 客户生态转变 (P1-10: Customer Ecology Shift) ---
 # 清白阈值：低于此值开始吸引灰色客户
@@ -512,6 +538,9 @@ wom_base_chance = 0.25
 wom_increment = 0.15
 # 口碑保底连续次数
 wom_guarantee_streak = 5
+# 口碑推荐客户物品价值范围
+wom_referral_min_value = 2000
+wom_referral_max_value = 5000
 # 远见-疲劳值阈值
 foresight_fatigue_threshold = 10
 # 远见-希望值阈值
@@ -653,6 +682,10 @@ breach_compensation_multiplier = 2.0
 breach_humanity_loss = -15
 breach_credibility_loss = -10
 breach_innocence_loss = -5
+# 格物时工坊提示出现概率（需已解锁精密工作台）
+insight_hint_chance = 0.25
+# 早间简报提及工坊提示的概率（需已解锁精密工作台）
+morning_hint_chance = 0.30
 
 # Forgery / Counterfeit parameters
 [workshop.forgery]

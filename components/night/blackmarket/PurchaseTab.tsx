@@ -23,6 +23,7 @@ export interface PurchaseTabProps {
   selectedItemId: string | null;
   onSelectItem: (id: string | null) => void;
   marketIndicators?: MarketIndicator[];
+  commissionRate?: number;
 }
 
 export const PurchaseTab: React.FC<PurchaseTabProps> = ({
@@ -35,6 +36,7 @@ export const PurchaseTab: React.FC<PurchaseTabProps> = ({
   selectedItemId,
   onSelectItem,
   marketIndicators = [],
+  commissionRate,
 }) => {
   if (requests.length === 0) {
     return (
@@ -130,6 +132,7 @@ export const PurchaseTab: React.FC<PurchaseTabProps> = ({
                         isBreach={isBreach}
                         compensation={compensation}
                         variant="purchase"
+                        commissionRate={commissionRate}
                         onSelect={() => onSelectItem(isSelected ? null : selectionKey)}
                         onSell={() => onSell(item, request)}
                       />

@@ -37,6 +37,7 @@ import { ProtectionFeePanel } from './blackmarket/ProtectionFeePanel';
 import { LowHeatRewardBanner } from './blackmarket/LowHeatRewardBanner';
 import { ConfirmDialog } from './blackmarket/ConfirmDialog';
 import { CounterfeitSaleModal, CounterfeitSaleResult } from './blackmarket/CounterfeitSaleModal';
+import { MarketTrendBanner } from './blackmarket/MarketTrendBanner';
 
 interface BlackmarketPanelProps {
   isOpen: boolean;
@@ -296,6 +297,12 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
           </div>
         )}
 
+        {/* Today's Market Trend (#53) */}
+        <MarketTrendBanner
+          saleMultiplierMin={blackmarket.daily.saleMultiplierMin}
+          saleMultiplierMax={blackmarket.daily.saleMultiplierMax}
+        />
+
         {/* Heat & Reputation Status */}
         <div className="grid grid-cols-2 gap-4">
           <HeatIndicator heatInfo={heatInfo} heatDecay={upgradeInfo.heatDecay} />
@@ -367,6 +374,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
                   selectedItemId={selectedItemId}
                   onSelectItem={setSelectedItemId}
                   marketIndicators={marketIndicators}
+                  commissionRate={commissionInfo.commission}
                 />
               </div>
             </div>
@@ -388,6 +396,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
                   onSell={handleSellDirect}
                   selectedItemId={selectedItemId}
                   onSelectItem={setSelectedItemId}
+                  commissionRate={commissionInfo.commission}
                 />
               </div>
             </div>

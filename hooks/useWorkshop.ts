@@ -11,8 +11,10 @@
 import { useCallback, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { Item, ItemStatus } from '../systems/items/types';
+import { ReputationType } from '../types';
 import { STATE_TAGS } from '../systems/items/tags';
 import { EssenceBalance, EssenceType } from '../systems/economy/essence';
+import { GAME_CONFIG } from '../systems/game/config';
 import {
   Recipe,
   RestoreRecipe,
@@ -390,6 +392,21 @@ export const useWorkshop = (): UseWorkshopReturn => {
       payload: `${type.toUpperCase()}:${item.id}:${recipeId}`,
     });
 
+    // #45/#68: Counterfeit active pawn item -> immediate Innocence penalty
+    if (type === 'counterfeit' && item.status === ItemStatus.ACTIVE) {
+      const innocenceCost = GAME_CONFIG.WORKSHOP.FORGERY.INNOCENCE_COST_ACTIVE;
+      dispatch({
+        type: 'RESOLVE_TRANSACTION',
+        payload: {
+          cashDelta: 0,
+          reputationDelta: { [ReputationType.INNOCENCE]: innocenceCost },
+          item: null,
+          log: `[工作台] 伪造当期物品 ${item.name}，清白 ${innocenceCost}`,
+          customerName: 'System',
+        },
+      });
+    }
+
     return { success: true, result };
   }
 
@@ -480,6 +497,21 @@ export const useWorkshop = (): UseWorkshopReturn => {
           type: 'RECORD_NIGHT_ACTION',
           payload: `${actionType}_COMPLETE:${item.id}:${progress.recipeId}`,
         });
+
+        // #45/#68: Multi-night counterfeit on active pawn -> Innocence penalty
+        if (isCounterfeitRecipe(recipe) && item.status === ItemStatus.ACTIVE) {
+          const innocenceCost = GAME_CONFIG.WORKSHOP.FORGERY.INNOCENCE_COST_ACTIVE;
+          dispatch({
+            type: 'RESOLVE_TRANSACTION',
+            payload: {
+              cashDelta: 0,
+              reputationDelta: { [ReputationType.INNOCENCE]: innocenceCost },
+              item: null,
+              log: `[工作台] 伪造当期物品 ${item.name}，清白 ${innocenceCost}`,
+              customerName: 'System',
+            },
+          });
+        }
 
         return { success: true, result };
       } else {

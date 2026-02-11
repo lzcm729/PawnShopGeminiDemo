@@ -236,27 +236,82 @@ export interface HeartStrikeResult {
   patienceCost: number;
   /** Modulation coefficient applied */
   modulationCoefficient: number;
+  /** NPC type category used for differentiation */
+  npcCategory: 'DESPERATE' | 'HARD' | 'DEFAULT';
+}
+
+/**
+ * BehaviorTag → NPC category mapping for Heart Strike differentiation.
+ *
+ * Design doc v1.4 sec 4.2: Heart Strike effectiveness varies by NPC type.
+ * - DESPERATE/NAIVE → vulnerable customers, higher bonus
+ * - STUBBORN/SAVVY/SUSPICIOUS → tough customers, lower bonus
+ * - SENTIMENTAL/default → standard bonus
+ */
+function getHeartStrikeNpcCategory(behaviorTags: BehaviorTag[]): 'DESPERATE' | 'HARD' | 'DEFAULT' {
+  // Priority: check DESPERATE/NAIVE first (vulnerable), then STUBBORN/SAVVY/SUSPICIOUS (tough)
+  if (behaviorTags.includes('DESPERATE') || behaviorTags.includes('NAIVE')) {
+    return 'DESPERATE';
+  }
+  if (behaviorTags.includes('STUBBORN') || behaviorTags.includes('SAVVY') || behaviorTags.includes('SUSPICIOUS')) {
+    return 'HARD';
+  }
+  return 'DEFAULT';
+}
+
+/**
+ * Get the concession bonus for Heart Strike based on NPC category.
+ *
+ * Uses base concession bonus from NEGOTIATION config (heart_strike_concession_bonus = 0.30),
+ * scaled by type-specific ratios from ABILITY config:
+ * - DESPERATE: base * (desperate / default) → more susceptible (e.g., 0.30 * 1.2 = 0.36)
+ * - HARD: base * (hard / default) → resistant (e.g., 0.30 * 0.6 = 0.18)
+ * - DEFAULT: base * 1.0 → standard (e.g., 0.30)
+ */
+function getHeartStrikeBaseBonus(npcCategory: 'DESPERATE' | 'HARD' | 'DEFAULT'): number {
+  const baseConcession = GAME_CONFIG.NEGOTIATION.HEART_STRIKE_CONCESSION_BONUS;
+  const defaultFloor = GAME_CONFIG.ABILITY.HEART_STRIKE_DEFAULT;
+  // Avoid division by zero
+  if (defaultFloor <= 0) return baseConcession;
+
+  switch (npcCategory) {
+    case 'DESPERATE': return baseConcession * (GAME_CONFIG.ABILITY.HEART_STRIKE_DESPERATE / defaultFloor);
+    case 'HARD': return baseConcession * (GAME_CONFIG.ABILITY.HEART_STRIKE_HARD / defaultFloor);
+    case 'DEFAULT': return baseConcession;
+  }
 }
 
 /**
  * Calculate the Heart Strike (攻心) effect.
  *
- * Design: Heart Strike grants +30% concession chance (configurable).
+ * Design: Heart Strike grants a concession chance bonus that varies by NPC type.
  * This is NOT a floor reduction — it boosts the probability that NPC
  * concedes during push-pull negotiation.
  *
+ * NPC differentiation (design doc v1.4 sec 4.2):
+ * - DESPERATE/NAIVE: +12% (vulnerable, more susceptible)
+ * - STUBBORN/SAVVY/SUSPICIOUS: +6% (tough, harder to influence)
+ * - SENTIMENTAL/default: +10% (standard effectiveness)
+ *
+ * All values are further scaled by reputation modulation.
  * Patience cost: 0 (unique to heart strike)
+ *
+ * @param reputation Current reputation profile
+ * @param behaviorTags NPC behavior tags for type differentiation
  */
 export function calculateHeartStrikeEffect(
   reputation: ReputationProfile,
+  behaviorTags: BehaviorTag[] = [],
 ): HeartStrikeResult {
   const modCoeff = getSkillModifier('HEART_STRIKE', reputation);
-  const baseBonus = GAME_CONFIG.NEGOTIATION.HEART_STRIKE_CONCESSION_BONUS;
+  const npcCategory = getHeartStrikeNpcCategory(behaviorTags);
+  const baseBonus = getHeartStrikeBaseBonus(npcCategory);
 
   return {
     concessionBonus: baseBonus * modCoeff,
     patienceCost: 0,
     modulationCoefficient: modCoeff,
+    npcCategory,
   };
 }
 

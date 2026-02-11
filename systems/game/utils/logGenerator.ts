@@ -1,5 +1,26 @@
 
 import { Customer, Item, ItemLogEntry, VisitTier, EchoTrigger, PlayerChoiceType } from '../../../types';
+import { createTextRegistry, TextRegistry } from '../../utils/textRegistry';
+import logTemplatesCSV from '@/assets/data/texts/log_templates.csv?raw';
+
+// ============================================================================
+// CSV Text Registry (lazy-loaded)
+// ============================================================================
+
+let logTexts: TextRegistry | null = null;
+
+function getTexts(): TextRegistry {
+    if (!logTexts) {
+        logTexts = createTextRegistry('log_templates', logTemplatesCSV);
+    }
+    return logTexts;
+}
+
+/** Pick a random string from an array */
+function pickRandom(arr: string[]): string {
+    if (arr.length === 0) return '';
+    return arr[Math.floor(Math.random() * arr.length)];
+}
 
 // === S3-F3: Visit tier calculation (5-tier system, design doc F) ===
 
@@ -16,82 +37,41 @@ export const getVisitTier = (visitCount: number): VisitTier => {
 // Visit tiers (design doc F): 1=客观记录, 2=识别回忆, 3=关切观察, 4=命运纠缠, 5+=终局氛围
 // Non-linear variation (design doc F): NPC behavior changes, not monotonic descent
 
-const TIER_TEMPLATES: Record<VisitTier, (customer: Customer, item: Item) => string[]> = {
-    // Tier 1: 客观记录 — 中性/好奇 (mostly 事务性 + 观察性)
-    1: (customer, item) => {
-        const moodDesc = customer.mood === 'Happy' ? "语气轻快" : (customer.mood === 'Angry' ? "有些急躁" : "神色平静");
-        return [
-            // 事务性
-            `标准质押。${customer.description}。${item.name}，状况良好。`,
-            `${customer.description}，${moodDesc}。${customer.dialogue.pawnReason}。`,
-            // 观察性
-            `一位${customer.description}的顾客将${item.name}放在柜台上。${moodDesc}。`,
-            `${customer.description}。她把${item.name}从包里取出来时很小心，像是怕弄坏什么。`,
-        ];
-    },
-    // Tier 2: 识别回忆 — 轻微担忧 (观察性为主, 加入矛盾信号)
-    2: (customer, item) => [
-        // 观察性 + 矛盾信号
-        `那位之前来过的${customer.name}又来了。这次带来了${item.name}。${customer.dialogue.pawnReason}。`,
-        `${customer.name}。有印象，之前来过一次。她笑着说只是短期周转，但开口前犹豫了很久。`,
-        // 事务性
-        `${customer.name}再次到访。典当物品：${item.name}。`,
-        // 观察性
-        `${customer.name}推门进来的时候，步子比上次快了些。她把${item.name}放下，没怎么讨价还价。`,
-    ],
-    // Tier 3: 关切观察 — 明确忧虑 (观察性 + 情感性, 矛盾信号加深)
-    3: (customer, item) => [
-        // 观察性 + 矛盾信号
-        `${customer.name}穿着整洁的衣服，但袖口已经磨出了毛边。这件${item.name}似乎是她为数不多的资产了。`,
-        `第三次见到${customer.name}了。她说最近在找工作，语气听起来比上次平静，但眼睛一直在看门口。`,
-        // 情感性
-        `${customer.name}又来了。${item.name}被轻轻放在柜台上，像是在和它告别。`,
-        // 事务性
-        `${customer.name}，第三次来访。${customer.dialogue.pawnReason}。`,
-    ],
-    // Tier 4: 命运纠缠 — 沉重/无力 (情感性 + 戏剧性, 行为变化代替形容词)
-    4: (customer, item) => [
-        // 戏剧性
-        `她几乎是摔进店里的，手在发抖。${item.name}被随意丢在柜台上。`,
-        // 情感性 + 矛盾信号
-        `${customer.name}说不需要收据了。她把${item.name}推过来，手指在颤。`,
-        // 观察性 (行为变化: 更冷淡/机械)
-        `${customer.name}。已经不需要寒暄了。她把${item.name}推过来，甚至没有开口。`,
-        // 情感性
-        `${customer.name}进来时低着头。${item.name}轻轻放在柜台上，她站在那里等，像是已经不在乎结果了。`,
-    ],
-    // Tier 5+: 终局氛围 — 哀伤/释然 (戏剧性 + 情感性, 极简/留白)
-    5: (customer, item) => [
-        // 戏剧性
-        `她什么也没说，直接把${item.name}放在柜台上。`,
-        `${customer.name}进来时，店里的空气仿佛凝固了。又一件东西。`,
-        // 情感性 (释然)
-        `${customer.name}把${item.name}放下的时候，表情很平静。太平静了。`,
-        // 戏剧性 (反讽)
-        `她说这是最后一次了。她上次也这么说的。`,
-    ],
-};
+/** Build template vars from customer/item context */
+function buildPawnVars(customer: Customer, item: Item): Record<string, string> {
+    const moodDesc = customer.mood === 'Happy' ? "语气轻快" : (customer.mood === 'Angry' ? "有些急躁" : "神色平静");
+    return {
+        name: customer.name,
+        description: customer.description,
+        item_name: item.name,
+        mood_desc: moodDesc,
+        pawn_reason: customer.dialogue.pawnReason,
+    };
+}
 
-// Desperate override templates (used regardless of tier when DESPERATE tag present)
-// Tone: 情感性 + 戏剧性 (override uses high emotional density)
-const DESPERATE_TEMPLATES = (customer: Customer, item: Item): string[] => [
-    `她把${item.name}放在柜台上时手在抖。这是一笔沉重的交易。`,
-    `这似乎是她最后的体面。${customer.description}，眼神游离。`,
-    `急需用钱。${customer.dialogue.pawnReason}。她甚至没有仔细看合同条款。`,
-    `${item.name}被推过来。她的指甲里嵌着泥，但衣服还是干净的。`,
-];
+/** Get tier key prefixes for CSV lookup */
+const TIER_KEY_PREFIXES: Record<VisitTier, string[]> = {
+    1: ['tier1_factual', 'tier1_observational'],
+    2: ['tier2_observational', 'tier2_factual'],
+    3: ['tier3_observational', 'tier3_emotional', 'tier3_factual'],
+    4: ['tier4_dramatic', 'tier4_emotional', 'tier4_observational'],
+    5: ['tier5_dramatic', 'tier5_emotional'],
+};
 
 export const generatePawnLog = (customer: Customer, item: Item, day: number, visitCount: number): ItemLogEntry => {
     const tier = getVisitTier(visitCount);
+    const vars = buildPawnVars(customer, item);
+    const texts = getTexts();
     let content = "";
 
     // DESPERATE behavior overrides tier logic for extreme situations
     if (customer.behaviorTags.includes('DESPERATE') || customer.identityTags.includes('HighRisk')) {
-        const templates = DESPERATE_TEMPLATES(customer, item);
-        content = templates[Math.floor(Math.random() * templates.length)];
+        const templates = texts.getAllWithVars('desperate', vars);
+        content = templates.length > 0 ? pickRandom(templates) : `${item.name}被推过来。`;
     } else {
-        const templates = TIER_TEMPLATES[tier](customer, item);
-        content = templates[Math.floor(Math.random() * templates.length)];
+        const keys = TIER_KEY_PREFIXES[tier];
+        const allTemplates = keys.flatMap(key => texts.getAllWithVars(key, vars));
+        content = allTemplates.length > 0 ? pickRandom(allTemplates) : `标准质押。${item.name}。`;
     }
 
     content += ` [死当估值: $${item.pawnInfo?.valuation}]`;
@@ -125,51 +105,31 @@ export const generatePlayerChoiceLog = (
         customerName?: string;
     }
 ): ItemLogEntry => {
+    const texts = getTexts();
     let content = "";
 
     // S3-C1: Player choice text follows tone tiers
     if (choiceType === 'CONTRACT_RATE' && options.rate !== undefined && options.principal !== undefined) {
         const rateLabel = CONTRACT_RATE_LABELS[String(options.rate)] || `${(options.rate * 100).toFixed(0)}%`;
+        const vars = { principal: String(options.principal), rate_label: rateLabel };
+
         if (options.rate === 0) {
-            // 情感性: charity rate
-            content = `当金 $${options.principal}（${rateLabel}）。她几乎不敢相信地看着收据。`;
+            content = texts.getWithVars('contract_charity', vars) || `当金 $${options.principal}（${rateLabel}）。`;
         } else if (options.rate >= 0.2) {
-            // 戏剧性: shark rate
-            content = `当金 $${options.principal}（${rateLabel}）。她犹豫了很久，最终还是签了。`;
+            content = texts.getWithVars('contract_shark', vars) || `当金 $${options.principal}（${rateLabel}）。`;
         } else {
-            // 事务性: standard/aid rate
-            content = `当金 $${options.principal}（${rateLabel}）。`;
+            content = texts.getWithVars('contract_standard', vars) || `当金 $${options.principal}（${rateLabel}）。`;
         }
     } else if (choiceType === 'DEPARTURE' && options.satisfaction) {
-        switch (options.satisfaction) {
-            // 情感性
-            case 'GRATEFUL': content = "她离开时，我说了句'保重'。"; break;
-            // 观察性
-            case 'NEUTRAL': content = "我目送她离开，什么也没说。"; break;
-            // 观察性
-            case 'RESENTFUL': content = "她头也不回地走了。"; break;
-            // 戏剧性
-            case 'DESPERATE': content = "她在门口停了一下，最终还是走进了雨里。"; break;
-            // 事务性
-            default: content = "交易结束。";
-        }
+        const key = `departure_${options.satisfaction}`;
+        content = texts.get(key) || texts.get('departure_DEFAULT') || "交易结束。";
     } else if (choiceType === 'EXPIRY_DECISION' && options.decision) {
-        switch (options.decision) {
-            // 情感性
-            case 'redeem_accept': content = `${options.customerName || '她'}回来赎回了。`; break;
-            // 戏剧性
-            case 'redeem_refuse': content = "我拒绝了赎回请求。合同就是合同。"; break;
-            // 事务性
-            case 'renew_accept': content = "我延长了赎回期限。"; break;
-            // 观察性
-            case 'renew_refuse': content = "我拒绝了续当请求。她站了一会儿才离开。"; break;
-            // 观察性
-            case 'noshow_sell': content = "合同到期，她没有出现。挂牌出售。"; break;
-            // 情感性
-            case 'noshow_keep': content = "合同到期，她没有出现。我决定再等等。"; break;
-            // 事务性
-            default: content = `到期处理：${options.decision}。`;
-        }
+        const key = `expiry_${options.decision}`;
+        const vars = {
+            customer_name: options.customerName || '她',
+            decision: options.decision,
+        };
+        content = texts.getWithVars(key, vars) || texts.getWithVars('expiry_default', vars) || `到期处理：${options.decision}。`;
     }
 
     return {
@@ -190,38 +150,15 @@ export const generatePlayerChoiceLog = (
 
 // === S3-F2: Echo entry generation (design doc J) ===
 
-// S3-C1: Echo templates follow tone tiers (mostly 情感性 + 戏剧性, brief and restrained)
-const ECHO_TEMPLATES: Record<EchoTrigger, string[]> = {
-    HOPE_COLLAPSE: [
-        "......很久没有人来问起这件东西了。",
-        "尘埃落在上面，像是在替它的主人叹气。",
-        "它安静地待在架子上。外面的世界似乎已经忘记了它。",
-    ],
-    JOB_SUCCESS: [
-        "也许它的主人不再需要它了——以一种好的方式。",
-        "外面传来了好消息。这件东西也许很快就能回家了。",
-    ],
-    EXPIRED_NO_REDEEM: [
-        "赎回期已过。它现在属于这里了。",
-        "没有人来。合同上的日期已经过了。",
-    ],
-    FUNDS_DEPLETED: [
-        "她大概已经没有余力再想起这件东西了。",
-        "......",
-    ],
-    NPC_REDEEMED: [
-        "她回来了。她拿走了它，就像拿回了自己丢失的一部分。",
-        "她来赎回的时候，手里攥着刚好够的钱。",
-    ],
-};
-
 export const generateEchoLog = (
     day: number,
     trigger: EchoTrigger,
     chainId: string,
 ): ItemLogEntry => {
-    const templates = ECHO_TEMPLATES[trigger];
-    const content = templates[Math.floor(Math.random() * templates.length)];
+    const texts = getTexts();
+    const key = `echo_${trigger}`;
+    const templates = texts.getAll(key);
+    const content = templates.length > 0 ? pickRandom(templates) : "......";
 
     return {
         id: crypto.randomUUID(),
@@ -238,6 +175,8 @@ export const generateEchoLog = (
 // === S3-D: Natural decay log generation (design doc D) ===
 // Category-specific decay text templates keyed by threshold day.
 // Tone: mostly 事务性 + 观察性 (low emotional density, factual observation).
+// NOTE: Decay templates remain in-code because their structure (category x threshold)
+// doesn't map cleanly to simple key/text CSV. Future: dedicated decay_templates.csv
 
 type DecayTemplates = Record<number, string[]>;
 
@@ -390,24 +329,33 @@ export const generateDecayLog = (
     };
 };
 
-// === Existing log generators (unchanged) ===
+// === Existing log generators (loaded from CSV) ===
 
 export const generateRedeemLog = (customerName: string, item: Item, day: number, payment: number): ItemLogEntry => {
-    const templates = [
-        `${customerName}回来赎回了这件${item.name}。支付了$${payment}。物归原主。`,
-        `赎回。${customerName}带走了${item.name}，留下了$${payment}。`,
-        `交易完结。${customerName}取回${item.name}，柜台多了$${payment}。`
-    ];
-    return { id: crypto.randomUUID(), day, content: templates[Math.floor(Math.random() * templates.length)], type: 'REDEEM', metadata: { payment } };
+    const texts = getTexts();
+    const vars = { customer_name: customerName, item_name: item.name, payment: String(payment) };
+    const templates = texts.getAllWithVars('redeem', vars);
+    const content = templates.length > 0 ? pickRandom(templates) : `${customerName}回来赎回了${item.name}。`;
+    return { id: crypto.randomUUID(), day, content, type: 'REDEEM', metadata: { payment } };
 };
 
 export const generateForfeitLog = (item: Item, day: number, reason?: string): ItemLogEntry => {
-    const content = reason ? `${reason}。${item.name}归入库存。` : `无人来赎。${item.name}正式成为店铺资产。`;
+    const texts = getTexts();
+    const vars = { item_name: item.name, reason: reason || '' };
+    let content: string;
+    if (reason) {
+        content = texts.getWithVars('forfeit_reason', vars) || `${reason}。${item.name}归入库存。`;
+    } else {
+        content = texts.getWithVars('forfeit_default', vars) || `无人来赎。${item.name}正式成为店铺资产。`;
+    }
     return { id: crypto.randomUUID(), day, content, type: 'FORFEIT', metadata: { reason } };
 };
 
 export const generateSoldLog = (item: Item, day: number, amount: number): ItemLogEntry => {
-    return { id: crypto.randomUUID(), day, content: `${item.name}以$${amount}的价格售出。这段故事结束了。`, type: 'SOLD', metadata: { amount } };
+    const texts = getTexts();
+    const vars = { item_name: item.name, amount: String(amount) };
+    const content = texts.getWithVars('sold', vars) || `${item.name}以$${amount}的价格售出。`;
+    return { id: crypto.randomUUID(), day, content, type: 'SOLD', metadata: { amount } };
 };
 
 interface AppraisalLogOptions {
@@ -422,21 +370,25 @@ export const generateAppraisalLog = (
     isNegative: boolean,
     options?: AppraisalLogOptions
 ): ItemLogEntry => {
+    const texts = getTexts();
     let content: string;
 
     if (options?.valueJump === 'FAKE') {
         const rangeText = options.newRange
             ? ` 估值修正: $${options.newRange[0]} - $${options.newRange[1]}`
             : '';
-        content = `价值崩塌！发现: ${discovery}。${rangeText}`;
+        const vars = { discovery, range_text: rangeText };
+        content = texts.getWithVars('appraisal_fake', vars) || `价值崩塌！发现: ${discovery}。${rangeText}`;
     } else if (options?.valueJump === 'JACKPOT') {
         const rangeText = options.newRange
             ? ` 估值修正: $${options.newRange[0]} - $${options.newRange[1]}`
             : '';
-        content = `价值发现！发现: ${discovery}。${rangeText}`;
+        const vars = { discovery, range_text: rangeText };
+        content = texts.getWithVars('appraisal_jackpot', vars) || `价值发现！发现: ${discovery}。${rangeText}`;
     } else {
-        const prefix = isNegative ? "发现: " : "确认: ";
-        content = `${prefix}${discovery}`;
+        const vars = { discovery };
+        const key = isNegative ? 'appraisal_negative' : 'appraisal_positive';
+        content = texts.getWithVars(key, vars) || `${isNegative ? "发现" : "确认"}: ${discovery}`;
     }
 
     return {
@@ -450,4 +402,41 @@ export const generateAppraisalLog = (
             newRange: options?.newRange
         }
     };
+};
+
+// === #21: Spectrometer anomaly log ===
+
+export const generateSpectrometerLog = (
+    day: number,
+    feedbackText: string,
+    isAnomaly: boolean,
+): ItemLogEntry => {
+    const texts = getTexts();
+    const vars = { feedback: feedbackText };
+    const key = isAnomaly ? 'spectrometer_anomaly' : 'spectrometer_normal';
+    const content = texts.getWithVars(key, vars) || `光谱仪: ${feedbackText}`;
+
+    return {
+        id: crypto.randomUUID(),
+        day,
+        content,
+        type: 'INFO',
+        metadata: {
+            reason: isAnomaly ? 'spectrometer_anomaly' : 'spectrometer_normal',
+        }
+    };
+};
+
+// === #11: Workshop insight hint ===
+
+export const getWorkshopInsightHint = (): string | undefined => {
+    const texts = getTexts();
+    return texts.getRandom('workshop_insight_hint');
+};
+
+// === #12: Workshop morning hint ===
+
+export const getWorkshopMorningHint = (): string | undefined => {
+    const texts = getTexts();
+    return texts.getRandom('workshop_morning_hint');
 };

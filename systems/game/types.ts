@@ -161,6 +161,9 @@ export interface GameState {
   lastReturnResult: ReturnResult | null; // 最近一次重铸归还结果（DepartureView 显示用）
   workshopUsageCount: number;           // 工作台累计使用次数（用于渐退脚手架）
 
+  // === WORD OF MOUTH REFERRAL (口口相传推荐客户) ===
+  pendingReferralCustomer: boolean;  // 次日是否有推荐客户到来
+
   // === DEBUG FLAGS ===
   debugRevealFloor: boolean;  // 调试：显示客户底价
 }

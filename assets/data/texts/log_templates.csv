@@ -1,0 +1,69 @@
+﻿key,text
+tier1_factual,标准质押。{description}。{item_name}，状况良好。
+tier1_factual,{description}，{mood_desc}。{pawn_reason}。
+tier1_observational,一位{description}的顾客将{item_name}放在柜台上。{mood_desc}。
+tier1_observational,{description}。她把{item_name}从包里取出来时很小心，像是怕弄坏什么。
+tier2_observational,那位之前来过的{name}又来了。这次带来了{item_name}。{pawn_reason}。
+tier2_observational,{name}。有印象，之前来过一次。她笑着说只是短期周转，但开口前犹豫了很久。
+tier2_factual,{name}再次到访。典当物品：{item_name}。
+tier2_observational,{name}推门进来的时候，步子比上次快了些。她把{item_name}放下，没怎么讨价还价。
+tier3_observational,{name}穿着整洁的衣服，但袖口已经磨出了毛边。这件{item_name}似乎是她为数不多的资产了。
+tier3_observational,第三次见到{name}了。她说最近在找工作，语气听起来比上次平静，但眼睛一直在看门口。
+tier3_emotional,{name}又来了。{item_name}被轻轻放在柜台上，像是在和它告别。
+tier3_factual,{name}，第三次来访。{pawn_reason}。
+tier4_dramatic,她几乎是摔进店里的，手在发抖。{item_name}被随意丢在柜台上。
+tier4_emotional,{name}说不需要收据了。她把{item_name}推过来，手指在颤。
+tier4_observational,{name}。已经不需要寒暄了。她把{item_name}推过来，甚至没有开口。
+tier4_emotional,{name}进来时低着头。{item_name}轻轻放在柜台上，她站在那里等，像是已经不在乎结果了。
+tier5_dramatic,她什么也没说，直接把{item_name}放在柜台上。
+tier5_dramatic,{name}进来时，店里的空气仿佛凝固了。又一件东西。
+tier5_emotional,{name}把{item_name}放下的时候，表情很平静。太平静了。
+tier5_dramatic,她说这是最后一次了。她上次也这么说的。
+desperate,她把{item_name}放在柜台上时手在抖。这是一笔沉重的交易。
+desperate,这似乎是她最后的体面。{description}，眼神游离。
+desperate,急需用钱。{pawn_reason}。她甚至没有仔细看合同条款。
+desperate,{item_name}被推过来。她的指甲里嵌着泥，但衣服还是干净的。
+contract_charity,当金 ${principal}（{rate_label}）。她几乎不敢相信地看着收据。
+contract_shark,当金 ${principal}（{rate_label}）。她犹豫了很久，最终还是签了。
+contract_standard,当金 ${principal}（{rate_label}）。
+departure_GRATEFUL,她离开时，我说了句'保重'。
+departure_NEUTRAL,我目送她离开，什么也没说。
+departure_RESENTFUL,她头也不回地走了。
+departure_DESPERATE,她在门口停了一下，最终还是走进了雨里。
+departure_DEFAULT,交易结束。
+expiry_redeem_accept,{customer_name}回来赎回了。
+expiry_redeem_refuse,我拒绝了赎回请求。合同就是合同。
+expiry_renew_accept,我延长了赎回期限。
+expiry_renew_refuse,我拒绝了续当请求。她站了一会儿才离开。
+expiry_noshow_sell,合同到期，她没有出现。挂牌出售。
+expiry_noshow_keep,合同到期，她没有出现。我决定再等等。
+expiry_default,到期处理：{decision}。
+echo_HOPE_COLLAPSE,......很久没有人来问起这件东西了。
+echo_HOPE_COLLAPSE,尘埃落在上面，像是在替它的主人叹气。
+echo_HOPE_COLLAPSE,它安静地待在架子上。外面的世界似乎已经忘记了它。
+echo_JOB_SUCCESS,也许它的主人不再需要它了——以一种好的方式。
+echo_JOB_SUCCESS,外面传来了好消息。这件东西也许很快就能回家了。
+echo_EXPIRED_NO_REDEEM,赎回期已过。它现在属于这里了。
+echo_EXPIRED_NO_REDEEM,没有人来。合同上的日期已经过了。
+echo_FUNDS_DEPLETED,她大概已经没有余力再想起这件东西了。
+echo_FUNDS_DEPLETED,......
+echo_NPC_REDEEMED,她回来了。她拿走了它，就像拿回了自己丢失的一部分。
+echo_NPC_REDEEMED,她来赎回的时候，手里攥着刚好够的钱。
+redeem,{customer_name}回来赎回了这件{item_name}。支付了${payment}。物归原主。
+redeem,赎回。{customer_name}带走了{item_name}，留下了${payment}。
+redeem,交易完结。{customer_name}取回{item_name}，柜台多了${payment}。
+forfeit_reason,{reason}。{item_name}归入库存。
+forfeit_default,无人来赎。{item_name}正式成为店铺资产。
+sold,{item_name}以${amount}的价格售出。这段故事结束了。
+appraisal_fake,价值崩塌！发现: {discovery}。{range_text}
+appraisal_jackpot,价值发现！发现: {discovery}。{range_text}
+appraisal_negative,发现: {discovery}
+appraisal_positive,确认: {discovery}
+spectrometer_anomaly,光谱仪检测到异常：{feedback}
+spectrometer_normal,光谱仪确认：{feedback}
+workshop_insight_hint,工坊设备的精密仪器帮你察觉到了一些细微的差异。
+workshop_insight_hint,借助工坊的工具，你对这件物品有了更深的理解。
+workshop_insight_hint,工坊的放大镜下，这件物品展现出不同的面貌。
+workshop_morning_hint,工坊的设备已经预热完毕，今晚可以继续加工。
+workshop_morning_hint,工坊扩建后，你感觉精力更加充沛了。
+workshop_morning_hint,昨晚在工坊的工作让你对物品有了新的认识。

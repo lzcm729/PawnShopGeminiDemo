@@ -9,10 +9,25 @@ import { getItemIcon } from '../../systems/assets';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../../systems/assets';
 import { isStateTag } from '../../systems/items/tags';
 
+// #9: Generate a consistent HSL color from a string identifier
+const getNpcBorderColor = (identifier: string): string => {
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i++) {
+    hash = ((hash << 5) - hash) + identifier.charCodeAt(i);
+    hash = hash & hash;
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 55%, 45%)`;
+};
+
 interface ItemCardProps {
   item: Item;
   currentDay: number;
   actions?: React.ReactNode;
+  /** #22: Callback when NPC avatar badge is clicked */
+  onNpcClick?: (chainId: string) => void;
+  /** #9/#22: Chain ID currently highlighted for NPC grouping */
+  highlightChainId?: string | null;
 }
 
 // S3-I4: Visual state based on days in storage (design doc D - Natural Decay)
@@ -45,7 +60,7 @@ const getNpcBadgeTooltip = (item: Item): string => {
     return `${displayName} 的物品`;
 };
 
-export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions }) => {
+export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions, onNpcClick, highlightChainId }) => {
 
   const isForfeit = item.status === ItemStatus.FORFEIT;
   const isActive = item.status === ItemStatus.ACTIVE;
@@ -92,8 +107,24 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
   const npcAvatarUrl = getNpcAvatarUrl(item);
   const npcBadgeTooltip = getNpcBadgeTooltip(item);
 
+  // #9: NPC-source border color from relatedChainId
+  const npcBorderColor = item.relatedChainId ? getNpcBorderColor(item.relatedChainId) : null;
+  // #22: Whether this card is highlighted via NPC filter
+  const isNpcHighlighted = highlightChainId != null && item.relatedChainId === highlightChainId;
+  const isNpcDimmed = highlightChainId != null && item.relatedChainId !== highlightChainId;
+
   return (
-    <div className="relative flex flex-col bg-noir-200 shadow-sm transition-all duration-300 group overflow-hidden font-mono">
+    <div
+      className={cn(
+        "relative flex flex-col bg-noir-200 shadow-sm transition-all duration-300 group overflow-hidden font-mono",
+        isNpcHighlighted && "ring-2 ring-offset-1 ring-offset-noir-100 scale-[1.01]",
+        isNpcDimmed && "opacity-40"
+      )}
+      style={{
+        ...(npcBorderColor ? { borderLeft: `3px solid ${npcBorderColor}` } : {}),
+        ...(isNpcHighlighted && npcBorderColor ? { '--tw-ring-color': npcBorderColor } as React.CSSProperties : {}),
+      }}
+    >
       <div className="p-4 flex-1 flex flex-col gap-3">
         {/* Header: Status Badge */}
         <div className="flex items-center">
@@ -120,9 +151,19 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, currentDay, actions })
               <CategoryIcon category={item.category} className="text-noir-txt-secondary w-10 h-10" />
             </div>
 
-            {/* Design doc E: NPC avatar badge - small corner overlay */}
+            {/* Design doc E: NPC avatar badge - small corner overlay (#22: clickable for filtering) */}
             {npcAvatarUrl && (
-                <div className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full border-2 border-noir-200 bg-noir-300 overflow-hidden shadow-md" title={npcBadgeTooltip}>
+                <div
+                  className={cn(
+                    "absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full border-2 border-noir-200 bg-noir-300 overflow-hidden shadow-md",
+                    onNpcClick && "cursor-pointer hover:ring-2 hover:ring-amber-400 transition-shadow"
+                  )}
+                  title={npcBadgeTooltip + (onNpcClick ? ' (点击筛选)' : '')}
+                  onClick={onNpcClick && item.relatedChainId ? (e) => {
+                    e.stopPropagation();
+                    onNpcClick(item.relatedChainId!);
+                  } : undefined}
+                >
                     <img
                         src={npcAvatarUrl}
                         alt="NPC"

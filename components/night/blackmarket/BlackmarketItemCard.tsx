@@ -23,6 +23,7 @@ export interface BlackmarketItemCardProps {
   variant: 'purchase' | 'sale';
   disabled?: boolean;
   disabledReason?: string;
+  commissionRate?: number; // 0.0 - 0.30, fraction taken as fee
   onSelect: () => void;
   onSell: () => void;
 }
@@ -37,6 +38,7 @@ export const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
   variant,
   disabled = false,
   disabledReason,
+  commissionRate,
   onSelect,
   onSell,
 }) => {
@@ -122,6 +124,11 @@ export const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
           <div className={cn('text-lg font-mono font-bold', disabled ? 'text-stone-500' : colorScheme.price)}>
             ${price}
           </div>
+          {commissionRate != null && commissionRate > 0 && (
+            <div className="text-[10px] text-stone-500 font-mono">
+              佣金: <span className="text-red-400">-${Math.floor(price * commissionRate / (1 - commissionRate))}</span>
+            </div>
+          )}
           <div className="text-xs text-stone-500">
             利润: <span className={cn(
               'font-mono',

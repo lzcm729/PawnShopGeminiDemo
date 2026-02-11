@@ -268,5 +268,8 @@ export type Action =
     // Workshop training (隐形训练)
     | { type: 'INCREMENT_WORKSHOP_USAGE' }
 
+    // Word of Mouth referral
+    | { type: 'SET_PENDING_REFERRAL'; payload: boolean }
+
     // Debug flags
     | { type: 'DEBUG_TOGGLE_FLOOR' };

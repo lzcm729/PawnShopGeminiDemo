@@ -13,6 +13,7 @@ export interface SaleTabProps {
   onSell: (item: Item) => void;
   selectedItemId: string | null;
   onSelectItem: (id: string | null) => void;
+  commissionRate?: number;
 }
 
 export const SaleTab: React.FC<SaleTabProps> = ({
@@ -25,6 +26,7 @@ export const SaleTab: React.FC<SaleTabProps> = ({
   onSell,
   selectedItemId,
   onSelectItem,
+  commissionRate,
 }) => {
   if (items.length === 0) {
     return (
@@ -58,6 +60,7 @@ export const SaleTab: React.FC<SaleTabProps> = ({
             variant="sale"
             disabled={inPurchaseList}
             disabledReason="在收购清单中"
+            commissionRate={commissionRate}
             onSelect={() => !inPurchaseList && onSelectItem(isSelected ? null : item.id)}
             onSell={() => onSell(item)}
           />

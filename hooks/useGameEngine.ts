@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { useGame } from '../store/GameContext';
 import { runDailySimulation, findEligibleEvent, instantiateStoryCustomer, resolveRedemptionFlow, checkCondition, resolveDialogue, checkRenewalRequests } from '../systems/narrative/engine';
 import { generateDailyNews } from '../systems/news/engine';
-import { generatePawnLog, generatePlayerChoiceLog, generateDecayLog } from '../systems/game/utils/logGenerator';
+import { generatePawnLog, generatePlayerChoiceLog, generateDecayLog, generateSpectrometerLog, getWorkshopMorningHint } from '../systems/game/utils/logGenerator';
 import { detectEchoEntries } from '../systems/game/utils/echoDetector';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { Customer, Item, ReputationType, TransactionResult, ItemStatus, StoryEvent, ChainUpdateEffect, MotherCondition, ExpiryEvent, MoraleBuff } from '../types';
@@ -14,7 +14,7 @@ import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
 import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
 import { Dialogue, SatisfactionLevel } from '../systems/narrative/types';
 import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
-import { createTransientChain, getContractTypeFromRate, generateFillerCustomer, generateRedemptionVisitDialogue, getFillerMerchantMonologue, isTransientChain, calculateTransactionFeedback } from '../systems/npc/fillerGenerator';
+import { createTransientChain, getContractTypeFromRate, generateFillerCustomer, generateReferralCustomer, generateRedemptionVisitDialogue, getFillerMerchantMonologue, isTransientChain, calculateTransactionFeedback } from '../systems/npc/fillerGenerator';
 import type { CustomerAppearance, CustomerMood, CustomerAge, CustomerGender } from '../systems/npc/fillerGenerator';
 import { generateDailyChallenge, checkChallengeCompletion } from '../systems/game/dailyChallenge';
 import type { DayChallengeContext } from '../systems/game/dailyChallenge';
@@ -35,7 +35,8 @@ import { processWordOfMouthChecks } from '../systems/characterAbility/abilityEng
 import { generateTrainingResult, determineDisposition } from '../systems/customerInsight';
 import { registerRuntimeMailTemplate } from '../systems/narrative/mailRegistry';
 import { NewsCategory } from '../systems/news/types';
-import { getEffectiveInventoryCapacity } from '../systems/upgrades/utils';
+import { getEffectiveInventoryCapacity, hasPrecisionBench, checkItemAnomaly } from '../systems/upgrades/utils';
+import { getAnomalyMessage, getAnomalySeverity, getNormalConfirmationMessage } from '../systems/upgrades/spectrometerFeedback';
 import { playSfx } from '../systems/game/audio';
 
 export const useGameEngine = () => {
@@ -108,6 +109,20 @@ export const useGameEngine = () => {
         dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: 'mail_rep_innocence_warning', delayDays: 0 } });
     }
 
+    // #33: Credibility drops to exclusion threshold: "行业排斥警告"
+    const credExclusionThreshold = GAME_CONFIG.REPUTATION_THRESHOLDS.CREDIBILITY_EXCLUSION_THRESHOLD;
+    if (rep[ReputationType.CREDIBILITY] <= credExclusionThreshold && !milestones.includes('rep_mail_cred_exclusion')) {
+        dispatch({ type: 'UNLOCK_MILESTONE', payload: 'rep_mail_cred_exclusion' });
+        registerRuntimeMailTemplate({
+            id: 'mail_rep_credibility_exclusion',
+            sender: '同业公会',
+            subject: '行业排斥警告',
+            body: '致典当行经营者：\n\n经同业评议，您的商业信誉已降至不可接受的水平。多位同行反映您的经营行为严重损害了行业声誉。\n\n如果情况不能在短期内得到改善，公会将考虑正式将您从行业名录中除名。届时您将失去同业间的信息共享和客户推荐资格。\n\n请务必认真对待此警告。\n\n——同业公会执行委员会',
+            attachments: { cash: 0 },
+        });
+        dispatch({ type: 'SCHEDULE_MAIL', payload: { templateId: 'mail_rep_credibility_exclusion', delayDays: 1 } });
+    }
+
     // Any axis first drops below 20: "危机警告"
     const anyBelow20 = rep[ReputationType.HUMANITY] < 20 ||
                         rep[ReputationType.CREDIBILITY] < 20 ||
@@ -158,8 +173,8 @@ export const useGameEngine = () => {
     });
 
     const nextDay = state.stats.day + 1;
-    const tempState = { 
-        ...state, 
+    let tempState = {
+        ...state,
         activeChains: simulatedChains,
         stats: { ...state.stats, day: nextDay }
     };
@@ -206,6 +221,28 @@ export const useGameEngine = () => {
     }
     if (decayLogEntries.length > 0) {
         dispatch({ type: 'APPEND_ITEM_LOGS', payload: decayLogEntries });
+    }
+
+    // #12: Workshop morning hint (inject into tempState so generateDailyNews picks it up)
+    if (hasPrecisionBench(state.shopUpgrades) && Math.random() < GAME_CONFIG.WORKSHOP.MORNING_HINT_CHANCE) {
+        const hint = getWorkshopMorningHint();
+        if (hint) {
+            const workshopNewsItem = {
+                headline: hint,
+                body: '',
+                category: NewsCategory.FLAVOR,
+                priority: 30,
+                sourceLabel: '[工坊]',
+                tags: ['workshop_hint'],
+                effects: [],
+                displayDay: nextDay,
+                duration: 1,
+            };
+            tempState = {
+                ...tempState,
+                pendingNews: [...(tempState.pendingNews || []), workshopNewsItem],
+            };
+        }
     }
 
     // 2. News Generation (S3-F1~F6: v1.2 with priority algorithm, pending queue, violation detection)
@@ -589,6 +626,7 @@ export const useGameEngine = () => {
             dispatch({ type: 'UPDATE_WORD_OF_MOUTH', payload: womResult.updatedTracker });
         }
         if (womResult.triggered) {
+            dispatch({ type: 'SET_PENDING_REFERRAL', payload: true });
             dispatch({
                 type: 'RESOLVE_TRANSACTION',
                 payload: {
@@ -596,6 +634,35 @@ export const useGameEngine = () => {
                     reputationDelta: {},
                     item: null,
                     log: '[口口相传] 你的好名声传开了，明天可能会有慕名而来的客人。',
+                    customerName: 'System',
+                },
+            });
+        }
+    }
+
+    // 11b. #50: Dark path enforcement - low innocence triggers law enforcement search
+    {
+        const enforcementThreshold = GAME_CONFIG.REPUTATION_THRESHOLDS.DARK_PATH_ENFORCEMENT_THRESHOLD;
+        const enforcementChance = GAME_CONFIG.REPUTATION_THRESHOLDS.DARK_PATH_ENFORCEMENT_CHANCE;
+        const currentInnocence = state.reputation[ReputationType.INNOCENCE];
+
+        if (currentInnocence < enforcementThreshold && Math.random() < enforcementChance) {
+            const fineBase = GAME_CONFIG.REPUTATION_THRESHOLDS.DARK_PATH_ENFORCEMENT_FINE_BASE;
+            const fineRange = GAME_CONFIG.REPUTATION_THRESHOLDS.DARK_PATH_ENFORCEMENT_FINE_RANGE;
+            const fine = fineBase + Math.floor(Math.random() * fineRange);
+            const credLoss = GAME_CONFIG.REPUTATION_THRESHOLDS.DARK_PATH_ENFORCEMENT_CREDIBILITY;
+            const innLoss = GAME_CONFIG.REPUTATION_THRESHOLDS.DARK_PATH_ENFORCEMENT_INNOCENCE;
+
+            dispatch({
+                type: 'RESOLVE_TRANSACTION',
+                payload: {
+                    cashDelta: -fine,
+                    reputationDelta: {
+                        [ReputationType.CREDIBILITY]: credLoss,
+                        [ReputationType.INNOCENCE]: innLoss,
+                    },
+                    item: null,
+                    log: `[执法搜查] 执法人员突击搜查了店铺，以涉嫌违规经营为由罚款 $${fine}。(商誉 ${credLoss}, 清白 ${innLoss})`,
                     customerName: 'System',
                 },
             });
@@ -1095,8 +1162,37 @@ export const useGameEngine = () => {
       // If narrative >= 4, no filler (all slots taken by narrative)
       const narrativeServed = state.narrativeCustomersServedToday;
       const fillerServed = state.customersServedToday - narrativeServed;
-      const fillerAllowedCount = Math.max(0, state.maxCustomersPerDay - narrativeServed);
+
+      // #49: Dark path - innocence below threshold reduces daily customer count by 1
+      const darkPathThreshold = GAME_CONFIG.REPUTATION_THRESHOLDS.DARK_PATH_CUSTOMER_REDUCTION_THRESHOLD;
+      const customerReduction = state.reputation[ReputationType.INNOCENCE] < darkPathThreshold ? 1 : 0;
+      const effectiveMaxCustomers = Math.max(1, state.maxCustomersPerDay - customerReduction);
+
+      const fillerAllowedCount = Math.max(0, effectiveMaxCustomers - narrativeServed);
       const canGenerateFiller = fillerServed < fillerAllowedCount;
+
+      // #25: Word-of-mouth referral customer (first filler slot of the day)
+      if (canGenerateFiller && state.pendingReferralCustomer && fillerServed === 0) {
+          const excludeTemplateIds = new Set<string>(
+              state.inventory
+                  .filter(item => item.status === ItemStatus.ACTIVE && item.templateId)
+                  .map(item => item.templateId!)
+          );
+          const referral = generateReferralCustomer(state.stats.day, excludeTemplateIds, {
+              humanity: state.reputation[ReputationType.HUMANITY],
+              innocence: state.reputation[ReputationType.INNOCENCE],
+              credibility: state.reputation[ReputationType.CREDIBILITY],
+              activeMilestones: state.activeMilestones,
+          });
+          if (referral) {
+              dispatch({ type: 'SET_PENDING_REFERRAL', payload: false });
+              setTimeout(() => {
+                  dispatch({ type: 'SET_CUSTOMER', payload: referral });
+                  dispatch({ type: 'SET_LOADING', payload: false });
+              }, 200);
+              return;
+          }
+      }
 
       if (canGenerateFiller) {
           // Collect template IDs from inventory to avoid duplicate items
@@ -1168,8 +1264,9 @@ export const useGameEngine = () => {
         // 0% Charity: Humanity +normal or +generous
         repDelta[ReputationType.HUMANITY] += isGenerous ? GAME_CONFIG.REPUTATION_DELTAS.CHARITY_GENEROUS_HUMANITY : GAME_CONFIG.REPUTATION_DELTAS.CHARITY_NORMAL_HUMANITY;
     } else if (rate > 0 && rate < 0.10) {
-        // 5% Aid: Credibility always; Humanity if generous
+        // 5% Aid: Credibility always + extra credibility bonus (#38: v1.3 change B); Humanity if generous
         repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.AID_CREDIBILITY;
+        repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.AID_EXTRA_CREDIBILITY;
         if (isGenerous) {
             repDelta[ReputationType.HUMANITY] += GAME_CONFIG.REPUTATION_DELTAS.AID_GENEROUS_HUMANITY;
         }
@@ -1510,6 +1607,52 @@ export const useGameEngine = () => {
         [ReputationType.INNOCENCE]: currentRep[ReputationType.INNOCENCE] + (result.reputationDelta[ReputationType.INNOCENCE] || 0)
     };
     checkMilestones(projectedRep);
+
+    // #3: Record departure attitude to item log
+    if (result.success && result.item && !result.item.isVirtual && currentCust) {
+        const satisfaction = evaluateSatisfaction(
+            result.terms?.principal || 0,
+            result.terms?.rate || 0.05,
+            currentCust.minimumAmount,
+            currentCust.minimumAmount,
+            false,
+            currentCust.minimumAmount > 0
+                ? (result.terms?.principal || 0) / currentCust.minimumAmount
+                : 0.7
+        );
+        const departureLog = generatePlayerChoiceLog(
+            state.stats.day,
+            'DEPARTURE',
+            { satisfaction }
+        );
+        dispatch({
+            type: 'APPEND_ITEM_LOGS',
+            payload: [{ itemId: result.item.id, log: departureLog }]
+        });
+    }
+
+    // #21: Record spectrometer anomaly/confirmation to item log
+    if (result.success && result.item && !result.item.isVirtual) {
+        const isAnomaly = checkItemAnomaly(result.item.perceivedValue, result.item.realValue, state.shopUpgrades);
+        if (hasPrecisionBench(state.shopUpgrades)) {
+            let feedbackText: string;
+            if (isAnomaly) {
+                const visualValue = result.item.perceivedValue ?? result.item.realValue;
+                const pctDiff = result.item.realValue > 0
+                    ? (Math.abs(visualValue - result.item.realValue) / result.item.realValue) * 100
+                    : 0;
+                const severity = getAnomalySeverity(pctDiff);
+                feedbackText = getAnomalyMessage(severity).text;
+            } else {
+                feedbackText = getNormalConfirmationMessage();
+            }
+            const spectroLog = generateSpectrometerLog(state.stats.day, feedbackText, isAnomaly);
+            dispatch({
+                type: 'APPEND_ITEM_LOGS',
+                payload: [{ itemId: result.item.id, log: spectroLog }]
+            });
+        }
+    }
 
     // NPC Fate Tracking: Record initial pawn entry for narrative customers
     if (result.success && currentCust?.chainId && result.terms && result.item) {

@@ -27,6 +27,8 @@ const STORAGE_LEVEL_VISUALS: Record<number, { label: string; color: string; bord
 export const InventoryModal: React.FC = () => {
   const { state, dispatch } = useGame();
   const [detailItem, setDetailItem] = useState<Item | null>(null);
+  // #22: NPC chain filter - clicking NPC avatar toggles highlight
+  const [filterChainId, setFilterChainId] = useState<string | null>(null);
 
   if (!state.showInventory) return null;
 
@@ -98,6 +100,12 @@ export const InventoryModal: React.FC = () => {
   // Handle opening item detail modal
   const handleOpenDetail = (item: Item) => {
       setDetailItem(item);
+      playSfx('CLICK');
+  };
+
+  // #22: Toggle NPC chain filter
+  const handleNpcClick = (chainId: string) => {
+      setFilterChainId(prev => prev === chainId ? null : chainId);
       playSfx('CLICK');
   };
 
@@ -295,16 +303,34 @@ export const InventoryModal: React.FC = () => {
                       <p className="text-sm tracking-widest uppercase">NO ASSETS FOUND IN SECTOR</p>
                   </div>
               ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10 pb-10">
-                      {displayItems.map(item => (
-                          <ItemCard
-                              key={item.id}
-                              item={item}
-                              currentDay={currentDay}
-                              actions={renderActions(item)}
-                          />
-                      ))}
-                  </div>
+                  <>
+                    {/* #22: NPC filter active indicator */}
+                    {filterChainId && (
+                      <div className="mb-3 flex items-center gap-2 relative z-10">
+                        <span className="text-xs text-amber-400 font-mono tracking-wider">
+                          {'>'} NPC_FILTER_ACTIVE
+                        </span>
+                        <button
+                          onClick={() => setFilterChainId(null)}
+                          className="text-[10px] text-stone-400 hover:text-white border border-stone-600 hover:border-stone-400 px-2 py-0.5 rounded transition-colors"
+                        >
+                          CLEAR
+                        </button>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10 pb-10">
+                        {displayItems.map(item => (
+                            <ItemCard
+                                key={item.id}
+                                item={item}
+                                currentDay={currentDay}
+                                actions={renderActions(item)}
+                                onNpcClick={handleNpcClick}
+                                highlightChainId={filterChainId}
+                            />
+                        ))}
+                    </div>
+                  </>
               )}
           </div>
       </div>

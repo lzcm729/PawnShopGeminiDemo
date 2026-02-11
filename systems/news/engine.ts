@@ -505,6 +505,23 @@ export const generateDailyNews = (state: GameState): DailyNewsResult => {
     // 6. S3-F2: Select with priority algorithm
     const { selected, deferred: overflowDeferred } = selectNewsForDisplay(allCandidates, currentDay);
 
+    // 6b. #68: Guarantee at least one MARKET_INTEL per day
+    // Check if selected + persisted already have MARKET_INTEL
+    const hasMarketIntel = selected.some(n => n.category === NewsCategory.MARKET_INTEL)
+        || persistedNews.some(n => n.category === NewsCategory.MARKET_INTEL);
+    if (!hasMarketIntel) {
+        // Pick a random MARKET_INTEL from the full registry (ignoring trigger conditions)
+        const marketPool = ALL_NEWS_DATA.filter(n =>
+            n.category === NewsCategory.MARKET_INTEL
+            && !persistedNews.some(p => p.id === n.id)
+            && !selected.some(s => s.id === n.id)
+        );
+        if (marketPool.length > 0) {
+            const fallback = marketPool[Math.floor(Math.random() * marketPool.length)];
+            selected.push(fallback);
+        }
+    }
+
     // 7. Convert selected to ActiveNewsInstance
     const newInstances: ActiveNewsInstance[] = selected.map((n, idx) => ({
         ...n,

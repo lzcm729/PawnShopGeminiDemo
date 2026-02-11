@@ -75,4 +75,7 @@ export interface Customer {
 
   /** Dynamic chain effects injected during story customer generation */
   _dynamicEffects?: ChainUpdateEffect[];
+
+  /** #25: Word-of-mouth referral customer flag */
+  isReferral?: boolean;
 }

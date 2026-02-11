@@ -38,7 +38,9 @@ import {
   getLowHeatPriceBonus,
   calculateProtectionFee,
   shouldRequestProtectionFee,
-  isInProtectionCooldown
+  isInProtectionCooldown,
+  getNewsSentimentModifier,
+  getMarketTrend
 } from '../systems/blackmarket/blackmarketService';
 import { getBlackMarketContactLevel, getActiveBlackMarketConfig } from '../systems/upgrades';
 
@@ -48,6 +50,18 @@ export const useBlackmarket = () => {
   // Black market trust is inversely proportional to innocence
   // Lower innocence = more trusted in the black market = better commission rates
   const blackMarketTrust = 100 - reputation[ReputationType.INNOCENCE];
+
+  // #24: News sentiment modifier for black market prices
+  const newsSentiment = useMemo(
+    () => getNewsSentimentModifier(state.dailyNews || []),
+    [state.dailyNews]
+  );
+
+  // #53: Market trend indicator for UI
+  const marketTrend = useMemo(
+    () => getMarketTrend(state.dailyNews || []),
+    [state.dailyNews]
+  );
   const innocence = reputation[ReputationType.INNOCENCE];
   const blackMarketLevel = getBlackMarketContactLevel(shopUpgrades);
   const blackMarketConfig = getActiveBlackMarketConfig(shopUpgrades);
@@ -281,8 +295,8 @@ export const useBlackmarket = () => {
     const adjustedRequest = lowHeatBonus > 0
       ? { ...request, priceMultiplier: request.priceMultiplier + lowHeatBonus }
       : request;
-    return calculatePurchasePrice(item, adjustedRequest, blackMarketTrust, blackMarketLevel);
-  }, [blackMarketTrust, blackMarketLevel, blackmarket.lowHeatReward]);
+    return calculatePurchasePrice(item, adjustedRequest, blackMarketTrust, blackMarketLevel, newsSentiment);
+  }, [blackMarketTrust, blackMarketLevel, blackmarket.lowHeatReward, newsSentiment]);
 
   /**
    * Get price for player-initiated sale
@@ -292,8 +306,8 @@ export const useBlackmarket = () => {
     const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
     // v3.6 [BM-4]: Apply sale penalty
     const adjustedMultiplier = multiplier * (1 - blackmarket.daily.salePenaltyPercent);
-    return calculateSalePrice(item, adjustedMultiplier, blackMarketTrust, state.stats.day);
-  }, [blackmarket.daily, blackMarketTrust, state.stats.day]);
+    return calculateSalePrice(item, adjustedMultiplier, blackMarketTrust, state.stats.day, newsSentiment);
+  }, [blackmarket.daily, blackMarketTrust, state.stats.day, newsSentiment]);
 
   /**
    * Get estimated sale price range
@@ -304,10 +318,10 @@ export const useBlackmarket = () => {
     const penaltyFactor = 1 - salePenaltyPercent;
 
     return {
-      min: Math.floor(item.realValue * saleMultiplierMin * penaltyFactor * (1 - commission)),
-      max: Math.floor(item.realValue * saleMultiplierMax * penaltyFactor * (1 - commission))
+      min: Math.floor(item.realValue * saleMultiplierMin * penaltyFactor * (1 - commission) * newsSentiment),
+      max: Math.floor(item.realValue * saleMultiplierMax * penaltyFactor * (1 - commission) * newsSentiment)
     };
-  }, [blackmarket.daily, blackMarketTrust]);
+  }, [blackmarket.daily, blackMarketTrust, newsSentiment]);
 
   // ========================================================================
   // Transactions
@@ -321,7 +335,7 @@ export const useBlackmarket = () => {
     if (request.fulfilled) return; // This specific request is already fulfilled
     if (!isEligibleForPurchase(item, request)) return;
 
-    const price = calculatePurchasePrice(item, request, blackMarketTrust, blackMarketLevel);
+    const price = calculatePurchasePrice(item, request, blackMarketTrust, blackMarketLevel, newsSentiment);
     const heatGain = getHeatGain(true);
 
     dispatch({
@@ -334,7 +348,7 @@ export const useBlackmarket = () => {
         heatGain
       }
     });
-  }, [isMarketOpen, blackMarketTrust, blackMarketLevel, dispatch]);
+  }, [isMarketOpen, blackMarketTrust, blackMarketLevel, newsSentiment, dispatch]);
 
   /**
    * Sell item via player sale track (low price track)
@@ -346,7 +360,7 @@ export const useBlackmarket = () => {
 
     const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
     const adjustedMultiplier = multiplier * (1 - blackmarket.daily.salePenaltyPercent);
-    const price = calculateSalePrice(item, adjustedMultiplier, blackMarketTrust, state.stats.day);
+    const price = calculateSalePrice(item, adjustedMultiplier, blackMarketTrust, state.stats.day, newsSentiment);
     const heatGain = getHeatGain(false);
 
     dispatch({
@@ -358,7 +372,7 @@ export const useBlackmarket = () => {
         heatGain
       }
     });
-  }, [isMarketOpen, blackmarket.daily, blackMarketTrust, state.stats.day, dispatch]);
+  }, [isMarketOpen, blackmarket.daily, blackMarketTrust, state.stats.day, newsSentiment, dispatch]);
 
   /**
    * Pay fine to avoid market lockdown
@@ -408,6 +422,10 @@ export const useBlackmarket = () => {
     lowHeatReward,
     protectionFeeInfo,
     salePenaltyPercent,
+
+    // #24/#53: News-driven market state
+    newsSentiment,
+    marketTrend,
 
     // Item queries
     getEligibleItems,

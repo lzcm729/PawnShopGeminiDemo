@@ -22,6 +22,9 @@ import {
   InsightStatus,
   InsightNarrative,
 } from '../systems/insight';
+import { hasPrecisionBench } from '../systems/upgrades/utils';
+import { getWorkshopInsightHint } from '../systems/game/utils/logGenerator';
+import { GAME_CONFIG } from '../systems/game/config';
 
 // ============================================================================
 // Hook 返回类型
@@ -185,13 +188,23 @@ export const useInsight = (): UseInsightReturn => {
       // 生成叙事
       const narrative = getInsightNarrative(item, result);
 
+      // #11: Workshop insight hint (occasionally after successful insight when workshop is unlocked)
+      if (hasPrecisionBench(state.shopUpgrades) && Math.random() < GAME_CONFIG.WORKSHOP.INSIGHT_HINT_CHANCE) {
+        const hint = getWorkshopInsightHint();
+        if (hint) {
+          narrative.discoveryText = narrative.discoveryText
+            ? `${narrative.discoveryText}\n\n${hint}`
+            : hint;
+        }
+      }
+
       return {
         success: true,
         result,
         narrative,
       };
     },
-    [inventory, nightState, dispatch, gewuLevel]
+    [inventory, nightState, dispatch, gewuLevel, state.shopUpgrades]
   );
 
   return {

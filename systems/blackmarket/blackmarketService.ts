@@ -33,6 +33,7 @@ import { BlackMarketLevelConfig } from '../upgrades/types';
 import { BLACK_MARKET_LEVELS } from '../upgrades/config';
 import { GAME_CONFIG } from '../game/config';
 import { getBlackmarketVolatilityRange, getBlackmarketPurchaseModifier } from '../appraisal/precision';
+import { ActiveNewsInstance, NewsCategory } from '../news/types';
 
 // ============================================================================
 // P1-10: Customer Ecology Shift
@@ -246,16 +247,19 @@ export function generateDailyBlackmarketState(
 /**
  * Calculate price for selling to market purchase (high price track)
  * C': Item uncertainty affects purchase precision modifier.
+ * #24: News sentiment applies +/-5% modifier.
  * @param item The item being sold
  * @param purchaseRequest The market's purchase request
  * @param underworldRep Player's Underworld reputation
  * @param upgradeLevel Optional black market upgrade level for price bonus (default 1)
+ * @param newsSentiment Optional news sentiment multiplier from getNewsSentimentModifier (default 1.0)
  */
 export function calculatePurchasePrice(
   item: Item,
   purchaseRequest: MarketPurchaseRequest,
   underworldRep: number,
-  upgradeLevel: number = 1
+  upgradeLevel: number = 1,
+  newsSentiment: number = 1.0
 ): number {
   const basePrice = item.realValue;
   const marketMultiplier = purchaseRequest.priceMultiplier;
@@ -266,8 +270,8 @@ export function calculatePurchasePrice(
   const uncertainty = item.uncertainty ?? 0.3;
   const precisionMod = getBlackmarketPurchaseModifier(uncertainty);
 
-  // Final price = realValue * marketMultiplier * (1 + priceBonus) * (1 - commission) * precisionMod
-  const finalPrice = basePrice * marketMultiplier * (1 + priceBonus) * (1 - commission) * precisionMod;
+  // Final price = realValue * marketMultiplier * (1 + priceBonus) * (1 - commission) * precisionMod * newsSentiment
+  const finalPrice = basePrice * marketMultiplier * (1 + priceBonus) * (1 - commission) * precisionMod * newsSentiment;
 
   return Math.floor(finalPrice);
 }
@@ -275,16 +279,19 @@ export function calculatePurchasePrice(
 /**
  * Calculate price for player-initiated sale (low price track)
  * C': Item uncertainty affects price volatility via per-item offset.
+ * #24: News sentiment applies +/-5% modifier.
  * @param item The item being sold
  * @param saleMultiplier The day's sale multiplier (random within min-max range)
  * @param underworldRep Player's Underworld reputation
  * @param day Optional current game day (for deterministic per-item volatility)
+ * @param newsSentiment Optional news sentiment multiplier from getNewsSentimentModifier (default 1.0)
  */
 export function calculateSalePrice(
   item: Item,
   saleMultiplier: number,
   underworldRep: number,
-  day?: number
+  day?: number,
+  newsSentiment: number = 1.0
 ): number {
   const basePrice = item.realValue;
   const { commission } = getUnderworldCommission(underworldRep);
@@ -297,9 +304,9 @@ export function calculateSalePrice(
   const rand = seededRandom(seed);
   const volatilityOffset = offsetLow + rand * (offsetHigh - offsetLow);
 
-  // Final price = realValue * (saleMultiplier + volatilityOffset) * (1 - commission)
+  // Final price = realValue * (saleMultiplier + volatilityOffset) * (1 - commission) * newsSentiment
   const effectiveMultiplier = Math.max(0.1, saleMultiplier + volatilityOffset);
-  const finalPrice = basePrice * effectiveMultiplier * (1 - commission);
+  const finalPrice = basePrice * effectiveMultiplier * (1 - commission) * newsSentiment;
 
   return Math.floor(finalPrice);
 }
@@ -877,6 +884,66 @@ export function isInProtectionCooldown(feeState: ProtectionFeeState, currentDay:
 export function getRefusalRiskBonus(feeState: ProtectionFeeState): number {
   // Each refusal adds to search warning probability, capped
   return Math.min(GAME_CONFIG.BLACKMARKET.REFUSAL_RISK_CAP, feeState.timesRefused * GAME_CONFIG.BLACKMARKET.REFUSAL_RISK_PER_TIME);
+}
+
+// ============================================================================
+// News Sentiment Modifier (#24)
+// ============================================================================
+
+/**
+ * Calculate a price modifier based on active news sentiment.
+ * Positive news (price_up tags / positive percentage effects) => +5% bonus
+ * Negative news (price_down tags / negative percentage effects) => -5% penalty
+ * Neutral or mixed => 0
+ *
+ * @param activeNews Current active news instances
+ * @returns Multiplier (e.g., 1.05 for positive, 0.95 for negative, 1.0 for neutral)
+ */
+export function getNewsSentimentModifier(activeNews: ActiveNewsInstance[]): number {
+  if (!activeNews || activeNews.length === 0) return 1.0;
+
+  let sentimentScore = 0;
+
+  for (const news of activeNews) {
+    // Check tags for sentiment signals
+    const tags = news.tags || [];
+    if (tags.includes('price_up')) sentimentScore += 1;
+    if (tags.includes('price_down')) sentimentScore -= 1;
+
+    // Check effects for price-related modifiers
+    for (const effect of (news.effects || [])) {
+      if (effect.targetSystem === 'appraisal' && effect.parameter.endsWith('_price')) {
+        if (effect.modifierType === 'PERCENTAGE') {
+          sentimentScore += Math.sign(effect.modifier);
+        }
+      }
+    }
+  }
+
+  const mod = GAME_CONFIG.BLACKMARKET.NEWS_SENTIMENT_MODIFIER;
+  if (sentimentScore > 0) return 1 + mod;
+  if (sentimentScore < 0) return 1 - mod;
+  return 1.0;
+}
+
+// ============================================================================
+// Market Trend Indicator (#53)
+// ============================================================================
+
+export type MarketTrendLevel = 'LOW' | 'NORMAL' | 'HIGH';
+
+/**
+ * Get overall market trend based on active news sentiment.
+ * Returns a simple trend level for UI display.
+ *
+ * @param activeNews Current active news instances
+ * @returns 'LOW' | 'NORMAL' | 'HIGH'
+ */
+export function getMarketTrend(activeNews: ActiveNewsInstance[]): MarketTrendLevel {
+  const modifier = getNewsSentimentModifier(activeNews);
+  if (modifier > 1.0) return 'HIGH';
+  if (modifier < 1.0) return 'LOW';
+  return 'NORMAL';
 }
 
 // ============================================================================
