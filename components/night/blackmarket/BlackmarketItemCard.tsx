@@ -4,6 +4,7 @@ import {
   Lock,
   Skull,
   ChevronRight,
+  Eye,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { Item } from '../../../systems/items/types';
@@ -40,9 +41,12 @@ export const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
   onSell,
 }) => {
   const [estMin, estMax] = item.currentRange;
+  const isCounterfeit = item.workState === 'FORGED';
   const colorScheme = variant === 'purchase'
     ? { selected: 'border-green-500 bg-green-950/30', price: 'text-green-400', btn: 'bg-green-900 hover:bg-green-800 border-green-700' }
-    : { selected: 'border-amber-500 bg-amber-950/30', price: 'text-amber-400', btn: 'bg-amber-900 hover:bg-amber-800 border-amber-700' };
+    : isCounterfeit
+      ? { selected: 'border-purple-500 bg-purple-950/30', price: 'text-purple-400', btn: 'bg-purple-900 hover:bg-purple-800 border-purple-700' }
+      : { selected: 'border-amber-500 bg-amber-950/30', price: 'text-amber-400', btn: 'bg-amber-900 hover:bg-amber-800 border-amber-700' };
 
   return (
     <div
@@ -73,7 +77,15 @@ export const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
           </div>
         </div>
         <div className="flex-1">
-          <div className="font-bold text-sm">{getDisplayName(item)}</div>
+          <div className="font-bold text-sm flex items-center gap-1.5">
+            {getDisplayName(item)}
+            {isCounterfeit && (
+              <span className="text-[9px] px-1.5 py-0.5 bg-purple-900/50 text-purple-300 rounded border border-purple-700 inline-flex items-center gap-0.5">
+                <Eye className="w-2.5 h-2.5" />
+                伪造
+              </span>
+            )}
+          </div>
           <div className="text-xs text-stone-500">
             估价: ${estMin} - ${estMax}
           </div>
@@ -86,7 +98,13 @@ export const BlackmarketItemCard: React.FC<BlackmarketItemCardProps> = ({
               <span>仍在典当期，赔偿 ${compensation}</span>
             </div>
           )}
-          {!disabled && (
+          {!disabled && isCounterfeit && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-purple-400">
+              <Eye className="w-3 h-3" />
+              <span>伪造品出售 | 清白 -4 | 鉴伪风险</span>
+            </div>
+          )}
+          {!disabled && !isCounterfeit && (
             <div className="flex items-center gap-1 mt-1 text-xs text-purple-400">
               <Skull className="w-3 h-3" />
               <span>出售获得：黑道 +2</span>

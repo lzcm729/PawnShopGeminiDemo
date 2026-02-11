@@ -37,6 +37,7 @@ import { ESSENCE_ICONS, EssenceCost } from '../../systems/economy/essence';
 import { RecipeStatus, WorkshopResult, RestoreRecipe, ReforgeRecipe, InProgressRecipe, ViolationWarning, QualityOutcome, ReforgeQuality } from '../../systems/workshop/types';
 import { getQualityDisplayName } from '../../systems/workshop/workshopLogic';
 import { getDisplayName } from '../../systems/items/tagUtils';
+import { getGazeConfig } from '../../systems/workshop/forgeryNotoriety';
 
 interface WorkshopPanelProps {
   isOpen: boolean;
@@ -64,8 +65,14 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   // S2-I1: Violation warning state
   const [violationWarning, setViolationWarning] = useState<ViolationWarning | null>(null);
   const [pendingReforgeRecipeId, setPendingReforgeRecipeId] = useState<string | null>(null);
-  // S2-I2: Gaze moment state
-  const [gazeState, setGazeState] = useState<{ text: string; visible: boolean } | null>(null);
+  // S2-I2: Gaze moment state (enhanced with notoriety-aware config)
+  const [gazeState, setGazeState] = useState<{
+    text: string;
+    visible: boolean;
+    skippable: boolean;
+    durationMs: number;
+  } | null>(null);
+  const [pendingResult, setPendingResult] = useState<WorkshopResult | null>(null);
 
   // Auto-select item from pending selection when panel opens
   useEffect(() => {
@@ -156,25 +163,41 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(false);
   };
 
-  // S2-I2: Gaze moment trigger
+  // S2-I2: Gaze moment trigger (notoriety-aware for counterfeit operations)
   const triggerGaze = useCallback((result: WorkshopResult) => {
-    setGazeState({ text: result.narrative.gazeText, visible: false });
+    // Determine gaze config based on operation type
+    let durationMs = 4000;
+    let skippable = true;
+
+    if (result.isCounterfeit) {
+      // Counterfeit gaze evolves with forgery notoriety (design doc §9.3)
+      const gazeConfig = getGazeConfig(state.forgeryNotoriety.totalCounterfeitSales);
+      durationMs = gazeConfig.seconds * 1000;
+      skippable = gazeConfig.skippable;
+    }
+
+    setPendingResult(result);
+    setGazeState({ text: result.narrative.gazeText, visible: false, skippable, durationMs });
     // Start fade-in after brief delay
     setTimeout(() => setGazeState(prev => prev ? { ...prev, visible: true } : null), 100);
-    // Auto-close after 4 seconds
+    // Auto-close after duration
     setTimeout(() => {
       setGazeState(null);
+      setPendingResult(null);
       setLastResult(result);
-    }, 4000);
-  }, []);
+    }, durationMs);
+  }, [state.forgeryNotoriety.totalCounterfeitSales]);
 
-  // S2-I2: Click to skip gaze
+  // S2-I2: Click to skip gaze (only if skippable)
   const skipGaze = useCallback(() => {
-    if (gazeState) {
-      // Find the pending result - it will be set when gaze closes
+    if (gazeState && gazeState.skippable) {
       setGazeState(null);
+      if (pendingResult) {
+        setLastResult(pendingResult);
+        setPendingResult(null);
+      }
     }
-  }, [gazeState]);
+  }, [gazeState, pendingResult]);
 
   const clearResult = () => {
     setLastResult(null);
@@ -216,7 +239,12 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
 
         {/* S2-I2: Gaze Moment Overlay */}
         {gazeState && (
-          <GazeMoment text={gazeState.text} visible={gazeState.visible} onSkip={skipGaze} />
+          <GazeMoment
+            text={gazeState.text}
+            visible={gazeState.visible}
+            skippable={gazeState.skippable}
+            onSkip={skipGaze}
+          />
         )}
 
         {/* S2-I1: Violation Warning Modal */}
@@ -702,14 +730,18 @@ const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, 
 interface GazeMomentProps {
   text: string;
   visible: boolean;
+  skippable: boolean;
   onSkip: () => void;
 }
 
-const GazeMoment: React.FC<GazeMomentProps> = ({ text, visible, onSkip }) => {
+const GazeMoment: React.FC<GazeMomentProps> = ({ text, visible, skippable, onSkip }) => {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-pointer"
-      onClick={onSkip}
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center bg-black/80",
+        skippable ? "cursor-pointer" : "cursor-default"
+      )}
+      onClick={skippable ? onSkip : undefined}
     >
       <div className="max-w-md text-center px-8">
         <Eye className="w-8 h-8 text-amber-400/40 mx-auto mb-6" />
@@ -721,12 +753,21 @@ const GazeMoment: React.FC<GazeMomentProps> = ({ text, visible, onSkip }) => {
         >
           "{text}"
         </p>
-        <p className={cn(
-          "text-[10px] text-stone-600 mt-8 transition-opacity duration-1000 delay-500",
-          visible ? "opacity-100" : "opacity-0"
-        )}>
-          点击任意处跳过
-        </p>
+        {skippable ? (
+          <p className={cn(
+            "text-[10px] text-stone-600 mt-8 transition-opacity duration-1000 delay-500",
+            visible ? "opacity-100" : "opacity-0"
+          )}>
+            点击任意处跳过
+          </p>
+        ) : (
+          <p className={cn(
+            "text-[10px] text-stone-600/50 mt-8 transition-opacity duration-1000 delay-500",
+            visible ? "opacity-100" : "opacity-0"
+          )}>
+            ......
+          </p>
+        )}
       </div>
     </div>
   );

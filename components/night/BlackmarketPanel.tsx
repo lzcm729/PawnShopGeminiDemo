@@ -7,13 +7,19 @@
  * - Player Sales: Any forfeit item at lower prices (60-85%)
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Modal } from '../ui/Modal';
 import { HelpTooltip } from '../ui/Tooltip';
 import { useBlackmarket } from '../../hooks/useBlackmarket';
 import { useGame } from '../../store/GameContext';
 import { Item } from '../../systems/items/types';
 import { MarketPurchaseRequest } from '../../systems/blackmarket/types';
+import {
+  executeCounterfeitSale,
+  getRandomSaleMultiplier,
+  type CounterfeitSaleResult as ServiceCounterfeitResult,
+} from '../../systems/blackmarket';
+import { ReputationType } from '../../systems/core/types';
 import {
   Skull,
   Lock,
@@ -30,6 +36,7 @@ import { TodaySalesSummary } from './blackmarket/TodaySalesSummary';
 import { ProtectionFeePanel } from './blackmarket/ProtectionFeePanel';
 import { LowHeatRewardBanner } from './blackmarket/LowHeatRewardBanner';
 import { ConfirmDialog } from './blackmarket/ConfirmDialog';
+import { CounterfeitSaleModal, CounterfeitSaleResult } from './blackmarket/CounterfeitSaleModal';
 
 interface BlackmarketPanelProps {
   isOpen: boolean;
@@ -75,6 +82,14 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
     price?: number;
   } | null>(null);
 
+  // Counterfeit sale modal state
+  const [counterfeitSale, setCounterfeitSale] = useState<{
+    isOpen: boolean;
+    item: Item | null;
+    result: CounterfeitSaleResult | null;
+    serviceResult: ServiceCounterfeitResult | null;
+  }>({ isOpen: false, item: null, result: null, serviceResult: null });
+
   // Get sellable items
   const sellableItems = useMemo(() => getSellableItems(), [getSellableItems]);
 
@@ -107,9 +122,80 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
   };
 
   const handleSellDirect = (item: Item) => {
+    // Route FORGED items through counterfeit sale flow (design doc §6.5)
+    if (item.workState === 'FORGED') {
+      handleCounterfeitSale(item);
+      return;
+    }
     const price = getSalePrice(item);
     setConfirmAction({ type: 'sell_direct', item, price });
   };
+
+  // Counterfeit sale: compute result via service, then show progress modal
+  const handleCounterfeitSale = useCallback((item: Item) => {
+    const underworldRep = 100 - state.reputation[ReputationType.INNOCENCE];
+    const saleMultiplier = getRandomSaleMultiplier(
+      state.blackmarket.daily, item.id, state.stats.day
+    );
+    // Counterfeit value multiplier: derive from realValue/baseValue ratio if available,
+    // otherwise fall back to 1.0 (the service handles base pricing)
+    const valueMultiplier = (item.baseValue && item.baseValue > 0)
+      ? item.realValue / item.baseValue
+      : 1.0;
+
+    const serviceResult = executeCounterfeitSale(
+      item,
+      saleMultiplier,
+      underworldRep,
+      state.forgeryNotoriety,
+      valueMultiplier
+    );
+
+    // Pre-calculate the original (unpenalized) price for display
+    const originalPrice = serviceResult.detected
+      ? Math.floor(serviceResult.finalPrice / 0.50)
+      : serviceResult.finalPrice;
+
+    const uiResult: CounterfeitSaleResult = {
+      detected: serviceResult.detected,
+      finalPrice: serviceResult.finalPrice,
+      originalPrice,
+      heatGain: serviceResult.heatDelta,
+      credibilityLoss: Math.abs(serviceResult.reputationDelta.credibility),
+      innocenceLoss: Math.abs(serviceResult.reputationDelta.innocence),
+      itemName: item.name,
+    };
+
+    setCounterfeitSale({
+      isOpen: true,
+      item,
+      result: uiResult,
+      serviceResult,
+    });
+  }, [state.reputation, state.blackmarket.daily, state.stats.day, state.forgeryNotoriety]);
+
+  // Complete counterfeit sale: dispatch action after progress bar finishes
+  const handleCounterfeitSaleComplete = useCallback(() => {
+    const { item, serviceResult } = counterfeitSale;
+    if (!item || !serviceResult) return;
+
+    dispatch({
+      type: 'BLACKMARKET_COUNTERFEIT_SALE',
+      payload: {
+        itemId: item.id,
+        itemName: item.name,
+        amount: serviceResult.finalPrice,
+        detected: serviceResult.detected,
+        heatGain: serviceResult.heatDelta,
+        credibilityLoss: serviceResult.reputationDelta.credibility,
+        innocenceLoss: serviceResult.reputationDelta.innocence,
+        updatedNotoriety: serviceResult.updatedNotoriety,
+      },
+    });
+
+    setCounterfeitSale({ isOpen: false, item: null, result: null, serviceResult: null });
+    setSelectedItemId(null);
+  }, [counterfeitSale, dispatch]);
 
   const handlePayFine = () => {
     if (riskEvent?.penalty) {
@@ -323,6 +409,14 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
           onCancel={() => setConfirmAction(null)}
         />
       )}
+
+      {/* Counterfeit Sale Modal (synchronous blocking flow) */}
+      <CounterfeitSaleModal
+        isOpen={counterfeitSale.isOpen}
+        itemName={counterfeitSale.item?.name ?? ''}
+        onComplete={handleCounterfeitSaleComplete}
+        result={counterfeitSale.result}
+      />
     </Modal>
   );
 };
