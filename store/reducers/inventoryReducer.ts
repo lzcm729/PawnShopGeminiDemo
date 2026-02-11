@@ -89,6 +89,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
         case 'EXTEND_PAWN': {
             const { itemId, interestPaid, newDueDate, name } = action.payload;
             playSfx('CASH');
+            const extendItem = state.inventory.find(i => i.id === itemId);
             const updatedInventory = state.inventory.map(item => {
                 if (item.id === itemId && item.pawnInfo) {
                     return {
@@ -108,12 +109,22 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 amount: interestPaid,
                 type: 'EXTEND'
             };
+            // Build deal summary so departure view shows renewal info
+            const extendDealSummary: DealSummary | null = extendItem ? {
+                cashDelta: interestPaid,
+                reputationDelta: { [ReputationType.CREDIBILITY]: 1 },
+                itemName: extendItem.name,
+                itemCategory: extendItem.category,
+                dealQuality: 'fair',
+                interestRate: extendItem.pawnInfo?.interestRate ?? 0.05,
+            } : null;
             return {
                 ...state,
                 stats: { ...state.stats, cash: state.stats.cash + interestPaid },
                 inventory: updatedInventory,
                 todayTransactions: [...state.todayTransactions, record],
-                dayEvents: [...state.dayEvents, `${name} 续当一周 (收取利息 $${interestPaid})`]
+                dayEvents: [...state.dayEvents, `${name} 续当一周 (收取利息 $${interestPaid})`],
+                lastDealSummary: extendDealSummary,
             };
         }
 
