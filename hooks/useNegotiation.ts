@@ -213,9 +213,13 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       setRevealedMinimum(false);
 
       // A1: Apply ask price precision modifier
-      const baseAsk = customer.currentAskPrice ?? customer.desiredAmount;
-      const askModifier = getAskPriceModifier(itemUncertainty);
+      // NaN guard: nullish coalescing doesn't catch NaN, so explicitly check with Number.isFinite
+      const rawAsk = customer.currentAskPrice ?? customer.desiredAmount;
+      const baseAsk = Number.isFinite(rawAsk) ? rawAsk : (Number.isFinite(customer.desiredAmount) ? customer.desiredAmount : 0);
+      const safeUncertainty = Number.isFinite(itemUncertainty) ? itemUncertainty : 0.3;
+      const askModifier = getAskPriceModifier(safeUncertainty);
       let adjustedAsk = Math.round(baseAsk * askModifier);
+      if (!Number.isFinite(adjustedAsk)) adjustedAsk = baseAsk;
 
       // #46: SLY NPC inflated ask — "会演戏，初始 Ask 虚高"
       const npcStyle: NpcPushPullStyle = getPushPullStyle(customer.behaviorTags);
@@ -250,9 +254,13 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       setOfferHistory([]);
       setRevealedMinimum(false);
       // A1: Apply ask price precision modifier on reset too
-      const baseAsk = customer.currentAskPrice ?? customer.desiredAmount;
-      const askModifier = getAskPriceModifier(itemUncertainty);
+      // NaN guard: nullish coalescing doesn't catch NaN, so explicitly check with Number.isFinite
+      const rawAsk = customer.currentAskPrice ?? customer.desiredAmount;
+      const baseAsk = Number.isFinite(rawAsk) ? rawAsk : (Number.isFinite(customer.desiredAmount) ? customer.desiredAmount : 0);
+      const safeUncertainty = Number.isFinite(itemUncertainty) ? itemUncertainty : 0.3;
+      const askModifier = getAskPriceModifier(safeUncertainty);
       let adjustedAsk = Math.round(baseAsk * askModifier);
+      if (!Number.isFinite(adjustedAsk)) adjustedAsk = baseAsk;
 
       // #46: SLY NPC inflated ask on reset too
       const npcStyle: NpcPushPullStyle = getPushPullStyle(customer.behaviorTags);

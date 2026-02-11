@@ -191,10 +191,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const [pushPullOverlay, setPushPullOverlay] = useState<{ text: string; color: string } | null>(null);
   const pushPullOverlayKeyRef = useRef(0);
 
-  // #45: First-impression text overlay on customer arrival
-  const [showFirstImpression, setShowFirstImpression] = useState(false);
-  const firstImpressionShownRef = useRef<string | null>(null);
-
   // Push-Pull: Track previous ask price for animation
   const [prevAskPrice, setPrevAskPrice] = useState<number>(currentAskPrice);
   const [askPriceChanged, setAskPriceChanged] = useState(false);
@@ -376,16 +372,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       cumulativeReductionRef.current = 0;
       floorCapShownRef.current = false;
   }, [currentCustomer?.id]);
-
-  // #45: Show first-impression overlay when a new customer arrives
-  useEffect(() => {
-    if (!currentCustomer?.id || firstImpressionShownRef.current === currentCustomer.id) return;
-    if (!currentCustomer.observation) return;
-    firstImpressionShownRef.current = currentCustomer.id;
-    setShowFirstImpression(true);
-    const timer = setTimeout(() => setShowFirstImpression(false), 3000);
-    return () => clearTimeout(timer);
-  }, [currentCustomer?.id, currentCustomer?.observation]);
 
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
       const defaultLines = { standard: "行吧，那我走了。", angry: "浪费时间！", desperate: "求求你了..." };
@@ -915,15 +901,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               onAccept={handleStolenAccept}
               onReject={handleStolenReject}
           />
-      )}
-
-      {/* #45: First-impression text overlay */}
-      {showFirstImpression && currentCustomer?.observation && (
-        <div className="absolute left-1/2 top-[45%] -translate-x-1/2 z-50 pointer-events-none animate-fade-in-up">
-          <span className="font-serif italic text-base text-amber-400/90 px-5 py-3 rounded-lg bg-black/80 backdrop-blur-sm shadow-xl border border-amber-800/30 max-w-[300px] text-center block">
-            "{currentCustomer.observation}"
-          </span>
-        </div>
       )}
 
       {/* #32: Push-pull instinct overlay */}
