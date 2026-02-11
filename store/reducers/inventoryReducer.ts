@@ -281,6 +281,7 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
         case 'HOSTILE_TAKEOVER': {
             const { itemId, penalty, name } = action.payload;
             playSfx('FAIL');
+            const takeoverItem = state.inventory.find(i => i.id === itemId);
             const updatedInventory = state.inventory.map(item => {
                 if (item.id === itemId) {
                     const log = generateForfeitLog(item, state.stats.day, "恶意买断");
@@ -288,6 +289,11 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 }
                 return item;
             });
+            const takeoverRepDelta = {
+                [ReputationType.HUMANITY]: -15,
+                [ReputationType.CREDIBILITY]: -10,
+                [ReputationType.INNOCENCE]: -5,
+            };
             const newRep = { ...state.reputation };
             newRep[ReputationType.HUMANITY] = Math.max(0, newRep[ReputationType.HUMANITY] - 15);
             newRep[ReputationType.CREDIBILITY] = Math.max(0, newRep[ReputationType.CREDIBILITY] - 10);
@@ -298,13 +304,23 @@ export function inventoryReducer(state: GameState, action: Action): GameState {
                 amount: -penalty,
                 type: 'PENALTY'
             };
+            // Build deal summary so departure view shows penalty info
+            const takeoverDealSummary: DealSummary | null = takeoverItem ? {
+                cashDelta: -penalty,
+                reputationDelta: takeoverRepDelta,
+                itemName: takeoverItem.name,
+                itemCategory: takeoverItem.category,
+                dealQuality: 'fleeced',
+                interestRate: takeoverItem.pawnInfo?.interestRate ?? 0.05,
+            } : null;
             return {
                 ...state,
                 stats: { ...state.stats, cash: state.stats.cash - penalty },
                 inventory: updatedInventory,
                 reputation: newRep,
                 todayTransactions: [...state.todayTransactions, record],
-                dayEvents: [...state.dayEvents, `恶意违约/强制买断: ${name} (-$${penalty})。顾客极度愤怒。`]
+                dayEvents: [...state.dayEvents, `恶意违约/强制买断: ${name} (-$${penalty})。顾客极度愤怒。`],
+                lastDealSummary: takeoverDealSummary,
             };
         }
 
