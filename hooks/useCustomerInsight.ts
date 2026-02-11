@@ -35,9 +35,24 @@ import {
   getInsightPushPullModifier,
   InsightReward,
   InsightPushPullModifier,
+  ForesightInfo,
 } from '../systems/customerInsight';
-import { hasEmpathyBonus } from '../systems/characterAbility/abilityEngine';
+import { hasEmpathyBonus, isSkillUnlocked, generateForesightResult } from '../systems/characterAbility/abilityEngine';
+import { ForesightResult } from '../systems/characterAbility/types';
 import { GAME_CONFIG } from '../systems/game/config';
+
+// ============================================================================
+// Foresight Converter
+// ============================================================================
+
+/** Convert ForesightResult (ability system) to ForesightInfo (UI display) */
+function toForesightInfo(result: ForesightResult): ForesightInfo | null {
+  if (result.signal === 'NONE') return null;
+  return {
+    predictionText: result.narrativeText,
+    confidence: result.signal === 'HIGH' ? 'high' : 'low',
+  };
+}
 
 // ============================================================================
 // Constants
@@ -107,6 +122,9 @@ interface UseCustomerInsightReturn {
 
   /** Get push-pull modifier based on current insight (I-7) */
   getPushPullModifier: () => InsightPushPullModifier | null;
+
+  /** Current foresight info (generated alongside insight when FORESIGHT skill is unlocked) */
+  foresightInfo: ForesightInfo | null;
 }
 
 // ============================================================================
@@ -212,8 +230,18 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
     // Store insight result
     dispatch({ type: 'USE_CUSTOMER_INSIGHT', payload: result });
 
+    // Generate foresight if FORESIGHT skill is unlocked (洞若观火)
+    if (abilityState && isSkillUnlocked('FORESIGHT', abilityState)) {
+      const foresightResult = generateForesightResult(
+        currentCustomer.redemptionResolve,
+        currentCustomer.item.realValue
+      );
+      const info = toForesightInfo(foresightResult);
+      dispatch({ type: 'SET_FORESIGHT_INFO', payload: info });
+    }
+
     return result;
-  }, [status.canUse, currentCustomer, dispatch, hasUsedPressureSkills]);
+  }, [status.canUse, currentCustomer, dispatch, hasUsedPressureSkills, abilityState]);
 
   // Can perform deep insight (layer 2): insight already used, at layer 1, have AP
   const canDeepInsight = useMemo((): boolean => {
@@ -324,5 +352,6 @@ export const useCustomerInsight = (): UseCustomerInsightReturn => {
     getDispositionInfo: DISPOSITION_INFO,
     getInsightReward,
     getPushPullModifier,
+    foresightInfo: state.currentForesightInfo,
   };
 };

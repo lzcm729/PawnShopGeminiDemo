@@ -1,10 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
-import { Flame, Eye, EyeOff, Heart, Lock, AlertTriangle, HeartHandshake, ScanSearch } from 'lucide-react';
+import { Flame, Eye, EyeOff, Heart, Lock, AlertTriangle, HeartHandshake, ScanSearch, Sparkles } from 'lucide-react';
 import { Customer } from '../../types';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../../systems/assets';
-import { DISPOSITION_INFO, SHOW_DISPOSITION_LABEL_IN_NEGOTIATION, InsightLayer, Disposition } from '../../systems/customerInsight';
+import { DISPOSITION_INFO, SHOW_DISPOSITION_LABEL_IN_NEGOTIATION, InsightLayer, Disposition, ForesightInfo } from '../../systems/customerInsight';
 import { playSfx } from '../../systems/game/audio';
 
 export interface InsightResultData {
@@ -32,6 +32,8 @@ interface CustomerHeaderProps {
     onDeepInsightClick?: () => void;
     canFullInsight?: boolean;
     onFullInsightClick?: () => void;
+    // Foresight (Layer 4)
+    foresightInfo?: ForesightInfo | null;
     // Empathy & Probe
     canInteract?: boolean;
     canUseEmpathy?: boolean;
@@ -56,6 +58,7 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
     onDeepInsightClick,
     canFullInsight,
     onFullInsightClick,
+    foresightInfo,
     canInteract = true,
     canUseEmpathy,
     empathyUsed,
@@ -230,6 +233,33 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Row 4 (Layer 4): Foresight - 洞若观火 */}
+                                        {foresightInfo && (
+                                            <div className={cn(
+                                                "px-3 py-1.5 border-t border-noir-400/20 flex items-start min-w-0",
+                                                foresightInfo.confidence === 'high' ? 'bg-amber-950/10' :
+                                                foresightInfo.confidence === 'medium' ? 'bg-indigo-950/10' :
+                                                'bg-stone-900/10'
+                                            )}>
+                                                <div className="flex items-start gap-1.5 min-w-0">
+                                                    <Sparkles className={cn(
+                                                        "w-3 h-3 shrink-0 mt-0.5",
+                                                        foresightInfo.confidence === 'high' ? 'text-amber-400' :
+                                                        foresightInfo.confidence === 'medium' ? 'text-indigo-400' :
+                                                        'text-stone-500'
+                                                    )} />
+                                                    <p className={cn(
+                                                        "font-serif text-[10px] leading-snug italic break-words min-w-0",
+                                                        foresightInfo.confidence === 'high' ? 'text-amber-300/90' :
+                                                        foresightInfo.confidence === 'medium' ? 'text-indigo-300/80' :
+                                                        'text-stone-400/70'
+                                                    )}>
+                                                        {foresightInfo.predictionText}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

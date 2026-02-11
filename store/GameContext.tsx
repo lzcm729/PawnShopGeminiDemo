@@ -122,6 +122,7 @@ const initialState: GameState = {
     pendingSelectedItemId: null,
     // === CUSTOMER INSIGHT ===
     currentCustomerInsight: null,
+    currentForesightInfo: null,
     lastInsightTrainingResult: null,
     // === POLICE INVESTIGATION ===
     currentPoliceInvestigation: null,

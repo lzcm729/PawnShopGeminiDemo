@@ -89,8 +89,9 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                                     ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || [])] }
                                     : i
                             );
-                            departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
-                            satisfaction = 'DESPERATE';
+                            const pfLevel = evaluatePostForfeitSatisfaction(event.isCoreItem, event.interestRate);
+                            departureSatisfaction = { scene: 'POST_FORFEIT', level: pfLevel };
+                            satisfaction = mapToBaseSatisfaction('POST_FORFEIT', pfLevel);
                             playSfx('FAIL');
 
                             if (state.stats.cash + cashDelta < 0) {
@@ -188,8 +189,9 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                                 playSfx('CASH');
                             } else {
                                 // ANGER
-                                departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
-                                satisfaction = 'DESPERATE';
+                                const pfLevel = evaluatePostForfeitSatisfaction(event.isCoreItem, event.interestRate);
+                                departureSatisfaction = { scene: 'POST_FORFEIT', level: pfLevel };
+                                satisfaction = mapToBaseSatisfaction('POST_FORFEIT', pfLevel);
                                 playSfx('FAIL');
                             }
                             break;
@@ -263,8 +265,9 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                             [ReputationType.INNOCENCE]: -5  // Breaking contract reduces legal standing
                         };
                         log = `拒绝赎回: ${item.name}，支付违约赔偿金 $${compensation}`;
-                        departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
-                        satisfaction = 'DESPERATE';
+                        const pfLevelRefuse = evaluatePostForfeitSatisfaction(event.isCoreItem, event.interestRate);
+                        departureSatisfaction = { scene: 'POST_FORFEIT', level: pfLevelRefuse };
+                        satisfaction = mapToBaseSatisfaction('POST_FORFEIT', pfLevelRefuse);
                         playSfx('FAIL');
                     }
                     break;
@@ -324,8 +327,12 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                         [ReputationType.CREDIBILITY]: 1
                     };
                     log = `拒绝续当: ${item.name} 已绝当 (Humanity ${renewRefusalPenalty}, Credibility +1)`;
-                    departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
-                    satisfaction = 'DESPERATE';
+                    const pfLevelRenewRefuse = evaluatePostForfeitSatisfaction(
+                        event?.isCoreItem ?? false,
+                        event?.interestRate ?? item.pawnInfo?.interestRate ?? 0.10
+                    );
+                    departureSatisfaction = { scene: 'POST_FORFEIT', level: pfLevelRenewRefuse };
+                    satisfaction = mapToBaseSatisfaction('POST_FORFEIT', pfLevelRenewRefuse);
                     playSfx('CLICK');
                     break;
                 }
@@ -371,8 +378,12 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                         [ReputationType.CREDIBILITY]: -1
                     };
                     log = `[违约] ${event?.npcName || '顾客'} 发现 ${item.name} 已被变卖，人情 -3，商誉 -1`;
-                    departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
-                    satisfaction = 'DESPERATE';
+                    const pfLevelBreach = evaluatePostForfeitSatisfaction(
+                        event?.isCoreItem ?? false,
+                        event?.interestRate ?? item.pawnInfo?.interestRate ?? 0.10
+                    );
+                    departureSatisfaction = { scene: 'POST_FORFEIT', level: pfLevelBreach };
+                    satisfaction = mapToBaseSatisfaction('POST_FORFEIT', pfLevelBreach);
                     playSfx('FAIL');
                     // Clear breach tracking since penalty is now applied
                     newInventory = newInventory.map(i =>

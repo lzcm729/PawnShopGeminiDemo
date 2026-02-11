@@ -4,6 +4,7 @@ import { GamePhase } from '../core/phases';
 import { Item } from '../items/types';
 import { Customer } from '../npc/types';
 import { TransactionRecord } from '../economy/types';
+import { TransactionFeedback } from '../npc/fillerGenerator';
 import { EventChainState, MailInstance, SatisfactionLevel, DepartureSatisfaction, ExpiryEvent, PoliceInvestigationEvent, NpcFateEntry } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier, PendingNewsItem } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
@@ -11,7 +12,7 @@ import { InProgressRecipe, ForgeryNotorietyState, ReturnResult } from '../worksh
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
 import { GameNode } from '../../types/node';
 import { BlackmarketState } from '../blackmarket/types';
-import { CustomerInsightResult, InsightTrainingResult } from '../customerInsight';
+import { CustomerInsightResult, InsightTrainingResult, ForesightInfo } from '../customerInsight';
 import { HoldingPeriodEvent } from '../npc/types';
 import { DailyChallenge } from './dailyChallenge';
 import { DailySchedule } from '../npc/customerScheduler';
@@ -42,6 +43,7 @@ export interface DealSummary {
   dealQuality: 'fleeced' | 'fair' | 'premium';
   interestRate: number;  // Decimal fraction (0, 0.05, 0.10, 0.20) for skill eligibility checks
   merchantMonologue?: string;  // Filler customer merchant monologue (v2.1 Section 10)
+  transactionFeedback?: TransactionFeedback;  // Redemption rate impact feedback (v2.1)
 }
 
 export interface GameState {
@@ -121,6 +123,7 @@ export interface GameState {
 
   // === CUSTOMER INSIGHT (洞察客户) ===
   currentCustomerInsight: CustomerInsightResult | null;  // 当前客户的洞察结果
+  currentForesightInfo: ForesightInfo | null;  // 洞若观火预测结果（洞察时生成，送客界面显示）
   lastInsightTrainingResult: InsightTrainingResult | null;  // 上一次交易的洞察训练反馈（夜间复盘用）
 
   // === POLICE INVESTIGATION (警方调查) ===

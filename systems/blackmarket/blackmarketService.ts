@@ -458,13 +458,16 @@ export function applyHeatDecay(currentHeat: number, upgradeLevel: number = 1): n
 
 /**
  * Check for and generate risk event based on current heat
+ * @param heat Current heat level (0-10)
+ * @param refusalRiskBonus Extra risk percentage from consecutive protection fee refusals (default 0)
  * @returns RiskEvent if triggered, null otherwise
  */
-export function checkRiskEvent(heat: number): RiskEvent | null {
+export function checkRiskEvent(heat: number, refusalRiskBonus: number = 0): RiskEvent | null {
   const config = getHeatConfig(heat);
+  const effectiveRisk = config.riskPercent + refusalRiskBonus;
   const roll = Math.random() * 100;
 
-  if (roll >= config.riskPercent) {
+  if (roll >= effectiveRisk) {
     return null;  // No event triggered
   }
 
@@ -574,7 +577,9 @@ export function processEndOfDay(
   const isStillLocked = state.isLocked && state.lockUntilDay > currentDay;
 
   // Check for risk event (only if not already locked)
-  const riskEvent = !state.isLocked ? checkRiskEvent(state.heat) : null;
+  // Include refusal risk bonus from consecutive protection fee refusals
+  const refusalBonus = getRefusalRiskBonus(state.protectionFee);
+  const riskEvent = !state.isLocked ? checkRiskEvent(state.heat, refusalBonus) : null;
 
   // Apply risk event effects
   let finalLocked = isStillLocked;

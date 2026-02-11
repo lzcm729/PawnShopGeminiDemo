@@ -5,7 +5,7 @@ import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { useCharacterAbility } from '../hooks/useCharacterAbility';
 import { Button } from './ui/Button';
-import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull, XCircle, HandHeart, Eye, Lock, Sparkles } from 'lucide-react';
+import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull, XCircle, HandHeart, Eye, Lock, Sparkles, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { SatisfactionLevel } from '../systems/narrative/types';
 import { ReputationType } from '../types';
 import { TypewriterText } from './ui/TextEffects';
@@ -61,7 +61,7 @@ export const DepartureView: React.FC = () => {
   const { processNextExpiryEvent } = useGameEngine();
   const { send, can } = useGameMachine();
   const { canExtraCare, applyExtraCare, canComfort, dispatchComfort, isUnlocked } = useCharacterAbility();
-  const { currentCustomer, lastSatisfaction, lastDepartureSatisfaction, lastDealSummary, lastReturnResult, expiryQueue } = state;
+  const { currentCustomer, lastSatisfaction, lastDepartureSatisfaction, lastDealSummary, lastReturnResult, expiryQueue, currentForesightInfo } = state;
 
   const [textComplete, setTextComplete] = useState(false);
   const [showInnerVoice, setShowInnerVoice] = useState(false);
@@ -398,6 +398,34 @@ export const DepartureView: React.FC = () => {
               </div>
           )}
 
+          {/* Transaction Feedback - Redemption Rate Impact (shown below deal summary) */}
+          {lastDealSummary && !lastReturnResult && lastDealSummary.transactionFeedback && (
+              <div className="w-full bg-stone-900/60 border border-stone-700/50 rounded p-3 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+                  <div className="text-[10px] text-stone-500 uppercase tracking-widest mb-2 text-center">赎回意愿影响</div>
+                  <div className="space-y-1">
+                      {lastDealSummary.transactionFeedback.items.map((feedbackItem, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-xs px-2">
+                              <span className="text-stone-400">{feedbackItem.label}</span>
+                              <span className={cn(
+                                  "font-mono font-bold flex items-center gap-1",
+                                  feedbackItem.modifier > 0 ? 'text-pawn-green' :
+                                  feedbackItem.modifier < 0 ? 'text-red-400' :
+                                  'text-stone-500'
+                              )}>
+                                  {feedbackItem.modifier > 0 ? <TrendingUp className="w-3 h-3" /> :
+                                   feedbackItem.modifier < 0 ? <TrendingDown className="w-3 h-3" /> :
+                                   <Minus className="w-3 h-3" />}
+                                  {feedbackItem.effect}
+                              </span>
+                          </div>
+                      ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-stone-700/50 text-center">
+                      <span className="text-stone-300 text-xs font-semibold">{lastDealSummary.transactionFeedback.summary}</span>
+                  </div>
+              </div>
+          )}
+
           {/* No Deal Feedback (if no deal was made) */}
           {!lastDealSummary && (
               <div className="w-full bg-stone-900/60 border border-red-900/50 rounded p-4 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -452,6 +480,46 @@ export const DepartureView: React.FC = () => {
                       </div>
                   </div>
               )
+          )}
+
+          {/* Foresight Display (洞若观火 - shown in departure when foresight was generated during insight) */}
+          {currentForesightInfo && lastDealSummary && (
+              <div className={cn(
+                  "w-full border rounded p-4 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300",
+                  currentForesightInfo.confidence === 'high'
+                      ? 'bg-amber-950/20 border-amber-800/40'
+                      : currentForesightInfo.confidence === 'medium'
+                      ? 'bg-indigo-950/20 border-indigo-800/40'
+                      : 'bg-stone-900/40 border-stone-700/40'
+              )}>
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                      <Sparkles className={cn(
+                          "w-3.5 h-3.5",
+                          currentForesightInfo.confidence === 'high' ? 'text-amber-400' :
+                          currentForesightInfo.confidence === 'medium' ? 'text-indigo-400' :
+                          'text-stone-500'
+                      )} />
+                      <span className="text-[10px] uppercase text-stone-500 tracking-[0.15em] font-bold">洞若观火</span>
+                      <span className={cn(
+                          "text-[10px] font-bold",
+                          currentForesightInfo.confidence === 'high' ? 'text-amber-400' :
+                          currentForesightInfo.confidence === 'medium' ? 'text-indigo-400' :
+                          'text-stone-500'
+                      )}>
+                          {currentForesightInfo.confidence === 'high' ? '强烈直觉' :
+                           currentForesightInfo.confidence === 'medium' ? '模糊预感' :
+                           '一闪而过'}
+                      </span>
+                  </div>
+                  <p className={cn(
+                      "font-serif italic text-sm text-center leading-relaxed",
+                      currentForesightInfo.confidence === 'high' ? 'text-amber-300/90' :
+                      currentForesightInfo.confidence === 'medium' ? 'text-indigo-300/80' :
+                      'text-stone-400/70'
+                  )}>
+                      {currentForesightInfo.predictionText}
+                  </p>
+              </div>
           )}
 
           {/* Extra Care Narrative (shown after using skill) */}

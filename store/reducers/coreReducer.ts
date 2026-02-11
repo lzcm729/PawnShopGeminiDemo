@@ -305,6 +305,7 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 dealQuality: dealQuality || 'fair',
                 interestRate,
                 ...(action.payload.merchantMonologue ? { merchantMonologue: action.payload.merchantMonologue } : {}),
+                ...(action.payload.transactionFeedback ? { transactionFeedback: action.payload.transactionFeedback } : {}),
             } : null;
 
             // Phase transition handled by state machine (TRANSACTION_COMPLETE event)

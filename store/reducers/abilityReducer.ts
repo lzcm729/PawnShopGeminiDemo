@@ -8,6 +8,7 @@ import { Action } from '../actions/types';
 import { SkillId } from '../../systems/characterAbility/types';
 import { SKILL_DEFINITIONS } from '../../systems/characterAbility/skillDefinitions';
 import { removeDeliveredEchoes, enqueueEchoes } from '../../systems/characterAbility/moralEcho';
+import { scheduleWordOfMouthCheck, isSkillUnlocked } from '../../systems/characterAbility/abilityEngine';
 import { clampReputation } from '../../systems/core/reputationUtils';
 import { calculateGewuLevel, getGewuEnergyMax } from '../../systems/insight';
 import { getEffectiveNightEnergy } from '../../systems/upgrades';
@@ -290,10 +291,23 @@ export function abilityReducer(state: GameState, action: Action): GameState {
                 });
             }
 
+            // 3. Schedule word-of-mouth check if WORD_OF_MOUTH skill is unlocked
+            let updatedWordOfMouth = state.abilityState.wordOfMouth;
+            if (isSkillUnlocked('WORD_OF_MOUTH', state.abilityState)) {
+                updatedWordOfMouth = scheduleWordOfMouthCheck(
+                    state.stats.day,
+                    state.abilityState.wordOfMouth
+                );
+            }
+
             return {
                 ...state,
                 reputation: newRep,
                 activeChains: updatedChains,
+                abilityState: {
+                    ...state.abilityState,
+                    wordOfMouth: updatedWordOfMouth,
+                },
             };
         }
 

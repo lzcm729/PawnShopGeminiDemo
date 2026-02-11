@@ -18,6 +18,17 @@ import { ChatLog, LogEntry } from './negotiation/ChatLog';
 import { ControlDeck } from './negotiation/ControlDeck';
 import { StolenWarningOverlay } from './negotiation/StolenWarningOverlay';
 import { CustomerHeader } from './negotiation/CustomerHeader';
+import { createTextRegistry, TextRegistry } from '../systems/utils/textRegistry';
+import floorCapCSV from '../assets/data/texts/floor_cap_hints.csv?raw';
+
+// Floor cap hint text registry (loaded once from CSV)
+let floorCapTexts: TextRegistry | null = null;
+function getFloorCapTexts(): TextRegistry {
+  if (!floorCapTexts) {
+    floorCapTexts = createTextRegistry('floor_cap_hints', floorCapCSV);
+  }
+  return floorCapTexts;
+}
 
 interface NegotiationStateProps {
     negotiation: {
@@ -63,7 +74,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const { evaluateTransaction, commitTransaction, rejectCustomer, isCurrentItemStolen, handleStolenItemDecision } = useGameEngine();
   const { send } = useGameMachine();
   const { formatRate, unitLabel } = useRateDisplay();
-  const { canUseInNegotiation, applyPressure, applyHeartStrike, isUnlocked, hasSeeConsequence, getContractHints } = useCharacterAbility();
+  const { canUseInNegotiation, applyPressure, applyHeartStrike, isUnlocked, hasSeeConsequence, getContractHints, isCapReached } = useCharacterAbility();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
 
@@ -81,6 +92,10 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const heartStrikeSkillAvailable = isUnlocked('HEART_STRIKE');
   const canUseHeartStrikeNow = heartStrikeSkillAvailable && !heartStrikeUsed && canUseInNegotiation('HEART_STRIKE');
 
+  // Cumulative floor reduction tracking (fraction of original floor)
+  const cumulativeReductionRef = useRef<number>(0);
+  const floorCapShownRef = useRef<boolean>(false);
+
   // Customer Insight hook
   const {
     insightResult,
@@ -93,6 +108,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     canFullInsight,
     getBlockReasonText,
     getInsightReward,
+    foresightInfo,
   } = useCustomerInsight();
 
   // Insight Interaction state (EMPATHY / PROBE)
@@ -320,6 +336,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       setHeartStrikeUsed(false);
       setEmpathyUsed(false);
       setProbeUsed(false);
+      cumulativeReductionRef.current = 0;
+      floorCapShownRef.current = false;
   }, [currentCustomer?.id]);
 
   const getRejectionText = (customer: Customer, isAngry: boolean) => {
@@ -429,6 +447,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
       const result = applyPressure(originalFloor, currentFloor, afterConcession, existingReduction);
 
+      // Update cumulative reduction tracking
+      cumulativeReductionRef.current += result.effectiveReduction;
+
       // Mark as used
       setPressureUsed(true);
       dispatch({ type: 'MARK_SKILL_USED', payload: { skillId: 'APPLY_PRESSURE' } });
@@ -437,14 +458,32 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       const bonusText = result.timingBonusApplied ? " (时机加成!)" : "";
       const reductionAmount = currentFloor - result.newFloor;
 
-      setChatLog(prev => [...prev, {
+      const newEntries: LogEntry[] = [{
           id: `pressure-${Date.now()}`,
           sender: 'player' as const,
           text: `[施压] 你施加了心理压力，迫使对方降低底线。${bonusText}`,
           subtext: `底价 -$${reductionAmount} | 耐心 -${result.patienceCost}`,
           sentiment: 'neutral' as const,
           type: 'INNER_MONOLOGUE' as const,
-      }]);
+      }];
+
+      // Check if floor cap is reached after this skill use
+      if (isCapReached(cumulativeReductionRef.current) && !floorCapShownRef.current) {
+          floorCapShownRef.current = true;
+          const hintText = getFloorCapTexts().getRandom('floor_cap_reached');
+          if (hintText) {
+              newEntries.push({
+                  id: `floor-cap-${Date.now()}`,
+                  sender: 'player' as const,
+                  text: hintText,
+                  sentiment: 'neutral' as const,
+                  type: 'INNER_MONOLOGUE' as const,
+                  data: { feedbackType: 'FLOOR_CAP' },
+              });
+          }
+      }
+
+      setChatLog(prev => [...prev, ...newEntries]);
 
       // Apply floor reduction via dedicated action (sets exact newFloor value)
       if (reductionAmount > 0) {
@@ -475,20 +514,41 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
       const result = applyHeartStrike(originalFloor, currentFloor, currentCustomer.behaviorTags, afterConcession, existingReduction);
 
+      // Update cumulative reduction tracking (heart strike currently returns 0 reduction)
+      cumulativeReductionRef.current += result.effectiveReduction;
+
       setHeartStrikeUsed(true);
       dispatch({ type: 'MARK_SKILL_USED', payload: { skillId: 'HEART_STRIKE' } });
 
       const bonusText = result.timingBonusApplied ? " (时机加成!)" : "";
       const reductionAmount = currentFloor - result.newFloor;
 
-      setChatLog(prev => [...prev, {
+      const hsEntries: LogEntry[] = [{
           id: `heartstrike-${Date.now()}`,
           sender: 'player' as const,
           text: `[攻心] 你抓住了对方的心理弱点，轻描淡写地提了一句。${bonusText}`,
           subtext: `对方心防动摇，更容易让步 | 不消耗耐心`,
           sentiment: 'neutral' as const,
           type: 'INNER_MONOLOGUE' as const,
-      }]);
+      }];
+
+      // Check if floor cap is reached after this skill use
+      if (isCapReached(cumulativeReductionRef.current) && !floorCapShownRef.current) {
+          floorCapShownRef.current = true;
+          const hintText = getFloorCapTexts().getRandom('floor_cap_reached');
+          if (hintText) {
+              hsEntries.push({
+                  id: `floor-cap-hs-${Date.now()}`,
+                  sender: 'player' as const,
+                  text: hintText,
+                  sentiment: 'neutral' as const,
+                  type: 'INNER_MONOLOGUE' as const,
+                  data: { feedbackType: 'FLOOR_CAP' },
+              });
+          }
+      }
+
+      setChatLog(prev => [...prev, ...hsEntries]);
 
       if (reductionAmount > 0) {
           dispatch({ type: 'APPLY_SKILL_FLOOR_REDUCTION', payload: { newFloor: result.newFloor } });
@@ -734,6 +794,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           insightBlockReason={insightStatus.blockReason ? getBlockReasonText(insightStatus.blockReason) : undefined}
           insightRevealedLayer={insightResult?.revealedLayer}
           onInsightClick={handleInsightClick}
+          foresightInfo={foresightInfo}
           canDeepInsight={canDeepInsight}
           onDeepInsightClick={handleDeepInsightClick}
           canFullInsight={canFullInsight}

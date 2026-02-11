@@ -225,6 +225,13 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   } | null>(null);
   const [pendingResult, setPendingResult] = useState<WorkshopResult | null>(null);
 
+  // Auto-dismiss reputation micro-feedback after 3 seconds
+  useEffect(() => {
+    if (!repFeedback) return;
+    const timer = setTimeout(() => setRepFeedback(null), 3000);
+    return () => clearTimeout(timer);
+  }, [repFeedback]);
+
   // Auto-select item from pending selection when panel opens
   useEffect(() => {
     if (isOpen && state.pendingSelectedItemId) {
@@ -352,11 +359,23 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   const handleViolationConfirm = () => {
     const route = violationRoute;
     const recipeId = pendingRecipeId;
+    // Capture predicted reputation loss before clearing warning
+    const repLoss = violationWarning?.reputationLoss;
     setViolationWarning(null);
     setViolationRoute(null);
     setPendingRecipeId(null);
 
     if (!recipeId) return;
+
+    // Show predicted reputation risk as micro-feedback
+    if (repLoss && (repLoss.humanity !== 0 || repLoss.credibility !== 0 || (repLoss.innocence != null && repLoss.innocence !== 0))) {
+      setRepFeedback({
+        humanity: repLoss.humanity || undefined,
+        credibility: repLoss.credibility || undefined,
+        innocence: repLoss.innocence ?? undefined,
+      });
+    }
+
     if (route === 'counterfeit') {
       executeCounterfeit(recipeId);
     } else if (route === 'reforge') {
@@ -478,6 +497,11 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
             onConfirm={handleViolationConfirm}
             onCancel={handleViolationCancel}
           />
+        )}
+
+        {/* Reputation Micro-Feedback (predicted risk from violation) */}
+        {repFeedback && (
+          <RepFeedbackOverlay feedback={repFeedback} />
         )}
 
         {/* Training Monologue (invisible scaffolding - I10) */}
@@ -1521,6 +1545,77 @@ const TrainingMonologue: React.FC<TrainingMonologueProps> = ({ text, onDismiss }
         <p className="text-xs text-amber-200/60 italic leading-relaxed">
           {text}
         </p>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// Reputation Micro-Feedback Overlay
+// ============================================================================
+
+interface RepFeedbackOverlayProps {
+  feedback: { humanity?: number; credibility?: number; innocence?: number };
+}
+
+const RepFeedbackOverlay: React.FC<RepFeedbackOverlayProps> = ({ feedback }) => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const fadeIn = setTimeout(() => setVisible(true), 100);
+    return () => clearTimeout(fadeIn);
+  }, []);
+
+  const axes: Array<{ key: string; label: string; value: number; icon: string; color: string }> = [];
+
+  if (feedback.humanity != null && feedback.humanity !== 0) {
+    axes.push({
+      key: 'humanity',
+      label: '人情',
+      value: feedback.humanity,
+      icon: '❤',
+      color: feedback.humanity > 0 ? 'text-red-400' : 'text-red-600',
+    });
+  }
+  if (feedback.credibility != null && feedback.credibility !== 0) {
+    axes.push({
+      key: 'credibility',
+      label: '商誉',
+      value: feedback.credibility,
+      icon: '🤝',
+      color: feedback.credibility > 0 ? 'text-amber-400' : 'text-amber-600',
+    });
+  }
+  if (feedback.innocence != null && feedback.innocence !== 0) {
+    axes.push({
+      key: 'innocence',
+      label: '清白',
+      value: feedback.innocence,
+      icon: '⚖',
+      color: feedback.innocence > 0 ? 'text-blue-400' : 'text-blue-600',
+    });
+  }
+
+  if (axes.length === 0) return null;
+
+  return (
+    <div className={cn(
+      "absolute top-16 right-4 z-40 transition-all duration-500",
+      visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
+    )}>
+      <div className="flex flex-col gap-1 px-3 py-2 rounded border border-red-900/40 bg-noir-200/95 backdrop-blur-sm shadow-lg">
+        <div className="text-[9px] uppercase text-red-400/70 tracking-wider mb-0.5">
+          违约风险预估
+        </div>
+        {axes.map(({ key, label, value, icon, color }) => (
+          <div key={key} className="flex items-center gap-2">
+            <span className="text-sm">{icon}</span>
+            <span className="text-[10px] text-stone-500 w-8">{label}</span>
+            <span className={cn("text-sm font-mono font-bold", color)}>
+              {value > 0 ? '+' : ''}{value}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

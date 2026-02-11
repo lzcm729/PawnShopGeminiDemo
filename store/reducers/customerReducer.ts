@@ -45,12 +45,13 @@ export function customerReducer(state: GameState, action: Action): GameState {
                 // phase transition removed - handled by state machine
                 lastSatisfaction: null,
                 lastDepartureSatisfaction: null,
-                currentCustomerInsight: null  // Clear insight for new customer
+                currentCustomerInsight: null,  // Clear insight for new customer
+                currentForesightInfo: null
             };
         }
 
         case 'CLEAR_CUSTOMER':
-            return { ...state, currentCustomer: null, currentNode: null, lastDealSummary: null, lastReturnResult: null, currentCustomerInsight: null };
+            return { ...state, currentCustomer: null, currentNode: null, lastDealSummary: null, lastReturnResult: null, currentCustomerInsight: null, currentForesightInfo: null };
 
         case 'UPDATE_CUSTOMER_STATUS':
             if (!state.currentCustomer) return state;
@@ -302,7 +303,10 @@ export function customerReducer(state: GameState, action: Action): GameState {
             return { ...state, currentCustomerInsight: action.payload };
 
         case 'CLEAR_CUSTOMER_INSIGHT':
-            return { ...state, currentCustomerInsight: null };
+            return { ...state, currentCustomerInsight: null, currentForesightInfo: null };
+
+        case 'SET_FORESIGHT_INFO':
+            return { ...state, currentForesightInfo: action.payload };
 
         case 'SET_INSIGHT_TRAINING_RESULT':
             return { ...state, lastInsightTrainingResult: action.payload };

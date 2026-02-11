@@ -15,7 +15,8 @@ import { GameNode } from '../../types/node';
 import { BlackmarketState, RiskEvent } from '../../systems/blackmarket/types';
 import { PhaseEvent } from '../../systems/core/phases';
 import { ActiveNewsInstance, MarketModifier, PendingNewsItem } from '../../systems/news/types';
-import { CustomerInsightResult, InsightTrainingResult } from '../../systems/customerInsight';
+import { CustomerInsightResult, InsightTrainingResult, ForesightInfo } from '../../systems/customerInsight';
+import { TransactionFeedback } from '../../systems/npc/fillerGenerator';
 import { DailyChallenge } from '../../systems/game/dailyChallenge';
 import { DailySchedule } from '../../systems/npc/customerScheduler';
 import { SkillId, MoralEchoEvent, AbilityState, ConsequenceFlashResult } from '../../systems/characterAbility/types';
@@ -54,6 +55,7 @@ export type Action =
     // Customer Insight (洞察客户)
     | { type: 'USE_CUSTOMER_INSIGHT'; payload: CustomerInsightResult }
     | { type: 'CLEAR_CUSTOMER_INSIGHT' }
+    | { type: 'SET_FORESIGHT_INFO'; payload: ForesightInfo | null }
     | { type: 'SET_INSIGHT_TRAINING_RESULT'; payload: InsightTrainingResult | null }
 
     // Node management (new unified interface)
@@ -69,7 +71,7 @@ export type Action =
     | { type: 'CONSUME_AP'; payload: number }
 
     // Transaction & Deal
-    | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string; dealQuality?: 'fleeced' | 'fair' | 'premium'; interestRate?: number; merchantMonologue?: string } }
+    | { type: 'RESOLVE_TRANSACTION'; payload: { cashDelta: number; reputationDelta: Partial<ReputationProfile>; item: Item | null; log: string; customerName: string; dealQuality?: 'fleeced' | 'fair' | 'premium'; interestRate?: number; merchantMonologue?: string; transactionFeedback?: TransactionFeedback | null } }
     | { type: 'LIQUIDATE_ITEM'; payload: { itemId: string; amount: number; name: string } }
     | { type: 'REJECT_DEAL' }
 

@@ -14,11 +14,11 @@ import { evaluateSatisfaction } from '../systems/game/utils/satisfaction';
 import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
 import { Dialogue, SatisfactionLevel } from '../systems/narrative/types';
 import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
-import { createTransientChain, getContractTypeFromRate, generateFillerCustomer, generateRedemptionVisitDialogue, getFillerMerchantMonologue, isTransientChain } from '../systems/npc/fillerGenerator';
+import { createTransientChain, getContractTypeFromRate, generateFillerCustomer, generateRedemptionVisitDialogue, getFillerMerchantMonologue, isTransientChain, calculateTransactionFeedback } from '../systems/npc/fillerGenerator';
 import type { CustomerAppearance, CustomerMood, CustomerAge, CustomerGender } from '../systems/npc/fillerGenerator';
 import { generateDailyChallenge, checkChallengeCompletion } from '../systems/game/dailyChallenge';
 import type { DayChallengeContext } from '../systems/game/dailyChallenge';
-import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
+import { checkRiskEvent, getRefusalRiskBonus, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
 import { PhaseEvent } from '../systems/core/phases/types';
 import { checkForPoliceInvestigation, checkForHoldingPeriodEvent } from '../systems/police';
 import { calculateRedemptionTotal } from '../systems/economy/interest';
@@ -31,6 +31,7 @@ import type { ExternalChainTrigger } from '../systems/narrative/externalTrigger'
 import { getEchoesForDay } from '../systems/characterAbility/moralEcho';
 import { getEchoText } from '../systems/characterAbility/moralEchoTexts';
 import { calculateTransactionEssenceGain, calculateStolenGoodsEssenceGain } from '../systems/characterAbility/essenceSystem';
+import { processWordOfMouthChecks } from '../systems/characterAbility/abilityEngine';
 import { generateTrainingResult, determineDisposition } from '../systems/customerInsight';
 import { registerRuntimeMailTemplate } from '../systems/narrative/mailRegistry';
 import { NewsCategory } from '../systems/news/types';
@@ -517,7 +518,9 @@ export const useGameEngine = () => {
     dispatch({ type: 'PREPARE_DAILY_APPOINTMENTS' });
 
     // 8. Black Market - Check for risk events and refresh daily state
-    const blackmarketRiskEvent = checkRiskEvent(state.blackmarket?.heat ?? 0);
+    // Include refusal risk bonus from consecutive protection fee refusals
+    const refusalBonus = state.blackmarket ? getRefusalRiskBonus(state.blackmarket.protectionFee) : 0;
+    const blackmarketRiskEvent = checkRiskEvent(state.blackmarket?.heat ?? 0, refusalBonus);
     dispatch({ type: 'BLACKMARKET_PROCESS_DAY_END', payload: { riskEvent: blackmarketRiskEvent } });
 
     // 9. Daily Challenge Completion Check (v2.1 Section 11.3)
@@ -577,10 +580,32 @@ export const useGameEngine = () => {
     const tomorrowChallenge = generateDailyChallenge();
     dispatch({ type: 'SET_DAILY_CHALLENGE', payload: tomorrowChallenge });
 
-    // 11. Check reputation threshold mails (#43)
+    // 11. Process word-of-mouth checks (口口相传)
+    // If WORD_OF_MOUTH skill is unlocked and there are pending checks for today,
+    // roll to see if a referral customer should appear tomorrow.
+    {
+        const womResult = processWordOfMouthChecks(nextDay, state.abilityState.wordOfMouth);
+        if (womResult.triggered || womResult.updatedTracker !== state.abilityState.wordOfMouth) {
+            dispatch({ type: 'UPDATE_WORD_OF_MOUTH', payload: womResult.updatedTracker });
+        }
+        if (womResult.triggered) {
+            dispatch({
+                type: 'RESOLVE_TRANSACTION',
+                payload: {
+                    cashDelta: 0,
+                    reputationDelta: {},
+                    item: null,
+                    log: '[口口相传] 你的好名声传开了，明天可能会有慕名而来的客人。',
+                    customerName: 'System',
+                },
+            });
+        }
+    }
+
+    // 12. Check reputation threshold mails (#43)
     checkReputationMails();
 
-    // 12. Night cycle complete - transition to EVALUATING via state machine
+    // 13. Night cycle complete - transition to EVALUATING via state machine
     // Note: END_DAY was already sent by NightDashboard.completeNight() to enter PROCESSING
     send({ type: 'NIGHT_CYCLE_DONE' });
   };
@@ -1453,10 +1478,21 @@ export const useGameEngine = () => {
                  fillerMonologue = getFillerMerchantMonologue('contract', contractType);
              }
 
+             // Calculate transaction feedback (redemption rate impact display)
+             let txFeedback = null;
+             if (result.terms && result.item) {
+                 const feedbackContractType = getContractTypeFromRate(result.terms.rate);
+                 txFeedback = calculateTransactionFeedback(
+                     feedbackContractType,
+                     result.terms.principal,
+                     result.item.realValue
+                 );
+             }
+
              if (result.item.isVirtual) {
-                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: null, log: `交易完成: ${result.item.name}。`, customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality, interestRate: result.terms?.rate, merchantMonologue: fillerMonologue } });
+                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: null, log: `交易完成: ${result.item.name}。`, customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality, interestRate: result.terms?.rate, merchantMonologue: fillerMonologue, transactionFeedback: txFeedback } });
              } else {
-                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: result.item, log: `收购了 ${result.item.name} (支出 $${Math.abs(result.cashDelta)})。`, customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality, interestRate: result.terms?.rate, merchantMonologue: fillerMonologue } });
+                 dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: result.item, log: `收购了 ${result.item.name} (支出 $${Math.abs(result.cashDelta)})。`, customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality, interestRate: result.terms?.rate, merchantMonologue: fillerMonologue, transactionFeedback: txFeedback } });
              }
         } else {
              dispatch({ type: 'RESOLVE_TRANSACTION', payload: { cashDelta: result.cashDelta, reputationDelta: result.reputationDelta, item: null, log: result.message || "交易完成", customerName: state.currentCustomer?.name || "Customer", dealQuality: result.dealQuality, interestRate: result.terms?.rate } });
