@@ -445,6 +445,19 @@ near_floor_concession_bonus = 0.20
 # 攻心让步概率加成
 heart_strike_concession_bonus = 0.30
 
+# --- 共情技能 (Empathy Skill) ---
+[negotiation.empathy]
+# 共情成功后耐心消耗概率修正（负值 = 消耗概率降低）
+patience_loss_modifier = -0.20
+
+# --- 试探技能 (Probe Skill) ---
+[negotiation.probe]
+# 底价区间精度 ±15%
+floor_range_percent = 0.15
+# 让步概率三档阈值
+concession_tier_low = 0.20
+concession_tier_high = 0.40
+
 # ------------------------------------------------------------
 # 黑市系统 (Black Market)
 # ------------------------------------------------------------

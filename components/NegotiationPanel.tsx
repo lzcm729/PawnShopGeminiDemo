@@ -13,6 +13,10 @@ import { getMerchantInstinct } from '../systems/negotiation/instinct';
 import { playSfx } from '../systems/game/audio';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { PushPullResult } from '../systems/negotiation/pushPull';
+import { GAME_CONFIG } from '../systems/game/config';
+import { getEmpathyFeedback } from '../systems/negotiation/empathyProbeFeedback';
+import { getProbeFeedback, getConcessionTierLabel } from '../systems/negotiation/empathyProbeFeedback';
+import { generateProbeReveal, queryConcessionChance, getConcessionTier, type ProbeRevealResult } from '../systems/negotiation/probeEffects';
 import { useRateDisplay } from './ui/RateDisplayContext';
 import { ChatLog, LogEntry } from './negotiation/ChatLog';
 import { ControlDeck } from './negotiation/ControlDeck';
@@ -56,6 +60,9 @@ interface NegotiationStateProps {
         // Round tracking
         roundCount: number;
         isRoundLimitReached: boolean;
+        // Empathy patience modifier
+        empathyPatienceModifier: number;
+        setEmpathyPatienceModifier: React.Dispatch<React.SetStateAction<number>>;
     };
     appraisalFeedbacks?: AppraisalFeedback[];
 }
@@ -114,6 +121,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   // Insight Interaction state (EMPATHY / PROBE)
   const [empathyUsed, setEmpathyUsed] = useState(false);
   const [probeUsed, setProbeUsed] = useState(false);
+  const [probeReveal, setProbeReveal] = useState<ProbeRevealResult | null>(null);
   const insightReward = getInsightReward();
   const hasEmpathyInteraction = insightReward?.unlockedInteractions.includes('EMPATHY') ?? false;
   const hasProbeInteraction = insightReward?.unlockedInteractions.includes('PROBE') ?? false;
@@ -128,6 +136,19 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       const isDesperateTag = currentCustomer.behaviorTags.includes('DESPERATE');
       return getContractHints(npcHope, isDesperateTag);
   }, [hasSeeConsequence, currentCustomer, state.activeChains, getContractHints]);
+
+  // Live concession tier: recomputed after each push-pull round when probe is active
+  const liveConcessionTier = useMemo(() => {
+      if (!probeReveal || !currentCustomer) return null;
+      const chance = queryConcessionChance(
+          currentCustomer.behaviorTags,
+          negotiation.offerPrincipal,
+          currentCustomer.minimumAmount,
+          negotiation.persistCount,
+          negotiation.npcConcessionCount,
+      );
+      return getConcessionTier(chance);
+  }, [probeReveal, currentCustomer, negotiation.offerPrincipal, negotiation.persistCount, negotiation.npcConcessionCount]);
 
   const {
     offerPrincipal,
@@ -152,6 +173,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     // Round tracking
     roundCount,
     isRoundLimitReached,
+    // Empathy patience modifier
+    empathyPatienceModifier,
+    setEmpathyPatienceModifier,
   } = negotiation;
 
   const [chatLog, setChatLog] = useState<LogEntry[]>([]);
@@ -336,6 +360,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       setHeartStrikeUsed(false);
       setEmpathyUsed(false);
       setProbeUsed(false);
+      setProbeReveal(null);
       cumulativeReductionRef.current = 0;
       floorCapShownRef.current = false;
   }, [currentCustomer?.id]);
@@ -568,19 +593,19 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       // Determine correctness based on disposition
       // EMPATHY is effective on emotional/sincere NPCs: 'desperate' | 'sincere'
       // Incorrect on shrewd/calculating NPCs: 'bluffing' | 'firm'
-      const disposition = insightResult.disposition;
+      const disposition = insightResult.disposition as 'desperate' | 'sincere' | 'bluffing' | 'firm';
       const isCorrect = disposition === 'desperate' || disposition === 'sincere';
+      const feedback = getEmpathyFeedback(disposition, isCorrect);
 
       if (isCorrect) {
-          // Correct: positive feedback, no patience cost
-          // NOTE: "reduce patience cost for remaining rounds" would require framework
-          // changes to applyExternalPatienceCost (currently rejects negative values).
-          // For now, correct match gives zero cost + positive feedback.
+          // Correct: apply patience loss modifier for remaining rounds
+          setEmpathyPatienceModifier(GAME_CONFIG.NEGOTIATION.EMPATHY.PATIENCE_LOSS_MODIFIER);
+
           setChatLog(prev => [...prev, {
               id: `empathy-${Date.now()}`,
               sender: 'player' as const,
-              text: '[共情] 你表达了对对方处境的理解，氛围变得温和了一些。',
-              subtext: '好感上升',
+              text: `[共情] ${feedback.text}`,
+              subtext: feedback.subtext || undefined,
               sentiment: 'positive' as const,
               type: 'INNER_MONOLOGUE' as const,
           }]);
@@ -593,10 +618,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           setChatLog(prev => [...prev, {
               id: `empathy-${Date.now()}`,
               sender: 'player' as const,
-              text: willWalkAway
-                  ? '[共情] 你试图表示理解，但对方觉得你在套近乎，愤怒地离开了。'
-                  : '[共情] 你试图表示理解，但对方似乎觉得你在套近乎。',
-              subtext: willWalkAway ? '客户离开了' : '耐心 -2 | 好感下降',
+              text: `[共情] ${feedback.text}`,
+              subtext: feedback.subtext || undefined,
               sentiment: 'negative' as const,
               type: 'INNER_MONOLOGUE' as const,
           }]);
@@ -619,18 +642,28 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       // Determine correctness based on disposition
       // PROBE is effective on bluffing/shrewd NPCs: 'bluffing' | 'firm'
       // Incorrect on emotional/vulnerable NPCs: 'desperate' | 'sincere'
-      const disposition = insightResult.disposition;
+      const disposition = insightResult.disposition as 'desperate' | 'sincere' | 'bluffing' | 'firm';
       const isCorrect = disposition === 'bluffing' || disposition === 'firm';
+      const feedback = getProbeFeedback(disposition, isCorrect);
 
       if (isCorrect) {
-          // Correct: positive feedback, no patience cost
-          // NOTE: "reveal more bottom-line information" would require framework
-          // changes. For now, correct match gives zero cost + positive feedback.
+          // Correct: generate probe reveal with floor range and concession tier
+          const reveal = generateProbeReveal(
+              currentCustomer.minimumAmount,
+              currentCustomer.behaviorTags,
+              offerPrincipal,
+              persistCount,
+              npcConcessionCount,
+          );
+          setProbeReveal(reveal);
+
+          const tierLabel = getConcessionTierLabel(reveal.concessionTier);
+
           setChatLog(prev => [...prev, {
               id: `probe-${Date.now()}`,
               sender: 'player' as const,
-              text: '[试探] 你巧妙地试探了对方的底线，对方的虚张声势被你看穿了。',
-              subtext: '底线信息增加',
+              text: `[试探] ${feedback.text}`,
+              subtext: `$${reveal.floorRange.low}-$${reveal.floorRange.high} | ${tierLabel}`,
               sentiment: 'positive' as const,
               type: 'INNER_MONOLOGUE' as const,
           }]);
@@ -643,10 +676,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           setChatLog(prev => [...prev, {
               id: `probe-${Date.now()}`,
               sender: 'player' as const,
-              text: willWalkAway
-                  ? '[试探] 你的试探让对方彻底失去信任，愤怒地离开了。'
-                  : '[试探] 你的试探让对方感到不被信任，关系变得紧张。',
-              subtext: willWalkAway ? '客户离开了' : '耐心 -2 | 好感下降',
+              text: `[试探] ${feedback.text}`,
+              subtext: feedback.subtext || undefined,
               sentiment: 'negative' as const,
               type: 'INNER_MONOLOGUE' as const,
           }]);
@@ -878,6 +909,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           onHeartStrike={heartStrikeSkillAvailable ? handleHeartStrike : undefined}
           roundCount={roundCount}
           isRoundLimitReached={isRoundLimitReached}
+          probeReveal={probeReveal}
+          liveConcessionTier={liveConcessionTier}
           onOffer={handleOffer}
           onManualReject={handleManualReject}
           onBinaryAccept={handleBinaryAccept}

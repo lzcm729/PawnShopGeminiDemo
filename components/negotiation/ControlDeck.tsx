@@ -3,9 +3,11 @@ import React, { useMemo, useRef } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { RollingNumber } from '../ui/RollingNumber';
-import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack, AlertTriangle, ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
+import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack, AlertTriangle, ArrowDown, ArrowRight, ArrowUp, Crosshair } from 'lucide-react';
 import { InterestRate, Customer, Item } from '../../types';
 import { ContractTierHint } from '../../systems/characterAbility/types';
+import type { ProbeRevealResult, ConcessionTier } from '../../systems/negotiation/probeEffects';
+import { getConcessionTierLabel } from '../../systems/negotiation/empathyProbeFeedback';
 import { playSfx } from '../../systems/game/audio';
 import { GAME_CONFIG } from '../../systems/game/config';
 
@@ -64,6 +66,10 @@ interface ControlDeckProps {
     roundCount: number;
     isRoundLimitReached: boolean;
 
+    // Probe reveal (trial result from successful probe)
+    probeReveal?: ProbeRevealResult | null;
+    liveConcessionTier?: ConcessionTier | null;
+
     // Handlers
     onOffer: () => void;
     onManualReject: () => void;
@@ -103,6 +109,8 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     contractTierHints,
     roundCount,
     isRoundLimitReached,
+    probeReveal,
+    liveConcessionTier,
     onOffer,
     onManualReject,
     onBinaryAccept,
@@ -170,6 +178,24 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     const handleQuickFloor = () => {
         playSfx('CLICK');
         setOfferPrincipal(Math.min(currentCustomer.minimumAmount, cashAvailable));
+    };
+
+    const handleProbeFloor = () => {
+        if (!probeReveal) return;
+        playSfx('CLICK');
+        setOfferPrincipal(Math.min(probeReveal.floorRange.midpoint, cashAvailable));
+    };
+
+    const getTierColor = (tier: ConcessionTier): string => {
+        if (tier === 'low') return 'text-red-400';
+        if (tier === 'medium') return 'text-amber-400';
+        return 'text-pawn-green';
+    };
+
+    const getTierBgColor = (tier: ConcessionTier): string => {
+        if (tier === 'low') return 'bg-red-950/30 border-red-900/40';
+        if (tier === 'medium') return 'bg-amber-950/30 border-amber-900/40';
+        return 'bg-emerald-950/30 border-emerald-900/40';
     };
 
     // Map rate to contract tier for hint lookup
@@ -440,7 +466,48 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                                   </button>
                               );
                           })()}
+
+                          {/* Probe Floor Shortcut - appears after successful probe */}
+                          {probeReveal && (
+                              <button
+                                  onClick={handleProbeFloor}
+                                  disabled={!canInteract}
+                                  className="flex-1 bg-cyan-950/30 hover:bg-cyan-900/40 text-cyan-400 hover:text-cyan-300 border border-cyan-900/50 rounded-full px-2 py-1.5 text-[11px] font-mono font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1 animate-in fade-in slide-in-from-right-2 duration-300"
+                              >
+                                  <Crosshair className="w-2.5 h-2.5" />
+                                  <span className="text-cyan-500/70 text-[9px]">${probeReveal.floorRange.low}-{probeReveal.floorRange.high}</span>
+                                  <span>${probeReveal.floorRange.midpoint}</span>
+                              </button>
+                          )}
                        </div>
+
+                       {/* Probe: Live Concession Tier Indicator */}
+                       {probeReveal && liveConcessionTier && (
+                           <div className={cn(
+                               "flex items-center justify-between text-xs font-mono p-1.5 rounded border animate-in fade-in duration-300",
+                               getTierBgColor(liveConcessionTier)
+                           )}>
+                               <div className="flex items-center gap-1.5">
+                                   <Crosshair className={cn("w-3 h-3", getTierColor(liveConcessionTier))} />
+                                   <span className="text-noir-txt-muted">{getConcessionTierLabel(liveConcessionTier)}</span>
+                               </div>
+                               <div className="flex items-center gap-1">
+                                   {(['low', 'medium', 'high'] as const).map(t => (
+                                       <span
+                                           key={t}
+                                           className={cn(
+                                               "w-2 h-2 rounded-full transition-all duration-300",
+                                               t === liveConcessionTier ? cn(
+                                                   t === 'low' ? "bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]" :
+                                                   t === 'medium' ? "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.5)]" :
+                                                   "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"
+                                               ) : "bg-noir-400/50"
+                                           )}
+                                       />
+                                   ))}
+                               </div>
+                           </div>
+                       )}
 
                        {/* Action Group: Pressure / Heart Strike / Reject / Offer */}
                        <div className="flex gap-3">

@@ -77,6 +77,10 @@ interface UseNegotiationReturn {
   // Heart strike concession bonus
   heartStrikeConcessionBonus: number;
   setHeartStrikeConcessionBonus: React.Dispatch<React.SetStateAction<number>>;
+
+  // Empathy patience loss modifier (set by skill system after successful empathy)
+  empathyPatienceModifier: number;
+  setEmpathyPatienceModifier: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number, insultPrecisionModifier: number = 1.0) => {
@@ -165,6 +169,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
   // Heart strike concession bonus (set by ability system)
   const [heartStrikeConcessionBonus, setHeartStrikeConcessionBonus] = useState<number>(0);
 
+  // Empathy patience loss modifier (e.g., -0.20 after successful empathy)
+  const [empathyPatienceModifier, setEmpathyPatienceModifier] = useState<number>(0);
+
   // Insult flag for probability-based patience loss
   const [isInsult, setIsInsult] = useState<boolean>(false);
 
@@ -187,6 +194,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         setLastPushPullResult(null);
         setRoundCount(0);
         setHeartStrikeConcessionBonus(0);
+        setEmpathyPatienceModifier(0);
         setIsInsult(false);
         return;
     }
@@ -218,6 +226,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       setLastPushPullResult(null);
       setRoundCount(0);
       setHeartStrikeConcessionBonus(0);
+      setEmpathyPatienceModifier(0);
       setIsInsult(false);
     }
   }, [customer, itemUncertainty]);
@@ -246,6 +255,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       setLastPushPullResult(null);
       setRoundCount(0);
       setHeartStrikeConcessionBonus(0);
+      setEmpathyPatienceModifier(0);
       setIsInsult(false);
     }
   }, [customer, itemUncertainty]);
@@ -462,7 +472,8 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
             persistCount,
             npcConcessionCount,
             totalConcessionMod,
-            concessionMult
+            concessionMult,
+            empathyPatienceModifier
         );
 
         // Update persist count based on player move
@@ -573,7 +584,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         patienceRemaining: remaining
     };
 
-  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier, moraleNegotiationModifier, newsStolenRisk, roundCount, heartStrikeConcessionBonus]);
+  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier, moraleNegotiationModifier, newsStolenRisk, roundCount, heartStrikeConcessionBonus, empathyPatienceModifier]);
 
   // Allow external systems (ability skills) to deduct patience from the hook's local state.
   // This keeps the hook's patience in sync when skills like "施压" cost patience.
@@ -642,5 +653,8 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     // Heart strike concession bonus
     heartStrikeConcessionBonus,
     setHeartStrikeConcessionBonus,
+    // Empathy patience loss modifier
+    empathyPatienceModifier,
+    setEmpathyPatienceModifier,
   };
 };
