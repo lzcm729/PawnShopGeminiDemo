@@ -115,26 +115,24 @@ export const DebugPanel: React.FC = () => {
                     <Sparkles className="w-3 h-3" />
                     +精魄
                 </button>
-                <button
+                <label
                     onClick={() => dispatch({ type: 'DEBUG_TOGGLE_FLOOR' })}
-                    className={`col-span-3 px-2 py-1.5 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors border ${
-                        state.debugRevealFloor
-                            ? 'bg-emerald-900/30 border-emerald-600/60 text-emerald-400'
-                            : 'bg-emerald-900/20 border-emerald-700/50 hover:bg-emerald-900/40 text-emerald-400'
-                    }`}
+                    className="col-span-3 px-3 py-1.5 rounded border border-emerald-900/50 bg-emerald-950/10 flex items-center justify-between cursor-pointer hover:bg-emerald-950/20 transition-colors"
                 >
-                    {state.debugRevealFloor ? '隐藏底价' : '显示底价'}
-                </button>
-                <button
+                    <span className="text-[10px] font-bold uppercase text-emerald-400">显示底价</span>
+                    <div className={`w-8 h-4 rounded-full relative transition-colors ${state.debugRevealFloor ? 'bg-emerald-500' : 'bg-green-900/60'}`}>
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${state.debugRevealFloor ? 'left-[18px]' : 'left-0.5'}`} />
+                    </div>
+                </label>
+                <label
                     onClick={() => dispatch({ type: 'DEBUG_TOGGLE_FILLER' })}
-                    className={`col-span-3 px-2 py-1.5 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors border ${
-                        state.debugDisableFiller
-                            ? 'bg-orange-900/30 border-orange-600/60 text-orange-400'
-                            : 'bg-orange-900/20 border-orange-700/50 hover:bg-orange-900/40 text-orange-400'
-                    }`}
+                    className="col-span-3 px-3 py-1.5 rounded border border-orange-900/50 bg-orange-950/10 flex items-center justify-between cursor-pointer hover:bg-orange-950/20 transition-colors"
                 >
-                    {state.debugDisableFiller ? '填充事件已禁用 ✕' : '禁用填充事件'}
-                </button>
+                    <span className="text-[10px] font-bold uppercase text-orange-400">禁用填充事件</span>
+                    <div className={`w-8 h-4 rounded-full relative transition-colors ${state.debugDisableFiller ? 'bg-orange-500' : 'bg-green-900/60'}`}>
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${state.debugDisableFiller ? 'left-[18px]' : 'left-0.5'}`} />
+                    </div>
+                </label>
                 <button
                     onClick={handleClearSave}
                     className="col-span-3 bg-red-900/20 border border-red-700/50 hover:bg-red-900/40 text-red-400 px-2 py-1.5 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors"
