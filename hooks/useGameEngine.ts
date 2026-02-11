@@ -944,12 +944,13 @@ export const useGameEngine = () => {
 
         // If there are normal events, create settlement interface
         if (normalEvents.length > 0) {
-            dispatch({ type: 'SET_EXPIRY_QUEUE', payload: normalEvents });
             const customer = createExpiryCustomer(normalEvents[0]);
             if (customer) {
-                dispatch({ type: 'SET_CUSTOMER', payload: customer });
-                // Transition state machine: DAY_START.EXPIRY_CHECK -> NEGOTIATION.REDEEM
+                // Order matters: send phase transition FIRST (resetDailyCounters clears currentCustomer),
+                // then set queue and customer so they survive the reset.
                 send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: true });
+                dispatch({ type: 'SET_EXPIRY_QUEUE', payload: normalEvents });
+                dispatch({ type: 'SET_CUSTOMER', payload: customer });
             } else {
                 // No valid customer created, signal expiry check done with no expiry
                 send({ type: 'EXPIRY_CHECK_DONE', hasExpiry: false });
