@@ -57,3 +57,8 @@ violation:related,"这件{item_name}的主人还在等着它...你脑海中浮�
 violation:generic,"这件物品对某人来说可能意义非凡..."
 violation:counterfeit:related,"这件{item_name}的主人还在等着赎回...你脑海中浮现出他的脸。伪造它，就是彻底的背叛。"
 violation:counterfeit:generic,"伪造受托之物...这不是冒险，是预谋。"
+moral:counterfeit:active,"...{item_name}的主人还会回来赎它。届时他接过的，将是你亲手缝合的谎言。"
+narrative:reforge:quality:MASTERWORK,"每一道纹路、每一处光泽都恰到好处。你放下工具，久久凝视——连你自己都快要相信，它本来就是这个样子。"
+narrative:reforge:quality:NORMAL,"物品被赋予了新的身世。不算完美，但足以令人信服。"
+narrative:reforge:quality:FLAWED,"成品有些不自然的痕迹...内行一眼就能看出端倪。但大多数人不会注意到——大多数人从不仔细看。"
+narrative:reforge:quality:FAILED,"精魄消散在空气中，物品纹丝未动。桌上只剩下你和一件原封不动的旧物，以及一个徒劳的深夜。"
