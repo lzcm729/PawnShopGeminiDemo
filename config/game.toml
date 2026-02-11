@@ -13,7 +13,7 @@
 initial_funds = 10000
 
 # 终极目标：母亲手术费用（达成即胜利）
-goal_amount = 500000
+goal_amount = 50000
 
 # 每周医药费（固定支出，未支付则 Game Over）
 weekly_medical_cost = 1000
@@ -609,6 +609,19 @@ cooldown_days = 2                     # 警告冷却天数
 # NPC 填充参数 (NPC Filler)
 # ------------------------------------------------------------
 [npc.filler]
+# 物品价值梯队系统 (Item Value Tier System)
+# 梯队按 Visual_Value 划分，高梯队物品在达到解锁天数后逐步出现
+tier_t2_threshold = 500        # T2 最低 Visual_Value
+tier_t3_threshold = 1500       # T3 最低 Visual_Value
+tier_t4_threshold = 3000       # T4 最低 Visual_Value
+tier_t2_unlock_day = 8         # T2 解锁天数
+tier_t3_unlock_day = 20        # T3 解锁天数
+tier_t4_unlock_day = 35        # T4 解锁天数
+# 梯队权重乘数（解锁后乘以此值提升选中概率）
+tier_t2_weight = 2.0           # T2 权重乘数
+tier_t3_weight = 3.0           # T3 权重乘数
+tier_t4_weight = 4.0           # T4 权重乘数
+
 # 期望价比例
 desired_ratio = 0.70
 # 底价比例

@@ -1179,14 +1179,44 @@ function isUnexpectedCombo(template: ItemTemplate, profile: FillerCustomerProfil
 }
 
 /**
- * Select an item template using weighted random based on profile
+ * Calculate tier weight multiplier for an item template based on game day.
+ *
+ * Items are divided into value tiers by Visual_Value:
+ * - T1 (<=threshold_t2): Always available, weight 1.0
+ * - T2 (threshold_t2..threshold_t3): Unlocks at tier_t2_unlock_day
+ * - T3 (threshold_t3..threshold_t4): Unlocks at tier_t3_unlock_day
+ * - T4 (>threshold_t4): Unlocks at tier_t4_unlock_day
+ *
+ * Unlocked tiers get a weight multiplier; locked tiers return 0 (filtered out).
+ */
+function getTierWeight(template: ItemTemplate, day: number): number {
+    const visualValue = template.visualValue;
+    const cfg = GAME_CONFIG.NPC_FILLER;
+
+    if (visualValue > cfg.TIER_T4_THRESHOLD) {
+        return day >= cfg.TIER_T4_UNLOCK_DAY ? cfg.TIER_T4_WEIGHT : 0;
+    }
+    if (visualValue > cfg.TIER_T3_THRESHOLD) {
+        return day >= cfg.TIER_T3_UNLOCK_DAY ? cfg.TIER_T3_WEIGHT : 0;
+    }
+    if (visualValue > cfg.TIER_T2_THRESHOLD) {
+        return day >= cfg.TIER_T2_UNLOCK_DAY ? cfg.TIER_T2_WEIGHT : 0;
+    }
+    // T1: always available
+    return 1.0;
+}
+
+/**
+ * Select an item template using weighted random based on profile and day-based tier.
  *
  * @param profile Customer profile for weight calculation
+ * @param day Current game day (used for tier unlock gating)
  * @param excludeTemplateIds Template IDs to exclude (items already in inventory)
  *                           If all templates are excluded, falls back to allowing duplicates
  */
 function selectWeightedTemplate(
     profile: FillerCustomerProfile,
+    day: number,
     excludeTemplateIds: Set<string> = new Set()
 ): { templateId: string; template: ItemTemplate } | null {
     // Build weighted list, excluding templates already in inventory
@@ -1199,18 +1229,23 @@ function selectWeightedTemplate(
         }
         const template = getItemTemplate(templateId);
         if (template) {
-            const weight = calculateItemWeight(template, profile);
+            const tierWeight = getTierWeight(template, day);
+            // Skip items in locked tiers
+            if (tierWeight <= 0) continue;
+            const weight = calculateItemWeight(template, profile) * tierWeight;
             weightedTemplates.push({ templateId, template, weight });
         }
     }
 
-    // If all templates are excluded, fall back to allowing duplicates
-    // This ensures generation is never blocked
+    // If all templates are excluded (or all locked), fall back to allowing duplicates
+    // but still respect tier locks
     if (weightedTemplates.length === 0) {
         for (const templateId of getFillerItemTemplates()) {
             const template = getItemTemplate(templateId);
             if (template) {
-                const weight = calculateItemWeight(template, profile);
+                const tierWeight = getTierWeight(template, day);
+                if (tierWeight <= 0) continue;
+                const weight = calculateItemWeight(template, profile) * tierWeight;
                 weightedTemplates.push({ templateId, template, weight });
             }
         }
@@ -1331,7 +1366,8 @@ function createFillerItem(
     }
 
     // Select template using weighted random, excluding templates in inventory
-    const selection = selectWeightedTemplate(profile, excludeTemplateIds);
+    // Day is used for tier-based item gating
+    const selection = selectWeightedTemplate(profile, day, excludeTemplateIds);
 
     let item: Item | null = null;
     let isUnexpected = false;

@@ -355,6 +355,16 @@ interface TomlAbility {
 }
 
 interface TomlNpcFiller {
+  // Item value tier system
+  tier_t2_threshold: number;
+  tier_t3_threshold: number;
+  tier_t4_threshold: number;
+  tier_t2_unlock_day: number;
+  tier_t3_unlock_day: number;
+  tier_t4_unlock_day: number;
+  tier_t2_weight: number;
+  tier_t3_weight: number;
+  tier_t4_weight: number;
   desired_ratio: number;
   minimum_ratio: number;
   insult_ratio: number;
@@ -915,6 +925,16 @@ export const GAME_CONFIG = {
 
   // --- NPC FILLER (NPC 填充参数) ---
   NPC_FILLER: {
+    // Item value tier system
+    TIER_T2_THRESHOLD: tomlConfig.npc.filler.tier_t2_threshold,
+    TIER_T3_THRESHOLD: tomlConfig.npc.filler.tier_t3_threshold,
+    TIER_T4_THRESHOLD: tomlConfig.npc.filler.tier_t4_threshold,
+    TIER_T2_UNLOCK_DAY: tomlConfig.npc.filler.tier_t2_unlock_day,
+    TIER_T3_UNLOCK_DAY: tomlConfig.npc.filler.tier_t3_unlock_day,
+    TIER_T4_UNLOCK_DAY: tomlConfig.npc.filler.tier_t4_unlock_day,
+    TIER_T2_WEIGHT: tomlConfig.npc.filler.tier_t2_weight,
+    TIER_T3_WEIGHT: tomlConfig.npc.filler.tier_t3_weight,
+    TIER_T4_WEIGHT: tomlConfig.npc.filler.tier_t4_weight,
     DESIRED_RATIO: tomlConfig.npc.filler.desired_ratio,
     MINIMUM_RATIO: tomlConfig.npc.filler.minimum_ratio,
     INSULT_RATIO: tomlConfig.npc.filler.insult_ratio,
