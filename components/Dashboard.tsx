@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { DollarSign, Calendar, Heart, Briefcase, Shield, Package, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2, TrendingDown, TrendingUp, Info, Sparkles } from 'lucide-react';
+import { DollarSign, Calendar, Heart, Briefcase, Shield, Package, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2, TrendingDown, TrendingUp, Info, Sparkles, Users } from 'lucide-react';
 import { ReputationType } from '../systems/core/types';
 import { PhaseIs } from '../systems/core/phases';
 import { Button } from './ui/Button';
@@ -11,6 +11,7 @@ import { ValidationModal } from './ValidationModal';
 import { validateEvents, ValidationIssue } from '../systems/narrative/validator';
 import { toggleMute, getMuteState, playSfx } from '../systems/game/audio';
 import { cn } from '../lib/utils';
+import { hasAppointmentBoard } from '../systems/upgrades';
 import { REPUTATION_MILESTONES } from '../systems/reputation/milestones';
 import { MilestoneNotification } from './ui/MilestoneNotification';
 import * as Icons from 'lucide-react';
@@ -105,8 +106,8 @@ export const Dashboard: React.FC = () => {
             issues={validationIssues}
         />
 
-        {/* LEFT: LIFE MONITOR (Compact) */}
-        <div className="flex items-center w-auto shrink-0 z-10">
+        {/* LEFT: LIFE MONITOR + CUSTOMER FLOW (Compact) */}
+        <div className="flex items-center gap-3 w-auto shrink-0 z-10">
             <div
                 className={cn(
                     "relative overflow-hidden rounded border p-1.5 pr-3 flex items-center gap-3 transition-all group",
@@ -125,6 +126,21 @@ export const Dashboard: React.FC = () => {
                     </span>
                 </div>
             </div>
+
+            {/* TODAY'S CUSTOMER FLOW (Business/Negotiation only) */}
+            {isBusiness && (
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded border bg-noir-200 border-noir-400">
+                    <Users className="w-4 h-4 text-amber-500" />
+                    <div className="flex flex-col justify-center">
+                        <span className="text-[9px] uppercase font-bold text-noir-txt-muted tracking-wider leading-none mb-0.5">客流 (QUEUE)</span>
+                        <span className="text-sm font-mono font-bold leading-none tracking-wide text-amber-400">
+                            {hasAppointmentBoard(state.shopUpgrades)
+                                ? `${state.customersServedToday}/${state.maxCustomersPerDay}`
+                                : '??/??'}
+                        </span>
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* MORALE BUFF INDICATOR */}
