@@ -263,5 +263,8 @@ export type Action =
     // NPC Fate Tracking (Victory Screen: Bitter Victory)
     | { type: 'RECORD_NPC_FATE'; payload: NpcFateEntry }
 
+    // Workshop training (隐形训练)
+    | { type: 'INCREMENT_WORKSHOP_USAGE' }
+
     // Debug flags
     | { type: 'DEBUG_TOGGLE_FLOOR' };

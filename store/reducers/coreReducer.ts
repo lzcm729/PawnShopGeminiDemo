@@ -13,6 +13,8 @@ import { INITIAL_SHOP_UPGRADES, getEffectiveNightEnergy, getTotalMaintenanceCost
 import { INITIAL_APPOINTMENT_BOARD_STATE } from '../../systems/appointment';
 import { GamePhase, LegacyGamePhase } from '../../systems/core/types';
 import { getGewuEnergyMax } from '../../systems/insight';
+import type { PawnCustomerSnapshot, Item } from '../../systems/items/types';
+import type { Customer } from '../../systems/npc/types';
 
 /**
  * Infer phase from old saves that used the legacy GamePhase enum.
@@ -55,6 +57,34 @@ function inferPhaseFromLegacySave(legacyPhase: any): GamePhase {
         default:
             return { type: 'START_SCREEN' };
     }
+}
+
+/**
+ * Extract a PawnCustomerSnapshot from the current customer at transaction time.
+ * This snapshot is attached to the item for later workshop/return decisions.
+ */
+function extractCustomerSnapshot(customer: Customer | null, isNarrative: boolean): PawnCustomerSnapshot | undefined {
+    if (!customer) return undefined;
+    return {
+        customerId: customer.id,
+        customerName: customer.name,
+        behaviorTags: customer.behaviorTags as string[],
+        pawnReason: customer.item?.historySnippet,
+        emotionalWeight: 'unknown',
+        insightDepth: 0,
+        isNarrative,
+        emotionalAttachment: customer.behaviorTags.includes('SENTIMENTAL') || undefined,
+    };
+}
+
+/**
+ * Attach customerSnapshot to an item if not already present.
+ */
+function attachSnapshot(item: Item, customer: Customer | null): Item {
+    if (item.customerSnapshot) return item; // already has snapshot
+    const isNarrative = !!customer?.chainId;
+    const snapshot = extractCustomerSnapshot(customer, isNarrative);
+    return snapshot ? { ...item, customerSnapshot: snapshot } : item;
 }
 
 export function coreReducer(state: GameState, action: Action): GameState {
@@ -118,6 +148,9 @@ export function coreReducer(state: GameState, action: Action): GameState {
                 moraleBuff: action.payload.moraleBuff ?? null,
                 // NPC fate log migration
                 npcFateLog: action.payload.npcFateLog ?? [],
+                // Workshop migration
+                lastReturnResult: action.payload.lastReturnResult ?? null,
+                workshopUsageCount: action.payload.workshopUsageCount ?? 0,
                 stats: {
                     ...action.payload.stats,
                     // Recalculate dailyExpenses from base + maintenance (fixes old saves with stale $50)
@@ -253,7 +286,9 @@ export function coreReducer(state: GameState, action: Action): GameState {
             if (reputationDelta[ReputationType.INNOCENCE]) newRep[ReputationType.INNOCENCE] += reputationDelta[ReputationType.INNOCENCE]!;
             clampReputation(newRep);
 
-            const newInventory = item ? [...state.inventory, item] : state.inventory;
+            // Attach customer snapshot to pawn items for workshop/return decisions
+            const snapshotItem = item ? attachSnapshot(item, state.currentCustomer) : null;
+            const newInventory = snapshotItem ? [...state.inventory, snapshotItem] : state.inventory;
             const newTransaction: TransactionRecord | null = item ? { id: crypto.randomUUID(), description: `收当: ${item.name}`, amount: cashDelta, type: 'PAWN' } : null;
             const updatedTransactions = newTransaction ? [...state.todayTransactions, newTransaction] : state.todayTransactions;
             const servedCount = state.customersServedToday + 1;

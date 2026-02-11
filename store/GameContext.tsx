@@ -145,6 +145,9 @@ const initialState: GameState = {
     pendingEchoTexts: [],
     // === NPC FATE LOG (Victory Screen: Bitter Victory) ===
     npcFateLog: [],
+    // === WORKSHOP (工作台归还结果) ===
+    lastReturnResult: null,
+    workshopUsageCount: 0,
     // === DEBUG FLAGS ===
     debugRevealFloor: false
 };

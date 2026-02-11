@@ -68,3 +68,33 @@ export {
   advanceNotoriety,
   getNotorietyStageConfig,
 } from './forgeryNotoriety';
+
+// 情感权重系统导出
+export type { EmotionalWeight, EmotionalWeightResult } from './emotionalWeight';
+export {
+  calculateEmotionalWeight,
+  getEmotionalWeightFromScore,
+} from './emotionalWeight';
+
+// 感知层级系统导出
+export type { PerceptionTier, NarrativePerceptionTier } from './perceptionTier';
+export {
+  calculatePerceptionTier,
+  getNarrativeTier,
+} from './perceptionTier';
+
+// 归还概率矩阵导出
+export type { CustomerPersonality } from './returnMatrix';
+export {
+  inferPersonality,
+  rollReturnResult,
+  getReturnReputationDelta,
+  getReturnProbabilities,
+} from './returnMatrix';
+
+// 隐形训练系统导出
+export type { ScaffoldingPhase } from './invisibleTraining';
+export {
+  getScaffoldingPhase,
+  shouldShowScaffolding,
+} from './invisibleTraining';

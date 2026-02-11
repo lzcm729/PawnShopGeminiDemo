@@ -385,6 +385,35 @@ interface TomlWorkshopEssenceConversion {
   ratio: number;
 }
 
+interface TomlInfoFlow {
+  trait_sentimental_score: number;
+  trait_story_score: number;
+  insight_emotional_score: number;
+  dialogue_emotional_score: number;
+  behavior_sentimental_score: number;
+  weight_low_min: number;
+  weight_low_max: number;
+  weight_mid_min: number;
+  weight_mid_max: number;
+  weight_high_min: number;
+  training_guide_threshold: number;
+  training_hint_threshold: number;
+}
+
+interface TomlReturnMatrixEntry {
+  admiration: number;
+  acceptance: number;
+  unease: number;
+  anger: number;
+}
+
+interface TomlReturnMatrix {
+  low_open: TomlReturnMatrixEntry;
+  low_neutral: TomlReturnMatrixEntry;
+  high_neutral: TomlReturnMatrixEntry;
+  high_emotional: TomlReturnMatrixEntry;
+}
+
 interface TomlWorkshopReputation {
   restore_return_humanity: number;
   restore_return_credibility: number;
@@ -418,6 +447,8 @@ interface TomlWorkshop {
   forgery: TomlForgery;
   essence_conversion: TomlWorkshopEssenceConversion;
   reputation: TomlWorkshopReputation;
+  info_flow: TomlInfoFlow;
+  return_matrix: TomlReturnMatrix;
 }
 
 interface TomlMilestoneTrigger {
@@ -867,6 +898,46 @@ export const GAME_CONFIG = {
       RATIO: tomlConfig.workshop.essence_conversion.ratio,
     },
     REPUTATION: tomlConfig.workshop.reputation,
+    INFO_FLOW: {
+      TRAIT_SENTIMENTAL_SCORE: tomlConfig.workshop.info_flow.trait_sentimental_score,
+      TRAIT_STORY_SCORE: tomlConfig.workshop.info_flow.trait_story_score,
+      INSIGHT_EMOTIONAL_SCORE: tomlConfig.workshop.info_flow.insight_emotional_score,
+      DIALOGUE_EMOTIONAL_SCORE: tomlConfig.workshop.info_flow.dialogue_emotional_score,
+      BEHAVIOR_SENTIMENTAL_SCORE: tomlConfig.workshop.info_flow.behavior_sentimental_score,
+      WEIGHT_LOW_MIN: tomlConfig.workshop.info_flow.weight_low_min,
+      WEIGHT_LOW_MAX: tomlConfig.workshop.info_flow.weight_low_max,
+      WEIGHT_MID_MIN: tomlConfig.workshop.info_flow.weight_mid_min,
+      WEIGHT_MID_MAX: tomlConfig.workshop.info_flow.weight_mid_max,
+      WEIGHT_HIGH_MIN: tomlConfig.workshop.info_flow.weight_high_min,
+      TRAINING_GUIDE_THRESHOLD: tomlConfig.workshop.info_flow.training_guide_threshold,
+      TRAINING_HINT_THRESHOLD: tomlConfig.workshop.info_flow.training_hint_threshold,
+    },
+    RETURN_MATRIX: {
+      LOW_OPEN: {
+        ADMIRATION: tomlConfig.workshop.return_matrix.low_open.admiration,
+        ACCEPTANCE: tomlConfig.workshop.return_matrix.low_open.acceptance,
+        UNEASE: tomlConfig.workshop.return_matrix.low_open.unease,
+        ANGER: tomlConfig.workshop.return_matrix.low_open.anger,
+      },
+      LOW_NEUTRAL: {
+        ADMIRATION: tomlConfig.workshop.return_matrix.low_neutral.admiration,
+        ACCEPTANCE: tomlConfig.workshop.return_matrix.low_neutral.acceptance,
+        UNEASE: tomlConfig.workshop.return_matrix.low_neutral.unease,
+        ANGER: tomlConfig.workshop.return_matrix.low_neutral.anger,
+      },
+      HIGH_NEUTRAL: {
+        ADMIRATION: tomlConfig.workshop.return_matrix.high_neutral.admiration,
+        ACCEPTANCE: tomlConfig.workshop.return_matrix.high_neutral.acceptance,
+        UNEASE: tomlConfig.workshop.return_matrix.high_neutral.unease,
+        ANGER: tomlConfig.workshop.return_matrix.high_neutral.anger,
+      },
+      HIGH_EMOTIONAL: {
+        ADMIRATION: tomlConfig.workshop.return_matrix.high_emotional.admiration,
+        ACCEPTANCE: tomlConfig.workshop.return_matrix.high_emotional.acceptance,
+        UNEASE: tomlConfig.workshop.return_matrix.high_emotional.unease,
+        ANGER: tomlConfig.workshop.return_matrix.high_emotional.anger,
+      },
+    },
   },
 
   // --- REPUTATION MILESTONES (声誉里程碑) ---

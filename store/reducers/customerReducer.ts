@@ -50,7 +50,7 @@ export function customerReducer(state: GameState, action: Action): GameState {
         }
 
         case 'CLEAR_CUSTOMER':
-            return { ...state, currentCustomer: null, currentNode: null, lastDealSummary: null, currentCustomerInsight: null };
+            return { ...state, currentCustomer: null, currentNode: null, lastDealSummary: null, lastReturnResult: null, currentCustomerInsight: null };
 
         case 'UPDATE_CUSTOMER_STATUS':
             if (!state.currentCustomer) return state;

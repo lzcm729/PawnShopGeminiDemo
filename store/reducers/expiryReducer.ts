@@ -12,6 +12,10 @@ import { generateRedeemLog, generateForfeitLog, generateSoldLog, generatePlayerC
 import { evaluateRedeemSatisfaction, evaluateRenewalSatisfaction, evaluatePostForfeitSatisfaction, mapToBaseSatisfaction } from '../../systems/game/utils/satisfaction';
 import { getRenewalRefusalPenalty } from '../../systems/economy/renewalPenalty';
 import { GAME_CONFIG } from '../../systems/game/config';
+import type { DealSummary } from '../../systems/game/types';
+import { calculateEmotionalWeight } from '../../systems/workshop/emotionalWeight';
+import { inferPersonality, rollReturnResult, getReturnReputationDelta } from '../../systems/workshop/returnMatrix';
+import type { ReturnResult } from '../../systems/workshop/types';
 
 /** Helper: merge a fate entry into the npcFateLog (upsert by npcId) */
 function mergeFateEntry(log: NpcFateEntry[], entry: NpcFateEntry): NpcFateEntry[] {
@@ -57,6 +61,8 @@ export function expiryReducer(state: GameState, action: Action): GameState {
             let log = "";
             let satisfaction: SatisfactionLevel = 'NEUTRAL';
             let departureSatisfaction: DepartureSatisfaction | null = null;
+            let dealSummary: DealSummary | null = null;
+            let returnResultOut: ReturnResult | null = null;
             const event = state.currentExpiryEvent;
             const isNoShow = choice === 'noshow_sell' || choice === 'noshow_keep';
             const isBreachDiscovery = choice === 'breach_discovered';
@@ -111,45 +117,80 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                         }
 
                         // 重铸归还检测（善意僭越）— 重铸后客户赎回触发不确定性判定
-                        // TODO: 善意僭越判定（四种结果）将在后续实现
+                        // 采纳#23, 设计§7.4: 四种结果（叹服/认可/不安/愤怒）由归还概率矩阵决定
                         if (item.workState === 'REFORGED' || item.wasReforged) {
-                            const principal = item.pawnInfo?.principal || item.pawnAmount;
-                            const compensation = Math.ceil(principal * workshopCfg.BREACH_COMPENSATION_MULTIPLIER);
-                            cashDelta = -compensation;
+                            // 1. Calculate emotional weight from item data
+                            const ewResult = calculateEmotionalWeight(item);
+                            const effectiveWeight = item.customerSnapshot?.emotionalWeight !== 'unknown'
+                                ? item.customerSnapshot!.emotionalWeight
+                                : ewResult.weight;
+
+                            // 2. Infer customer personality from behavior tags
+                            const personalityTags = item.customerSnapshot?.behaviorTags || [];
+                            const personality = inferPersonality(personalityTags);
+
+                            // 3. Roll return result
+                            const returnResult: ReturnResult = rollReturnResult(effectiveWeight, personality);
+                            const returnRep = getReturnReputationDelta(returnResult);
+
+                            // 4. Apply result
+                            cashDelta = event.redemptionCost.total;
                             repDelta = {
-                                [ReputationType.HUMANITY]: workshopCfg.BREACH_HUMANITY_LOSS,
-                                [ReputationType.CREDIBILITY]: workshopCfg.BREACH_CREDIBILITY_LOSS,
-                                [ReputationType.INNOCENCE]: workshopCfg.BREACH_INNOCENCE_LOSS,
+                                [ReputationType.HUMANITY]: returnRep.humanity,
+                                [ReputationType.CREDIBILITY]: returnRep.credibility,
                             };
-                            log = `[违约重铸] ${event.npcName} 发现 ${item.name} 已被重铸，支付违约赔偿 $${compensation}`;
+
+                            const resultLabels: Record<ReturnResult, string> = {
+                                ADMIRATION: '叹服',
+                                ACCEPTANCE: '认可',
+                                UNEASE: '不安',
+                                ANGER: '愤怒',
+                            };
+
+                            const redeemLog = generateRedeemLog(event.npcName, item, state.stats.day, cashDelta);
+                            const choiceLog = generatePlayerChoiceLog(state.stats.day, 'EXPIRY_DECISION', {
+                                decision: 'redeem_accept', customerName: event.npcName,
+                            });
+                            const echoLog = generateEchoLog(state.stats.day, 'NPC_REDEEMED', item.relatedChainId || '');
+
                             newInventory = newInventory.map(i =>
                                 i.id === itemId
-                                    ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || [])] }
+                                    ? { ...i, status: ItemStatus.REDEEMED, logs: [...(i.logs || []), redeemLog, choiceLog, echoLog] }
                                     : i
                             );
-                            departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
-                            satisfaction = 'DESPERATE';
-                            playSfx('FAIL');
 
-                            if (state.stats.cash + cashDelta < 0) {
-                                return {
-                                    ...state,
-                                    phase: { type: 'GAME_OVER', reason: `无力支付违约赔偿金 $${compensation}，${event.npcName} 将此事告知了所有人。` },
-                                    stats: { ...state.stats, cash: 0 },
-                                    reputation: (() => {
-                                        const newRep = { ...state.reputation };
-                                        newRep[ReputationType.HUMANITY] += workshopCfg.BREACH_HUMANITY_LOSS;
-                                        newRep[ReputationType.CREDIBILITY] += workshopCfg.BREACH_CREDIBILITY_LOSS;
-                                        newRep[ReputationType.INNOCENCE] += workshopCfg.BREACH_INNOCENCE_LOSS;
-                                        clampReputation(newRep);
-                                        return newRep;
-                                    })(),
-                                    inventory: newInventory,
-                                    currentExpiryEvent: null,
-                                    dayEvents: [...state.dayEvents, log],
-                                    lastSatisfaction: satisfaction,
-                                    lastDepartureSatisfaction: departureSatisfaction,
-                                };
+                            log = `${item.name} 被赎回 (收款 $${cashDelta}) [重铸归还: ${resultLabels[returnResult]}，人情${returnRep.humanity >= 0 ? '+' : ''}${returnRep.humanity}，商誉${returnRep.credibility >= 0 ? '+' : ''}${returnRep.credibility}]`;
+
+                            // Store return result for UI
+                            returnResultOut = returnResult;
+                            dealSummary = {
+                                cashDelta,
+                                reputationDelta: repDelta,
+                                itemName: item.name,
+                                itemCategory: item.category,
+                                dealQuality: 'fair',
+                                interestRate: event.interestRate,
+                            };
+
+                            // Map return result to satisfaction/departure
+                            if (returnResult === 'ADMIRATION' || returnResult === 'ACCEPTANCE') {
+                                const redeemLevel = evaluateRedeemSatisfaction(
+                                    event.interestRate,
+                                    event.redemptionCost.total,
+                                    event.redemptionCost.principal
+                                );
+                                departureSatisfaction = { scene: 'REDEEM', level: redeemLevel };
+                                satisfaction = mapToBaseSatisfaction('REDEEM', redeemLevel);
+                                playSfx('CASH');
+                            } else if (returnResult === 'UNEASE') {
+                                departureSatisfaction = { scene: 'REDEEM', level: 'RESIGNED' as any };
+                                satisfaction = 'NEUTRAL';
+                                playSfx('CASH');
+                            } else {
+                                // ANGER
+                                departureSatisfaction = { scene: 'POST_FORFEIT', level: 'HOSTILE' };
+                                satisfaction = 'DESPERATE';
+                                playSfx('FAIL');
                             }
                             break;
                         }
@@ -426,6 +467,8 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                 dayEvents: [...state.dayEvents, log],
                 lastSatisfaction: satisfaction,
                 lastDepartureSatisfaction: departureSatisfaction,
+                lastDealSummary: dealSummary ?? state.lastDealSummary,
+                lastReturnResult: returnResultOut,
                 npcFateLog: updatedFateLog,
                 unseenForfeitItemIds: updatedUnseenForfeit,
                 // phase transition removed - handled by state machine

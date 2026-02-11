@@ -171,6 +171,13 @@ export function nightReducer(state: GameState, action: Action): GameState {
             };
         }
 
+        // Workshop invisible training: increment usage count
+        case 'INCREMENT_WORKSHOP_USAGE':
+            return {
+                ...state,
+                workshopUsageCount: (state.workshopUsageCount ?? 0) + 1,
+            };
+
         default:
             return state;
     }

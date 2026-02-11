@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
@@ -79,6 +79,31 @@ export const NightDashboard: React.FC = () => {
     const bill = stats.medicalBill;
     const daysUntilBill = bill.dueDate - stats.day;
     const isOverdue = bill.status === 'OVERDUE' || (daysUntilBill <= 0 && bill.status !== 'PAID');
+
+    // Reputation micro-feedback: track previous values and show delta (I9)
+    const prevReputation = useRef(reputation);
+    const [repDelta, setRepDelta] = useState<{
+        humanity?: number; credibility?: number; innocence?: number;
+    } | null>(null);
+
+    useEffect(() => {
+        const prev = prevReputation.current;
+        const dH = reputation[ReputationType.HUMANITY] - prev[ReputationType.HUMANITY];
+        const dC = reputation[ReputationType.CREDIBILITY] - prev[ReputationType.CREDIBILITY];
+        const dI = reputation[ReputationType.INNOCENCE] - prev[ReputationType.INNOCENCE];
+
+        if (dH !== 0 || dC !== 0 || dI !== 0) {
+            setRepDelta({
+                humanity: dH !== 0 ? dH : undefined,
+                credibility: dC !== 0 ? dC : undefined,
+                innocence: dI !== 0 ? dI : undefined,
+            });
+            const timer = setTimeout(() => setRepDelta(null), 2500);
+            prevReputation.current = reputation;
+            return () => clearTimeout(timer);
+        }
+        prevReputation.current = reputation;
+    }, [reputation]);
 
     // Ambience: Lamp flicker logic
     const [lampFlicker, setLampFlicker] = useState(1);
@@ -183,18 +208,26 @@ export const NightDashboard: React.FC = () => {
                         <div className="text-3xl font-mono text-stone-200">${stats.cash}</div>
                     </div>
 
-                    {/* Reputation Bars */}
+                    {/* Reputation Bars (with micro-feedback delta animation - I9) */}
                     <div className="flex flex-col gap-3 mb-6 w-full max-w-[200px]">
                         <div className="text-[10px] uppercase text-stone-600 tracking-[0.2em] text-center">Reputation</div>
 
                         <Tooltip content={<div className="text-xs"><span className="font-bold">Humanity:</span> {reputation[ReputationType.HUMANITY]}%{(() => { const a = getNarrativeAnchor(ReputationType.HUMANITY, reputation[ReputationType.HUMANITY]); return a ? <><br/><span className="italic text-stone-400">{a.description}</span></> : null; })()}</div>}>
                             <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-3">
-                                    <Heart className="w-4 h-4 text-red-400 shrink-0" />
+                                <div className="flex items-center gap-3 relative">
+                                    <Heart className={cn("w-4 h-4 text-red-400 shrink-0 transition-transform duration-300", repDelta?.humanity && "scale-125")} />
                                     <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
                                         <div className="h-full bg-red-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.HUMANITY]}%` }}></div>
                                     </div>
                                     <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.HUMANITY]}%</span>
+                                    {repDelta?.humanity != null && (
+                                        <span className={cn(
+                                            "absolute -right-8 text-[10px] font-mono font-bold animate-bounce",
+                                            repDelta.humanity > 0 ? "text-green-400" : "text-red-400"
+                                        )}>
+                                            {repDelta.humanity > 0 ? '+' : ''}{repDelta.humanity}
+                                        </span>
+                                    )}
                                 </div>
                                 {(() => { const a = getNarrativeAnchor(ReputationType.HUMANITY, reputation[ReputationType.HUMANITY]); return a ? <div className="text-[9px] text-red-400/60 font-serif italic pl-7 truncate" title={a.description}>{a.tierLabel}: {a.description}</div> : null; })()}
                             </div>
@@ -202,12 +235,20 @@ export const NightDashboard: React.FC = () => {
 
                         <Tooltip content={<div className="text-xs"><span className="font-bold">Credibility:</span> {reputation[ReputationType.CREDIBILITY]}%{(() => { const a = getNarrativeAnchor(ReputationType.CREDIBILITY, reputation[ReputationType.CREDIBILITY]); return a ? <><br/><span className="italic text-stone-400">{a.description}</span></> : null; })()}</div>}>
                             <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-3">
-                                    <Briefcase className="w-4 h-4 text-amber-400 shrink-0" />
+                                <div className="flex items-center gap-3 relative">
+                                    <Briefcase className={cn("w-4 h-4 text-amber-400 shrink-0 transition-transform duration-300", repDelta?.credibility && "scale-125")} />
                                     <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
                                         <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.CREDIBILITY]}%` }}></div>
                                     </div>
                                     <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.CREDIBILITY]}%</span>
+                                    {repDelta?.credibility != null && (
+                                        <span className={cn(
+                                            "absolute -right-8 text-[10px] font-mono font-bold animate-bounce",
+                                            repDelta.credibility > 0 ? "text-green-400" : "text-red-400"
+                                        )}>
+                                            {repDelta.credibility > 0 ? '+' : ''}{repDelta.credibility}
+                                        </span>
+                                    )}
                                 </div>
                                 {(() => { const a = getNarrativeAnchor(ReputationType.CREDIBILITY, reputation[ReputationType.CREDIBILITY]); return a ? <div className="text-[9px] text-amber-400/60 font-serif italic pl-7 truncate" title={a.description}>{a.tierLabel}: {a.description}</div> : null; })()}
                             </div>
@@ -215,12 +256,20 @@ export const NightDashboard: React.FC = () => {
 
                         <Tooltip content={<div className="text-xs"><span className="font-bold">Innocence:</span> {reputation[ReputationType.INNOCENCE]}%{(() => { const a = getNarrativeAnchor(ReputationType.INNOCENCE, reputation[ReputationType.INNOCENCE]); return a ? <><br/><span className="italic text-stone-400">{a.description}</span></> : null; })()}</div>}>
                             <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-3">
-                                    <Shield className="w-4 h-4 text-blue-400 shrink-0" />
+                                <div className="flex items-center gap-3 relative">
+                                    <Shield className={cn("w-4 h-4 text-blue-400 shrink-0 transition-transform duration-300", repDelta?.innocence && "scale-125")} />
                                     <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
                                         <div className="h-full bg-blue-400 transition-all duration-500" style={{ width: `${reputation[ReputationType.INNOCENCE]}%` }}></div>
                                     </div>
                                     <span className="text-[10px] text-stone-500 w-8 text-right">{reputation[ReputationType.INNOCENCE]}%</span>
+                                    {repDelta?.innocence != null && (
+                                        <span className={cn(
+                                            "absolute -right-8 text-[10px] font-mono font-bold animate-bounce",
+                                            repDelta.innocence > 0 ? "text-green-400" : "text-red-400"
+                                        )}>
+                                            {repDelta.innocence > 0 ? '+' : ''}{repDelta.innocence}
+                                        </span>
+                                    )}
                                 </div>
                                 {(() => { const a = getNarrativeAnchor(ReputationType.INNOCENCE, reputation[ReputationType.INNOCENCE]); return a ? <div className="text-[9px] text-blue-400/60 font-serif italic pl-7 truncate" title={a.description}>{a.tierLabel}: {a.description}</div> : null; })()}
                             </div>

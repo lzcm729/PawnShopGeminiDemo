@@ -5,7 +5,7 @@ import { useGameEngine } from '../hooks/useGameEngine';
 import { useGameMachine } from '../hooks/useGameMachine';
 import { useCharacterAbility } from '../hooks/useCharacterAbility';
 import { Button } from './ui/Button';
-import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull, XCircle, HandHeart, Eye, Lock } from 'lucide-react';
+import { ArrowRight, MessageSquare, Brain, DollarSign, Heart, Briefcase, Shield, PackageCheck, Shirt, ShoppingBag, Smartphone, Gem, Archive, Gamepad2, Music, Package, Skull, XCircle, HandHeart, Eye, Lock, Sparkles } from 'lucide-react';
 import { SatisfactionLevel } from '../systems/narrative/types';
 import { ReputationType } from '../types';
 import { TypewriterText } from './ui/TextEffects';
@@ -13,6 +13,32 @@ import { playSfx } from '../systems/game/audio';
 import { PhaseIs } from '../systems/core/phases';
 import { getDepartureMonologue } from '../systems/narrative/innerVoiceRegistry';
 import { getDepartureTimingConfig } from '../systems/game/utils/departureTiming';
+import type { ReturnResult } from '../systems/workshop/types';
+import { createTextRegistry, TextRegistry } from '../systems/utils/textRegistry';
+import returnResultsCSV from '../assets/data/texts/workshop_return_results.csv?raw';
+
+// Return result text registry (loaded once)
+let returnTexts: TextRegistry | null = null;
+function getReturnTexts(): TextRegistry {
+  if (!returnTexts) {
+    returnTexts = createTextRegistry('workshop_return_results', returnResultsCSV);
+  }
+  return returnTexts;
+}
+
+/** Style config for each return result type */
+const returnResultStyles: Record<ReturnResult, {
+  borderColor: string;
+  titleColor: string;
+  hintColor: string;
+  bgColor: string;
+  glowColor: string;
+}> = {
+  ADMIRATION: { borderColor: 'border-amber-600', titleColor: 'text-amber-400', hintColor: 'text-amber-500/70', bgColor: 'bg-amber-950/30', glowColor: 'shadow-[0_0_20px_rgba(217,119,6,0.15)]' },
+  ACCEPTANCE: { borderColor: 'border-stone-600', titleColor: 'text-stone-300', hintColor: 'text-stone-400/70', bgColor: 'bg-stone-900/60', glowColor: '' },
+  UNEASE: { borderColor: 'border-purple-800/60', titleColor: 'text-purple-300', hintColor: 'text-purple-400/60', bgColor: 'bg-purple-950/20', glowColor: 'shadow-[0_0_15px_rgba(147,51,234,0.1)]' },
+  ANGER: { borderColor: 'border-red-800', titleColor: 'text-red-400', hintColor: 'text-red-500/60', bgColor: 'bg-red-950/20', glowColor: 'shadow-[0_0_20px_rgba(220,38,38,0.15)]' },
+};
 import { cn } from '../lib/utils';
 import { getCharacterPortraitPath, EmotionType, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 
@@ -35,7 +61,7 @@ export const DepartureView: React.FC = () => {
   const { processNextExpiryEvent } = useGameEngine();
   const { send, can } = useGameMachine();
   const { canExtraCare, applyExtraCare, canComfort, dispatchComfort, isUnlocked } = useCharacterAbility();
-  const { currentCustomer, lastSatisfaction, lastDepartureSatisfaction, lastDealSummary, expiryQueue } = state;
+  const { currentCustomer, lastSatisfaction, lastDepartureSatisfaction, lastDealSummary, lastReturnResult, expiryQueue } = state;
 
   const [textComplete, setTextComplete] = useState(false);
   const [showInnerVoice, setShowInnerVoice] = useState(false);
@@ -54,6 +80,18 @@ export const DepartureView: React.FC = () => {
   const satisfaction = lastSatisfaction || 'NEUTRAL';
   const isNarrativeNPC = !!currentCustomer?.chainId;
   const timingConfig = useMemo(() => getDepartureTimingConfig(satisfaction, isNarrativeNPC), [satisfaction, isNarrativeNPC]);
+
+  // Reforge return result narrative (loaded from CSV)
+  const returnNarrative = useMemo(() => {
+    if (!lastReturnResult) return null;
+    const texts = getReturnTexts();
+    return {
+      title: texts.get(`return:title:${lastReturnResult}`) || lastReturnResult,
+      narrative: texts.getRandom(`return:${lastReturnResult}`) || '',
+      hint: texts.get(`return:hint:${lastReturnResult}`) || '',
+      repHint: texts.get(`return:rep:${lastReturnResult}`) || '',
+    };
+  }, [lastReturnResult]);
 
   // Check if we're in an expiry settlement flow
   const hasMoreExpiryEvents = expiryQueue && expiryQueue.length > 0;
@@ -273,8 +311,58 @@ export const DepartureView: React.FC = () => {
               )}
           </div>
 
-          {/* Deal Summary (if a deal was made) */}
-          {lastDealSummary && (
+          {/* Reforge Return Result Panel (replaces standard deal summary when present) */}
+          {lastReturnResult && returnNarrative && lastDealSummary && (
+              <div className={cn(
+                  "w-full border rounded p-5 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700",
+                  returnResultStyles[lastReturnResult].borderColor,
+                  returnResultStyles[lastReturnResult].bgColor,
+                  returnResultStyles[lastReturnResult].glowColor,
+              )}>
+                  {/* Header: Result title + sparkle */}
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                      <Sparkles className={cn("w-4 h-4", returnResultStyles[lastReturnResult].titleColor)} />
+                      <span className={cn("font-mono font-bold text-sm tracking-wider", returnResultStyles[lastReturnResult].titleColor)}>
+                          {returnNarrative.title}
+                      </span>
+                  </div>
+
+                  {/* Narrative text */}
+                  <p className="text-stone-300/90 font-serif italic text-sm text-center leading-relaxed mb-3">
+                      {returnNarrative.narrative}
+                  </p>
+
+                  {/* Cash + Rep delta row */}
+                  <div className="flex items-center justify-center gap-4 pt-2 border-t border-stone-800/50">
+                      <span className="flex items-center gap-1.5 text-xs font-mono font-bold text-green-400">
+                          <DollarSign className="w-3 h-3" />+{Math.abs(lastDealSummary.cashDelta)}
+                      </span>
+                      {Object.entries(lastDealSummary.reputationDelta).map(([key, val]) => {
+                          const value = val as number;
+                          if (!value || value === 0) return null;
+                          let icon = <Briefcase className="w-3 h-3" />;
+                          let color = "text-blue-400";
+                          if (key === ReputationType.HUMANITY) { icon = <Heart className="w-3 h-3" />; color = value > 0 ? "text-rose-400" : "text-rose-600"; }
+                          if (key === ReputationType.CREDIBILITY) { icon = <Briefcase className="w-3 h-3" />; color = value > 0 ? "text-blue-400" : "text-blue-600"; }
+                          return (
+                              <span key={key} className={cn("flex items-center gap-1 text-xs font-mono font-bold", color)}>
+                                  {icon} {value > 0 ? '+' : ''}{value}
+                              </span>
+                          );
+                      })}
+                  </div>
+
+                  {/* Reputation hint */}
+                  {returnNarrative.repHint && (
+                      <p className={cn("text-[10px] text-center mt-2 font-mono", returnResultStyles[lastReturnResult].hintColor)}>
+                          {returnNarrative.repHint}
+                      </p>
+                  )}
+              </div>
+          )}
+
+          {/* Standard Deal Summary (if a deal was made AND not a reforge return) */}
+          {lastDealSummary && !lastReturnResult && (
               <div className="w-full bg-stone-900/80 border border-stone-700 rounded p-4 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <div className="flex items-center justify-between gap-4">
                       {/* Cash */}
@@ -293,7 +381,7 @@ export const DepartureView: React.FC = () => {
                               if (key === ReputationType.HUMANITY) { icon = <Heart className="w-3 h-3" />; color = "text-rose-500"; }
                               if (key === ReputationType.INNOCENCE) { icon = <Shield className="w-3 h-3" />; color = "text-blue-500"; }
                               return (
-                                  <span key={key} className={`flex items-center gap-1 text-xs font-mono font-bold ${color}`}>
+                                  <span key={key} className={cn("flex items-center gap-1 text-xs font-mono font-bold", color)}>
                                       {icon} {value > 0 ? '+' : ''}{value}
                                   </span>
                               );

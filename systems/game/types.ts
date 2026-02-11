@@ -7,7 +7,7 @@ import { TransactionRecord } from '../economy/types';
 import { EventChainState, MailInstance, SatisfactionLevel, DepartureSatisfaction, ExpiryEvent, PoliceInvestigationEvent, NpcFateEntry } from '../narrative/types';
 import { ActiveNewsInstance, MarketModifier, PendingNewsItem } from '../news/types';
 import { EssenceBalance } from '../economy/essence';
-import { InProgressRecipe, ForgeryNotorietyState } from '../workshop/types';
+import { InProgressRecipe, ForgeryNotorietyState, ReturnResult } from '../workshop/types';
 import { ShopUpgradeState, AppointmentBoardState, AppointmentCandidate } from '../upgrades/types';
 import { GameNode } from '../../types/node';
 import { BlackmarketState } from '../blackmarket/types';
@@ -153,6 +153,10 @@ export interface GameState {
 
   // === NPC FATE LOG (Victory Screen: Bitter Victory) ===
   npcFateLog: NpcFateEntry[];
+
+  // === WORKSHOP (工作台归还结果) ===
+  lastReturnResult: ReturnResult | null; // 最近一次重铸归还结果（DepartureView 显示用）
+  workshopUsageCount: number;           // 工作台累计使用次数（用于渐退脚手架）
 
   // === DEBUG FLAGS ===
   debugRevealFloor: boolean;  // 调试：显示客户底价

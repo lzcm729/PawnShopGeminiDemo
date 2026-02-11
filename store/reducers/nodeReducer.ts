@@ -43,7 +43,7 @@ export function nodeReducer(state: GameState, action: Action): GameState {
         }
 
         case 'CLEAR_NODE':
-            return { ...state, currentNode: null, lastDealSummary: null };
+            return { ...state, currentNode: null, lastDealSummary: null, lastReturnResult: null };
 
         case 'UPDATE_NODE_ITEM': {
             // Update item data within a PawnNode

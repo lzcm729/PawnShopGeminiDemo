@@ -11,7 +11,7 @@
  * - 三向互斥锁定
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Modal } from '../ui/Modal';
 import { HelpTooltip } from '../ui/Tooltip';
 import { Button } from '../ui/Button';
@@ -37,6 +37,8 @@ import {
   Star,
   Gift,
   Hand,
+  HelpCircle,
+  MessageCircle,
 } from 'lucide-react';
 import { ESSENCE_ICONS, EssenceCost } from '../../systems/economy/essence';
 import {
@@ -54,6 +56,36 @@ import {
 import { getQualityDisplayName } from '../../systems/workshop/workshopLogic';
 import { getDisplayName } from '../../systems/items/tagUtils';
 import { getGazeConfig } from '../../systems/workshop/forgeryNotoriety';
+import {
+  calculatePerceptionTier,
+  calculateEmotionalWeight,
+  getScaffoldingPhase,
+  shouldShowScaffolding,
+} from '../../systems/workshop';
+import type { PerceptionTier, EmotionalWeight } from '../../systems/workshop';
+import { createTextRegistry, TextRegistry } from '../../systems/utils/textRegistry';
+import intuitionCSV from '../../assets/data/texts/workshop_intuition.csv?raw';
+import trainingCSV from '../../assets/data/texts/workshop_training.csv?raw';
+
+// ============================================================================
+// Text registries (loaded once from CSV)
+// ============================================================================
+
+let intuitionTexts: TextRegistry | null = null;
+function getIntuitionTexts(): TextRegistry {
+  if (!intuitionTexts) {
+    intuitionTexts = createTextRegistry('workshop_intuition', intuitionCSV);
+  }
+  return intuitionTexts;
+}
+
+let trainingTexts: TextRegistry | null = null;
+function getTrainingTexts(): TextRegistry {
+  if (!trainingTexts) {
+    trainingTexts = createTextRegistry('workshop_training', trainingCSV);
+  }
+  return trainingTexts;
+}
 
 // ============================================================================
 // Route theme config
@@ -179,6 +211,10 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
   const [violationWarning, setViolationWarning] = useState<ViolationWarning | null>(null);
   const [violationRoute, setViolationRoute] = useState<RouteType | null>(null);
   const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
+  // Reputation micro-feedback animation state
+  const [repFeedback, setRepFeedback] = useState<{ humanity?: number; credibility?: number; innocence?: number } | null>(null);
+  // Training monologue state (invisible scaffolding)
+  const [trainingText, setTrainingText] = useState<string | null>(null);
   // Gaze moment state (notoriety-aware)
   const [gazeState, setGazeState] = useState<{
     text: string;
@@ -204,12 +240,41 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
 
   const selectedItem = workshopableItems.find(w => w.item.id === selectedItemId);
 
+  // Compute perception tier and emotional weight for the selected item
+  const selectedPerceptionTier: PerceptionTier | null = selectedItem
+    ? calculatePerceptionTier(selectedItem.item)
+    : null;
+  const selectedEmotionalWeight: EmotionalWeight | null = selectedItem
+    ? calculateEmotionalWeight(selectedItem.item).weight
+    : null;
+
   // Multi-night: check if selected item has an in-progress recipe
   const itemInProgress = selectedItemId
     ? inProgressRecipes.find(r => r.itemId === selectedItemId) ?? null
     : null;
 
+  // Show training monologue when item is selected (scaffolding)
+  useEffect(() => {
+    if (!selectedItemId || !isOpen) return;
+    if (!shouldShowScaffolding(state.workshopUsageCount)) {
+      setTrainingText(null);
+      return;
+    }
+    const phase = getScaffoldingPhase(state.workshopUsageCount);
+    const text = getTrainingTexts().getRandom(`training:${phase}`);
+    if (text) {
+      setTrainingText(text);
+      const timer = setTimeout(() => setTrainingText(null), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedItemId, isOpen, state.workshopUsageCount]);
+
   // ========== Handlers ==========
+
+  // Helper: dispatch workshop usage increment + optional rep feedback
+  const afterWorkshopAction = useCallback((result: WorkshopResult) => {
+    dispatch({ type: 'INCREMENT_WORKSHOP_USAGE' });
+  }, [dispatch]);
 
   const handleRestore = () => {
     const recipe = selectedItem?.restoreRecipe;
@@ -217,6 +282,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(true);
     const output = doRestore(selectedItemId, recipe.recipe.id);
     if (output?.success && output.result) {
+      afterWorkshopAction(output.result);
       triggerGaze(output.result);
     }
     setIsProcessing(false);
@@ -246,6 +312,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(true);
     const output = doCounterfeit(selectedItemId, recipeId);
     if (output?.success && output.result) {
+      afterWorkshopAction(output.result);
       triggerGaze(output.result);
     }
     setIsProcessing(false);
@@ -275,6 +342,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(true);
     const output = doReforge(selectedItemId, recipeId);
     if (output?.success && output.result) {
+      afterWorkshopAction(output.result);
       triggerGaze(output.result);
     }
     setIsProcessing(false);
@@ -308,6 +376,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
     setIsProcessing(true);
     const output = advanceInProgressRecipe(selectedItemId);
     if (output?.success && output.result) {
+      afterWorkshopAction(output.result);
       triggerGaze(output.result);
     }
     setIsProcessing(false);
@@ -399,14 +468,21 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
           />
         )}
 
-        {/* Violation Warning Modal */}
+        {/* Violation Warning Modal (perception-tier-aware) */}
         {violationWarning && violationRoute && (
           <ViolationWarningModal
             warning={violationWarning}
             route={violationRoute}
+            perceptionTier={selectedPerceptionTier || 'blind'}
+            emotionalWeight={selectedEmotionalWeight || 'unknown'}
             onConfirm={handleViolationConfirm}
             onCancel={handleViolationCancel}
           />
+        )}
+
+        {/* Training Monologue (invisible scaffolding - I10) */}
+        {trainingText && (
+          <TrainingMonologue text={trainingText} onDismiss={() => setTrainingText(null)} />
         )}
 
         {/* Result Modal */}
@@ -920,12 +996,110 @@ const CostDisplay: React.FC<CostDisplayProps> = ({ cost, deficit, compact }) => 
 interface ViolationWarningModalProps {
   warning: ViolationWarning;
   route: RouteType;
+  perceptionTier: PerceptionTier;
+  emotionalWeight: EmotionalWeight;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, route, onConfirm, onCancel }) => {
+const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({
+  warning, route, perceptionTier, emotionalWeight, onConfirm, onCancel,
+}) => {
   const isCounterfeit = route === 'counterfeit';
+  const isBlind = perceptionTier === 'blind';
+
+  // Look up perception-tier-aware intuition text from CSV
+  const intuitionText = (() => {
+    const texts = getIntuitionTexts();
+    if (isCounterfeit) {
+      return texts.get(`intuition:counterfeit:_:${perceptionTier}`) || warning.intuitionText;
+    }
+    return texts.get(`intuition:reforge:${emotionalWeight}:${perceptionTier}`) || warning.intuitionText;
+  })();
+
+  // Blind tier: special narrative confirmation style (I8, design 12)
+  if (isBlind) {
+    const blindTitle = getIntuitionTexts().get('blind:confirm:title') || '你对这件东西和这个人都不了解。';
+    const blindBody = getIntuitionTexts().get('blind:confirm:body') || '结果完全不可预测。';
+    const blindProceed = getIntuitionTexts().get('blind:confirm:proceed') || '凭直觉来';
+    const blindCancel = getIntuitionTexts().get('blind:confirm:cancel') || '再想想';
+
+    return (
+      <Modal
+        isOpen={true}
+        onClose={onCancel}
+        title={
+          <span className="flex items-center gap-2 text-stone-400">
+            <HelpCircle className="w-5 h-5" />
+            未知领域
+          </span>
+        }
+        size="md"
+      >
+        <div className="space-y-4 relative">
+          {/* Blurred uncertainty background effect */}
+          <div className="absolute inset-0 bg-gradient-to-b from-stone-900/50 to-noir-300/50 rounded pointer-events-none" />
+
+          <div className="relative z-10 space-y-4">
+            <p className="text-lg text-stone-200 font-bold text-center pt-2">
+              {blindTitle}
+            </p>
+            <p className="text-sm text-stone-400 text-center leading-relaxed">
+              {blindBody}
+            </p>
+
+            {/* Intuition text - emphasizes uncertainty */}
+            <div className="p-4 rounded border border-stone-700 bg-stone-900/50">
+              <div className="text-[10px] uppercase text-stone-500 mb-2">商人直觉</div>
+              <p className="text-sm text-stone-300/70 italic">
+                "{intuitionText}"
+              </p>
+            </div>
+
+            {/* Consequences: still shown but dimmed (player can't predict outcomes) */}
+            {isCounterfeit && (
+              <div className="p-3 rounded border border-red-900/30 bg-red-950/10 opacity-60">
+                <div className="text-[10px] uppercase text-red-400/60 mb-1">可预见后果 (伪造违约)</div>
+                <div className="text-[10px] text-stone-500">
+                  赔偿: ${warning.compensationAmount} | 声誉损失: 严重
+                </div>
+              </div>
+            )}
+
+            {/* Buttons: narrative-style */}
+            <div className="flex justify-center gap-4 pt-3">
+              <Button
+                onClick={onCancel}
+                className="px-6 bg-noir-300 hover:bg-noir-400 border-stone-600 text-stone-300"
+              >
+                {blindCancel}
+              </Button>
+              <Button
+                onClick={onConfirm}
+                className={cn(
+                  "px-6",
+                  isCounterfeit
+                    ? "bg-rose-900/60 hover:bg-rose-800/60 border-rose-700/60"
+                    : "bg-purple-900/60 hover:bg-purple-800/60 border-purple-700/60"
+                )}
+              >
+                {blindProceed}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  // Non-blind tiers: standard violation warning with perception-tier-aware intuition
+  const tierConfidence = {
+    glimpse: { label: '模糊感知', color: 'text-amber-400/60', borderColor: 'border-amber-900/30' },
+    partial: { label: '部分感知', color: 'text-amber-400/80', borderColor: 'border-amber-900/50' },
+    clear: { label: '清晰感知', color: 'text-amber-400', borderColor: 'border-amber-800' },
+  } as const;
+
+  const tierStyle = tierConfidence[perceptionTier as keyof typeof tierConfidence];
 
   return (
     <Modal
@@ -934,7 +1108,7 @@ const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, 
       title={
         <span className="flex items-center gap-2 text-red-400">
           <AlertTriangle className="w-5 h-5" />
-          违约风险
+          {isCounterfeit ? '违约风险' : '善意僭越'}
         </span>
       }
       size="md"
@@ -943,33 +1117,59 @@ const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, 
         <p className="text-sm text-stone-300">
           {isCounterfeit
             ? '这件物品仍在当期内。伪造将制造谎言，客户赎回时将视为严重违约。'
-            : '这件物品仍在当期内。重铸将改变其本质，客户赎回时的反应无法预测。'
+            : '这件物品仍在当期内。重铸将改变其本质，客户赎回时的反应取决于你对物品和客户的了解程度。'
           }
         </p>
 
         {/* 可预见后果 */}
         <div className="p-4 rounded border border-red-900/50 bg-red-950/20">
-          <div className="text-[10px] uppercase text-red-400 mb-2">可预见后果</div>
+          <div className="text-[10px] uppercase text-red-400 mb-2">
+            {isCounterfeit ? '可预见后果' : '可能后果'}
+          </div>
           <div className="space-y-1.5 text-sm text-stone-300">
-            <div>违约赔偿: <span className="text-red-400 font-mono">${warning.compensationAmount}</span> (当金 x200%)</div>
-            <div>
-              声誉损失:{' '}
-              <span className="text-red-400">人情 {warning.reputationLoss.humanity}</span>
-              {' / '}
-              <span className="text-red-400">商誉 {warning.reputationLoss.credibility}</span>
-              {warning.reputationLoss.innocence != null && (
-                <>{' / '}<span className="text-red-400">清白 {warning.reputationLoss.innocence}</span></>
-              )}
-            </div>
-            <div>客户关系: <span className="text-red-400">不可修复</span></div>
+            {isCounterfeit ? (
+              <>
+                <div>违约赔偿: <span className="text-red-400 font-mono">${warning.compensationAmount}</span> (当金 x200%)</div>
+                <div>
+                  声誉损失:{' '}
+                  <span className="text-red-400">人情 {warning.reputationLoss.humanity}</span>
+                  {' / '}
+                  <span className="text-red-400">商誉 {warning.reputationLoss.credibility}</span>
+                  {warning.reputationLoss.innocence != null && (
+                    <>{' / '}<span className="text-red-400">清白 {warning.reputationLoss.innocence}</span></>
+                  )}
+                </div>
+                <div>客户关系: <span className="text-red-400">不可修复</span></div>
+              </>
+            ) : (
+              <>
+                <div className="text-stone-400">赎回时客户可能:</div>
+                <div className="text-[10px] text-stone-500 space-y-0.5">
+                  <div className="text-emerald-400/70">叹服 — 被你的改进打动 (声誉提升)</div>
+                  <div className="text-stone-400">认可 — 接受变化 (声誉微增)</div>
+                  <div className="text-amber-400/70">不安 — 察觉到异样 (声誉下降)</div>
+                  <div className="text-red-400/70">愤怒 — 对擅自改动暴怒 (声誉大幅下降)</div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* 商人直觉 */}
-        <div className="p-4 rounded border border-amber-900/50 bg-amber-950/20">
-          <div className="text-[10px] uppercase text-amber-400 mb-2">商人直觉</div>
+        {/* 商人直觉 (perception-tier-aware) */}
+        <div className={cn(
+          "p-4 rounded border bg-amber-950/20",
+          tierStyle?.borderColor || 'border-amber-900/50'
+        )}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] uppercase text-amber-400">商人直觉</div>
+            {tierStyle && (
+              <span className={cn("text-[9px] px-1.5 py-0.5 rounded border border-amber-800/50", tierStyle.color)}>
+                {tierStyle.label}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-amber-200/80 italic">
-            "{warning.intuitionText}"
+            "{intuitionText}"
           </p>
         </div>
 
@@ -978,8 +1178,16 @@ const ViolationWarningModal: React.FC<ViolationWarningModalProps> = ({ warning, 
           <Button onClick={onCancel} className="px-4 bg-noir-300 hover:bg-noir-400 border-noir-500">
             放回去
           </Button>
-          <Button onClick={onConfirm} className="px-4 bg-red-900 hover:bg-red-800 border-red-700">
-            我知道后果，继续
+          <Button
+            onClick={onConfirm}
+            className={cn(
+              "px-4",
+              isCounterfeit
+                ? "bg-red-900 hover:bg-red-800 border-red-700"
+                : "bg-purple-900 hover:bg-purple-800 border-purple-700"
+            )}
+          >
+            {isCounterfeit ? '我知道后果，继续' : '继续重铸'}
           </Button>
         </div>
       </div>
@@ -1278,6 +1486,41 @@ const QualityOutcomesPreview: React.FC<QualityOutcomesPreviewProps> = ({ outcome
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// Training Monologue (invisible scaffolding - I10)
+// ============================================================================
+
+interface TrainingMonologueProps {
+  text: string;
+  onDismiss: () => void;
+}
+
+const TrainingMonologue: React.FC<TrainingMonologueProps> = ({ text, onDismiss }) => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const fadeIn = setTimeout(() => setVisible(true), 200);
+    return () => clearTimeout(fadeIn);
+  }, []);
+
+  return (
+    <div
+      className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 cursor-pointer max-w-sm"
+      onClick={onDismiss}
+    >
+      <div className={cn(
+        "flex items-start gap-2 px-4 py-3 rounded border border-amber-900/30 bg-noir-200/90 backdrop-blur-sm transition-opacity duration-700",
+        visible ? "opacity-100" : "opacity-0"
+      )}>
+        <MessageCircle className="w-4 h-4 text-amber-500/60 shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-200/60 italic leading-relaxed">
+          {text}
+        </p>
       </div>
     </div>
   );

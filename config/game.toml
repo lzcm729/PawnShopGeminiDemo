@@ -752,6 +752,50 @@ failed_multiplier = 0.0
 [workshop.essence_conversion]
 ratio = 3                                # 3:1 转换比率
 
+# --- 信息数据流 (Information Data Flow) ---
+[workshop.info_flow]
+# emotionalWeight 积分规则
+trait_sentimental_score = 3        # 物品 trait: SENTIMENTAL 分值
+trait_story_score = 3              # 物品 trait: STORY 分值
+insight_emotional_score = 3        # 洞察结果: 情感信息 分值 (insightDepth >= 3)
+dialogue_emotional_score = 2       # 对话关键词: 情感表达 分值
+behavior_sentimental_score = 1     # BehaviorTag: SENTIMENTAL 分值
+# emotionalWeight 总分映射阈值
+weight_low_min = 1                 # 低情感最低分
+weight_low_max = 3                 # 低情感最高分
+weight_mid_min = 4                 # 中情感最低分
+weight_mid_max = 6                 # 中情感最高分
+weight_high_min = 7                # 高情感最低分（>=此值为高）
+# 隐形训练阶段
+training_guide_threshold = 3       # 前N次显示引导独白
+training_hint_threshold = 5        # N次后变为模糊暗示，之后消失
+
+# --- 归还概率矩阵 (Return Matrix) ---
+# 低情感 + 开放型
+[workshop.return_matrix.low_open]
+admiration = 0.30
+acceptance = 0.35
+unease = 0.25
+anger = 0.10
+# 低情感 + 中性型
+[workshop.return_matrix.low_neutral]
+admiration = 0.15
+acceptance = 0.40
+unease = 0.30
+anger = 0.15
+# 高情感 + 中性型
+[workshop.return_matrix.high_neutral]
+admiration = 0.05
+acceptance = 0.20
+unease = 0.40
+anger = 0.35
+# 高情感 + 情感型
+[workshop.return_matrix.high_emotional]
+admiration = 0.05
+acceptance = 0.10
+unease = 0.30
+anger = 0.55
+
 # --- 工作台声誉变化表 (Workshop Reputation Deltas) ---
 [workshop.reputation]
 # 修复路线
