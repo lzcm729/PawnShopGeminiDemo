@@ -114,16 +114,16 @@ gewu_lv3_energy_max = 5
 # ------------------------------------------------------------
 [pawn_business]
 # 续当拒绝惩罚 (Renewal Refusal Penalties)
-# 设计文档：固定值 Humanity -1, Credibility +1
-renewal_refusal_penalty_0 = -1      # 固定人情惩罚
-renewal_refusal_penalty_1 = -1      # 固定人情惩罚
-renewal_refusal_penalty_2 = -1      # 固定人情惩罚
-renewal_refusal_penalty_3_plus = -1 # 固定人情惩罚
+# 按续约次数递增: -2/-4/-6/-8
+renewal_refusal_penalty_0 = -2      # 第1次拒绝 人情-2
+renewal_refusal_penalty_1 = -4      # 第2次拒绝 人情-4
+renewal_refusal_penalty_2 = -6      # 第3次拒绝 人情-6
+renewal_refusal_penalty_3_plus = -8 # 第4次及以上拒绝 人情-8
 # 续当拒绝时商誉奖励
 renewal_refusal_credibility = 1     # 固定商誉奖励
 # 续当接受声誉变化 (设计文档: 宽容加分但较小, 延期合同略微损害商誉)
 renewal_accept_humanity = 1         # 续当接受 +1 人情
-renewal_accept_credibility = -1     # 续当接受 -1 商誉
+renewal_accept_credibility = 0      # 续当接受不影响商誉
 
 # ------------------------------------------------------------
 # 母亲状态初始值 (Mother Status)

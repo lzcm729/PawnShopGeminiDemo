@@ -294,7 +294,6 @@ const GameContent: React.FC = () => {
         <>
             <Dashboard />
             <InventoryModal />
-            <MailModal />
             <FinancialCalendar />
             <MedicalModal />
             <HospitalVisitModal />
