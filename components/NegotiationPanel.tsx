@@ -39,6 +39,7 @@ function getFloorCapTexts(): TextRegistry {
 interface NegotiationStateProps {
     negotiation: {
         submitOffer: () => any;
+        acceptUltimatum: () => { status: 'ACCEPTED'; message: string; patienceRemaining: number; acceptedPrice: number } | null;
         offerPrincipal: number;
         setOfferPrincipal: React.Dispatch<React.SetStateAction<number>>;
         selectedRate: InterestRate;
@@ -163,6 +164,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     selectedRate,
     setSelectedRate,
     submitOffer,
+    acceptUltimatum,
     isWalkedAway,
     lastAction,
     mood,
@@ -1020,24 +1022,31 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
                           variant="primary"
                           onClick={() => {
                               playSfx('CLICK');
-                              // Accept ultimatum: set offer to ultimatum price and submit
-                              setOfferPrincipal(ultimatum.price!);
-                              // Defer to next tick so offerPrincipal state updates
+                              // Accept ultimatum: use dedicated method to avoid stale closure race
+                              const result = acceptUltimatum();
+                              if (!result) return;
+
+                              // Add acceptance dialogue to chat log
+                              setChatLog(prev => [...prev, {
+                                  id: `ultimatum-accept-${Date.now()}`,
+                                  sender: 'customer' as const,
+                                  text: result.message,
+                                  sentiment: 'positive' as const,
+                              }]);
+
+                              // Check stolen goods
+                              if (isCurrentItemStolen() && !stolenDecisionMade) {
+                                  setShowStolenWarning(true);
+                                  return;
+                              }
+
+                              // Complete transaction using result.acceptedPrice (not state)
+                              setIsSubmitting(true);
+                              const txResult = evaluateTransaction(result.acceptedPrice, selectedRate);
                               setTimeout(() => {
-                                  const result = submitOffer();
-                                  if (result.status === 'ACCEPTED') {
-                                      if (isCurrentItemStolen() && !stolenDecisionMade) {
-                                          setShowStolenWarning(true);
-                                          return;
-                                      }
-                                      setIsSubmitting(true);
-                                      const txResult = evaluateTransaction(ultimatum.price!, selectedRate);
-                                      setTimeout(() => {
-                                          send({ type: 'TRANSACTION_COMPLETE' });
-                                          commitTransaction(txResult);
-                                      }, 800);
-                                  }
-                              }, 0);
+                                  send({ type: 'TRANSACTION_COMPLETE' });
+                                  commitTransaction(txResult);
+                              }, 800);
                           }}
                           className="flex-1 h-12 bg-pawn-green/80 hover:bg-pawn-green border-green-700 text-white"
                       >

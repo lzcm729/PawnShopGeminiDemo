@@ -276,6 +276,7 @@ interface TomlNegotiation {
   empathy: TomlEmpathySkill;
   probe: TomlProbeSkill;
   // Patience warning & ultimatum
+  patience_caution_threshold: number;
   patience_danger_threshold: number;
   ultimatum_chance: number;
 }
@@ -853,6 +854,7 @@ export const GAME_CONFIG = {
       CONCESSION_TIER_HIGH: tomlConfig.negotiation.probe.concession_tier_high,
     },
     // Patience warning & ultimatum
+    PATIENCE_CAUTION_THRESHOLD: tomlConfig.negotiation.patience_caution_threshold,
     PATIENCE_DANGER_THRESHOLD: tomlConfig.negotiation.patience_danger_threshold,
     ULTIMATUM_CHANCE: tomlConfig.negotiation.ultimatum_chance,
   },

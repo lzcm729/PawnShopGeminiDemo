@@ -389,6 +389,8 @@ near_floor_concession_bonus = 0.20
 # 攻心让步概率加成
 heart_strike_concession_bonus = 0.30
 
+# 耐心预警阈值（耐心低于最大值的此比例时进入 caution 区）
+patience_caution_threshold = 0.6
 # 耐心预警阈值（耐心低于最大值的此比例时进入 danger 区）
 patience_danger_threshold = 0.3
 # 耐心归零时触发最后通牒的概率

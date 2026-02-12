@@ -46,6 +46,13 @@ export interface StolenLeverageResult {
   minReduction: number;
 }
 
+export interface AcceptUltimatumResult {
+  status: 'ACCEPTED';
+  message: string;
+  patienceRemaining: number;
+  acceptedPrice: number;
+}
+
 interface UseNegotiationReturn {
   patience: number;
   mood: NegotiationMood;
@@ -56,6 +63,7 @@ interface UseNegotiationReturn {
 
   isWalkedAway: boolean;
   submitOffer: () => NegotiationResult;
+  acceptUltimatum: () => AcceptUltimatumResult | null;
   applyLeverage: (power: number, description: string) => void;
   applyStolenLeverage: (power: number, description: string, label?: string) => StolenLeverageResult;
   triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void;
@@ -684,6 +692,34 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     });
   }, []);
 
+  // Accept ultimatum directly — bypasses offerPrincipal state to avoid stale closure race
+  const acceptUltimatum = useCallback((): AcceptUltimatumResult | null => {
+    if (!ultimatumActive || ultimatumPrice === null || !customer) return null;
+
+    // Sync state so downstream consumers (evaluateTransaction, etc.) see the correct value
+    setOfferPrincipal(ultimatumPrice);
+    setCurrentAskPrice(ultimatumPrice);
+
+    // Clear ultimatum state
+    setUltimatumActive(false);
+    setIsWalkedAway(false);
+    setMood('Happy');
+
+    const acceptMsg = customer.dialogue?.accepted?.fair || "成交。";
+
+    setOfferHistory(prev => [
+      { amount: ultimatumPrice, rate: selectedRate, status: 'ACCEPTED', patienceCost: 0, timestamp: Date.now() },
+      ...prev.slice(0, 2)
+    ]);
+
+    return {
+      status: 'ACCEPTED' as const,
+      message: acceptMsg,
+      patienceRemaining: patience,
+      acceptedPrice: ultimatumPrice,
+    };
+  }, [ultimatumActive, ultimatumPrice, customer, patience, selectedRate]);
+
   // B-10: Compute concession probability tier for skill-gated display
   // When offer >= ask price, NPC will directly accept (no concession tier needed), return null
   const concessionTier = useMemo((): ConcessionTier => {
@@ -711,8 +747,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     if (maxP <= 0) return 'danger';
     const ratio = patience / maxP;
     const dangerThreshold = GAME_CONFIG.NEGOTIATION.PATIENCE_DANGER_THRESHOLD;
+    const cautionThreshold = GAME_CONFIG.NEGOTIATION.PATIENCE_CAUTION_THRESHOLD;
     if (ratio <= dangerThreshold) return 'danger';
-    if (ratio <= 0.6) return 'caution';
+    if (ratio <= cautionThreshold) return 'caution';
     return 'normal';
   }, [patience]);
 
@@ -756,6 +793,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     setSelectedRate,
     isWalkedAway,
     submitOffer,
+    acceptUltimatum,
     applyLeverage,
     applyStolenLeverage,
     triggerNarrative,
