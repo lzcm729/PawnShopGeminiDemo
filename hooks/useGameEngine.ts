@@ -1299,7 +1299,7 @@ export const useGameEngine = () => {
     }
   };
 
-  const evaluateTransaction = (offer: number, rate: number = 0.05): TransactionResult => {
+  const evaluateTransaction = (offer: number, rate: number = 0.05, finalAskPrice?: number): TransactionResult => {
     const customer = state.currentCustomer;
     if (!customer) throw new Error("No customer to evaluate");
 
@@ -1443,7 +1443,8 @@ export const useGameEngine = () => {
       reputationDelta: repDelta,
       item: finalizedItem,
       dealQuality: quality,
-      terms: { principal: offer, rate: rate }
+      terms: { principal: offer, rate: rate },
+      currentAskPrice: finalAskPrice
     };
   };
 
@@ -1616,15 +1617,18 @@ export const useGameEngine = () => {
              // Create TRANSIENT chain for filler customers (no existing chainId)
              // This enables probability-based expiry behavior tracking
              let isFillerDeal = false;
-             // Compute the initial ask price the player saw in the negotiation UI.
-             // This is used as the denominator for pawn ratio (pawnAmount / askPrice)
-             // so the ratio aligns with the player's frame of reference.
-             const initialAsk = currentCust ? computeInitialAskPrice(
-                 currentCust.desiredAmount,
-                 currentCust.currentAskPrice,
-                 currentCust.item.uncertainty,
-                 currentCust.behaviorTags
-             ) : 0;
+             // Use the final ask price from the negotiation (after concessions).
+             // This is what the player actually negotiated against, so pawn ratio
+             // (pawnAmount / askPrice) aligns with the player's frame of reference.
+             // Falls back to computeInitialAskPrice if not provided (legacy path).
+             const finalAsk = result.currentAskPrice
+                 ? result.currentAskPrice
+                 : (currentCust ? computeInitialAskPrice(
+                     currentCust.desiredAmount,
+                     currentCust.currentAskPrice,
+                     currentCust.item.uncertainty,
+                     currentCust.behaviorTags
+                 ) : 0);
 
              if (!currentCust?.chainId && result.terms && !result.item.isVirtual) {
                  isFillerDeal = true;
@@ -1633,7 +1637,7 @@ export const useGameEngine = () => {
                      currentCust!,
                      result.item,
                      contractType,
-                     initialAsk
+                     finalAsk
                  );
                  // Store age/gender in chain variables for redemption visit dialogue
                  const ageTag = currentCust!.identityTags?.find(t => ['young', 'middle', 'elderly'].includes(t));
@@ -1663,7 +1667,7 @@ export const useGameEngine = () => {
                  txFeedback = calculateTransactionFeedback(
                      feedbackContractType,
                      result.terms.principal,
-                     initialAsk
+                     finalAsk
                  );
              }
 

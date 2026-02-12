@@ -13,6 +13,9 @@ export interface TransactionResult {
   item?: Item;
   dealQuality?: 'fair' | 'fleeced' | 'premium';
   terms?: { principal: number; rate: number };
+  /** The NPC's ask price at the moment the deal was struck (after concessions).
+   *  Used as denominator for pawn ratio so it matches the player's frame of reference. */
+  currentAskPrice?: number;
 }
 
 export interface TransactionRecord {

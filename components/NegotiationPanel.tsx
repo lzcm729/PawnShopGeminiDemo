@@ -809,7 +809,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
         }
 
         setIsSubmitting(true);
-        const txResult = evaluateTransaction(offerPrincipal, selectedRate);
+        const txResult = evaluateTransaction(offerPrincipal, selectedRate, currentAskPrice);
         setTimeout(() => {
             send({ type: 'TRANSACTION_COMPLETE' });
             commitTransaction(txResult);
@@ -824,7 +824,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       handleStolenItemDecision(true);
 
       setIsSubmitting(true);
-      const txResult = evaluateTransaction(offerPrincipal, selectedRate);
+      const txResult = evaluateTransaction(offerPrincipal, selectedRate, currentAskPrice);
       setTimeout(() => {
           send({ type: 'TRANSACTION_COMPLETE' });
           commitTransaction(txResult);
@@ -1027,7 +1027,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
                               // Complete transaction using result.acceptedPrice (not state)
                               setIsSubmitting(true);
-                              const txResult = evaluateTransaction(result.acceptedPrice, selectedRate);
+                              const txResult = evaluateTransaction(result.acceptedPrice, selectedRate, currentAskPrice);
                               setTimeout(() => {
                                   send({ type: 'TRANSACTION_COMPLETE' });
                                   commitTransaction(txResult);
