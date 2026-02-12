@@ -17,6 +17,8 @@ interface NightActionBarProps {
     maintenanceCost: number;
     hasWorkshop: boolean;
     workshopLevel: number;
+    hasCultivation: boolean;
+    cultivationLevel: number;
     hasBlackMarket: boolean;
     blackMarketLevel: number;
     storageLevel: number;
@@ -52,6 +54,8 @@ export const NightActionBar: React.FC<NightActionBarProps> = ({
     maintenanceCost,
     hasWorkshop,
     workshopLevel,
+    hasCultivation,
+    cultivationLevel,
     hasBlackMarket,
     blackMarketLevel,
     storageLevel,
@@ -155,18 +159,59 @@ export const NightActionBar: React.FC<NightActionBarProps> = ({
                         </div>
                     </button>
 
-                    {/* Cultivation / 修行 Button */}
+                    {/* Cultivation / 修行 Button (locked if not unlocked) */}
                     <button
-                        onClick={() => { playSfx('CLICK'); dispatch({ type: 'TOGGLE_ABILITY_PANEL' }); }}
-                        className="h-32 border border-amber-900 bg-stone-900/50 hover:bg-amber-950/50 transition-all rounded flex flex-col items-center justify-center gap-3 group"
+                        onClick={() => {
+                            if (hasCultivation) {
+                                playSfx('CLICK');
+                                dispatch({ type: 'TOGGLE_ABILITY_PANEL' });
+                            }
+                        }}
+                        disabled={!hasCultivation}
+                        className={cn(
+                            "h-32 border bg-stone-900/50 transition-all rounded flex flex-col items-center justify-center gap-3 group relative overflow-hidden",
+                            hasCultivation
+                                ? "border-amber-900 hover:bg-amber-950/50 cursor-pointer"
+                                : "border-stone-700/50 cursor-default hover:border-amber-900/50"
+                        )}
                     >
-                        <Sparkles className="w-8 h-8 text-amber-500 group-hover:text-amber-300 group-hover:scale-110 transition-transform" />
+                        {/* Locked state overlay */}
+                        {!hasCultivation && (
+                            <>
+                                {/* Diagonal stripes pattern */}
+                                <div
+                                    className="absolute inset-0 opacity-20 pointer-events-none"
+                                    style={{
+                                        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.03) 8px, rgba(255,255,255,0.03) 16px)'
+                                    }}
+                                />
+                                {/* Central lock overlay */}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                    <Lock className="w-6 h-6 text-amber-500/70 mb-2" />
+                                    <span className="text-[10px] text-amber-400/80 font-medium">{`需要「静修角」升级`}</span>
+                                </div>
+                            </>
+                        )}
+                        <Sparkles className={cn(
+                            "w-8 h-8 transition-transform",
+                            hasCultivation
+                                ? "text-amber-500 group-hover:text-amber-300 group-hover:scale-110"
+                                : "text-amber-900/50"
+                        )} />
                         <div className="flex flex-col items-center">
-                            <span className="text-xs uppercase tracking-widest group-hover:text-white">
+                            <span className={cn(
+                                "text-xs uppercase tracking-widest",
+                                hasCultivation ? "group-hover:text-white" : "text-stone-600"
+                            )}>
                                 修行 (Cultivation)
                             </span>
-                            <span className="text-[9px] text-amber-500/70 mt-1">
-                                学习技能提升能力
+                            <span className={cn(
+                                "text-[9px] mt-1 flex items-center gap-1",
+                                hasCultivation ? "text-amber-500/70" : "text-stone-600"
+                            )}>
+                                {!hasCultivation
+                                    ? <><Lock className="w-3 h-3" /> 未解锁</>
+                                    : `静修 Lv${cultivationLevel}`}
                             </span>
                         </div>
                     </button>

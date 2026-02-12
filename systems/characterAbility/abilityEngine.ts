@@ -13,7 +13,7 @@
  */
 
 import { ReputationProfile } from '../core/types';
-import { EssenceBalance } from '../economy/essence';
+import { EssenceBalance, EssenceCost } from '../economy/essence';
 import { BehaviorTag } from '../core/types';
 // NpcPushPullStyle and getPushPullStyle no longer needed after heart strike redesign
 import {
@@ -63,6 +63,25 @@ const FORESIGHT_FATIGUE_THRESHOLD = GAME_CONFIG.ABILITY.FORESIGHT_FATIGUE_THRESH
 const FORESIGHT_FATIGUE_HOPE_THRESHOLD = GAME_CONFIG.ABILITY.FORESIGHT_HOPE_THRESHOLD;
 
 // ============================================================================
+// Essence Discount
+// ============================================================================
+
+/**
+ * Apply essence discount to a cost. Each component is floored after discount.
+ * @param cost Original essence cost
+ * @param discountPercent Discount percentage (0-100), e.g. 10 means -10%
+ */
+export function applyEssenceDiscount(cost: EssenceCost, discountPercent: number): EssenceCost {
+  if (discountPercent <= 0) return cost;
+  const multiplier = 1 - discountPercent / 100;
+  return {
+    craft: cost.craft ? Math.floor(cost.craft * multiplier) : 0,
+    time: cost.time ? Math.floor(cost.time * multiplier) : 0,
+    vibe: cost.vibe ? Math.floor(cost.vibe * multiplier) : 0,
+  };
+}
+
+// ============================================================================
 // Initial State Factory
 // ============================================================================
 
@@ -105,7 +124,8 @@ export function canUnlockSkill(
   skillId: SkillId,
   abilityState: AbilityState,
   essenceBalance: EssenceBalance,
-  currentEnergy: number
+  currentEnergy: number,
+  essenceDiscountPercent: number = 0
 ): { canUnlock: boolean; meetsPrereqs: boolean; hasEssence: boolean; hasEnergy: boolean } {
   const def = SKILL_DEFINITIONS[skillId];
 
@@ -119,8 +139,8 @@ export function canUnlockSkill(
     prereq => abilityState.skills[prereq].unlocked
   );
 
-  // Check essence cost
-  const cost = def.essenceCost;
+  // Check essence cost (apply cultivation room discount)
+  const cost = applyEssenceDiscount(def.essenceCost, essenceDiscountPercent);
   const hasEssence =
     essenceBalance.craft >= (cost.craft || 0) &&
     essenceBalance.time >= (cost.time || 0) &&

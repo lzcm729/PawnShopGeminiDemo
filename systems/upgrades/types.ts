@@ -18,7 +18,8 @@ export type UpgradeEffectType =
   | 'PATIENCE_BONUS'        // Tea set: +customer patience
   | 'ANOMALY_DETECTION'     // Spectrometer: detect fakes/treasures
   | 'APPOINTMENT_BOARD'     // Appointment board: preview/invite customers
-  | 'BLACK_MARKET_CONTACT'; // Black market contact: unlock black market access
+  | 'BLACK_MARKET_CONTACT'  // Black market contact: unlock black market access
+  | 'CULTIVATION_UNLOCK';   // Cultivation room: unlock cultivation system
 
 /**
  * Appointment board level configuration

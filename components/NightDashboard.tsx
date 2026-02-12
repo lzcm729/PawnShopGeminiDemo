@@ -21,7 +21,7 @@ import { useSettlementCeremony } from '../hooks/useFinancialProjection';
 import { Tooltip } from './ui/Tooltip';
 import { ReputationType } from '../systems/core/types';
 import { getNarrativeAnchor } from '../systems/reputation';
-import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost, hasBlackMarketContact, hasPrecisionBench, getUpgradeLevel, getEffectiveNightEnergy, getBlackMarketContactLevel } from '../systems/upgrades';
+import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost, hasBlackMarketContact, hasPrecisionBench, getUpgradeLevel, getEffectiveNightEnergy, getBlackMarketContactLevel, hasCultivationRoom } from '../systems/upgrades';
 import { GAME_CONFIG } from '../systems/game/config';
 import { NightHeader } from './night/NightHeader';
 import { NightActionBar } from './night/NightActionBar';
@@ -55,6 +55,10 @@ export const NightDashboard: React.FC = () => {
 
     // Workshop state
     const hasWorkshop = hasPrecisionBench(state.shopUpgrades);
+
+    // Cultivation state
+    const hasCultivation = hasCultivationRoom(state.shopUpgrades);
+    const cultivationLevel = getUpgradeLevel('cultivation_room', state.shopUpgrades);
 
     // Black market state
     const hasBlackMarket = hasBlackMarketContact(state.shopUpgrades);
@@ -183,6 +187,8 @@ export const NightDashboard: React.FC = () => {
                         maintenanceCost={maintenanceCost}
                         hasWorkshop={hasWorkshop}
                         workshopLevel={workshopLevel}
+                        hasCultivation={hasCultivation}
+                        cultivationLevel={cultivationLevel}
                         hasBlackMarket={hasBlackMarket}
                         blackMarketLevel={blackMarketLevel}
                         storageLevel={storageLevel}

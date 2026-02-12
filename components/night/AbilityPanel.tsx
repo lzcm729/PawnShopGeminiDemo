@@ -36,6 +36,7 @@ export const AbilityPanel: React.FC<AbilityPanelProps> = ({ isOpen, onClose }) =
     unlockSkill,
     canUnlock,
     isUnlocked,
+    essenceDiscount,
   } = useCharacterAbility();
 
   const [selectedSkillId, setSelectedSkillId] = useState<SkillId | null>(null);
@@ -116,6 +117,7 @@ export const AbilityPanel: React.FC<AbilityPanelProps> = ({ isOpen, onClose }) =
                 essenceBalance={panelData.essenceBalance}
                 currentEnergy={panelData.currentEnergy}
                 onUnlock={() => handleUnlock(selectedSkill.def.id)}
+                essenceDiscount={essenceDiscount}
               />
             ) : (
               <div className="bg-noir-200 border border-noir-400 rounded-lg p-6 h-full flex flex-col items-center justify-center text-center min-h-[300px]">

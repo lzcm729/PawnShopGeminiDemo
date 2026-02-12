@@ -10,6 +10,7 @@ import { Button } from '../../ui/Button';
 import { AbilityPanelData } from '../../../systems/characterAbility/types';
 import { SKILL_DEFINITIONS } from '../../../systems/characterAbility/skillDefinitions';
 import { ESSENCE_DISPLAY_NAMES } from '../../../systems/economy/essence';
+import { applyEssenceDiscount } from '../../../systems/characterAbility/abilityEngine';
 import { PATH_COLORS, PathKey } from './constants';
 
 interface SkillDetailCardProps {
@@ -17,6 +18,7 @@ interface SkillDetailCardProps {
   essenceBalance: { craft: number; time: number; vibe: number };
   currentEnergy: number;
   onUnlock: () => void;
+  essenceDiscount?: number;
 }
 
 export const SkillDetailCard: React.FC<SkillDetailCardProps> = ({
@@ -24,8 +26,13 @@ export const SkillDetailCard: React.FC<SkillDetailCardProps> = ({
   essenceBalance,
   currentEnergy,
   onUnlock,
+  essenceDiscount,
 }) => {
   const { def, state, canUnlock, meetsPrerequisites, hasEnoughEssence, hasEnoughEnergy } = skill;
+
+  const discountedCost = essenceDiscount && essenceDiscount > 0
+    ? applyEssenceDiscount(def.essenceCost, essenceDiscount)
+    : def.essenceCost;
   const isUnlocked = state.unlocked;
   const pathKey = def.path as PathKey;
   const colors = PATH_COLORS[pathKey];
@@ -124,22 +131,25 @@ export const SkillDetailCard: React.FC<SkillDetailCardProps> = ({
               {def.essenceCost.craft !== undefined && def.essenceCost.craft > 0 && (
                 <EssenceCostRow
                   type="CRAFT"
-                  needed={def.essenceCost.craft}
+                  needed={discountedCost.craft ?? 0}
                   available={essenceBalance.craft}
+                  originalNeeded={essenceDiscount ? def.essenceCost.craft : undefined}
                 />
               )}
               {def.essenceCost.time !== undefined && def.essenceCost.time > 0 && (
                 <EssenceCostRow
                   type="TIME"
-                  needed={def.essenceCost.time}
+                  needed={discountedCost.time ?? 0}
                   available={essenceBalance.time}
+                  originalNeeded={essenceDiscount ? def.essenceCost.time : undefined}
                 />
               )}
               {def.essenceCost.vibe !== undefined && def.essenceCost.vibe > 0 && (
                 <EssenceCostRow
                   type="VIBE"
-                  needed={def.essenceCost.vibe}
+                  needed={discountedCost.vibe ?? 0}
                   available={essenceBalance.vibe}
+                  originalNeeded={essenceDiscount ? def.essenceCost.vibe : undefined}
                 />
               )}
             </div>
@@ -194,11 +204,13 @@ interface EssenceCostRowProps {
   type: 'CRAFT' | 'TIME' | 'VIBE';
   needed: number;
   available: number;
+  originalNeeded?: number;
 }
 
-const EssenceCostRow: React.FC<EssenceCostRowProps> = ({ type, needed, available }) => {
+const EssenceCostRow: React.FC<EssenceCostRowProps> = ({ type, needed, available, originalNeeded }) => {
   const enough = available >= needed;
   const colors = PATH_COLORS[type];
+  const hasDiscount = originalNeeded !== undefined && originalNeeded !== needed;
 
   return (
     <div className="flex items-center gap-2 text-sm">
@@ -211,6 +223,9 @@ const EssenceCostRow: React.FC<EssenceCostRowProps> = ({ type, needed, available
       )}
       <span className={enough ? 'text-stone-400' : 'text-red-400'}>
         {ESSENCE_DISPLAY_NAMES[type]}: {needed}
+        {hasDiscount && (
+          <span className="text-stone-600 line-through ml-1 text-xs">{originalNeeded}</span>
+        )}
       </span>
       <span className={cn('text-xs font-mono', enough ? 'text-stone-500' : 'text-red-400')}>
         ({available}/{needed})

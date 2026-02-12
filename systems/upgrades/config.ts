@@ -140,6 +140,27 @@ export const BLACK_MARKET_CONTACT: UpgradeConfig = {
 };
 
 /**
+ * Cultivation Room (Backroom)
+ * Unlocks the cultivation (self-improvement) system at night
+ * No maintenance cost, permanently active
+ */
+export const CULTIVATION_ROOM: UpgradeConfig = {
+  id: 'cultivation_room',
+  name: 'Meditation Corner',
+  nameCn: '静修角',
+  description: 'Set up a meditation corner for self-cultivation.',
+  location: 'BACKROOM',
+  effectType: 'CULTIVATION_UNLOCK',
+  maxLevel: 3,
+  levels: [
+    { level: 1, cost: 1000, effectValue: 0,  description: 'Lv1 冥想角落：解锁修行系统' },
+    { level: 2, cost: 2500, effectValue: 10, description: 'Lv2 静修室：精魄消耗-10%' },
+    { level: 3, cost: 5000, effectValue: 20, description: 'Lv3 悟道堂：精魄消耗-20%' },
+  ],
+  icon: 'Sparkles',
+};
+
+/**
  * Appointment board level configurations with detailed features
  */
 export const APPOINTMENT_BOARD_LEVELS: AppointmentBoardLevelConfig[] = [
@@ -191,6 +212,7 @@ export const AVAILABLE_UPGRADES: UpgradeConfig[] = [
   // Backroom (no maintenance, always active)
   STORAGE_EXPANSION,
   PRECISION_BENCH,
+  CULTIVATION_ROOM,
   APPOINTMENT_BOARD,
   BLACK_MARKET_CONTACT,
   // Counter (has maintenance, can be toggled)

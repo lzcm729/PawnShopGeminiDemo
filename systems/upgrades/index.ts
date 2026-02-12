@@ -19,6 +19,9 @@ export {
   hasAppointmentBoard,
   hasBlackMarketContact,
   hasPrecisionBench,
+  hasCultivationRoom,
+  getCultivationRoomLevel,
+  getCultivationEssenceDiscount,
   getBlackMarketContactLevel,
   getActiveBlackMarketConfig
 } from './utils';

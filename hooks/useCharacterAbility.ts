@@ -44,8 +44,10 @@ import {
   getPierceIllusionEffect,
   hasEmpathyBonus,
   canUnlockSkill,
+  applyEssenceDiscount,
   HeartStrikeResult,
 } from '../systems/characterAbility/abilityEngine';
+import { getCultivationEssenceDiscount } from '../systems/upgrades/utils';
 import { generatePanelData } from '../systems/characterAbility/panelData';
 import {
   calculateTransactionEssenceGain,
@@ -60,6 +62,7 @@ import { SKILL_DEFINITIONS } from '../systems/characterAbility/skillDefinitions'
 interface UseCharacterAbilityReturn {
   // State queries
   abilityState: AbilityState;
+  essenceDiscount: number;  // Cultivation room discount percentage (0-30)
   isUnlocked: (skillId: SkillId) => boolean;
 
   // Skill tree panel
@@ -129,6 +132,9 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
 
   const { reputation, essenceBalance, nightState } = state;
 
+  // Cultivation discount from shop upgrades
+  const essenceDiscount = getCultivationEssenceDiscount(state.shopUpgrades);
+
   // --- State queries ---
 
   const isUnlocked = useCallback(
@@ -139,27 +145,30 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
   // --- Panel data ---
 
   const getPanelDataCb = useCallback(
-    () => generatePanelData(abilityState, essenceBalance, nightState.energy),
-    [abilityState, essenceBalance, nightState.energy]
+    () => generatePanelData(abilityState, essenceBalance, nightState.energy, essenceDiscount),
+    [abilityState, essenceBalance, nightState.energy, essenceDiscount]
   );
 
   // --- Unlock ---
 
   const canUnlockCb = useCallback(
-    (skillId: SkillId) => canUnlockSkill(skillId, abilityState, essenceBalance, nightState.energy),
-    [abilityState, essenceBalance, nightState.energy]
+    (skillId: SkillId) => canUnlockSkill(skillId, abilityState, essenceBalance, nightState.energy, essenceDiscount),
+    [abilityState, essenceBalance, nightState.energy, essenceDiscount]
   );
 
   const unlockSkill = useCallback(
     (skillId: SkillId) => {
-      const check = canUnlockSkill(skillId, abilityState, essenceBalance, nightState.energy);
+      const check = canUnlockSkill(skillId, abilityState, essenceBalance, nightState.energy, essenceDiscount);
       if (!check.canUnlock) return;
 
       const def = SKILL_DEFINITIONS[skillId];
 
-      // Dispatch essence spend
-      if (def.essenceCost.craft || def.essenceCost.time || def.essenceCost.vibe) {
-        dispatch({ type: 'SPEND_ESSENCE_BATCH', payload: def.essenceCost });
+      // Apply discount to essence cost
+      const discountedCost = applyEssenceDiscount(def.essenceCost, essenceDiscount);
+
+      // Dispatch essence spend (with discount applied)
+      if (discountedCost.craft || discountedCost.time || discountedCost.vibe) {
+        dispatch({ type: 'SPEND_ESSENCE_BATCH', payload: discountedCost });
       }
 
       // Dispatch energy consume
@@ -171,7 +180,7 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
       // Record night action
       dispatch({ type: 'RECORD_NIGHT_ACTION', payload: `修行: ${def.name}` });
     },
-    [abilityState, essenceBalance, nightState.energy, dispatch]
+    [abilityState, essenceBalance, nightState.energy, essenceDiscount, dispatch]
   );
 
   // --- Negotiation skills ---
@@ -335,6 +344,7 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
 
   return {
     abilityState,
+    essenceDiscount,
     isUnlocked,
     getPanelData: getPanelDataCb,
     canUnlock: canUnlockCb,

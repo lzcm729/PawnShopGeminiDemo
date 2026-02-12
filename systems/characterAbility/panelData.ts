@@ -22,12 +22,13 @@ import { canUnlockSkill } from './abilityEngine';
 export function generatePanelData(
   abilityState: AbilityState,
   essenceBalance: EssenceBalance,
-  currentEnergy: number
+  currentEnergy: number,
+  essenceDiscountPercent: number = 0
 ): AbilityPanelData {
   const skills = ALL_SKILL_IDS.map(id => {
     const def = SKILL_DEFINITIONS[id];
     const state = abilityState.skills[id];
-    const check = canUnlockSkill(id, abilityState, essenceBalance, currentEnergy);
+    const check = canUnlockSkill(id, abilityState, essenceBalance, currentEnergy, essenceDiscountPercent);
 
     return {
       def,

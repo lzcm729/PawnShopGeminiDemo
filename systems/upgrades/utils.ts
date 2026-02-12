@@ -49,6 +49,9 @@ export function computeUpgradeEffects(upgradeState: ShopUpgradeState): UpgradeEf
       case 'BLACK_MARKET_CONTACT':
         // Binary unlock - no numeric effect, just presence check
         break;
+      case 'CULTIVATION_UNLOCK':
+        // Binary unlock - no numeric effect, just presence check
+        break;
     }
 
     // Add maintenance cost for enabled COUNTER upgrades
@@ -340,4 +343,30 @@ export function getActiveBlackMarketConfig(upgradeState: ShopUpgradeState): Blac
 export function hasPrecisionBench(upgradeState: ShopUpgradeState): boolean {
   const owned = upgradeState.upgrades.find(u => u.upgradeId === 'precision_bench');
   return (owned?.currentLevel ?? 0) > 0;
+}
+
+/**
+ * Check if cultivation room is unlocked
+ */
+export function hasCultivationRoom(upgradeState: ShopUpgradeState): boolean {
+  const owned = upgradeState.upgrades.find(u => u.upgradeId === 'cultivation_room');
+  return (owned?.currentLevel ?? 0) > 0;
+}
+
+/**
+ * Get the current cultivation room level (0 if not purchased)
+ */
+export function getCultivationRoomLevel(upgradeState: ShopUpgradeState): number {
+  const owned = upgradeState.upgrades.find(u => u.upgradeId === 'cultivation_room');
+  return owned?.currentLevel ?? 0;
+}
+
+/**
+ * Get the essence discount percentage from cultivation room upgrade (0, 10, 20, or 30)
+ */
+export function getCultivationEssenceDiscount(upgradeState: ShopUpgradeState): number {
+  const level = getCultivationRoomLevel(upgradeState);
+  if (level === 0) return 0;
+  const levelConfig = getUpgradeLevelConfig('cultivation_room', level);
+  return levelConfig?.effectValue ?? 0;
 }
