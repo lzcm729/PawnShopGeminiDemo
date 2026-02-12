@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useGame } from '../store/GameContext';
-import { Database, Zap, Bug, X, Terminal, Power, DollarSign, Sparkles, Trash2, GripHorizontal } from 'lucide-react';
+import { Database, Zap, Bug, X, Terminal, Power, DollarSign, Sparkles, Trash2, GripHorizontal, Heart } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
 import { useDraggable } from '../hooks/useDraggable';
 
@@ -38,6 +38,13 @@ export const DebugPanel: React.FC = () => {
   const handleAddEssence = () => {
     playSfx('CLICK');
     dispatch({ type: 'ADD_ESSENCE_BATCH', payload: { craft: 10, time: 10, vibe: 10 } });
+  };
+
+  const isNegotiation = state.phase.type === 'NEGOTIATION';
+
+  const handleAddPatience = () => {
+    playSfx('CLICK');
+    (window as any).__debugAddPatience?.();
   };
 
   const handleClearSave = () => {
@@ -114,6 +121,14 @@ export const DebugPanel: React.FC = () => {
                 >
                     <Sparkles className="w-3 h-3" />
                     +精魄
+                </button>
+                <button
+                    onClick={isNegotiation ? handleAddPatience : undefined}
+                    disabled={!isNegotiation}
+                    className={`bg-green-900/20 border border-green-700/50 text-green-400 px-2 py-2 rounded flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-colors ${isNegotiation ? 'hover:bg-green-900/40 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                >
+                    <Heart className="w-3 h-3" />
+                    +耐心
                 </button>
                 <label
                     onClick={() => dispatch({ type: 'DEBUG_TOGGLE_FLOOR' })}

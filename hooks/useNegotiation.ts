@@ -330,6 +330,14 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     }
   }, [customer, itemUncertainty]);
 
+  // Debug: expose patience adder for DebugPanel
+  useEffect(() => {
+    (window as any).__debugAddPatience = () => {
+      setPatience(prev => prev + 1);
+    };
+    return () => { delete (window as any).__debugAddPatience; };
+  }, []);
+
   // FIX: Use functional state update to avoid stale closure bugs
   const reducePrice = useCallback((power: number): number => {
       if (power <= 0) return 0;
