@@ -62,7 +62,7 @@ remarkable,"你的手指滑过一个不起眼的凹陷...不对，这不是瑕�
 remarkable,"今晚的状态出奇地好。{item_name}表层下的秘密像潮水一样涌来，你几乎来不及记录。"
 remarkable,"一个极其细微的温差变化引起了你的注意。深入探查后，你发现了远超预期的信息量。"
 block:NO_ENERGY,"精力不足"
-block:ALREADY_INSIGHTED,"今晚已研究过"
+block:ALREADY_INSIGHTED,"今夜已有所悟，需时沉淀"
 block:DEPLETED,"已被研究透彻"
 block:NOT_IN_INVENTORY,"物品不在库存中"
 block:ITEM_REDEEMED,"物品已被赎回"
