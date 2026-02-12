@@ -16,6 +16,7 @@ import { Dialogue, SatisfactionLevel } from '../systems/narrative/types';
 import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
 import { createTransientChain, getContractTypeFromRate, generateFillerCustomer, generateReferralCustomer, generateRedemptionVisitDialogue, getFillerMerchantMonologue, isTransientChain, calculateTransactionFeedback } from '../systems/npc/fillerGenerator';
 import type { CustomerAppearance, CustomerMood, CustomerAge, CustomerGender } from '../systems/npc/fillerGenerator';
+import { resetDialogueDedup } from '../systems/npc/fillerTemplateLoader';
 import { generateDailyChallenge, checkChallengeCompletion } from '../systems/game/dailyChallenge';
 import type { DayChallengeContext } from '../systems/game/dailyChallenge';
 import { checkRiskEvent, processStartOfDay as processBlackmarketStartOfDay } from '../systems/blackmarket/blackmarketService';
@@ -800,6 +801,9 @@ export const useGameEngine = () => {
 
   const startNewDay = () => {
     // startAmbience('DAY'); // Removed per user request
+
+    // Reset filler dialogue dedup so same-day customers get unique lines
+    resetDialogueDedup();
 
     // NOTE: Blackmarket refresh and mail processing are handled
     // by the state machine effects when OPEN_SHOP transitions to DAY_START.EXPIRY_CHECK.

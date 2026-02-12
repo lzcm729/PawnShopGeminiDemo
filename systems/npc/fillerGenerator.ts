@@ -21,7 +21,7 @@ import {
   getRandomName,
   getRandomAppearanceDescription,
   getRandomMoodDescription,
-  getRandomDialogue,
+  getUniqueRandomDialogue,
 } from './fillerTemplateLoader';
 import {
   initializeFillerReasons,
@@ -1090,23 +1090,24 @@ function generateFillerDialogue(profile: FillerCustomerProfile, qualityOptions?:
     const reputationGreeting = getReputationGreeting(qualityOptions);
 
     // Get dialogue from CSV templates with fallbacks
-    const greeting = reputationGreeting || getRandomDialogue(mood, 'greeting') || '老板，帮我看看这个。';
-    const acceptedFair = getRandomDialogue(mood, 'accepted_fair') || '行，就这样吧。';
-    const acceptedFleeced = getRandomDialogue(mood, 'accepted_fleeced') || '有点低，算了。';
-    const acceptedPremium = getRandomDialogue(mood, 'accepted_premium') || '谢谢老板！';
-    const rejected = getRandomDialogue(mood, 'rejected') || '我再想想。';
-    const rejectionStandard = getRandomDialogue(mood, 'rejection_standard') || '我再看看别家。';
-    const rejectionAngry = getRandomDialogue(mood, 'rejection_angry') || '太低了。';
-    const exitGrateful = getRandomDialogue(mood, 'exit_grateful') || '谢谢老板！';
-    const exitNeutral = getRandomDialogue(mood, 'exit_neutral') || '好的，再见。';
-    const exitResentful = getRandomDialogue(mood, 'exit_resentful') || '唉...';
-    const exitDesperate = getRandomDialogue(mood, 'exit_desperate') || '...';
+    // Use getUniqueRandomDialogue for fields most likely to repeat noticeably
+    const greeting = reputationGreeting || getUniqueRandomDialogue(mood, 'greeting') || '老板，帮我看看这个。';
+    const acceptedFair = getUniqueRandomDialogue(mood, 'accepted_fair') || '行，就这样吧。';
+    const acceptedFleeced = getUniqueRandomDialogue(mood, 'accepted_fleeced') || '有点低，算了。';
+    const acceptedPremium = getUniqueRandomDialogue(mood, 'accepted_premium') || '谢谢老板！';
+    const rejected = getUniqueRandomDialogue(mood, 'rejected') || '我再想想。';
+    const rejectionStandard = getUniqueRandomDialogue(mood, 'rejection_standard') || '我再看看别家。';
+    const rejectionAngry = getUniqueRandomDialogue(mood, 'rejection_angry') || '太低了。';
+    const exitGrateful = getUniqueRandomDialogue(mood, 'exit_grateful') || '谢谢老板！';
+    const exitNeutral = getUniqueRandomDialogue(mood, 'exit_neutral') || '好的，再见。';
+    const exitResentful = getUniqueRandomDialogue(mood, 'exit_resentful') || '唉...';
+    const exitDesperate = getUniqueRandomDialogue(mood, 'exit_desperate') || '...';
 
     return {
         greeting,
-        pawnReason: getRandomDialogue(mood, 'pawn_reason') || '需要周转一下。',
-        redemptionPlea: getRandomDialogue(mood, 'redemption_plea') || '到期我会来赎的。',
-        negotiationDynamic: getRandomDialogue(mood, 'negotiation_dynamic') || '能不能再加点？',
+        pawnReason: getUniqueRandomDialogue(mood, 'pawn_reason') || '需要周转一下。',
+        redemptionPlea: getUniqueRandomDialogue(mood, 'redemption_plea') || '到期我会来赎的。',
+        negotiationDynamic: getUniqueRandomDialogue(mood, 'negotiation_dynamic') || '能不能再加点？',
         accepted: {
             fair: acceptedFair,
             fleeced: acceptedFleeced,

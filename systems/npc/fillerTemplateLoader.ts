@@ -308,6 +308,52 @@ export function getRandomDialogue(mood: CustomerMood, dialogueType: string): str
   return dialogues[Math.floor(Math.random() * dialogues.length)];
 }
 
+// ============================================================================
+// DIALOGUE DEDUP (per-day uniqueness)
+// ============================================================================
+
+/** Tracks which dialogue texts have been used this day, keyed by mood_dialogueType */
+const usedDialogues = new Map<string, Set<string>>();
+
+/**
+ * Reset dialogue dedup records. Call at the start of each new day.
+ */
+export function resetDialogueDedup(): void {
+  usedDialogues.clear();
+}
+
+/**
+ * Get a random dialogue for given mood and type, avoiding same-day repeats.
+ * If all options for a given mood+type have been used, resets that bucket
+ * and picks randomly (graceful fallback).
+ */
+export function getUniqueRandomDialogue(mood: CustomerMood, dialogueType: string): string | undefined {
+  const dialogues = getDialogues(mood, dialogueType);
+  if (dialogues.length === 0) return undefined;
+
+  const key = `${mood}_${dialogueType}`;
+  let used = usedDialogues.get(key);
+  if (!used) {
+    used = new Set();
+    usedDialogues.set(key, used);
+  }
+
+  // Find texts not yet used today
+  const available = dialogues.filter(d => !used!.has(d));
+
+  if (available.length > 0) {
+    const chosen = available[Math.floor(Math.random() * available.length)];
+    used.add(chosen);
+    return chosen;
+  }
+
+  // All used up — reset this bucket and pick randomly
+  used.clear();
+  const chosen = dialogues[Math.floor(Math.random() * dialogues.length)];
+  used.add(chosen);
+  return chosen;
+}
+
 /**
  * Check if templates are loaded
  */
