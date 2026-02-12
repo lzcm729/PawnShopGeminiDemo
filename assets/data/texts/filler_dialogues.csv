@@ -61,12 +61,12 @@ anxious,pawn_reason,生意亏了一笔，急着堵窟窿...
 anxious,pawn_reason,明天就要交房租了，差好大一截...
 calm,pawn_reason,手头紧，想周转一下。
 calm,pawn_reason,最近开销大，先当着吧。
-calm,pawn_reason,闲置挺久了，换点钱也好。
-calm,pawn_reason,搬家要处理一批东西。
-calm,pawn_reason,打算出国，用不上了。
+calm,pawn_reason,先押在你这儿，过阵子来赎。
+calm,pawn_reason,资金有点紧，先典着周转一下。
 calm,pawn_reason,结婚要花钱，先周转一下。
-calm,pawn_reason,换了新的，旧的放着浪费。
+calm,pawn_reason,等这笔帐收回来就来赎。
 calm,pawn_reason,车贷还有几期，先应付一下。
+calm,pawn_reason,年底用钱的地方多，先放你这儿。
 reluctant,pawn_reason,实在是没办法了才来的...
 reluctant,pawn_reason,"不是不想留着，但是... 唉。"
 reluctant,pawn_reason,要不是走投无路，谁愿意当啊...
@@ -75,14 +75,14 @@ reluctant,pawn_reason,欠了人情债... 这东西先放你这儿吧。
 reluctant,pawn_reason,"这是家里传下来的，我真舍不得..."
 reluctant,pawn_reason,给孩子看病... 只能先委屈它了。
 reluctant,pawn_reason,再不还钱就要被起诉了... 唉...
-eager,pawn_reason,反正放着也是放着，不如换钱！
-eager,pawn_reason,"这个我不需要了，换点现金。"
-eager,pawn_reason,早就想清理掉了，正好来当！
-eager,pawn_reason,刚好缺点零花钱，拿这个换！
-eager,pawn_reason,买了新款，旧的赶紧出手！
-eager,pawn_reason,收拾屋子翻出来的，正好卖掉！
-eager,pawn_reason,朋友送的用不上，换钱实在！
-eager,pawn_reason,趁有空赶紧处理了，别占地方！
+eager,pawn_reason,先押着！过几天就来赎！
+eager,pawn_reason,急着用钱，当完就走！爽快点！
+eager,pawn_reason,发了工资马上来赎，帮个忙！
+eager,pawn_reason,就当几天，下周肯定来拿！
+eager,pawn_reason,老板看着给个价，我赶时间！
+eager,pawn_reason,来借点钱周转，东西你先收着！
+eager,pawn_reason,等项目回款了立马来赎！
+eager,pawn_reason,应个急，这东西我还要的！
 anxious,redemption_plea,等发了工资就来赎...
 anxious,redemption_plea,我会尽快回来的... 一定。
 anxious,redemption_plea,千万帮我留着... 求求你了...
