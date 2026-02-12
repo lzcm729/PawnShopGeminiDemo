@@ -1644,13 +1644,14 @@ export const useGameEngine = () => {
              }
 
              // Calculate transaction feedback (redemption rate impact display)
+             // Uses desiredAmount as denominator for pawn ratio (pawnAmount / desiredAmount)
              let txFeedback = null;
-             if (result.terms && result.item) {
+             if (result.terms && result.item && currentCust) {
                  const feedbackContractType = getContractTypeFromRate(result.terms.rate);
                  txFeedback = calculateTransactionFeedback(
                      feedbackContractType,
                      result.terms.principal,
-                     result.item.realValue
+                     currentCust.desiredAmount
                  );
              }
 

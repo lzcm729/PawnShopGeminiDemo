@@ -646,6 +646,17 @@ base_patience = 3
 # 稀有遭遇概率
 rare_encounter_chance = 0.075
 
+# --- 当金比例阈值 (Pawn Ratio Thresholds) ---
+# 当金比例 = 当金 / 客户需求金额 (desiredAmount)
+# 比例可能超过 100%（玩家出价超过客户需求）
+pawn_ratio_high = 1.05               # 超额满足客户需求
+pawn_ratio_low = 0.85                # 低于客户需求的 85%
+# 当金比例对赎回意愿的修正
+pawn_ratio_high_redeem_mod = 0.10    # 高比例：赎回意愿 +10%
+pawn_ratio_high_noshow_mod = -0.10   # 高比例：爽约概率 -10%
+pawn_ratio_low_redeem_mod = -0.15    # 低比例：赎回意愿 -15%
+pawn_ratio_low_noshow_mod = 0.15     # 低比例：爽约概率 +15%
+
 # --- 后果回传：客户质量偏移 (H-2: Moral Actions → Customer Pool Quality) ---
 # 人情加成系数（每10点人情增加可信客户权重）
 humanity_quality_bonus_per_10 = 0.05

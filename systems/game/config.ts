@@ -374,6 +374,13 @@ interface TomlNpcFiller {
   insult_ratio: number;
   base_patience: number;
   rare_encounter_chance: number;
+  // Pawn ratio thresholds (pawnAmount / desiredAmount)
+  pawn_ratio_high: number;
+  pawn_ratio_low: number;
+  pawn_ratio_high_redeem_mod: number;
+  pawn_ratio_high_noshow_mod: number;
+  pawn_ratio_low_redeem_mod: number;
+  pawn_ratio_low_noshow_mod: number;
   // H-2: Moral actions -> customer pool quality
   humanity_quality_bonus_per_10: number;
   low_innocence_risk_per_10: number;
@@ -951,6 +958,13 @@ export const GAME_CONFIG = {
     INSULT_RATIO: tomlConfig.npc.filler.insult_ratio,
     BASE_PATIENCE: tomlConfig.npc.filler.base_patience,
     RARE_ENCOUNTER_CHANCE: tomlConfig.npc.filler.rare_encounter_chance,
+    // Pawn ratio thresholds (pawnAmount / desiredAmount)
+    PAWN_RATIO_HIGH: tomlConfig.npc.filler.pawn_ratio_high,
+    PAWN_RATIO_LOW: tomlConfig.npc.filler.pawn_ratio_low,
+    PAWN_RATIO_HIGH_REDEEM_MOD: tomlConfig.npc.filler.pawn_ratio_high_redeem_mod,
+    PAWN_RATIO_HIGH_NOSHOW_MOD: tomlConfig.npc.filler.pawn_ratio_high_noshow_mod,
+    PAWN_RATIO_LOW_REDEEM_MOD: tomlConfig.npc.filler.pawn_ratio_low_redeem_mod,
+    PAWN_RATIO_LOW_NOSHOW_MOD: tomlConfig.npc.filler.pawn_ratio_low_noshow_mod,
     // H-2: Moral actions -> customer pool quality
     HUMANITY_QUALITY_BONUS_PER_10: tomlConfig.npc.filler.humanity_quality_bonus_per_10,
     LOW_INNOCENCE_RISK_PER_10: tomlConfig.npc.filler.low_innocence_risk_per_10,

@@ -7,10 +7,10 @@ import { SatisfactionLevel, RedeemSatisfaction, RenewalSatisfaction, PostForfeit
  *
  * @param offer - The pawn amount (当金)
  * @param rate - Contract interest rate (0, 0.05, 0.10, 0.20)
- * @param valuation - The perceived/estimated value
+ * @param valuation - The customer's reference value (minimumAmount or desiredAmount)
  * @param minAcceptable - Minimum amount NPC would accept
  * @param isRejected - Whether the deal was rejected
- * @param pawnRatio - offer / valuation (0-1), defaults to 0.7
+ * @param pawnRatio - offer / reference value, defaults to 0.7
  */
 export const evaluateSatisfaction = (
     offer: number,

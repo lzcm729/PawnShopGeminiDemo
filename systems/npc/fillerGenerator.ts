@@ -153,19 +153,22 @@ export const CONTRACT_MODIFIERS: Record<ContractType, { redeemMod: number; noSho
  * From design doc Section 4.3 (v2.1)
  *
  * Layer 2 of the two-layer redemption rate system:
- * - High pawn ratio (>75%): customer feels better deal, more likely to redeem
- * - Low pawn ratio (<60%): customer feels squeezed, less likely to redeem
+ * pawnRatio = pawnAmount / desiredAmount (客户需求金额)
+ * - High pawn ratio (>105%): player gives more than customer asked, more likely to redeem
+ * - Low pawn ratio (<85%): player gives less than customer asked, less likely to redeem
+ *
+ * Values loaded from config/game.toml [npc.filler]
  */
 export const PAWN_RATIO_THRESHOLDS = {
-    HIGH: 0.75,
-    LOW: 0.60
-} as const;
+    get HIGH() { return GAME_CONFIG.NPC_FILLER.PAWN_RATIO_HIGH; },
+    get LOW() { return GAME_CONFIG.NPC_FILLER.PAWN_RATIO_LOW; },
+};
 
 export const PAWN_RATIO_MODIFIERS = {
-    HIGH: { redeemMod: 0.10, noShowMod: -0.10 },
-    LOW: { redeemMod: -0.15, noShowMod: 0.15 },
+    get HIGH() { return { redeemMod: GAME_CONFIG.NPC_FILLER.PAWN_RATIO_HIGH_REDEEM_MOD, noShowMod: GAME_CONFIG.NPC_FILLER.PAWN_RATIO_HIGH_NOSHOW_MOD }; },
+    get LOW() { return { redeemMod: GAME_CONFIG.NPC_FILLER.PAWN_RATIO_LOW_REDEEM_MOD, noShowMod: GAME_CONFIG.NPC_FILLER.PAWN_RATIO_LOW_NOSHOW_MOD }; },
     NORMAL: { redeemMod: 0, noShowMod: 0 }
-} as const;
+};
 
 /**
  * Behavior tag probabilities by appearance
@@ -370,7 +373,7 @@ function getContractLabel(type: ContractType): string {
 export function calculateTransactionFeedback(
     contractType: ContractType,
     pawnAmount: number,
-    itemValue: number
+    desiredAmount: number
 ): TransactionFeedback {
     const items: TransactionFeedbackItem[] = [];
     let totalModifier = 0;
@@ -387,8 +390,8 @@ export function calculateTransactionFeedback(
     });
     totalModifier += contractMod.redeemMod;
 
-    // Pawn ratio modifier
-    const pawnRatio = itemValue > 0 ? pawnAmount / itemValue : 0;
+    // Pawn ratio modifier (pawnAmount / desiredAmount)
+    const pawnRatio = desiredAmount > 0 ? pawnAmount / desiredAmount : 0;
     const ratioCategory = getPawnRatioCategory(pawnRatio);
     const ratioMod = PAWN_RATIO_MODIFIERS[ratioCategory];
     const ratioPercent = Math.round(pawnRatio * 100);
@@ -1748,8 +1751,7 @@ export function createTransientChain(
     contractType: ContractType
 ): EventChainState {
     const chainId = `transient_${item.id}`;
-    const itemValue = item.perceivedValue ?? item.realValue;
-    const pawnRatio = itemValue > 0 ? item.pawnAmount / itemValue : 0;
+    const pawnRatio = customer.desiredAmount > 0 ? item.pawnAmount / customer.desiredAmount : 0;
 
     return {
         id: chainId,
