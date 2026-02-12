@@ -5,16 +5,16 @@ EMPATHY:desperate:success:subtext,耐心消耗概率 -20%
 EMPATHY:sincere:success:subtext,耐心消耗概率 -20%
 EMPATHY:bluffing:failure,你的关心像拳头打在棉花上。他的眼神没有任何波动——这份"理解"他并不需要。
 EMPATHY:firm:failure,他微微皱眉，没有接受你的好意。这种人不需要同情——他们要的是对等的尊重。
-EMPATHY:bluffing:failure:subtext,耐心 -2
-EMPATHY:firm:failure:subtext,耐心 -2
+EMPATHY:bluffing:failure:subtext,共情无效
+EMPATHY:firm:failure:subtext,共情无效
 PROBE:bluffing:success,你看穿了那些夸张的表情。他的底牌不再是秘密。
 PROBE:firm:success,你的试探碰到了他真正的底线。他的坚持不是演的——但现在你知道了极限在哪。
 PROBE:bluffing:success:subtext,底线范围揭示
 PROBE:firm:success:subtext,底线范围揭示
 PROBE:desperate:failure,你精心布置的试探让她的表情变了——不是露出破绽，而是受到伤害。她不是在演戏。
 PROBE:sincere:failure,他困惑地看着你，像是不明白你在防备什么。他已经把一切摆在桌上了——你还在试探什么？
-PROBE:desperate:failure:subtext,耐心 -2
-PROBE:sincere:failure:subtext,耐心 -2
+PROBE:desperate:failure:subtext,试探无效
+PROBE:sincere:failure:subtext,试探无效
 PROBE:concession_tier:low,他几乎不会退让——像一堵墙。
 PROBE:concession_tier:medium,他有犹豫的迹象，但还没松口。
 PROBE:concession_tier:high,他已经开始动摇了——再推一把可能就行。
