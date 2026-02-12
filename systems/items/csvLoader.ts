@@ -353,12 +353,28 @@ export function createItemFromTemplate(
     }
   }
 
+  // Adjust realValue and isFake based on hidden traits from template
+  // FAKE traits: item looks valuable but is actually worth much less
+  // JACKPOT traits: item looks ordinary but is actually worth much more
+  let adjustedRealValue = template.realValue;
+  let adjustedIsFake = false;
+  const visualValue = template.visualValue || template.realValue;
+
+  for (const trait of hiddenTraits) {
+    if (trait.type === 'FAKE') {
+      adjustedIsFake = true;
+      adjustedRealValue = Math.max(10, Math.floor(visualValue * (1 + trait.valueImpact)));
+    } else if (trait.type === 'JACKPOT') {
+      adjustedRealValue = Math.floor(visualValue * (1 + trait.valueImpact));
+    }
+  }
+
   // G1 (state) tags are visible immediately (physical defects are obvious)
   // G2 (attribute) tags go into hiddenTags (must be discovered through appraisal/insight)
   const tags: ItemTag[] = [...template.initStateTags];
   const hiddenTags: ItemTag[] = [...template.attrTags];
 
-  // Generate estimate range
+  // Generate estimate range (anchored to visual/perceived value, not adjusted realValue)
   const anchor = template.visualValue || template.realValue;
   const width = anchor * template.uncertainty;
   const skewFactor = 0.2 + (Math.random() * 0.6);
@@ -396,15 +412,15 @@ export function createItemFromTemplate(
     appraisalNote: '',
     archiveSummary: '',
     isStolen: false,
-    isFake: false,
+    isFake: adjustedIsFake,
     sentimentalValue: false,
     appraised: false,
     pawnDate: 0,
     status: ItemStatus.ACTIVE,
     pawnAmount: 0,
-    realValue: template.realValue,
+    realValue: adjustedRealValue,
     perceivedValue: template.visualValue,
-    baseValue: template.realValue,
+    baseValue: adjustedRealValue,
     uncertainty: template.uncertainty,
     currentRange,
     initialRange: currentRange,

@@ -1310,6 +1310,10 @@ export type ForcedJumpTrait = 'MISTAKE' | 'BARGAIN' | null;
  * @returns The modified item (or original if no jump trait attached)
  */
 function attachJumpTrait(item: Item, forceType: ForcedJumpTrait = null): Item {
+    // Skip items that already have jump traits from template
+    const existingJumpTrait = item.hiddenTraits.find(t => t.type === 'FAKE' || t.type === 'JACKPOT');
+    if (existingJumpTrait) return item;
+
     const config = JUMP_TRAIT_CONFIG[item.category] || DEFAULT_JUMP_CONFIG;
 
     // If not forcing a specific type, use normal probability
