@@ -756,6 +756,12 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     const ratio = patience / maxP;
     const dangerThreshold = GAME_CONFIG.NEGOTIATION.PATIENCE_DANGER_THRESHOLD;
     const cautionThreshold = GAME_CONFIG.NEGOTIATION.PATIENCE_CAUTION_THRESHOLD;
+
+    // Absolute fallback: when patience is critically low, warn regardless of ratio
+    // This handles cases like maxPatience=1 where ratio=1.0 (100%) but one mistake = departure
+    if (patience <= 1) return 'danger';
+    if (patience <= 2) return 'caution';
+
     if (ratio <= dangerThreshold) return 'danger';
     if (ratio <= cautionThreshold) return 'caution';
     return 'normal';
