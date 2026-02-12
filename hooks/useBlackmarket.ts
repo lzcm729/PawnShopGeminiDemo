@@ -15,7 +15,7 @@ import {
   MarketPurchaseRequest,
   getHeatLevel,
   getHeatConfig,
-  getUnderworldCommission,
+  getCommissionByInnocence,
   MarketIndicator,
   LowHeatRewardState
 } from '../systems/blackmarket/types';
@@ -47,9 +47,9 @@ import { getBlackMarketContactLevel, getActiveBlackMarketConfig } from '../syste
 export const useBlackmarket = () => {
   const { state, dispatch } = useGame();
   const { blackmarket, inventory, reputation, shopUpgrades } = state;
-  // Black market trust is inversely proportional to innocence
-  // Lower innocence = more trusted in the black market = better commission rates
-  const blackMarketTrust = 100 - reputation[ReputationType.INNOCENCE];
+  // Innocence directly drives commission: high innocence = high commission (stranger),
+  // low innocence = low commission (trusted insider)
+  const innocence = reputation[ReputationType.INNOCENCE];
 
   // #24: News sentiment modifier for black market prices
   const newsSentiment = useMemo(
@@ -62,7 +62,6 @@ export const useBlackmarket = () => {
     () => getMarketTrend(state.dailyNews || []),
     [state.dailyNews]
   );
-  const innocence = reputation[ReputationType.INNOCENCE];
   const blackMarketLevel = getBlackMarketContactLevel(shopUpgrades);
   const blackMarketConfig = getActiveBlackMarketConfig(shopUpgrades);
 
@@ -95,12 +94,12 @@ export const useBlackmarket = () => {
    * Higher reputation = lower commission = player keeps more money
    */
   const commissionInfo = useMemo(() => {
-    const base = getUnderworldCommission(blackMarketTrust);
+    const base = getCommissionByInnocence(innocence);
     return {
       ...base,
-      currentRep: blackMarketTrust
+      currentInnocence: innocence
     };
-  }, [blackMarketTrust]);
+  }, [innocence]);
 
   /**
    * Whether the market is currently accessible
@@ -295,8 +294,8 @@ export const useBlackmarket = () => {
     const adjustedRequest = lowHeatBonus > 0
       ? { ...request, priceMultiplier: request.priceMultiplier + lowHeatBonus }
       : request;
-    return calculatePurchasePrice(item, adjustedRequest, blackMarketTrust, blackMarketLevel, newsSentiment);
-  }, [blackMarketTrust, blackMarketLevel, blackmarket.lowHeatReward, newsSentiment]);
+    return calculatePurchasePrice(item, adjustedRequest, innocence, blackMarketLevel, newsSentiment);
+  }, [innocence, blackMarketLevel, blackmarket.lowHeatReward, newsSentiment]);
 
   /**
    * Get price for player-initiated sale
@@ -306,22 +305,22 @@ export const useBlackmarket = () => {
     const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
     // v3.6 [BM-4]: Apply sale penalty
     const adjustedMultiplier = multiplier * (1 - blackmarket.daily.salePenaltyPercent);
-    return calculateSalePrice(item, adjustedMultiplier, blackMarketTrust, state.stats.day, newsSentiment);
-  }, [blackmarket.daily, blackMarketTrust, state.stats.day, newsSentiment]);
+    return calculateSalePrice(item, adjustedMultiplier, innocence, state.stats.day, newsSentiment);
+  }, [blackmarket.daily, innocence, state.stats.day, newsSentiment]);
 
   /**
    * Get estimated sale price range
    */
   const getSalePriceRange = useCallback((item: Item): { min: number; max: number } => {
     const { saleMultiplierMin, saleMultiplierMax, salePenaltyPercent } = blackmarket.daily;
-    const { commission } = getUnderworldCommission(blackMarketTrust);
+    const { commission } = getCommissionByInnocence(innocence);
     const penaltyFactor = 1 - salePenaltyPercent;
 
     return {
       min: Math.floor(item.realValue * saleMultiplierMin * penaltyFactor * (1 - commission) * newsSentiment),
       max: Math.floor(item.realValue * saleMultiplierMax * penaltyFactor * (1 - commission) * newsSentiment)
     };
-  }, [blackmarket.daily, blackMarketTrust, newsSentiment]);
+  }, [blackmarket.daily, innocence, newsSentiment]);
 
   // ========================================================================
   // Transactions
@@ -335,7 +334,7 @@ export const useBlackmarket = () => {
     if (request.fulfilled) return; // This specific request is already fulfilled
     if (!isEligibleForPurchase(item, request)) return;
 
-    const price = calculatePurchasePrice(item, request, blackMarketTrust, blackMarketLevel, newsSentiment);
+    const price = calculatePurchasePrice(item, request, innocence, blackMarketLevel, newsSentiment);
     const heatGain = getHeatGain(true);
 
     dispatch({
@@ -348,7 +347,7 @@ export const useBlackmarket = () => {
         heatGain
       }
     });
-  }, [isMarketOpen, blackMarketTrust, blackMarketLevel, newsSentiment, dispatch]);
+  }, [isMarketOpen, innocence, blackMarketLevel, newsSentiment, dispatch]);
 
   /**
    * Sell item via player sale track (low price track)
@@ -360,7 +359,7 @@ export const useBlackmarket = () => {
 
     const multiplier = getRandomSaleMultiplier(blackmarket.daily, item.id, state.stats.day);
     const adjustedMultiplier = multiplier * (1 - blackmarket.daily.salePenaltyPercent);
-    const price = calculateSalePrice(item, adjustedMultiplier, blackMarketTrust, state.stats.day, newsSentiment);
+    const price = calculateSalePrice(item, adjustedMultiplier, innocence, state.stats.day, newsSentiment);
     const heatGain = getHeatGain(false);
 
     dispatch({
@@ -372,7 +371,7 @@ export const useBlackmarket = () => {
         heatGain
       }
     });
-  }, [isMarketOpen, blackmarket.daily, blackMarketTrust, state.stats.day, newsSentiment, dispatch]);
+  }, [isMarketOpen, blackmarket.daily, innocence, state.stats.day, newsSentiment, dispatch]);
 
   /**
    * Pay fine to avoid market lockdown

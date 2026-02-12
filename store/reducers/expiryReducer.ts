@@ -377,9 +377,9 @@ export function expiryReducer(state: GameState, action: Action): GameState {
                     if (salePrice) {
                         price = salePrice; // Explicit override (e.g., from DevConsole)
                     } else if (state.blackmarket?.daily) {
-                        const bmTrust = 100 - (state.reputation[ReputationType.INNOCENCE] ?? 100);
+                        const currentInnocence = state.reputation[ReputationType.INNOCENCE] ?? 100;
                         price = calculateForfeitSettlementPrice(
-                            item, state.blackmarket.daily, bmTrust, state.stats.day
+                            item, state.blackmarket.daily, currentInnocence, state.stats.day
                         );
                     } else {
                         price = Math.floor(item.realValue * 0.8); // Fallback

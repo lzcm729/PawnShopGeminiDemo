@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Skull } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import { UNDERWORLD_COMMISSION_TIERS } from '../../../systems/blackmarket/types';
+import { INNOCENCE_COMMISSION_TIERS } from '../../../systems/blackmarket/types';
 
 interface SegmentProps {
-  tier: typeof UNDERWORLD_COMMISSION_TIERS[0];
+  tier: typeof INNOCENCE_COMMISSION_TIERS[0];
   isReached: boolean;
   isCurrent: boolean;
   isFirst: boolean;
@@ -46,7 +46,7 @@ const CommissionSegment: React.FC<SegmentProps> = ({
           <div className="bg-noir-200 border border-purple-700 rounded px-3 py-2 shadow-lg whitespace-nowrap text-sm">
             <div className="font-bold text-purple-300">{tier.label}</div>
             <div className="text-xs text-stone-400 mt-1">
-              声誉: {tier.minRep} - {tier.maxRep}
+              清白值: {tier.minInnocence} - {tier.maxInnocence}
             </div>
             <div className={cn(
               'text-xs font-mono mt-1',
@@ -68,7 +68,7 @@ export interface CommissionIndicatorProps {
   commissionInfo: {
     commission: number;
     label: string;
-    currentRep: number;
+    currentInnocence: number;
   };
 }
 
@@ -76,8 +76,8 @@ export const CommissionIndicator: React.FC<CommissionIndicatorProps> = ({ commis
   const isNoFee = commissionInfo.commission === 0;
   const hasFee = commissionInfo.commission > 0;
 
-  const currentTierIndex = UNDERWORLD_COMMISSION_TIERS.findIndex(
-    tier => commissionInfo.currentRep >= tier.minRep && commissionInfo.currentRep <= tier.maxRep
+  const currentTierIndex = INNOCENCE_COMMISSION_TIERS.findIndex(
+    tier => commissionInfo.currentInnocence >= tier.minInnocence && commissionInfo.currentInnocence <= tier.maxInnocence
   );
 
   return (
@@ -88,26 +88,26 @@ export const CommissionIndicator: React.FC<CommissionIndicatorProps> = ({ commis
       'border-stone-600 bg-stone-900/30 text-stone-300'
     )}>
       <div className="flex items-center gap-3">
-        <Skull className="w-6 h-6" />
+        <Shield className="w-6 h-6" />
         <div className="flex-1">
-          <div className="text-xs uppercase tracking-wider opacity-70">黑道声誉</div>
+          <div className="text-xs uppercase tracking-wider opacity-70">清白值</div>
           <div className="text-xl font-bold">{commissionInfo.label}</div>
         </div>
         <div className="text-right">
-          <div className="text-lg font-mono font-bold">{commissionInfo.currentRep}</div>
+          <div className="text-lg font-mono font-bold">{commissionInfo.currentInnocence}</div>
           <div className="text-xs opacity-70">/ 100</div>
         </div>
       </div>
 
       <div className="mt-3 flex gap-1">
-        {UNDERWORLD_COMMISSION_TIERS.map((tier, index) => (
+        {INNOCENCE_COMMISSION_TIERS.map((tier, index) => (
           <CommissionSegment
             key={index}
             tier={tier}
             isReached={index <= currentTierIndex}
             isCurrent={index === currentTierIndex}
             isFirst={index === 0}
-            isLast={index === UNDERWORLD_COMMISSION_TIERS.length - 1}
+            isLast={index === INNOCENCE_COMMISSION_TIERS.length - 1}
           />
         ))}
       </div>
@@ -123,7 +123,7 @@ export const CommissionIndicator: React.FC<CommissionIndicatorProps> = ({ commis
       </div>
 
       <div className="mt-2 pt-2 border-t border-purple-800/30 text-xs opacity-60">
-        黑道声誉越高，手续费越低 (悬停查看各等级详情)
+        清白值越低，手续费越低 (悬停查看各等级详情)
       </div>
     </div>
   );

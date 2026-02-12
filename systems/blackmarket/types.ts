@@ -207,29 +207,19 @@ export interface BlackmarketState {
 // ============================================================================
 
 /**
- * Reputation-based commission rates for Underworld reputation
- * Higher reputation = lower commission (player keeps more money)
+ * Innocence-based commission rates for black market trading.
+ * Higher innocence = higher commission (stranger to the underworld).
+ * Lower innocence = lower commission (trusted insider).
  * Commission is deducted from the sale price: finalPrice = basePrice * (1 - commission)
- * Commission range: 0% (best, "insider") to 20% (worst, "stranger")
+ * Commission range: 20% (worst, innocence 80-100) to 0% (best, innocence 0-19)
  */
-export const UNDERWORLD_COMMISSION_TIERS: { minRep: number; maxRep: number; commission: number; label: string }[] = [
-  { minRep: 0, maxRep: 19, commission: 0.20, label: '生面孔' },    // 20% commission
-  { minRep: 20, maxRep: 39, commission: 0.15, label: '见过几次' }, // 15% commission
-  { minRep: 40, maxRep: 59, commission: 0.10, label: '熟客' },     // 10% commission
-  { minRep: 60, maxRep: 79, commission: 0.05, label: '老主顾' },   // 5% commission
-  { minRep: 80, maxRep: 100, commission: 0, label: '自己人' }       // 0% commission (best)
+export const INNOCENCE_COMMISSION_TIERS: { minInnocence: number; maxInnocence: number; commission: number; label: string }[] = [
+  { minInnocence: 80, maxInnocence: 100, commission: 0.20, label: '生面孔' },    // 20% commission (high innocence = stranger)
+  { minInnocence: 60, maxInnocence: 79, commission: 0.15, label: '见过几次' },   // 15% commission
+  { minInnocence: 40, maxInnocence: 59, commission: 0.10, label: '熟客' },       // 10% commission
+  { minInnocence: 20, maxInnocence: 39, commission: 0.05, label: '老主顾' },     // 5% commission
+  { minInnocence: 0, maxInnocence: 19, commission: 0, label: '自己人' }           // 0% commission (low innocence = insider)
 ];
-
-/**
- * @deprecated Use UNDERWORLD_COMMISSION_TIERS instead
- * Kept for backward compatibility
- */
-export const UNDERWORLD_PRICE_MODIFIERS = UNDERWORLD_COMMISSION_TIERS.map(tier => ({
-  minRep: tier.minRep,
-  maxRep: tier.maxRep,
-  modifier: -tier.commission, // Convert commission to modifier for backward compatibility
-  label: tier.label
-}));
 
 /**
  * Default black market state
@@ -287,21 +277,13 @@ export function getHeatConfig(heat: number): HeatConfig {
 }
 
 /**
- * Get commission rate based on Underworld reputation
- * Higher reputation = lower commission (0% at max) = player keeps more money
+ * Get commission rate based on player's innocence value.
+ * High innocence (80-100) = stranger = 20% commission.
+ * Low innocence (0-19) = insider = 0% commission.
  */
-export function getUnderworldCommission(underworldRep: number): { commission: number; label: string } {
-  const config = UNDERWORLD_COMMISSION_TIERS.find(
-    m => underworldRep >= m.minRep && underworldRep <= m.maxRep
+export function getCommissionByInnocence(innocence: number): { commission: number; label: string } {
+  const config = INNOCENCE_COMMISSION_TIERS.find(
+    m => innocence >= m.minInnocence && innocence <= m.maxInnocence
   );
-  return config ?? { commission: 0, label: '熟客' };
-}
-
-/**
- * @deprecated Use getUnderworldCommission instead
- * Get price modifier based on Underworld reputation (kept for backward compatibility)
- */
-export function getUnderworldPriceModifier(underworldRep: number): { modifier: number; label: string } {
-  const { commission, label } = getUnderworldCommission(underworldRep);
-  return { modifier: -commission, label };
+  return config ?? { commission: 0.10, label: '熟客' };
 }

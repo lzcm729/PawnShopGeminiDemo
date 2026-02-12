@@ -161,7 +161,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
 
   // Counterfeit sale: compute result via service, then show progress modal
   const handleCounterfeitSale = useCallback((item: Item) => {
-    const underworldRep = 100 - state.reputation[ReputationType.INNOCENCE];
+    const innocence = state.reputation[ReputationType.INNOCENCE];
     const saleMultiplier = getRandomSaleMultiplier(
       state.blackmarket.daily, item.id, state.stats.day
     );
@@ -174,7 +174,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
     const serviceResult = executeCounterfeitSale(
       item,
       saleMultiplier,
-      underworldRep,
+      innocence,
       state.forgeryNotoriety,
       valueMultiplier
     );

@@ -21,7 +21,7 @@ import {
   INITIAL_BLACKMARKET_STATE,
   getHeatConfig,
   getHeatLevel,
-  getUnderworldCommission,
+  getCommissionByInnocence,
   MarketIndicator,
   RiskClue,
   LowHeatRewardState,
@@ -263,20 +263,20 @@ export function generateDailyBlackmarketState(
  * #24: News sentiment applies +/-5% modifier.
  * @param item The item being sold
  * @param purchaseRequest The market's purchase request
- * @param underworldRep Player's Underworld reputation
+ * @param innocence Player's current innocence value (0-100)
  * @param upgradeLevel Optional black market upgrade level for price bonus (default 1)
  * @param newsSentiment Optional news sentiment multiplier from getNewsSentimentModifier (default 1.0)
  */
 export function calculatePurchasePrice(
   item: Item,
   purchaseRequest: MarketPurchaseRequest,
-  underworldRep: number,
+  innocence: number,
   upgradeLevel: number = 1,
   newsSentiment: number = 1.0
 ): number {
   const basePrice = item.realValue;
   const marketMultiplier = purchaseRequest.priceMultiplier;
-  const { commission } = getUnderworldCommission(underworldRep);
+  const { commission } = getCommissionByInnocence(innocence);
   const priceBonus = getPurchasePriceBonus(upgradeLevel);
 
   // C': Apply precision modifier (buyer penalizes high uncertainty)
@@ -295,19 +295,19 @@ export function calculatePurchasePrice(
  * #24: News sentiment applies +/-5% modifier.
  * @param item The item being sold
  * @param saleMultiplier The day's sale multiplier (random within min-max range)
- * @param underworldRep Player's Underworld reputation
+ * @param innocence Player's current innocence value (0-100)
  * @param day Optional current game day (for deterministic per-item volatility)
  * @param newsSentiment Optional news sentiment multiplier from getNewsSentimentModifier (default 1.0)
  */
 export function calculateSalePrice(
   item: Item,
   saleMultiplier: number,
-  underworldRep: number,
+  innocence: number,
   day?: number,
   newsSentiment: number = 1.0
 ): number {
   const basePrice = item.realValue;
-  const { commission } = getUnderworldCommission(underworldRep);
+  const { commission } = getCommissionByInnocence(innocence);
 
   // C': Apply per-item volatility offset based on uncertainty
   const uncertainty = item.uncertainty ?? 0.3;
@@ -384,7 +384,7 @@ export function getRandomSaleMultiplier(
  *
  * @param item The forfeited item
  * @param daily Current daily blackmarket state
- * @param underworldRep Player's underworld reputation (for commission)
+ * @param innocence Player's current innocence value (for commission)
  * @param day Current game day
  * @param newsSentiment Optional news sentiment modifier (default 1.0)
  * @returns Settlement price
@@ -392,14 +392,14 @@ export function getRandomSaleMultiplier(
 export function calculateForfeitSettlementPrice(
   item: Item,
   daily: BlackmarketDailyState,
-  underworldRep: number,
+  innocence: number,
   day: number,
   newsSentiment: number = 1.0
 ): number {
   const saleMultiplier = getRandomSaleMultiplier(daily, item.id, day);
   // Apply any active sale penalty
   const adjustedMultiplier = saleMultiplier * (1 - daily.salePenaltyPercent);
-  return calculateSalePrice(item, adjustedMultiplier, underworldRep, day, newsSentiment);
+  return calculateSalePrice(item, adjustedMultiplier, innocence, day, newsSentiment);
 }
 
 // ============================================================================
@@ -1233,14 +1233,14 @@ export interface CounterfeitSaleResult {
  *
  * @param item The FORGED item being sold
  * @param saleMultiplier The day's sale multiplier (from daily blackmarket state)
- * @param underworldRep Player's underworld/innocence-mapped rep for commission
+ * @param innocence Player's current innocence value (for commission)
  * @param forgeryNotoriety Current forgery notoriety state
  * @param valueMultiplier The counterfeit value multiplier from the item's forging (e.g., x2.5-x4.0)
  */
 export function executeCounterfeitSale(
   item: Item,
   saleMultiplier: number,
-  underworldRep: number,
+  innocence: number,
   forgeryNotoriety: ForgeryNotorietyState,
   valueMultiplier: number = 1.0
 ): CounterfeitSaleResult {
@@ -1248,7 +1248,7 @@ export function executeCounterfeitSale(
 
   // Base price calculation: baseValue * valueMultiplier * saleMultiplier * (1 - commission)
   const baseValue = item.baseValue ?? item.realValue;
-  const { commission } = getUnderworldCommission(underworldRep);
+  const { commission } = getCommissionByInnocence(innocence);
   let price = baseValue * valueMultiplier * saleMultiplier * (1 - commission);
 
   // Detection roll
@@ -1292,7 +1292,7 @@ export function executeCounterfeitSale(
  *
  * @param item The FORGED item being sold via purchase order
  * @param purchaseRequest The matching purchase request
- * @param underworldRep Player's rep for commission
+ * @param innocence Player's current innocence value (for commission)
  * @param forgeryNotoriety Current notoriety state
  * @param upgradeLevel Black market upgrade level
  * @param valueMultiplier The counterfeit value multiplier
@@ -1300,7 +1300,7 @@ export function executeCounterfeitSale(
 export function executeCounterfeitPurchaseOrder(
   item: Item,
   purchaseRequest: MarketPurchaseRequest,
-  underworldRep: number,
+  innocence: number,
   forgeryNotoriety: ForgeryNotorietyState,
   upgradeLevel: number = 1,
   valueMultiplier: number = 1.0
@@ -1310,7 +1310,7 @@ export function executeCounterfeitPurchaseOrder(
   // Purchase order price uses the purchase price track with counterfeit multiplier
   const baseValue = item.baseValue ?? item.realValue;
   const marketMultiplier = purchaseRequest.priceMultiplier;
-  const { commission } = getUnderworldCommission(underworldRep);
+  const { commission } = getCommissionByInnocence(innocence);
   const priceBonus = getPurchasePriceBonus(upgradeLevel);
 
   let price = baseValue * valueMultiplier * marketMultiplier * (1 + priceBonus) * (1 - commission);
