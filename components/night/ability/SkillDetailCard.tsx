@@ -19,6 +19,7 @@ interface SkillDetailCardProps {
   currentEnergy: number;
   onUnlock: () => void;
   essenceDiscount?: number;
+  locked?: boolean;
 }
 
 export const SkillDetailCard: React.FC<SkillDetailCardProps> = ({
@@ -27,6 +28,7 @@ export const SkillDetailCard: React.FC<SkillDetailCardProps> = ({
   currentEnergy,
   onUnlock,
   essenceDiscount,
+  locked,
 }) => {
   const { def, state, canUnlock, meetsPrerequisites, hasEnoughEssence, hasEnoughEnergy } = skill;
 
@@ -169,15 +171,22 @@ export const SkillDetailCard: React.FC<SkillDetailCardProps> = ({
             {/* Unlock Button */}
             <Button
               onClick={onUnlock}
-              disabled={!canUnlock}
+              disabled={locked || !canUnlock}
               className={cn(
                 'w-full mt-2',
-                canUnlock
-                  ? cn('bg-gradient-to-r from-amber-900 to-purple-900 hover:from-amber-800 hover:to-purple-800 border-amber-700')
-                  : ''
+                locked
+                  ? 'opacity-60 cursor-not-allowed'
+                  : canUnlock
+                    ? cn('bg-gradient-to-r from-amber-900 to-purple-900 hover:from-amber-800 hover:to-purple-800 border-amber-700')
+                    : ''
               )}
             >
-              {canUnlock ? (
+              {locked ? (
+                <span className="flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  暂未开放
+                </span>
+              ) : canUnlock ? (
                 <span className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
                   修行 - 习得此技能

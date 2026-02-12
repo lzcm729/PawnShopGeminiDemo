@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useGame } from '../store/GameContext';
-import { Database, Zap, Bug, X, Terminal, Power, DollarSign, Sparkles, Trash2, GripHorizontal, Heart } from 'lucide-react';
+import { Database, Zap, Bug, X, Terminal, Power, DollarSign, Sparkles, Trash2, GripHorizontal, Heart, Lock } from 'lucide-react';
 import { playSfx } from '../systems/game/audio';
 import { useDraggable } from '../hooks/useDraggable';
 
@@ -53,6 +53,12 @@ export const DebugPanel: React.FC = () => {
       localStorage.removeItem('pawns_dilemma_save_v1');
       window.location.reload();
     }
+  };
+
+  const handleToggleCultivation = () => {
+    playSfx('CLICK');
+    const newState = { ...state, cultivationLocked: !state.cultivationLocked };
+    dispatch({ type: 'LOAD_GAME', payload: newState });
   };
 
   const toggleChain = (chainId: string) => {
@@ -146,6 +152,18 @@ export const DebugPanel: React.FC = () => {
                     <span className="text-[10px] font-bold uppercase text-orange-400">禁用填充事件</span>
                     <div className={`w-8 h-4 rounded-full relative transition-colors ${state.debugDisableFiller ? 'bg-orange-500' : 'bg-green-900/60'}`}>
                         <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${state.debugDisableFiller ? 'left-[18px]' : 'left-0.5'}`} />
+                    </div>
+                </label>
+                <label
+                    onClick={handleToggleCultivation}
+                    className="col-span-3 px-3 py-1.5 rounded border border-purple-900/50 bg-purple-950/10 flex items-center justify-between cursor-pointer hover:bg-purple-950/20 transition-colors"
+                >
+                    <span className="text-[10px] font-bold uppercase text-purple-400 flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        修行系统锁定
+                    </span>
+                    <div className={`w-8 h-4 rounded-full relative transition-colors ${state.cultivationLocked ? 'bg-purple-500' : 'bg-green-900/60'}`}>
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${state.cultivationLocked ? 'left-[18px]' : 'left-0.5'}`} />
                     </div>
                 </label>
                 <button

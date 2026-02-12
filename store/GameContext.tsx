@@ -151,6 +151,8 @@ const initialState: GameState = {
     workshopUsageCount: 0,
     // === WORD OF MOUTH REFERRAL (口口相传推荐客户) ===
     pendingReferralCustomer: false,
+    // === CULTIVATION LOCK (修行锁定) ===
+    cultivationLocked: true,
     // === DEBUG FLAGS ===
     debugRevealFloor: false,
     debugDisableFiller: false

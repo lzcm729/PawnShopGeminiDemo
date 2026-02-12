@@ -11,7 +11,7 @@
 import React, { useState, useMemo } from 'react';
 import { Modal } from '../ui/Modal';
 import { HelpTooltip } from '../ui/Tooltip';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Lock } from 'lucide-react';
 import { useCharacterAbility } from '../../hooks/useCharacterAbility';
 import {
   SkillId,
@@ -37,6 +37,7 @@ export const AbilityPanel: React.FC<AbilityPanelProps> = ({ isOpen, onClose }) =
     canUnlock,
     isUnlocked,
     essenceDiscount,
+    cultivationLocked,
   } = useCharacterAbility();
 
   const [selectedSkillId, setSelectedSkillId] = useState<SkillId | null>(null);
@@ -99,7 +100,7 @@ export const AbilityPanel: React.FC<AbilityPanelProps> = ({ isOpen, onClose }) =
         {isNewPlayer && <NewbieGuide balance={panelData.essenceBalance} />}
 
         {/* Main Content: Skill Tree + Detail */}
-        <div className="flex gap-4">
+        <div className="relative flex gap-4">
           {/* Left: Skill Tree */}
           <div className="flex-1 min-w-0 overflow-y-auto max-h-[60vh] pr-2 pb-4">
             <SkillTree
@@ -118,6 +119,7 @@ export const AbilityPanel: React.FC<AbilityPanelProps> = ({ isOpen, onClose }) =
                 currentEnergy={panelData.currentEnergy}
                 onUnlock={() => handleUnlock(selectedSkill.def.id)}
                 essenceDiscount={essenceDiscount}
+                locked={cultivationLocked}
               />
             ) : (
               <div className="bg-noir-200 border border-noir-400 rounded-lg p-6 h-full flex flex-col items-center justify-center text-center min-h-[300px]">
@@ -129,6 +131,15 @@ export const AbilityPanel: React.FC<AbilityPanelProps> = ({ isOpen, onClose }) =
               </div>
             )}
           </div>
+
+          {/* Cultivation Locked Overlay */}
+          {cultivationLocked && (
+            <div className="absolute inset-0 z-10 bg-black/60 rounded-lg flex flex-col items-center justify-center pointer-events-none">
+              <Lock className="w-10 h-10 text-purple-400 mb-3" />
+              <p className="text-lg font-bold text-purple-300">修行系统暂未开放</p>
+              <p className="text-sm text-stone-400 mt-1">当前版本中，修行系统尚在筹备中</p>
+            </div>
+          )}
         </div>
       </div>
     </Modal>

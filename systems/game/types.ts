@@ -164,6 +164,9 @@ export interface GameState {
   // === WORD OF MOUTH REFERRAL (口口相传推荐客户) ===
   pendingReferralCustomer: boolean;  // 次日是否有推荐客户到来
 
+  // === CULTIVATION LOCK (修行锁定) ===
+  cultivationLocked: boolean;  // true = 技能树可查看但不可学习
+
   // === DEBUG FLAGS ===
   debugRevealFloor: boolean;  // 调试：显示客户底价
   debugDisableFiller: boolean;  // 调试：禁用填充客户生成

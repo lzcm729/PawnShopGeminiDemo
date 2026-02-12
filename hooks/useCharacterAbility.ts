@@ -62,6 +62,7 @@ import { SKILL_DEFINITIONS } from '../systems/characterAbility/skillDefinitions'
 interface UseCharacterAbilityReturn {
   // State queries
   abilityState: AbilityState;
+  cultivationLocked: boolean;  // true = skill tree visible but skills cannot be unlocked
   essenceDiscount: number;  // Cultivation room discount percentage (0-30)
   isUnlocked: (skillId: SkillId) => boolean;
 
@@ -131,6 +132,7 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
   } as AbilityState;
 
   const { reputation, essenceBalance, nightState } = state;
+  const cultivationLocked = state.cultivationLocked ?? true;
 
   // Cultivation discount from shop upgrades
   const essenceDiscount = getCultivationEssenceDiscount(state.shopUpgrades);
@@ -158,6 +160,8 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
 
   const unlockSkill = useCallback(
     (skillId: SkillId) => {
+      if (cultivationLocked) return;
+
       const check = canUnlockSkill(skillId, abilityState, essenceBalance, nightState.energy, essenceDiscount);
       if (!check.canUnlock) return;
 
@@ -180,7 +184,7 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
       // Record night action
       dispatch({ type: 'RECORD_NIGHT_ACTION', payload: `修行: ${def.name}` });
     },
-    [abilityState, essenceBalance, nightState.energy, essenceDiscount, dispatch]
+    [cultivationLocked, abilityState, essenceBalance, nightState.energy, essenceDiscount, dispatch]
   );
 
   // --- Negotiation skills ---
@@ -344,6 +348,7 @@ export function useCharacterAbility(): UseCharacterAbilityReturn {
 
   return {
     abilityState,
+    cultivationLocked,
     essenceDiscount,
     isUnlocked,
     getPanelData: getPanelDataCb,

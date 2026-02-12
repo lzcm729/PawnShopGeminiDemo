@@ -128,6 +128,8 @@ export function executeCommand(
   blackmarket lock <n>  - Lock blackmarket for N days
   blackmarket unlock    - Unlock blackmarket
   blackmarket refresh   - Force refresh daily purchase requests
+  cultivation lock      - Lock cultivation (prevent skill unlocking)
+  cultivation unlock    - Unlock cultivation (allow skill unlocking)
   chains                - View active event chains
   customers             - View today's customer count
   state <path>          - View game state (e.g., state reputation, state stats.day)
@@ -174,6 +176,9 @@ export function executeCommand(
 
     case 'blackmarket':
       return handleBlackmarketCommand(args, dispatch, getState);
+
+    case 'cultivation':
+      return handleCultivationCommand(args, dispatch, getState);
 
     case 'chains':
       return handleChainsCommand(getState);
@@ -585,6 +590,42 @@ function handleBlackmarketCommand(
 
     default:
       return { success: false, message: `Unknown blackmarket command: ${subCommand}. Use 'lock', 'unlock', or 'refresh'.` };
+  }
+}
+
+function handleCultivationCommand(
+  args: string[],
+  dispatch: (action: any) => void,
+  getState: () => any
+): CommandResult {
+  if (args.length < 1) {
+    return { success: false, message: 'Usage: cultivation <lock|unlock>' };
+  }
+
+  const subCommand = args[0].toLowerCase();
+  const state = getState();
+
+  switch (subCommand) {
+    case 'lock': {
+      const newState = {
+        ...state,
+        cultivationLocked: true
+      };
+      dispatch({ type: 'LOAD_GAME', payload: newState });
+      return { success: true, message: 'Cultivation system locked (skills cannot be unlocked)' };
+    }
+
+    case 'unlock': {
+      const newState = {
+        ...state,
+        cultivationLocked: false
+      };
+      dispatch({ type: 'LOAD_GAME', payload: newState });
+      return { success: true, message: 'Cultivation system unlocked (skills can now be unlocked)' };
+    }
+
+    default:
+      return { success: false, message: `Unknown cultivation command: ${subCommand}. Use 'lock' or 'unlock'.` };
   }
 }
 
@@ -1775,6 +1816,18 @@ export function getAvailableCommands(): CommandDef[] {
       description: 'Force refresh daily purchase requests (triggers BLACKMARKET_REFRESH_DAILY)',
       usage: 'blackmarket refresh',
       examples: [`blackmarket refresh`]
+    },
+    {
+      command: 'cultivation lock',
+      description: 'Lock cultivation system (prevent skill unlocking)',
+      usage: 'cultivation lock',
+      examples: [`cultivation lock`]
+    },
+    {
+      command: 'cultivation unlock',
+      description: 'Unlock cultivation system (allow skill unlocking)',
+      usage: 'cultivation unlock',
+      examples: [`cultivation unlock`]
     },
     {
       command: 'spawn customer',
