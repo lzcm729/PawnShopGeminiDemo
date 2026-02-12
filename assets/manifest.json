@@ -1,13 +1,15 @@
 {
-  "generatedAt": "2026-02-09T12:46:30Z",
+  "generatedAt": "2026-02-12T08:26:54Z",
   "items": {
     "emma_item_clothes": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "emma_item_clothes/counterfeit.png",
         "emma_item_clothes/default.png",
         "emma_item_clothes/reforged.png",
         "emma_item_clothes/restored.png"
@@ -15,11 +17,13 @@
     },
     "emma_item_laptop": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "emma_item_laptop/counterfeit.png",
         "emma_item_laptop/default.png",
         "emma_item_laptop/reforged.png",
         "emma_item_laptop/restored.png"
@@ -27,11 +31,13 @@
     },
     "emma_item_skincare": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "emma_item_skincare/counterfeit.png",
         "emma_item_skincare/default.png",
         "emma_item_skincare/reforged.png",
         "emma_item_skincare/restored.png"
@@ -39,35 +45,97 @@
     },
     "emma_item_watch": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "emma_item_watch/counterfeit.png",
         "emma_item_watch/default.png",
         "emma_item_watch/reforged.png",
         "emma_item_watch/restored.png"
       ]
     },
-    "item_bag_01": {
+    "item_amber_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_amber_01/counterfeit.png",
+        "item_amber_01/default.png",
+        "item_amber_01/reforged.png",
+        "item_amber_01/restored.png"
+      ]
+    },
+    "item_bag_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_bag_01/counterfeit.png",
         "item_bag_01/default.png",
         "item_bag_01/reforged.png",
         "item_bag_01/restored.png"
       ]
     },
-    "item_book_01": {
+    "item_banknote_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_banknote_01/counterfeit.png",
+        "item_banknote_01/default.png",
+        "item_banknote_01/reforged.png",
+        "item_banknote_01/restored.png"
+      ]
+    },
+    "item_belt_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_belt_01/counterfeit.png",
+        "item_belt_01/default.png",
+        "item_belt_01/reforged.png",
+        "item_belt_01/restored.png"
+      ]
+    },
+    "item_bonecarving_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_bonecarving_01/counterfeit.png",
+        "item_bonecarving_01/default.png",
+        "item_bonecarving_01/reforged.png",
+        "item_bonecarving_01/restored.png"
+      ]
+    },
+    "item_book_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_book_01/counterfeit.png",
         "item_book_01/default.png",
         "item_book_01/reforged.png",
         "item_book_01/restored.png"
@@ -75,11 +143,13 @@
     },
     "item_bracelet_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_bracelet_01/counterfeit.png",
         "item_bracelet_01/default.png",
         "item_bracelet_01/reforged.png",
         "item_bracelet_01/restored.png"
@@ -87,35 +157,83 @@
     },
     "item_bronze_mirror_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_bronze_mirror_01/counterfeit.png",
         "item_bronze_mirror_01/default.png",
         "item_bronze_mirror_01/reforged.png",
         "item_bronze_mirror_01/restored.png"
       ]
     },
-    "item_buddha_01": {
+    "item_brooch_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_brooch_01/counterfeit.png",
+        "item_brooch_01/default.png",
+        "item_brooch_01/reforged.png",
+        "item_brooch_01/restored.png"
+      ]
+    },
+    "item_brush_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_brush_01/counterfeit.png",
+        "item_brush_01/default.png",
+        "item_brush_01/reforged.png",
+        "item_brush_01/restored.png"
+      ]
+    },
+    "item_buddha_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_buddha_01/counterfeit.png",
         "item_buddha_01/default.png",
         "item_buddha_01/reforged.png",
         "item_buddha_01/restored.png"
       ]
     },
-    "item_camera_01": {
+    "item_calligraphy_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_calligraphy_01/counterfeit.png",
+        "item_calligraphy_01/default.png",
+        "item_calligraphy_01/reforged.png",
+        "item_calligraphy_01/restored.png"
+      ]
+    },
+    "item_camera_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_camera_01/counterfeit.png",
         "item_camera_01/default.png",
         "item_camera_01/reforged.png",
         "item_camera_01/restored.png"
@@ -123,23 +241,55 @@
     },
     "item_camera_02": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_camera_02/counterfeit.png",
         "item_camera_02/default.png",
         "item_camera_02/reforged.png",
         "item_camera_02/restored.png"
       ]
     },
-    "item_coin_01": {
+    "item_cloisonne_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_cloisonne_01/counterfeit.png",
+        "item_cloisonne_01/default.png",
+        "item_cloisonne_01/reforged.png",
+        "item_cloisonne_01/restored.png"
+      ]
+    },
+    "item_coinset_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_coinset_01/counterfeit.png",
+        "item_coinset_01/default.png",
+        "item_coinset_01/reforged.png",
+        "item_coinset_01/restored.png"
+      ]
+    },
+    "item_coin_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_coin_01/counterfeit.png",
         "item_coin_01/default.png",
         "item_coin_01/reforged.png",
         "item_coin_01/restored.png"
@@ -147,61 +297,211 @@
     },
     "item_console_student": {
       "states": [
+        "counterfeit",
         "default",
         "reforged-GamerOne",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_console_student/counterfeit.png",
         "item_console_student/default.png",
         "item_console_student/reforged-GamerOne.png",
         "item_console_student/reforged.png",
         "item_console_student/restored.png"
       ]
     },
-    "item_diamond_mystery": {
+    "item_coral_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_coral_01/counterfeit.png",
+        "item_coral_01/default.png",
+        "item_coral_01/reforged.png",
+        "item_coral_01/restored.png"
+      ]
+    },
+    "item_diamondnecklace_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_diamondnecklace_01/counterfeit.png",
+        "item_diamondnecklace_01/default.png",
+        "item_diamondnecklace_01/reforged.png",
+        "item_diamondnecklace_01/restored.png"
+      ]
+    },
+    "item_diamond_mystery": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_diamond_mystery/counterfeit.png",
         "item_diamond_mystery/default.png",
         "item_diamond_mystery/reforged.png",
         "item_diamond_mystery/restored.png"
       ]
     },
-    "item_figure_01": {
+    "item_earring_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_earring_01/counterfeit.png",
+        "item_earring_01/default.png",
+        "item_earring_01/reforged.png",
+        "item_earring_01/restored.png"
+      ]
+    },
+    "item_erhu_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_erhu_01/counterfeit.png",
+        "item_erhu_01/default.png",
+        "item_erhu_01/reforged.png",
+        "item_erhu_01/restored.png"
+      ]
+    },
+    "item_figure_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_figure_01/counterfeit.png",
         "item_figure_01/default.png",
         "item_figure_01/reforged.png",
         "item_figure_01/restored.png"
       ]
     },
-    "item_guitar_01": {
+    "item_foreignbook_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_foreignbook_01/counterfeit.png",
+        "item_foreignbook_01/default.png",
+        "item_foreignbook_01/reforged.png",
+        "item_foreignbook_01/restored.png"
+      ]
+    },
+    "item_goldset_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_goldset_01/counterfeit.png",
+        "item_goldset_01/default.png",
+        "item_goldset_01/reforged.png",
+        "item_goldset_01/restored.png"
+      ]
+    },
+    "item_guanyao_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_guanyao_01/counterfeit.png",
+        "item_guanyao_01/default.png",
+        "item_guanyao_01/reforged.png",
+        "item_guanyao_01/restored.png"
+      ]
+    },
+    "item_guitar_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_guitar_01/counterfeit.png",
         "item_guitar_01/default.png",
         "item_guitar_01/reforged.png",
         "item_guitar_01/restored.png"
       ]
     },
-    "item_inkpainting_01": {
+    "item_harmonica_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_harmonica_01/counterfeit.png",
+        "item_harmonica_01/default.png",
+        "item_harmonica_01/reforged.png",
+        "item_harmonica_01/restored.png"
+      ]
+    },
+    "item_headphones_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_headphones_01/counterfeit.png",
+        "item_headphones_01/default.png",
+        "item_headphones_01/reforged.png",
+        "item_headphones_01/restored.png"
+      ]
+    },
+    "item_hetianyu_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_hetianyu_01/counterfeit.png",
+        "item_hetianyu_01/default.png",
+        "item_hetianyu_01/reforged.png",
+        "item_hetianyu_01/restored.png"
+      ]
+    },
+    "item_inkpainting_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_inkpainting_01/counterfeit.png",
         "item_inkpainting_01/default.png",
         "item_inkpainting_01/reforged.png",
         "item_inkpainting_01/restored.png"
@@ -209,11 +509,13 @@
     },
     "item_inkstone_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_inkstone_01/counterfeit.png",
         "item_inkstone_01/default.png",
         "item_inkstone_01/reforged.png",
         "item_inkstone_01/restored.png"
@@ -221,23 +523,55 @@
     },
     "item_jacket_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_jacket_01/counterfeit.png",
         "item_jacket_01/default.png",
         "item_jacket_01/reforged.png",
         "item_jacket_01/restored.png"
       ]
     },
-    "item_jade_pendant_01": {
+    "item_jadebracelet_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_jadebracelet_01/counterfeit.png",
+        "item_jadebracelet_01/default.png",
+        "item_jadebracelet_01/reforged.png",
+        "item_jadebracelet_01/restored.png"
+      ]
+    },
+    "item_jadecong_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_jadecong_01/counterfeit.png",
+        "item_jadecong_01/default.png",
+        "item_jadecong_01/reforged.png",
+        "item_jadecong_01/restored.png"
+      ]
+    },
+    "item_jade_pendant_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_jade_pendant_01/counterfeit.png",
         "item_jade_pendant_01/default.png",
         "item_jade_pendant_01/reforged.png",
         "item_jade_pendant_01/restored.png"
@@ -245,11 +579,13 @@
     },
     "item_jade_tablet_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_jade_tablet_01/counterfeit.png",
         "item_jade_tablet_01/default.png",
         "item_jade_tablet_01/reforged.png",
         "item_jade_tablet_01/restored.png"
@@ -257,71 +593,223 @@
     },
     "item_maotai_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_maotai_01/counterfeit.png",
         "item_maotai_01/default.png",
         "item_maotai_01/reforged.png",
         "item_maotai_01/restored.png"
       ]
     },
-    "item_necklace_01": {
+    "item_medbook_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_medbook_01/counterfeit.png",
+        "item_medbook_01/default.png",
+        "item_medbook_01/reforged.png",
+        "item_medbook_01/restored.png"
+      ]
+    },
+    "item_modeltrain_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_modeltrain_01/counterfeit.png",
+        "item_modeltrain_01/default.png",
+        "item_modeltrain_01/reforged.png",
+        "item_modeltrain_01/restored.png"
+      ]
+    },
+    "item_necklace_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_necklace_01/counterfeit.png",
         "item_necklace_01/default.png",
         "item_necklace_01/reforged.png",
         "item_necklace_01/restored.png"
       ]
     },
-    "item_painting_01": {
+    "item_oilpainting_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_oilpainting_01/counterfeit.png",
+        "item_oilpainting_01/default.png",
+        "item_oilpainting_01/reforged.png",
+        "item_oilpainting_01/restored.png"
+      ]
+    },
+    "item_oldlock_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_oldlock_01/counterfeit.png",
+        "item_oldlock_01/default.png",
+        "item_oldlock_01/reforged.png",
+        "item_oldlock_01/restored.png"
+      ]
+    },
+    "item_painting_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_painting_01/counterfeit.png",
         "item_painting_01/default.png",
         "item_painting_01/reforged.png",
         "item_painting_01/restored.png"
       ]
     },
-    "item_phone_01": {
+    "item_pearl_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_pearl_01/counterfeit.png",
+        "item_pearl_01/default.png",
+        "item_pearl_01/reforged.png",
+        "item_pearl_01/restored.png"
+      ]
+    },
+    "item_phone_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_phone_01/counterfeit.png",
         "item_phone_01/default.png",
         "item_phone_01/reforged.png",
         "item_phone_01/restored.png"
       ]
     },
-    "item_qipao_01": {
+    "item_pocketwatch_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_pocketwatch_01/counterfeit.png",
+        "item_pocketwatch_01/default.png",
+        "item_pocketwatch_01/reforged.png",
+        "item_pocketwatch_01/restored.png"
+      ]
+    },
+    "item_pocketwatch_gold_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_pocketwatch_gold_01/counterfeit.png",
+        "item_pocketwatch_gold_01/default.png",
+        "item_pocketwatch_gold_01/reforged.png",
+        "item_pocketwatch_gold_01/restored.png"
+      ]
+    },
+    "item_polaroid_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_polaroid_01/counterfeit.png",
+        "item_polaroid_01/default.png",
+        "item_polaroid_01/reforged.png",
+        "item_polaroid_01/restored.png"
+      ]
+    },
+    "item_qipao_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_qipao_01/counterfeit.png",
         "item_qipao_01/default.png",
         "item_qipao_01/reforged.png",
         "item_qipao_01/restored.png"
       ]
     },
-    "item_ring_01": {
+    "item_redwine_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_redwine_01/counterfeit.png",
+        "item_redwine_01/default.png",
+        "item_redwine_01/reforged.png",
+        "item_redwine_01/restored.png"
+      ]
+    },
+    "item_redwoodpot_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_redwoodpot_01/counterfeit.png",
+        "item_redwoodpot_01/default.png",
+        "item_redwoodpot_01/reforged.png",
+        "item_redwoodpot_01/restored.png"
+      ]
+    },
+    "item_ring_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_ring_01/counterfeit.png",
         "item_ring_01/default.png",
         "item_ring_01/reforged.png",
         "item_ring_01/restored.png"
@@ -329,47 +817,139 @@
     },
     "item_scarf_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_scarf_01/counterfeit.png",
         "item_scarf_01/default.png",
         "item_scarf_01/reforged.png",
         "item_scarf_01/restored.png"
       ]
     },
-    "item_seal_01": {
+    "item_sculpture_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_sculpture_01/counterfeit.png",
+        "item_sculpture_01/default.png",
+        "item_sculpture_01/reforged.png",
+        "item_sculpture_01/restored.png"
+      ]
+    },
+    "item_seal_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_seal_01/counterfeit.png",
         "item_seal_01/default.png",
         "item_seal_01/reforged.png",
         "item_seal_01/restored.png"
       ]
     },
-    "item_stamp_01": {
+    "item_silkscarf_vintage_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_silkscarf_vintage_01/counterfeit.png",
+        "item_silkscarf_vintage_01/default.png",
+        "item_silkscarf_vintage_01/reforged.png",
+        "item_silkscarf_vintage_01/restored.png"
+      ]
+    },
+    "item_snuffbottle_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_snuffbottle_01/counterfeit.png",
+        "item_snuffbottle_01/default.png",
+        "item_snuffbottle_01/reforged.png",
+        "item_snuffbottle_01/restored.png"
+      ]
+    },
+    "item_sportswatch_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_sportswatch_01/counterfeit.png",
+        "item_sportswatch_01/default.png",
+        "item_sportswatch_01/reforged.png",
+        "item_sportswatch_01/restored.png"
+      ]
+    },
+    "item_stamp_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_stamp_01/counterfeit.png",
         "item_stamp_01/default.png",
         "item_stamp_01/reforged.png",
         "item_stamp_01/restored.png"
       ]
     },
-    "item_threadbook_01": {
+    "item_sunglasses_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_sunglasses_01/counterfeit.png",
+        "item_sunglasses_01/default.png",
+        "item_sunglasses_01/reforged.png",
+        "item_sunglasses_01/restored.png"
+      ]
+    },
+    "item_tablet_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_tablet_01/counterfeit.png",
+        "item_tablet_01/default.png",
+        "item_tablet_01/reforged.png",
+        "item_tablet_01/restored.png"
+      ]
+    },
+    "item_threadbook_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_threadbook_01/counterfeit.png",
         "item_threadbook_01/default.png",
         "item_threadbook_01/reforged.png",
         "item_threadbook_01/restored.png"
@@ -377,11 +957,13 @@
     },
     "item_vase_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_vase_01/counterfeit.png",
         "item_vase_01/default.png",
         "item_vase_01/reforged.png",
         "item_vase_01/restored.png"
@@ -389,11 +971,13 @@
     },
     "item_violin_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_violin_01/counterfeit.png",
         "item_violin_01/default.png",
         "item_violin_01/reforged.png",
         "item_violin_01/restored.png"
@@ -401,11 +985,13 @@
     },
     "item_wallet_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_wallet_01/counterfeit.png",
         "item_wallet_01/default.png",
         "item_wallet_01/reforged.png",
         "item_wallet_01/restored.png"
@@ -413,11 +999,13 @@
     },
     "item_watchbox_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_watchbox_01/counterfeit.png",
         "item_watchbox_01/default.png",
         "item_watchbox_01/reforged.png",
         "item_watchbox_01/restored.png"
@@ -425,11 +1013,13 @@
     },
     "item_watch_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_watch_01/counterfeit.png",
         "item_watch_01/default.png",
         "item_watch_01/reforged.png",
         "item_watch_01/restored.png"
@@ -437,11 +1027,13 @@
     },
     "item_watch_gambler": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_watch_gambler/counterfeit.png",
         "item_watch_gambler/default.png",
         "item_watch_gambler/reforged.png",
         "item_watch_gambler/restored.png"
@@ -449,24 +1041,56 @@
     },
     "item_whisky_01": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "item_whisky_01/counterfeit.png",
         "item_whisky_01/default.png",
         "item_whisky_01/reforged.png",
         "item_whisky_01/restored.png"
       ]
     },
+    "item_woodprint_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_woodprint_01/counterfeit.png",
+        "item_woodprint_01/default.png",
+        "item_woodprint_01/reforged.png",
+        "item_woodprint_01/restored.png"
+      ]
+    },
+    "item_zishahu_01": {
+      "states": [
+        "counterfeit",
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_zishahu_01/counterfeit.png",
+        "item_zishahu_01/default.png",
+        "item_zishahu_01/reforged.png",
+        "item_zishahu_01/restored.png"
+      ]
+    },
     "lin_item_watch": {
       "states": [
+        "counterfeit",
         "default",
         "reforged-GamerOne",
         "reforged",
         "restored"
       ],
       "files": [
+        "lin_item_watch/counterfeit.png",
         "lin_item_watch/default.png",
         "lin_item_watch/reforged-GamerOne.png",
         "lin_item_watch/reforged.png",
@@ -475,11 +1099,13 @@
     },
     "susan_item_bag": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "susan_item_bag/counterfeit.png",
         "susan_item_bag/default.png",
         "susan_item_bag/reforged.png",
         "susan_item_bag/restored.png"
@@ -487,11 +1113,13 @@
     },
     "zhao_item_cert": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "zhao_item_cert/counterfeit.png",
         "zhao_item_cert/default.png",
         "zhao_item_cert/reforged.png",
         "zhao_item_cert/restored.png"
@@ -499,11 +1127,13 @@
     },
     "zhao_item_medal": {
       "states": [
+        "counterfeit",
         "default",
         "reforged",
         "restored"
       ],
       "files": [
+        "zhao_item_medal/counterfeit.png",
         "zhao_item_medal/default.png",
         "zhao_item_medal/reforged.png",
         "zhao_item_medal/restored.png"
