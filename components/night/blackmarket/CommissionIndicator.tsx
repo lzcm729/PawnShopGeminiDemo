@@ -76,7 +76,10 @@ export const CommissionIndicator: React.FC<CommissionIndicatorProps> = ({ commis
   const isNoFee = commissionInfo.commission === 0;
   const hasFee = commissionInfo.commission > 0;
 
-  const currentTierIndex = INNOCENCE_COMMISSION_TIERS.findIndex(
+  // Reverse tiers so bar reads 0 (left) → 100 (right), like a natural scale
+  const displayTiers = [...INNOCENCE_COMMISSION_TIERS].reverse();
+
+  const currentTierIndex = displayTiers.findIndex(
     tier => commissionInfo.currentInnocence >= tier.minInnocence && commissionInfo.currentInnocence <= tier.maxInnocence
   );
 
@@ -100,14 +103,14 @@ export const CommissionIndicator: React.FC<CommissionIndicatorProps> = ({ commis
       </div>
 
       <div className="mt-3 flex gap-1">
-        {INNOCENCE_COMMISSION_TIERS.map((tier, index) => (
+        {displayTiers.map((tier, index) => (
           <CommissionSegment
             key={index}
             tier={tier}
             isReached={index <= currentTierIndex}
             isCurrent={index === currentTierIndex}
             isFirst={index === 0}
-            isLast={index === INNOCENCE_COMMISSION_TIERS.length - 1}
+            isLast={index === displayTiers.length - 1}
           />
         ))}
       </div>

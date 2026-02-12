@@ -130,11 +130,11 @@ export const BLACK_MARKET_CONTACT: UpgradeConfig = {
   effectType: 'BLACK_MARKET_CONTACT',
   maxLevel: 5,
   levels: [
-    { level: 1, cost: 1000,  effectValue: 1, description: 'Lv1 联络人：解锁黑市，每日收购3件' },
-    { level: 2, cost: 2500,  effectValue: 2, description: 'Lv2 街头口碑：每日收购4件' },
-    { level: 3, cost: 5000,  effectValue: 3, description: 'Lv3 情报网络：每日收购5件，热度-2/天，收购价+5%' },
-    { level: 4, cost: 8000,  effectValue: 4, description: 'Lv4 洗钱渠道：每日收购6件' },
-    { level: 5, cost: 15000, effectValue: 5, description: 'Lv5 内部人士：每日收购8件，热度-3/天，收购价+10%' },
+    { level: 1, cost: 1000,  effectValue: 1, description: 'Lv1 联络人：解锁黑市，每日收购1件' },
+    { level: 2, cost: 2500,  effectValue: 2, description: 'Lv2 街头口碑：每日收购2件' },
+    { level: 3, cost: 5000,  effectValue: 3, description: 'Lv3 情报网络：每日收购3件，热度-2/天，收购价+5%' },
+    { level: 4, cost: 8000,  effectValue: 4, description: 'Lv4 洗钱渠道：每日收购4件' },
+    { level: 5, cost: 15000, effectValue: 5, description: 'Lv5 内部人士：每日收购5件，热度-3/天，收购价+10%' },
   ],
   icon: 'Skull',
 };
@@ -183,18 +183,18 @@ export function getAppointmentBoardLevelConfig(level: number): AppointmentBoardL
  * Based on design spec:
  * | Level | Name | Cost | Daily Purchase | Heat Decay | Price Bonus |
  * |-------|------|------|----------------|------------|-------------|
- * | Lv1 | 黑市联络人 | $1,000 | 3 | -1/day | +0% |
- * | Lv2 | 街头口碑 | $2,500 | 4 | -1/day | +0% |
- * | Lv3 | 情报网络 | $5,000 | 5 | -2/day | +5% |
- * | Lv4 | 洗钱渠道 | $8,000 | 6 | -2/day | +5% |
- * | Lv5 | 内部人士 | $15,000 | 8 | -3/day | +10% |
+ * | Lv1 | 黑市联络人 | $1,000 | 1 | -1/day | +0% |
+ * | Lv2 | 街头口碑 | $2,500 | 2 | -1/day | +0% |
+ * | Lv3 | 情报网络 | $5,000 | 3 | -2/day | +5% |
+ * | Lv4 | 洗钱渠道 | $8,000 | 4 | -2/day | +5% |
+ * | Lv5 | 内部人士 | $15,000 | 5 | -3/day | +10% |
  */
 export const BLACK_MARKET_LEVELS: BlackMarketLevelConfig[] = [
-  { level: 1, dailyPurchaseLimit: 3, heatDecay: 1, purchasePriceBonus: 0 },
-  { level: 2, dailyPurchaseLimit: 4, heatDecay: 1, purchasePriceBonus: 0 },
-  { level: 3, dailyPurchaseLimit: 5, heatDecay: 2, purchasePriceBonus: 0.05 },
-  { level: 4, dailyPurchaseLimit: 6, heatDecay: 2, purchasePriceBonus: 0.05 },
-  { level: 5, dailyPurchaseLimit: 8, heatDecay: 3, purchasePriceBonus: 0.10 },
+  { level: 1, dailyPurchaseLimit: 1, heatDecay: 1, purchasePriceBonus: 0 },
+  { level: 2, dailyPurchaseLimit: 2, heatDecay: 1, purchasePriceBonus: 0 },
+  { level: 3, dailyPurchaseLimit: 3, heatDecay: 2, purchasePriceBonus: 0.05 },
+  { level: 4, dailyPurchaseLimit: 4, heatDecay: 2, purchasePriceBonus: 0.05 },
+  { level: 5, dailyPurchaseLimit: 5, heatDecay: 3, purchasePriceBonus: 0.10 },
 ];
 
 /**

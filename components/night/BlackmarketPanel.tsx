@@ -303,7 +303,7 @@ export const BlackmarketPanel: React.FC<BlackmarketPanelProps> = ({ isOpen, onCl
       <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.04),rgba(0,255,0,0.02),rgba(0,0,255,0.04))] bg-[length:100%_3px,6px_100%] pointer-events-none z-40 opacity-15 rounded" />
       {/* CRT Vignette */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_60%,rgba(0,0,0,0.4)_100%)] pointer-events-none z-40 rounded" />
-      <div className="flex flex-col gap-6 p-6 bg-[#0a0f0a] font-mono text-[#00ff41] relative animate-crt-flicker selection:bg-green-900 selection:text-white">
+      <div className="flex flex-col gap-6 p-6 bg-[#0a0f0a] font-mono text-[#00ff41] relative selection:bg-green-900 selection:text-white">
         {/* Risk Event Banner */}
         {hasRiskEvent && riskEvent && (
           <RiskEventBanner
