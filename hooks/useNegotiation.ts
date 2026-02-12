@@ -46,6 +46,15 @@ export interface StolenLeverageResult {
   minReduction: number;
 }
 
+export interface FakeLeverageResult {
+  /** New ask price after leverage */
+  newAskPrice: number;
+  /** Reduction applied to minimum amount (for dispatch) */
+  minReduction: number;
+  /** Whether the customer knew the item was fake */
+  knowsFake: boolean;
+}
+
 export interface AcceptUltimatumResult {
   status: 'ACCEPTED';
   message: string;
@@ -66,6 +75,7 @@ interface UseNegotiationReturn {
   acceptUltimatum: () => AcceptUltimatumResult | null;
   applyLeverage: (power: number, description: string) => void;
   applyStolenLeverage: (power: number, description: string, label?: string) => StolenLeverageResult;
+  applyFakeLeverage: (knowsFake: boolean, perceivedValue: number) => FakeLeverageResult;
   triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void;
   resetNegotiation: () => void;
   lastAction: ActionLog | null;
@@ -392,6 +402,46 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
 
     return { askReduction, minReduction };
   }, [customer, isWalkedAway, reducePrice, currentAskPrice]);
+
+  // FAKE trait differentiated leverage: knowing forgers vs unknowing holders
+  const applyFakeLeverage = useCallback((knowsFake: boolean, perceivedValue: number): FakeLeverageResult => {
+    if (!customer || isWalkedAway) return { newAskPrice: currentAskPrice, minReduction: 0, knowsFake };
+
+    let newAsk: number;
+    let minReduction: number;
+
+    if (knowsFake) {
+      // Knowing forger: reset ask to near post-collapse perceivedValue
+      // They know it's fake, so they can't argue for high prices
+      newAsk = Math.max(customer.minimumAmount || 1, Math.floor(perceivedValue * 1.5));
+      // Also heavily reduce minimum (50% power via APPLY_STOLEN_LEVERAGE)
+      minReduction = Math.floor(customer.minimumAmount * 0.50);
+      setCurrentAskPrice(newAsk);
+      setPatience(prev => Math.max(0, prev - 1));
+      setMood('Angry');
+      setLastAction({
+        type: 'LEVERAGE',
+        text: '赝品压价（知情造假）',
+        subtext: `报价重置为 $${newAsk}`,
+        id: Date.now()
+      });
+    } else {
+      // Unknowing holder: mild reduction, they genuinely didn't know
+      const askDrop = reducePrice(0.05);
+      newAsk = currentAskPrice - askDrop; // reducePrice already updated state
+      minReduction = Math.floor(customer.minimumAmount * 0.10);
+      // Patience unchanged — they're upset, but it's genuine shock
+      setMood('Angry');
+      setLastAction({
+        type: 'LEVERAGE',
+        text: '赝品压价（不知情持有）',
+        subtext: askDrop > 0 ? `报价降低 $${askDrop}` : '对方坚持价格',
+        id: Date.now()
+      });
+    }
+
+    return { newAskPrice: newAsk, minReduction, knowsFake };
+  }, [customer, isWalkedAway, currentAskPrice, reducePrice]);
 
   const triggerNarrative = useCallback((playerLine: string, customerLine: string, impact: number = 0) => {
       if (!customer || isWalkedAway) return;
@@ -810,6 +860,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     acceptUltimatum,
     applyLeverage,
     applyStolenLeverage,
+    applyFakeLeverage,
     triggerNarrative,
     resetNegotiation,
     lastAction,

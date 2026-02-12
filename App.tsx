@@ -345,6 +345,7 @@ const GameContent: React.FC = () => {
                                 <ItemPanel
                                     applyLeverage={negotiation.applyLeverage}
                                     applyStolenLeverage={negotiation.applyStolenLeverage}
+                                    applyFakeLeverage={negotiation.applyFakeLeverage}
                                     triggerNarrative={negotiation.triggerNarrative}
                                     canInteract={!negotiation.isWalkedAway}
                                     currentAskPrice={negotiation.currentAskPrice}

@@ -259,13 +259,17 @@ function createCustomerFromPreset(preset: FallbackCustomerPreset, day: number): 
   // 初始化知识池
   item = initializeKnowledgePool(item);
 
-  return {
+  const customer: Customer = {
     id: crypto.randomUUID(),
     interactionType: 'PAWN',
     ...preset.customer,
     avatarSeed: preset.customer.avatarSeed + "_" + day,
     item,
+    // FAKE differentiation: 40% chance the customer knows the item is fake
+    ...(item.isFake ? { customerKnowsFake: Math.random() < 0.4 } : {}),
   } as Customer;
+
+  return customer;
 }
 
 /**

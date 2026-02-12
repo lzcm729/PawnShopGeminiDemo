@@ -1736,7 +1736,9 @@ export function generateFillerCustomer(
         pawnTermDays: Math.min(
             1 + Math.floor(Math.random() * 10),
             1 + Math.floor(Math.random() * 10)
-        )
+        ),
+        // FAKE differentiation: 40% chance the customer knows the item is fake
+        ...(item.isFake ? { customerKnowsFake: Math.random() < 0.4 } : {}),
     };
 
     return customer;

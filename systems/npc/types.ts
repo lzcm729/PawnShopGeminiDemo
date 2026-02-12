@@ -116,4 +116,7 @@ export interface Customer {
 
   /** #25: Word-of-mouth referral customer flag */
   isReferral?: boolean;
+
+  /** FAKE trait differentiation: does the customer know the item is fake? */
+  customerKnowsFake?: boolean;
 }

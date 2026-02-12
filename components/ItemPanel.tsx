@@ -9,6 +9,8 @@ import { playSfx } from '../systems/game/audio';
 import { checkItemAnomaly, getAnomalyDetectionThreshold } from '../systems/upgrades';
 import { getAnomalyMessage, getAnomalySeverity, getNormalConfirmationMessage } from '../systems/upgrades/spectrometerFeedback';
 import { getAttitudeShift } from '../systems/negotiation/attitudeShift';
+import { getFakeDialogue } from '../systems/negotiation/fakeDialogues';
+import type { FakeLeverageResult } from '../hooks/useNegotiation';
 
 import { VirtualItemView } from './item/VirtualItemView';
 import { ItemAppraisalHeader } from './item/ItemAppraisalHeader';
@@ -20,13 +22,14 @@ type AppraisalEffectType = 'none' | 'range_narrowed' | 'breakthrough' | 'fake' |
 interface ItemPanelProps {
   applyLeverage: (power: number, description: string) => void;
   applyStolenLeverage: (power: number, description: string, label?: string) => { askReduction: number; minReduction: number };
+  applyFakeLeverage: (knowsFake: boolean, perceivedValue: number) => FakeLeverageResult;
   triggerNarrative: (playerLine: string, customerLine: string, impact?: number) => void;
   canInteract: boolean;
   currentAskPrice: number;
   onAppraisalFeedback?: (feedback: AppraisalFeedback) => void;
 }
 
-export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolenLeverage, triggerNarrative, canInteract, currentAskPrice, onAppraisalFeedback }) => {
+export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolenLeverage, applyFakeLeverage, triggerNarrative, canInteract, currentAskPrice, onAppraisalFeedback }) => {
   const { state, dispatch } = useGame();
   const { currentCustomer } = state;
   const item = currentCustomer?.item;
@@ -224,13 +227,13 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
               triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, 0);
           }
       } else if (trait.type === 'FAKE') {
-          const fakePower = 0.25;
-          applyStolenLeverage(fakePower, trait.name, '赝品压价');
-          dispatch({ type: 'APPLY_STOLEN_LEVERAGE', payload: { reductionPercent: fakePower } });
-          if (trait.dialogueTrigger) {
-              const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
-              triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, 0);
-          }
+          const knowsFake = state.currentCustomer?.customerKnowsFake ?? false;
+          const perceivedValue = item.perceivedValue ?? item.realValue;
+          const result = applyFakeLeverage(knowsFake, perceivedValue);
+          const reductionPercent = knowsFake ? 0.50 : 0.10;
+          dispatch({ type: 'APPLY_STOLEN_LEVERAGE', payload: { reductionPercent } });
+          const dialogue = getFakeDialogue(knowsFake);
+          triggerNarrative(dialogue.playerLine, dialogue.customerLine, 0);
       } else if (trait.dialogueTrigger) {
           const dialogueLine = trait.dialogueTrigger.playerUseLine || trait.dialogueTrigger.playerLine;
           triggerNarrative(dialogueLine, trait.dialogueTrigger.customerLine, negotiationPower);
