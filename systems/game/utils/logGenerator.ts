@@ -58,7 +58,7 @@ const TIER_KEY_PREFIXES: Record<VisitTier, string[]> = {
     5: ['tier5_dramatic', 'tier5_emotional'],
 };
 
-export const generatePawnLog = (customer: Customer, item: Item, day: number, visitCount: number): ItemLogEntry => {
+export const generatePawnLog = (customer: Customer, item: Item, day: number, visitCount: number, valuation?: number): ItemLogEntry => {
     const tier = getVisitTier(visitCount);
     const vars = buildPawnVars(customer, item);
     const texts = getTexts();
@@ -74,7 +74,7 @@ export const generatePawnLog = (customer: Customer, item: Item, day: number, vis
         content = allTemplates.length > 0 ? pickRandom(allTemplates) : `标准质押。${item.name}。`;
     }
 
-    content += ` [死当估值: $${item.pawnInfo?.valuation}]`;
+    content += ` [死当估值: $${valuation ?? item.pawnInfo?.valuation ?? '未知'}]`;
 
     return {
         id: crypto.randomUUID(),

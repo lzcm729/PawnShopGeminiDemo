@@ -1408,7 +1408,7 @@ export const useGameEngine = () => {
         if (chain) visitCount = chain.stage + 1;
     }
     
-    const narrativeLog = generatePawnLog(customer, item, state.stats.day, visitCount);
+    const narrativeLog = generatePawnLog(customer, item, state.stats.day, visitCount, valuationBasis);
     if ((item.isStolen || item.category === '违禁品') && currentRisk > 0) {
         narrativeLog.content += " [警告] 在严打期间收受违规物品，已被市场监管部门注意！";
     }
