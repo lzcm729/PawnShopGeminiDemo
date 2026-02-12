@@ -116,6 +116,10 @@ age_hint_gendered,young_male,小伙子
 age_hint_gendered,young_male,年轻人
 age_hint_gendered,young_female,姑娘
 age_hint_gendered,young_female,年轻女子
+age_hint_gendered,middle_male,中年人
+age_hint_gendered,middle_male,那位先生
+age_hint_gendered,middle_female,中年人
+age_hint_gendered,middle_female,那位女士
 age_hint_gendered,elderly_male,老人
 age_hint_gendered,elderly_male,大爷
 age_hint_gendered,elderly_female,老太太

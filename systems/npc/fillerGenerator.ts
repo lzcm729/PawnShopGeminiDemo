@@ -565,13 +565,8 @@ export function generateRedemptionVisitDialogue(
 ): string {
     // Pick customer description from CSV
     const descPool = getAppearanceHints(appearance);
-    // Use gendered age hints for young/elderly from CSV
-    let agePool: string[];
-    if (age === 'young' || age === 'elderly') {
-        agePool = getGenderedAgeHints(age, gender);
-    } else {
-        agePool = getAgeHints(age);
-    }
+    // Use gendered age hints from CSV (all age groups)
+    const agePool = getGenderedAgeHints(age, gender);
 
     // 50% chance to use appearance-based or age-based description
     const useAppearance = Math.random() < 0.5;
