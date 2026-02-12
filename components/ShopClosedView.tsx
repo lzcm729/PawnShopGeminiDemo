@@ -369,7 +369,7 @@ export const DepartureView: React.FC = () => {
                       <div className="flex items-center gap-2">
                           <DollarSign className={cn("w-4 h-4", lastDealSummary.cashDelta >= 0 ? "text-green-500" : "text-red-500")} />
                           <span className={cn("font-mono font-bold", lastDealSummary.cashDelta >= 0 ? "text-green-500" : "text-red-500")}>
-                              {lastDealSummary.cashDelta >= 0 ? '+' : '-'}${Math.abs(lastDealSummary.cashDelta)}
+                              {lastDealSummary.cashDelta >= 0 ? '+' : '-'}{Math.abs(lastDealSummary.cashDelta)}
                           </span>
                       </div>
 
