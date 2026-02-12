@@ -1104,9 +1104,9 @@ function generateFillerDialogue(profile: FillerCustomerProfile, qualityOptions?:
 
     return {
         greeting,
-        pawnReason: '需要周转一下。',
-        redemptionPlea: '到期我会来赎的。',
-        negotiationDynamic: '能不能再加点？',
+        pawnReason: getRandomDialogue(mood, 'pawn_reason') || '需要周转一下。',
+        redemptionPlea: getRandomDialogue(mood, 'redemption_plea') || '到期我会来赎的。',
+        negotiationDynamic: getRandomDialogue(mood, 'negotiation_dynamic') || '能不能再加点？',
         accepted: {
             fair: acceptedFair,
             fleeced: acceptedFleeced,
