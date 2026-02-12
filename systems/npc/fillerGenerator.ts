@@ -736,6 +736,23 @@ export function inferBehaviorTags(profile: FillerCustomerProfile): BehaviorTag[]
 }
 
 /**
+ * Apply BehaviorTag modifiers to desired ratio.
+ * Additive: finalRatio = baseRatio + sum(tag modifiers), clamped to [0.50, 1.20].
+ *
+ * This makes customer asking prices vary by personality:
+ * - DESPERATE customers accept lower prices (negative modifier)
+ * - STUBBORN/SUSPICIOUS customers demand higher prices (positive modifier)
+ */
+export function getDesiredRatioWithBehaviorMods(tags: BehaviorTag[], baseRatio: number): number {
+    const modifiers = GAME_CONFIG.NEGOTIATION.BEHAVIOR_DESIRED_MODIFIERS;
+    let totalMod = 0;
+    for (const tag of tags) {
+        totalMod += modifiers[tag] || 0;
+    }
+    return Math.max(0.50, Math.min(1.20, baseRatio + totalMod));
+}
+
+/**
  * Apply behavior tag effects to negotiation parameters
  */
 export function applyBehaviorTagEffects(
@@ -1660,7 +1677,9 @@ export function generateFillerCustomer(
     // This makes jump-trait items work as intended: bargains are underpriced by the customer,
     // and mistakes are overpriced -- the player discovers the truth through appraisal.
     const customerPerceivedValue = item.perceivedValue ?? item.realValue;
-    const baseDesired = Math.floor(customerPerceivedValue * GAME_CONFIG.NPC_FILLER.DESIRED_RATIO);
+    // Apply BehaviorTag desired ratio modifiers (e.g., STUBBORN wants higher price)
+    const adjustedDesiredRatio = getDesiredRatioWithBehaviorMods(behaviorTags, GAME_CONFIG.NPC_FILLER.DESIRED_RATIO);
+    const baseDesired = Math.floor(customerPerceivedValue * adjustedDesiredRatio);
     const baseMinimum = Math.floor(customerPerceivedValue * GAME_CONFIG.NPC_FILLER.MINIMUM_RATIO);
     const basePatience = GAME_CONFIG.NPC_FILLER.BASE_PATIENCE;
     const baseInsultThreshold = baseMinimum * GAME_CONFIG.NPC_FILLER.INSULT_RATIO;

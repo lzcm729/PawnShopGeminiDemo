@@ -251,6 +251,7 @@ interface TomlNegotiation {
   behavior_insult_modifiers: Record<string, number>;
   behavior_floor_modifiers: Record<string, number>;
   behavior_patience_modifiers: Record<string, number>;
+  behavior_desired_modifiers: Record<string, number>;
   reputation_modifiers: TomlReputationModifiers;
   push_pull: {
     SOFT: TomlPushPullStrategy;
@@ -792,6 +793,7 @@ export const GAME_CONFIG = {
     BEHAVIOR_INSULT_MODIFIERS: tomlConfig.negotiation.behavior_insult_modifiers,
     BEHAVIOR_FLOOR_MODIFIERS: tomlConfig.negotiation.behavior_floor_modifiers,
     BEHAVIOR_PATIENCE_MODIFIERS: tomlConfig.negotiation.behavior_patience_modifiers,
+    BEHAVIOR_DESIRED_MODIFIERS: tomlConfig.negotiation.behavior_desired_modifiers,
     REPUTATION_MODIFIERS: {
       HUMANITY_60_CONCESSION_BONUS: tomlConfig.negotiation.reputation_modifiers.humanity_60_concession_bonus,
       HUMANITY_70_CONCESSION_BONUS: tomlConfig.negotiation.reputation_modifiers.humanity_70_concession_bonus,

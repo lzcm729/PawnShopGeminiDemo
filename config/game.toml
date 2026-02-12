@@ -432,6 +432,15 @@ SENTIMENTAL = 1
 NAIVE = 0
 SAVVY = 0
 
+# 行为期望价修正（加性：desired_ratio += sum(modifiers)，clamp [0.50, 1.20]）
+[negotiation.behavior_desired_modifiers]
+DESPERATE = -0.15    # 走投无路，愿意低价 → 0.55
+STUBBORN = 0.25      # 舍不得，要高价 → 0.95
+SAVVY = 0.15         # 识货，知道值多少 → 0.85
+SUSPICIOUS = 0.30    # 虚报试探 → 1.00
+SENTIMENTAL = 0.20   # 情感附加值 → 0.90
+NAIVE = 0.0          # 不太懂行，按默认
+
 # 声誉影响议价 (Reputation Modifiers)
 [negotiation.reputation_modifiers]
 # 人情 > 60 时：NPC 让步概率加成
