@@ -668,6 +668,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               subtext: feedback.subtext || undefined,
               sentiment: 'positive' as const,
               type: 'INNER_MONOLOGUE' as const,
+              data: { feedbackType: 'EMPATHY_SUCCESS' },
           }]);
       } else {
           // Incorrect: negative feedback only, no patience penalty
@@ -678,6 +679,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               subtext: feedback.subtext || undefined,
               sentiment: 'negative' as const,
               type: 'INNER_MONOLOGUE' as const,
+              data: { feedbackType: 'EMPATHY_FAIL' },
           }]);
       }
 
@@ -717,6 +719,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               subtext: `底价 $${reveal.floorPrice} | ${tierLabel}`,
               sentiment: 'positive' as const,
               type: 'INNER_MONOLOGUE' as const,
+              data: { feedbackType: 'PROBE_SUCCESS' },
           }]);
       } else {
           // Incorrect: negative feedback only, no patience penalty
@@ -727,6 +730,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               subtext: feedback.subtext || undefined,
               sentiment: 'negative' as const,
               type: 'INNER_MONOLOGUE' as const,
+              data: { feedbackType: 'PROBE_FAIL' },
           }]);
       }
 

@@ -61,6 +61,10 @@ export const ChatLog: React.FC<ChatLogProps> = ({ chatLog, offerHistory, isBinar
                             case 'MISHAP': return '鉴定失误';
                             case 'IMPATIENT': return '客户不耐烦';
                             case 'ALREADY_KNOWN': return '暂无新发现';
+                            case 'EMPATHY_SUCCESS': return '共情成功';
+                            case 'EMPATHY_FAIL': return '共情失败';
+                            case 'PROBE_SUCCESS': return '试探成功';
+                            case 'PROBE_FAIL': return '试探失败';
                             default: return null;
                         }
                     };
@@ -68,8 +72,18 @@ export const ChatLog: React.FC<ChatLogProps> = ({ chatLog, offerHistory, isBinar
 
                     return (
                         <div key={log.id} className="flex flex-col max-w-[85%] items-end ml-auto animate-in fade-in slide-in-from-bottom-2 duration-300 opacity-70 hover:opacity-90 transition-opacity">
-                            <div className="px-3 py-2 rounded relative text-xs flex items-start gap-1.5 border-l-2 border-stone-600/30 bg-stone-900/20">
-                                <Search className="w-3 h-3 text-stone-500 shrink-0 mt-0.5" />
+                            <div className={cn(
+                                "px-3 py-2 rounded relative text-xs flex items-start gap-1.5 border-l-2 bg-stone-900/20",
+                                log.sentiment === 'positive' ? "border-l-pawn-green/40" :
+                                log.sentiment === 'negative' ? "border-l-red-500/40" :
+                                "border-stone-600/30"
+                            )}>
+                                <Search className={cn(
+                                    "w-3 h-3 shrink-0 mt-0.5",
+                                    log.sentiment === 'positive' ? "text-pawn-green/60" :
+                                    log.sentiment === 'negative' ? "text-red-500/60" :
+                                    "text-stone-500"
+                                )} />
                                 <div className="flex flex-col gap-1">
                                     <span className="font-serif italic text-stone-400/80 leading-relaxed">
                                         {log.text}
@@ -77,6 +91,16 @@ export const ChatLog: React.FC<ChatLogProps> = ({ chatLog, offerHistory, isBinar
                                     {resultLabel && (
                                         <span className="text-[10px] text-stone-500/70 font-mono">
                                             &rarr; {resultLabel}
+                                        </span>
+                                    )}
+                                    {log.subtext && (
+                                        <span className={cn(
+                                            "text-[10px] font-mono mt-0.5",
+                                            log.sentiment === 'positive' ? "text-pawn-green/70" :
+                                            log.sentiment === 'negative' ? "text-red-500/70" :
+                                            "text-stone-500/70"
+                                        )}>
+                                            {log.subtext}
                                         </span>
                                     )}
                                 </div>
