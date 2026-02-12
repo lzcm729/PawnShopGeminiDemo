@@ -1,0 +1,6 @@
+{
+  "default": "a moldy hardcover western book, cracked spine, but acceptable inner pages",
+  "restored": "a restored hardcover book, cleaned cover, reinforced spine",
+  "reforged": "a book with calfskin cover and gold-tooled lettering, gilded page edges, luxury collector's binding",
+  "counterfeit": "a book with forged author signature and first edition markings, fake Nobel laureate signed first edition"
+}

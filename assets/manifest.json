@@ -1,0 +1,678 @@
+{
+  "generatedAt": "2026-02-09T12:46:30Z",
+  "items": {
+    "emma_item_clothes": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "emma_item_clothes/default.png",
+        "emma_item_clothes/reforged.png",
+        "emma_item_clothes/restored.png"
+      ]
+    },
+    "emma_item_laptop": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "emma_item_laptop/default.png",
+        "emma_item_laptop/reforged.png",
+        "emma_item_laptop/restored.png"
+      ]
+    },
+    "emma_item_skincare": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "emma_item_skincare/default.png",
+        "emma_item_skincare/reforged.png",
+        "emma_item_skincare/restored.png"
+      ]
+    },
+    "emma_item_watch": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "emma_item_watch/default.png",
+        "emma_item_watch/reforged.png",
+        "emma_item_watch/restored.png"
+      ]
+    },
+    "item_bag_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_bag_01/default.png",
+        "item_bag_01/reforged.png",
+        "item_bag_01/restored.png"
+      ]
+    },
+    "item_book_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_book_01/default.png",
+        "item_book_01/reforged.png",
+        "item_book_01/restored.png"
+      ]
+    },
+    "item_bracelet_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_bracelet_01/default.png",
+        "item_bracelet_01/reforged.png",
+        "item_bracelet_01/restored.png"
+      ]
+    },
+    "item_bronze_mirror_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_bronze_mirror_01/default.png",
+        "item_bronze_mirror_01/reforged.png",
+        "item_bronze_mirror_01/restored.png"
+      ]
+    },
+    "item_buddha_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_buddha_01/default.png",
+        "item_buddha_01/reforged.png",
+        "item_buddha_01/restored.png"
+      ]
+    },
+    "item_camera_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_camera_01/default.png",
+        "item_camera_01/reforged.png",
+        "item_camera_01/restored.png"
+      ]
+    },
+    "item_camera_02": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_camera_02/default.png",
+        "item_camera_02/reforged.png",
+        "item_camera_02/restored.png"
+      ]
+    },
+    "item_coin_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_coin_01/default.png",
+        "item_coin_01/reforged.png",
+        "item_coin_01/restored.png"
+      ]
+    },
+    "item_console_student": {
+      "states": [
+        "default",
+        "reforged-GamerOne",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_console_student/default.png",
+        "item_console_student/reforged-GamerOne.png",
+        "item_console_student/reforged.png",
+        "item_console_student/restored.png"
+      ]
+    },
+    "item_diamond_mystery": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_diamond_mystery/default.png",
+        "item_diamond_mystery/reforged.png",
+        "item_diamond_mystery/restored.png"
+      ]
+    },
+    "item_figure_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_figure_01/default.png",
+        "item_figure_01/reforged.png",
+        "item_figure_01/restored.png"
+      ]
+    },
+    "item_guitar_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_guitar_01/default.png",
+        "item_guitar_01/reforged.png",
+        "item_guitar_01/restored.png"
+      ]
+    },
+    "item_inkpainting_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_inkpainting_01/default.png",
+        "item_inkpainting_01/reforged.png",
+        "item_inkpainting_01/restored.png"
+      ]
+    },
+    "item_inkstone_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_inkstone_01/default.png",
+        "item_inkstone_01/reforged.png",
+        "item_inkstone_01/restored.png"
+      ]
+    },
+    "item_jacket_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_jacket_01/default.png",
+        "item_jacket_01/reforged.png",
+        "item_jacket_01/restored.png"
+      ]
+    },
+    "item_jade_pendant_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_jade_pendant_01/default.png",
+        "item_jade_pendant_01/reforged.png",
+        "item_jade_pendant_01/restored.png"
+      ]
+    },
+    "item_jade_tablet_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_jade_tablet_01/default.png",
+        "item_jade_tablet_01/reforged.png",
+        "item_jade_tablet_01/restored.png"
+      ]
+    },
+    "item_maotai_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_maotai_01/default.png",
+        "item_maotai_01/reforged.png",
+        "item_maotai_01/restored.png"
+      ]
+    },
+    "item_necklace_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_necklace_01/default.png",
+        "item_necklace_01/reforged.png",
+        "item_necklace_01/restored.png"
+      ]
+    },
+    "item_painting_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_painting_01/default.png",
+        "item_painting_01/reforged.png",
+        "item_painting_01/restored.png"
+      ]
+    },
+    "item_phone_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_phone_01/default.png",
+        "item_phone_01/reforged.png",
+        "item_phone_01/restored.png"
+      ]
+    },
+    "item_qipao_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_qipao_01/default.png",
+        "item_qipao_01/reforged.png",
+        "item_qipao_01/restored.png"
+      ]
+    },
+    "item_ring_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_ring_01/default.png",
+        "item_ring_01/reforged.png",
+        "item_ring_01/restored.png"
+      ]
+    },
+    "item_scarf_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_scarf_01/default.png",
+        "item_scarf_01/reforged.png",
+        "item_scarf_01/restored.png"
+      ]
+    },
+    "item_seal_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_seal_01/default.png",
+        "item_seal_01/reforged.png",
+        "item_seal_01/restored.png"
+      ]
+    },
+    "item_stamp_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_stamp_01/default.png",
+        "item_stamp_01/reforged.png",
+        "item_stamp_01/restored.png"
+      ]
+    },
+    "item_threadbook_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_threadbook_01/default.png",
+        "item_threadbook_01/reforged.png",
+        "item_threadbook_01/restored.png"
+      ]
+    },
+    "item_vase_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_vase_01/default.png",
+        "item_vase_01/reforged.png",
+        "item_vase_01/restored.png"
+      ]
+    },
+    "item_violin_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_violin_01/default.png",
+        "item_violin_01/reforged.png",
+        "item_violin_01/restored.png"
+      ]
+    },
+    "item_wallet_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_wallet_01/default.png",
+        "item_wallet_01/reforged.png",
+        "item_wallet_01/restored.png"
+      ]
+    },
+    "item_watchbox_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_watchbox_01/default.png",
+        "item_watchbox_01/reforged.png",
+        "item_watchbox_01/restored.png"
+      ]
+    },
+    "item_watch_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_watch_01/default.png",
+        "item_watch_01/reforged.png",
+        "item_watch_01/restored.png"
+      ]
+    },
+    "item_watch_gambler": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_watch_gambler/default.png",
+        "item_watch_gambler/reforged.png",
+        "item_watch_gambler/restored.png"
+      ]
+    },
+    "item_whisky_01": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "item_whisky_01/default.png",
+        "item_whisky_01/reforged.png",
+        "item_whisky_01/restored.png"
+      ]
+    },
+    "lin_item_watch": {
+      "states": [
+        "default",
+        "reforged-GamerOne",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "lin_item_watch/default.png",
+        "lin_item_watch/reforged-GamerOne.png",
+        "lin_item_watch/reforged.png",
+        "lin_item_watch/restored.png"
+      ]
+    },
+    "susan_item_bag": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "susan_item_bag/default.png",
+        "susan_item_bag/reforged.png",
+        "susan_item_bag/restored.png"
+      ]
+    },
+    "zhao_item_cert": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "zhao_item_cert/default.png",
+        "zhao_item_cert/reforged.png",
+        "zhao_item_cert/restored.png"
+      ]
+    },
+    "zhao_item_medal": {
+      "states": [
+        "default",
+        "reforged",
+        "restored"
+      ],
+      "files": [
+        "zhao_item_medal/default.png",
+        "zhao_item_medal/reforged.png",
+        "zhao_item_medal/restored.png"
+      ]
+    }
+  },
+  "characters": {
+    "emma": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "emma/angry.png",
+        "emma/desperate.png",
+        "emma/grateful.png",
+        "emma/neutral.png",
+        "emma/resentful.png"
+      ]
+    },
+    "generic_female_middle": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_female_middle/angry.png",
+        "generic_female_middle/desperate.png",
+        "generic_female_middle/grateful.png",
+        "generic_female_middle/neutral.png",
+        "generic_female_middle/resentful.png"
+      ]
+    },
+    "generic_female_old": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_female_old/angry.png",
+        "generic_female_old/desperate.png",
+        "generic_female_old/grateful.png",
+        "generic_female_old/neutral.png",
+        "generic_female_old/resentful.png"
+      ]
+    },
+    "generic_female_young": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_female_young/angry.png",
+        "generic_female_young/desperate.png",
+        "generic_female_young/grateful.png",
+        "generic_female_young/neutral.png",
+        "generic_female_young/resentful.png"
+      ]
+    },
+    "generic_male_middle": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_male_middle/angry.png",
+        "generic_male_middle/desperate.png",
+        "generic_male_middle/grateful.png",
+        "generic_male_middle/neutral.png",
+        "generic_male_middle/resentful.png"
+      ]
+    },
+    "generic_male_old": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_male_old/angry.png",
+        "generic_male_old/desperate.png",
+        "generic_male_old/grateful.png",
+        "generic_male_old/neutral.png",
+        "generic_male_old/resentful.png"
+      ]
+    },
+    "generic_male_young": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "generic_male_young/angry.png",
+        "generic_male_young/desperate.png",
+        "generic_male_young/grateful.png",
+        "generic_male_young/neutral.png",
+        "generic_male_young/resentful.png"
+      ]
+    },
+    "lin": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "lin/angry.png",
+        "lin/desperate.png",
+        "lin/grateful.png",
+        "lin/neutral.png",
+        "lin/resentful.png"
+      ]
+    },
+    "susan": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "susan/angry.png",
+        "susan/desperate.png",
+        "susan/grateful.png",
+        "susan/neutral.png",
+        "susan/resentful.png"
+      ]
+    },
+    "zhao": {
+      "emotions": [
+        "angry",
+        "desperate",
+        "grateful",
+        "neutral",
+        "resentful"
+      ],
+      "files": [
+        "zhao/angry.png",
+        "zhao/desperate.png",
+        "zhao/grateful.png",
+        "zhao/neutral.png",
+        "zhao/resentful.png"
+      ]
+    }
+  },
+  "backgrounds": {
+    "night_dashboard": "night_dashboard.png"
+  }
+}
