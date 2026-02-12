@@ -432,11 +432,6 @@ export const UpgradeShopModal: React.FC = () => {
                                                                     {isEnabled ? 'ON' : 'OFF'}
                                                                 </span>
                                                             )}
-                                                            {isRecommended && canPurchase && (
-                                                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/50 text-amber-400 flex items-center gap-1">
-                                                                    <Sparkles className="w-3 h-3" /> 推荐
-                                                                </span>
-                                                            )}
                                                         </div>
 
                                                         {/* Description */}
