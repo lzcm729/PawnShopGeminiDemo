@@ -329,7 +329,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const discoveredTraitIdsRef = useRef<Set<string>>(new Set());
   const processedCountRef = useRef<number>(0);
   const lastInsightAwareTextRef = useRef<string | null>(null);
-  const lastWarningDialogueRef = useRef<string | null>(null);
 
   // Convert appraisal feedbacks to inner monologue entries
   useEffect(() => {
@@ -389,7 +388,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       discoveredTraitIdsRef.current.clear();
       processedCountRef.current = 0;
       lastInsightAwareTextRef.current = null;
-      lastWarningDialogueRef.current = null;
       setShowStolenWarning(false);
       setStolenDecisionMade(false);
       setPressureUsed(false);
@@ -510,18 +508,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       }]);
   }, [insightAwareText]);
 
-  // Add warningDialogue to chat log when it changes (with dedup)
-  useEffect(() => {
-      if (!warningDialogue || warningDialogue === lastWarningDialogueRef.current) return;
-      lastWarningDialogueRef.current = warningDialogue;
-
-      setChatLog(prev => [...prev, {
-          id: `warning-${Date.now()}`,
-          sender: 'customer' as const,
-          text: warningDialogue,
-          sentiment: patienceWarningLevel === 'danger' ? 'negative' as const : 'neutral' as const,
-      }]);
-  }, [warningDialogue, patienceWarningLevel]);
+  // warningDialogue is available but NOT pushed to chat log separately.
+  // Visual warnings (flame color + "危险" label) are sufficient.
+  // Adding a second chat bubble would break the "one response per action" pattern.
 
   // Handle pressure skill activation
   const handlePressure = () => {
