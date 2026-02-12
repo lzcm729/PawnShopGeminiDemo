@@ -5,6 +5,7 @@ import { Flame, Eye, EyeOff, Heart, Lock, AlertTriangle, HeartHandshake, ScanSea
 import { Customer } from '../../types';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../../systems/assets';
 import { DISPOSITION_INFO, SHOW_DISPOSITION_LABEL_IN_NEGOTIATION, InsightLayer, Disposition, ForesightInfo } from '../../systems/customerInsight';
+import { PatienceWarningLevel } from '../../hooks/useNegotiation';
 import { playSfx } from '../../systems/game/audio';
 
 export interface InsightResultData {
@@ -21,6 +22,7 @@ interface CustomerHeaderProps {
     customer: Customer;
     patience: number;
     mood: string;
+    patienceWarningLevel?: PatienceWarningLevel;
     insightResult?: InsightResultData | null;
     // Insight skill
     canUseInsight?: boolean;
@@ -48,6 +50,7 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
     customer,
     patience,
     mood,
+    patienceWarningLevel = 'normal',
     insightResult,
     canUseInsight,
     hasUsedInsight,
@@ -424,15 +427,31 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
                         {Array.from({length: 5}).map((_, i) => (
                             <Flame
                                 key={i}
-                                className={`w-3.5 h-3.5 transition-all duration-300 ${
+                                className={cn(
+                                    "w-3.5 h-3.5 transition-all duration-300",
                                     i < patience
-                                        ? (isAngry ? 'text-red-600 fill-red-600 animate-pulse' : 'text-orange-500 fill-orange-500')
+                                        ? patienceWarningLevel === 'danger'
+                                            ? 'text-red-500 fill-red-500 animate-pulse drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]'
+                                            : patienceWarningLevel === 'caution'
+                                            ? 'text-amber-400 fill-amber-400 animate-[pulse_1.5s_ease-in-out_infinite]'
+                                            : isAngry
+                                            ? 'text-red-600 fill-red-600 animate-pulse'
+                                            : 'text-orange-500 fill-orange-500'
                                         : 'text-stone-800'
-                                }`}
+                                )}
                             />
                         ))}
                     </div>
-                    <span className="text-[9px] font-mono text-noir-txt-muted tracking-wider">耐心</span>
+                    <span className={cn(
+                        "text-[9px] font-mono tracking-wider transition-colors duration-300",
+                        patienceWarningLevel === 'danger'
+                            ? 'text-red-400 animate-pulse font-bold'
+                            : patienceWarningLevel === 'caution'
+                            ? 'text-amber-400'
+                            : 'text-noir-txt-muted'
+                    )}>
+                        {patienceWarningLevel === 'danger' ? '危险' : '耐心'}
+                    </span>
                 </div>
             </div>
         </div>

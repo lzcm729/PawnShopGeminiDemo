@@ -7,11 +7,12 @@ import { useCustomerInsight } from '../hooks/useCustomerInsight';
 import { useCharacterAbility } from '../hooks/useCharacterAbility';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
-import { XCircle } from 'lucide-react';
+import { XCircle, Flame } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
-import { ActionLog, OfferRecord } from '../hooks/useNegotiation';
+import { ActionLog, OfferRecord, PatienceWarningLevel, UltimatumState } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
 import { playSfx } from '../systems/game/audio';
+import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 import { ALL_STORY_EVENTS } from '../systems/narrative/storyRegistry';
 import { PushPullResult } from '../systems/negotiation/pushPull';
 import { GAME_CONFIG } from '../systems/game/config';
@@ -65,6 +66,10 @@ interface NegotiationStateProps {
         // Empathy patience modifier
         empathyPatienceModifier: number;
         setEmpathyPatienceModifier: React.Dispatch<React.SetStateAction<number>>;
+        // Patience warning & ultimatum
+        patienceWarningLevel: PatienceWarningLevel;
+        ultimatum: UltimatumState | null;
+        warningDialogue: string | null;
     };
     appraisalFeedbacks?: AppraisalFeedback[];
 }
@@ -179,6 +184,10 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     // Empathy patience modifier
     empathyPatienceModifier,
     setEmpathyPatienceModifier,
+    // Patience warning & ultimatum
+    patienceWarningLevel,
+    ultimatum,
+    warningDialogue,
   } = negotiation;
 
   const [chatLog, setChatLog] = useState<LogEntry[]>([]);
@@ -318,6 +327,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const discoveredTraitIdsRef = useRef<Set<string>>(new Set());
   const processedCountRef = useRef<number>(0);
   const lastInsightAwareTextRef = useRef<string | null>(null);
+  const lastWarningDialogueRef = useRef<string | null>(null);
 
   // Convert appraisal feedbacks to inner monologue entries
   useEffect(() => {
@@ -377,6 +387,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       discoveredTraitIdsRef.current.clear();
       processedCountRef.current = 0;
       lastInsightAwareTextRef.current = null;
+      lastWarningDialogueRef.current = null;
       setShowStolenWarning(false);
       setStolenDecisionMade(false);
       setPressureUsed(false);
@@ -496,6 +507,19 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           data: { feedbackType: 'INSIGHT_AWARE' },
       }]);
   }, [insightAwareText]);
+
+  // Add warningDialogue to chat log when it changes (with dedup)
+  useEffect(() => {
+      if (!warningDialogue || warningDialogue === lastWarningDialogueRef.current) return;
+      lastWarningDialogueRef.current = warningDialogue;
+
+      setChatLog(prev => [...prev, {
+          id: `warning-${Date.now()}`,
+          sender: 'customer' as const,
+          text: warningDialogue,
+          sentiment: patienceWarningLevel === 'danger' ? 'negative' as const : 'neutral' as const,
+      }]);
+  }, [warningDialogue, patienceWarningLevel]);
 
   // Handle pressure skill activation
   const handlePressure = () => {
@@ -753,6 +777,17 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
         return;
     }
 
+    if (result.status === 'ULTIMATUM') {
+        // NPC fires ultimatum: add their ultimatum dialogue to chat
+        setChatLog(prev => [...prev, playerLog, {
+            id: `ultimatum-${Date.now()}`,
+            sender: 'customer' as const,
+            text: result.message,
+            sentiment: 'negative' as const,
+        }]);
+        return;
+    }
+
     if (result.status === 'COUNTER') {
         lastOfferWasCounterRef.current = true;
         setChatLog(prev => [...prev, playerLog]);
@@ -860,6 +895,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           customer={currentCustomer}
           patience={patience}
           mood={mood}
+          patienceWarningLevel={patienceWarningLevel}
           insightResult={insightResult}
           canUseInsight={canUseInsight()}
           hasUsedInsight={insightResult !== null}
@@ -906,6 +942,110 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               onAccept={handleStolenAccept}
               onReject={handleStolenReject}
           />
+      )}
+
+      {/* Ultimatum Overlay */}
+      {ultimatum?.active && ultimatum.price !== null && (
+          <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-6 animate-in fade-in duration-300">
+              <div className="bg-noir-200 border-2 border-red-800/70 p-6 max-w-md w-full shadow-2xl relative flex flex-col items-center">
+                  {/* Warning Icon */}
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 h-16 bg-red-950/80 rounded-full flex items-center justify-center border-4 border-red-700 shadow-[0_0_30px_rgba(239,68,68,0.5)]">
+                      <Flame className="w-8 h-8 text-red-400 animate-pulse" />
+                  </div>
+
+                  {/* Title */}
+                  <div className="mt-8 mb-4 text-center">
+                      <h3 className="text-lg font-bold text-red-500 uppercase tracking-widest mb-1">
+                          ULTIMATUM
+                      </h3>
+                      <p className="text-xs text-noir-txt-muted font-mono">
+                          FINAL OFFER
+                      </p>
+                  </div>
+
+                  {/* Customer portrait + dialogue */}
+                  <div className="flex items-start gap-3 bg-black/40 border border-red-900/50 rounded p-4 mb-4 w-full">
+                      <img
+                          src={(() => {
+                              if (currentCustomer.portraits?.neutral) return currentCustomer.portraits.neutral;
+                              if (currentCustomer.chainId) {
+                                  const charId = currentCustomer.chainId.replace(/^chain_/, '');
+                                  return getCharacterPortraitPath(charId, 'neutral');
+                              }
+                              return PORTRAIT_PLACEHOLDER;
+                          })()}
+                          alt={currentCustomer.name}
+                          className="w-12 h-12 rounded-full object-cover border border-red-700/50 shrink-0"
+                          onError={(e) => { (e.target as HTMLImageElement).src = PORTRAIT_PLACEHOLDER; }}
+                      />
+                      <p className="font-serif text-sm text-noir-txt-primary leading-relaxed italic">
+                          "{chatLog.filter(e => e.sender === 'customer').slice(-1)[0]?.text || '...'}"
+                      </p>
+                  </div>
+
+                  {/* Price Display */}
+                  <div className="bg-red-950/30 border border-red-900/50 rounded p-4 mb-6 w-full text-center">
+                      <p className="text-xs text-red-400/70 font-mono uppercase tracking-wider mb-1">
+                          FINAL PRICE
+                      </p>
+                      <p className="text-3xl font-bold text-amber-400 font-mono">
+                          ${ultimatum.price}
+                      </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 w-full">
+                      <Button
+                          variant="danger"
+                          onClick={() => {
+                              playSfx('FAIL');
+                              // Reject ultimatum: submit offer at 0 to trigger walk-away logic
+                              setOfferPrincipal(0);
+                              const result = submitOffer();
+                              setChatLog(prev => [...prev, {
+                                  id: `ult-reject-${Date.now()}`,
+                                  sender: 'customer' as const,
+                                  text: result.message,
+                                  sentiment: 'negative' as const,
+                              }]);
+                              send({ type: 'CUSTOMER_REJECTED' });
+                              rejectCustomer('RESENTFUL');
+                          }}
+                          className="flex-1 h-12 bg-red-900/50 hover:bg-red-800/60 border-red-700"
+                      >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          REFUSE
+                      </Button>
+                      <Button
+                          variant="primary"
+                          onClick={() => {
+                              playSfx('CLICK');
+                              // Accept ultimatum: set offer to ultimatum price and submit
+                              setOfferPrincipal(ultimatum.price!);
+                              // Defer to next tick so offerPrincipal state updates
+                              setTimeout(() => {
+                                  const result = submitOffer();
+                                  if (result.status === 'ACCEPTED') {
+                                      if (isCurrentItemStolen() && !stolenDecisionMade) {
+                                          setShowStolenWarning(true);
+                                          return;
+                                      }
+                                      setIsSubmitting(true);
+                                      const txResult = evaluateTransaction(ultimatum.price!, selectedRate);
+                                      setTimeout(() => {
+                                          send({ type: 'TRANSACTION_COMPLETE' });
+                                          commitTransaction(txResult);
+                                      }, 800);
+                                  }
+                              }, 0);
+                          }}
+                          className="flex-1 h-12 bg-pawn-green/80 hover:bg-pawn-green border-green-700 text-white"
+                      >
+                          ACCEPT ${ultimatum.price}
+                      </Button>
+                  </div>
+              </div>
+          </div>
       )}
 
       {/* #32: Push-pull instinct overlay */}

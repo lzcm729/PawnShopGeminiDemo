@@ -1,0 +1,13 @@
+﻿id,type,text
+warn_caution_1,caution,你这样出价让我很为难...
+warn_caution_2,caution,我的耐心可是有限的。
+warn_caution_3,caution,请认真考虑一下吧...
+warn_danger_1,danger,我真的快走了。
+warn_danger_2,danger,最后再给你一次机会。
+warn_danger_3,danger,我快没耐心了，抓紧时间。
+ultimatum_1,ultimatum,{price}卢布，不能再低了。接受还是走人？
+ultimatum_2,ultimatum,我最后说一次：{price}卢布。要不要？
+ultimatum_3,ultimatum,算了，{price}卢布，我的最低价。成不成就这一句。
+reject_1,reject,算了，我走了。
+reject_2,reject,浪费我时间！
+reject_3,reject,既然谈不拢，我另找别家。

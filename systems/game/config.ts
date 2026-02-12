@@ -274,6 +274,9 @@ interface TomlNegotiation {
   credibility_high_end_value_boost: number;
   empathy: TomlEmpathySkill;
   probe: TomlProbeSkill;
+  // Patience warning & ultimatum
+  patience_danger_threshold: number;
+  ultimatum_chance: number;
 }
 
 interface TomlBlackmarket {
@@ -847,6 +850,9 @@ export const GAME_CONFIG = {
       CONCESSION_TIER_LOW: tomlConfig.negotiation.probe.concession_tier_low,
       CONCESSION_TIER_HIGH: tomlConfig.negotiation.probe.concession_tier_high,
     },
+    // Patience warning & ultimatum
+    PATIENCE_DANGER_THRESHOLD: tomlConfig.negotiation.patience_danger_threshold,
+    ULTIMATUM_CHANCE: tomlConfig.negotiation.ultimatum_chance,
   },
 
   // --- BLACKMARKET (黑市系统) ---

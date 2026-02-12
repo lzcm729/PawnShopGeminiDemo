@@ -6,10 +6,18 @@ import { GAME_CONFIG } from '../systems/game/config';
 import { getAskPriceModifier, getInsultModifier, getConcessionMultiplier } from '../systems/appraisal/precision';
 import { INSIGHT_AWARE_RESPONSES, getRandomText } from '../systems/negotiation/data';
 import { queryConcessionChance, getConcessionTier, type ConcessionTier } from '../systems/negotiation/probeEffects';
+import { getCautionDialogue, getDangerDialogue, getUltimatumDialogue, getRejectDialogue } from '../systems/negotiation/ultimatumDialogues';
 
 export type NegotiationMood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
 
-export type NegotiationStatus = 'ACCEPTED' | 'PRINCIPAL_TOO_LOW' | 'INSULT' | 'TOTAL_REPAYMENT_EXCEEDED' | 'WALK_AWAY' | 'LEVERAGE' | 'COUNTER';
+export type PatienceWarningLevel = 'normal' | 'caution' | 'danger';
+
+export type NegotiationStatus = 'ACCEPTED' | 'PRINCIPAL_TOO_LOW' | 'INSULT' | 'TOTAL_REPAYMENT_EXCEEDED' | 'WALK_AWAY' | 'LEVERAGE' | 'COUNTER' | 'ULTIMATUM';
+
+export interface UltimatumState {
+  active: boolean;
+  price: number | null;
+}
 
 export interface NegotiationResult {
   status: NegotiationStatus;
@@ -85,6 +93,11 @@ interface UseNegotiationReturn {
   // Empathy patience loss modifier (set by skill system after successful empathy)
   empathyPatienceModifier: number;
   setEmpathyPatienceModifier: React.Dispatch<React.SetStateAction<number>>;
+
+  // Patience warning & ultimatum
+  patienceWarningLevel: PatienceWarningLevel;
+  ultimatum: UltimatumState | null;
+  warningDialogue: string | null;
 }
 
 const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number, insultPrecisionModifier: number = 1.0) => {
@@ -179,6 +192,14 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
   // Insult flag for probability-based patience loss
   const [isInsult, setIsInsult] = useState<boolean>(false);
 
+  // Ultimatum state
+  const [ultimatumActive, setUltimatumActive] = useState<boolean>(false);
+  const [ultimatumPrice, setUltimatumPrice] = useState<number | null>(null);
+  const hasUltimatumFiredRef = useRef<boolean>(false);
+
+  // Max patience for warning level calculation (set at init)
+  const maxPatienceRef = useRef<number>(3);
+
   const lastCustomerId = useRef<string | undefined>(undefined);
   // Lock uncertainty at negotiation start (A1/A2: one-time calculation)
   const lockedUncertaintyRef = useRef<number>(0.3);
@@ -200,6 +221,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         setHeartStrikeConcessionBonus(0);
         setEmpathyPatienceModifier(0);
         setIsInsult(false);
+        setUltimatumActive(false);
+        setUltimatumPrice(null);
+        hasUltimatumFiredRef.current = false;
         return;
     }
 
@@ -209,7 +233,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       lockedUncertaintyRef.current = itemUncertainty;
 
       // P0-7: Apply behavior tag patience modifiers at initialization
-      setPatience(getPatienceWithBehaviorMods(customer.behaviorTags, customer.patience));
+      const initPatience = getPatienceWithBehaviorMods(customer.behaviorTags, customer.patience);
+      setPatience(initPatience);
+      maxPatienceRef.current = initPatience;
       setMood('Neutral');
       setIsWalkedAway(false);
       setLastAction(null);
@@ -244,6 +270,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       setHeartStrikeConcessionBonus(0);
       setEmpathyPatienceModifier(0);
       setIsInsult(false);
+      setUltimatumActive(false);
+      setUltimatumPrice(null);
+      hasUltimatumFiredRef.current = false;
     }
   }, [customer?.id, itemUncertainty]);
 
@@ -251,7 +280,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     if (customer) {
       lockedUncertaintyRef.current = itemUncertainty;
       // P0-7: Apply behavior tag patience modifiers on reset too
-      setPatience(getPatienceWithBehaviorMods(customer.behaviorTags, customer.patience));
+      const resetPatience = getPatienceWithBehaviorMods(customer.behaviorTags, customer.patience);
+      setPatience(resetPatience);
+      maxPatienceRef.current = resetPatience;
       setMood('Neutral');
       setIsWalkedAway(false);
       setLastAction(null);
@@ -285,6 +316,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
       setHeartStrikeConcessionBonus(0);
       setEmpathyPatienceModifier(0);
       setIsInsult(false);
+      setUltimatumActive(false);
+      setUltimatumPrice(null);
+      hasUltimatumFiredRef.current = false;
     }
   }, [customer, itemUncertainty]);
 
@@ -360,6 +394,34 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
   const submitOffer = useCallback((): NegotiationResult => {
     if (!customer || isWalkedAway) {
       return { status: 'WALK_AWAY', message: "客户已经离开了。", patienceRemaining: 0 };
+    }
+
+    // --- ULTIMATUM ACTIVE: binary accept/reject ---
+    if (ultimatumActive && ultimatumPrice !== null) {
+      if (offerPrincipal >= ultimatumPrice) {
+        // Player accepts the ultimatum price
+        setUltimatumActive(false);
+        setMood('Happy');
+        setCurrentAskPrice(ultimatumPrice);
+        const acceptMsg = customer.dialogue.accepted?.fair || "成交。";
+        setOfferHistory(prev => [
+          { amount: offerPrincipal, rate: selectedRate, status: 'ACCEPTED', patienceCost: 0, timestamp: Date.now() },
+          ...prev.slice(0, 2)
+        ]);
+        return { status: 'ACCEPTED', message: acceptMsg, patienceRemaining: patience };
+      } else {
+        // Player rejects — NPC walks away, no second chance
+        setUltimatumActive(false);
+        setIsWalkedAway(true);
+        setPatience(0);
+        setMood('Angry');
+        const rejectMsg = getRejectDialogue();
+        setOfferHistory(prev => [
+          { amount: offerPrincipal, rate: selectedRate, status: 'WALK_AWAY', patienceCost: patience, timestamp: Date.now() },
+          ...prev.slice(0, 2)
+        ]);
+        return { status: 'WALK_AWAY', message: rejectMsg, patienceRemaining: 0 };
+      }
     }
 
     // P0-7: Apply behavior tag floor modifiers to NPC minimum amount
@@ -573,6 +635,26 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     ]);
 
     if (status !== 'ACCEPTED' && remaining <= 0) {
+        // Ultimatum chance: if not fired yet, roll for last chance
+        if (!hasUltimatumFiredRef.current) {
+            hasUltimatumFiredRef.current = true;
+            const roll = Math.random();
+            if (roll < GAME_CONFIG.NEGOTIATION.ULTIMATUM_CHANCE) {
+                // Ultimatum triggered: NPC gives one last price
+                const ultPrice = currentAskPrice;
+                setUltimatumActive(true);
+                setUltimatumPrice(ultPrice);
+                setPatience(1); // Give one round of space
+                setMood('Angry');
+                const ultMsg = getUltimatumDialogue(ultPrice);
+                return {
+                    status: 'ULTIMATUM',
+                    message: ultMsg,
+                    patienceRemaining: 1
+                };
+            }
+        }
+        // No ultimatum (or already fired) — walk away
         setIsWalkedAway(true);
         return {
             status: 'WALK_AWAY',
@@ -587,7 +669,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
         patienceRemaining: remaining
     };
 
-  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier, moraleNegotiationModifier, newsStolenRisk, roundCount, heartStrikeConcessionBonus, empathyPatienceModifier]);
+  }, [customer, patience, offerPrincipal, selectedRate, mood, isWalkedAway, lastOfferAmount, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier, moraleNegotiationModifier, newsStolenRisk, roundCount, heartStrikeConcessionBonus, empathyPatienceModifier, ultimatumActive, ultimatumPrice]);
 
   // Allow external systems (ability skills) to deduct patience from the hook's local state.
   // This keeps the hook's patience in sync when skills like "施压" cost patience.
@@ -622,6 +704,24 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     );
     return getConcessionTier(chance);
   }, [customer, offerPrincipal, currentAskPrice, persistCount, npcConcessionCount, insightConcessionModifier]);
+
+  // Patience warning level: computed from current patience vs max patience
+  const patienceWarningLevel = useMemo((): PatienceWarningLevel => {
+    const maxP = maxPatienceRef.current;
+    if (maxP <= 0) return 'danger';
+    const ratio = patience / maxP;
+    const dangerThreshold = GAME_CONFIG.NEGOTIATION.PATIENCE_DANGER_THRESHOLD;
+    if (ratio <= dangerThreshold) return 'danger';
+    if (ratio <= 0.6) return 'caution';
+    return 'normal';
+  }, [patience]);
+
+  // Warning dialogue: pick a random line from CSV based on warning level
+  const warningDialogue = useMemo((): string | null => {
+    if (patienceWarningLevel === 'normal') return null;
+    if (patienceWarningLevel === 'caution') return getCautionDialogue();
+    return getDangerDialogue();
+  }, [patienceWarningLevel, roundCount]); // roundCount dependency ensures fresh text per round
 
   // #34: Generate insight-aware NPC response text when insight is active
   const insightAwareText = useMemo((): string | null => {
@@ -682,5 +782,9 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     // Empathy patience loss modifier
     empathyPatienceModifier,
     setEmpathyPatienceModifier,
+    // Patience warning & ultimatum
+    patienceWarningLevel,
+    ultimatum: ultimatumActive ? { active: true, price: ultimatumPrice } : null,
+    warningDialogue,
   };
 };
