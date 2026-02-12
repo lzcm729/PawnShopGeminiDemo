@@ -464,12 +464,17 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           counterSubtext = `Patience -1`;
       }
 
+      // In danger zone, override counter message with warning dialogue
+      const displayCounterMessage = (patienceWarningLevel === 'danger' && warningDialogue)
+          ? warningDialogue
+          : counterMessage;
+
       setChatLog(prev => [...prev, {
           id: `counter-${Date.now()}`,
           sender: 'customer' as const,
-          text: counterMessage,
+          text: displayCounterMessage,
           subtext: counterSubtext,
-          sentiment: counterSentiment
+          sentiment: patienceWarningLevel === 'danger' ? 'negative' : counterSentiment
       }]);
 
       // #32: Show push-pull instinct overlay
@@ -795,10 +800,15 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
         const subtext = patienceLoss > 0 ? `Patience -${patienceLoss} [${penaltyLabel}]` : undefined;
 
+        // In danger zone, override NPC response with warning dialogue
+        const displayMessage = (patienceWarningLevel === 'danger' && warningDialogue)
+            ? warningDialogue
+            : result.message;
+
         const customerLog: LogEntry = {
             id: `resp-${Date.now()}`,
             sender: 'customer',
-            text: result.message,
+            text: displayMessage,
             subtext: subtext,
             sentiment: patienceLoss > 0 ? 'negative' : 'neutral'
         };
