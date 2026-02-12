@@ -647,10 +647,11 @@ base_patience = 3
 rare_encounter_chance = 0.075
 
 # --- 当金比例阈值 (Pawn Ratio Thresholds) ---
-# 当金比例 = 当金 / 客户需求金额 (desiredAmount)
-# 比例可能超过 100%（玩家出价超过客户需求）
-pawn_ratio_high = 1.05               # 超额满足客户需求
-pawn_ratio_low = 0.85                # 低于客户需求的 85%
+# 当金比例 = 当金 / 玩家看到的报价 (askPrice)
+# askPrice = desiredAmount * askModifier * SLY inflation
+# 100% = 按报价全额支付，正常议价后通常在 70-90%
+pawn_ratio_high = 0.95               # 几乎按报价给（慷慨）
+pawn_ratio_low = 0.70                # 大幅砍价（强硬）
 # 当金比例对赎回意愿的修正
 pawn_ratio_high_redeem_mod = 0.10    # 高比例：赎回意愿 +10%
 pawn_ratio_high_noshow_mod = -0.10   # 高比例：爽约概率 -10%

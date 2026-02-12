@@ -153,9 +153,9 @@ export const CONTRACT_MODIFIERS: Record<ContractType, { redeemMod: number; noSho
  * From design doc Section 4.3 (v2.1)
  *
  * Layer 2 of the two-layer redemption rate system:
- * pawnRatio = pawnAmount / desiredAmount (客户需求金额)
- * - High pawn ratio (>105%): player gives more than customer asked, more likely to redeem
- * - Low pawn ratio (<85%): player gives less than customer asked, less likely to redeem
+ * pawnRatio = pawnAmount / askPrice (玩家在议价界面看到的报价)
+ * - High pawn ratio (>95%): player gives nearly what was asked, more likely to redeem
+ * - Low pawn ratio (<70%): player gives much less than asked, less likely to redeem
  *
  * Values loaded from config/game.toml [npc.filler]
  */
@@ -369,11 +369,16 @@ function getContractLabel(type: ContractType): string {
  * Shows how contract type and pawn ratio affect redemption probability
  *
  * Design doc Section 4.3: 交易反馈设计
+ *
+ * @param contractType The contract tier
+ * @param pawnAmount Cash given to customer (principal)
+ * @param askPrice The initial ask price the player saw in the negotiation UI
+ *                 (desiredAmount * askModifier * SLY inflation)
  */
 export function calculateTransactionFeedback(
     contractType: ContractType,
     pawnAmount: number,
-    desiredAmount: number
+    askPrice: number
 ): TransactionFeedback {
     const items: TransactionFeedbackItem[] = [];
     let totalModifier = 0;
@@ -390,8 +395,8 @@ export function calculateTransactionFeedback(
     });
     totalModifier += contractMod.redeemMod;
 
-    // Pawn ratio modifier (pawnAmount / desiredAmount)
-    const pawnRatio = desiredAmount > 0 ? pawnAmount / desiredAmount : 0;
+    // Pawn ratio modifier (pawnAmount / askPrice)
+    const pawnRatio = askPrice > 0 ? pawnAmount / askPrice : 0;
     const ratioCategory = getPawnRatioCategory(pawnRatio);
     const ratioMod = PAWN_RATIO_MODIFIERS[ratioCategory];
     const ratioPercent = Math.round(pawnRatio * 100);
@@ -1743,15 +1748,19 @@ export function generateFillerCustomer(
  * @param customer The filler customer
  * @param item The pawned item
  * @param contractType The contract type selected during negotiation
+ * @param askPrice The initial ask price the player saw in the negotiation UI.
+ *                 Used to compute pawnRatio = pawnAmount / askPrice for redemption rate.
  * @returns EventChainState for the TRANSIENT chain
  */
 export function createTransientChain(
     customer: Customer,
     item: Item,
-    contractType: ContractType
+    contractType: ContractType,
+    askPrice?: number
 ): EventChainState {
     const chainId = `transient_${item.id}`;
-    const pawnRatio = customer.desiredAmount > 0 ? item.pawnAmount / customer.desiredAmount : 0;
+    const denominator = askPrice && askPrice > 0 ? askPrice : customer.desiredAmount;
+    const pawnRatio = denominator > 0 ? item.pawnAmount / denominator : 0;
 
     return {
         id: chainId,

@@ -16,6 +16,7 @@ import { Dialogue, SatisfactionLevel } from '../systems/narrative/types';
 import { generateCustomerFromCandidate } from '../systems/appointment/customerGenerator';
 import { createTransientChain, getContractTypeFromRate, generateFillerCustomer, generateReferralCustomer, generateRedemptionVisitDialogue, getFillerMerchantMonologue, isTransientChain, calculateTransactionFeedback } from '../systems/npc/fillerGenerator';
 import type { CustomerAppearance, CustomerMood, CustomerAge, CustomerGender } from '../systems/npc/fillerGenerator';
+import { computeInitialAskPrice } from '../systems/appraisal/precision';
 import { resetDialogueDedup } from '../systems/npc/fillerTemplateLoader';
 import { generateDailyChallenge, checkChallengeCompletion } from '../systems/game/dailyChallenge';
 import type { DayChallengeContext } from '../systems/game/dailyChallenge';
@@ -1615,13 +1616,24 @@ export const useGameEngine = () => {
              // Create TRANSIENT chain for filler customers (no existing chainId)
              // This enables probability-based expiry behavior tracking
              let isFillerDeal = false;
+             // Compute the initial ask price the player saw in the negotiation UI.
+             // This is used as the denominator for pawn ratio (pawnAmount / askPrice)
+             // so the ratio aligns with the player's frame of reference.
+             const initialAsk = currentCust ? computeInitialAskPrice(
+                 currentCust.desiredAmount,
+                 currentCust.currentAskPrice,
+                 currentCust.item.uncertainty,
+                 currentCust.behaviorTags
+             ) : 0;
+
              if (!currentCust?.chainId && result.terms && !result.item.isVirtual) {
                  isFillerDeal = true;
                  const contractType = getContractTypeFromRate(result.terms.rate);
                  const transientChain = createTransientChain(
                      currentCust!,
                      result.item,
-                     contractType
+                     contractType,
+                     initialAsk
                  );
                  // Store age/gender in chain variables for redemption visit dialogue
                  const ageTag = currentCust!.identityTags?.find(t => ['young', 'middle', 'elderly'].includes(t));
@@ -1644,14 +1656,14 @@ export const useGameEngine = () => {
              }
 
              // Calculate transaction feedback (redemption rate impact display)
-             // Uses desiredAmount as denominator for pawn ratio (pawnAmount / desiredAmount)
+             // Uses askPrice (what player saw) as denominator for pawn ratio
              let txFeedback = null;
              if (result.terms && result.item && currentCust) {
                  const feedbackContractType = getContractTypeFromRate(result.terms.rate);
                  txFeedback = calculateTransactionFeedback(
                      feedbackContractType,
                      result.terms.principal,
-                     currentCust.desiredAmount
+                     initialAsk
                  );
              }
 
