@@ -670,11 +670,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               type: 'INNER_MONOLOGUE' as const,
           }]);
       } else {
-          // Incorrect: extra patience cost, negative reaction
-          const patienceCost = 2;
-          negotiation.applyExternalPatienceCost(patienceCost);
-          const willWalkAway = patience <= patienceCost;
-
+          // Incorrect: negative feedback only, no patience penalty
           setChatLog(prev => [...prev, {
               id: `empathy-${Date.now()}`,
               sender: 'player' as const,
@@ -683,11 +679,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               sentiment: 'negative' as const,
               type: 'INNER_MONOLOGUE' as const,
           }]);
-
-          if (willWalkAway) {
-              send({ type: 'CUSTOMER_REJECTED' });
-              rejectCustomer('RESENTFUL');
-          }
       }
 
       playSfx('CLICK');
@@ -728,11 +719,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               type: 'INNER_MONOLOGUE' as const,
           }]);
       } else {
-          // Incorrect: lose affinity, patience penalty
-          const patienceCost = 2;
-          negotiation.applyExternalPatienceCost(patienceCost);
-          const willWalkAway = patience <= patienceCost;
-
+          // Incorrect: negative feedback only, no patience penalty
           setChatLog(prev => [...prev, {
               id: `probe-${Date.now()}`,
               sender: 'player' as const,
@@ -741,11 +728,6 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
               sentiment: 'negative' as const,
               type: 'INNER_MONOLOGUE' as const,
           }]);
-
-          if (willWalkAway) {
-              send({ type: 'CUSTOMER_REJECTED' });
-              rejectCustomer('RESENTFUL');
-          }
       }
 
       playSfx('CLICK');
