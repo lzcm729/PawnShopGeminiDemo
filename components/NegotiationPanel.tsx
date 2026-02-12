@@ -898,9 +898,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           canUseEmpathy={hasEmpathyInteraction && !empathyUsed}
           empathyUsed={empathyUsed}
           onEmpathy={hasEmpathyInteraction ? handleEmpathy : undefined}
-          canUseProbe={hasProbeInteraction && !probeUsed}
-          probeUsed={probeUsed}
-          onProbe={hasProbeInteraction ? handleProbe : undefined}
+          canUseProbe={false /* DISABLED: probe interaction pending redesign */}
+          probeUsed={true /* DISABLED */}
+          onProbe={undefined /* DISABLED */}
         />
 
       {/* Rejection Overlay */}
