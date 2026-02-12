@@ -692,7 +692,7 @@ export const WorkshopPanel: React.FC<WorkshopPanelProps> = ({ isOpen, onClose })
                             工序中 {inProg.nightsCompleted}/{inProg.nightsRequired}
                           </span>
                         )}
-                        {!inProg && restoreCount > 1 && (
+                        {!inProg && restoreCount > 1 && !item.workState && (
                           <span className="text-[9px] px-1.5 py-0.5 bg-emerald-900/50 text-emerald-300 rounded border border-emerald-700">
                             可修复 {restoreCount} 处
                           </span>
