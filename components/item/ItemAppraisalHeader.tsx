@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Item } from '../../types';
+import { useGame } from '../../store/GameContext';
 import { getUncertaintyRisk } from '../../systems/items/utils';
 import { getDisplayName, getItemTagsDisplay, getHiddenTagCount } from '../../systems/items/tagUtils';
 import { getItemIcon } from '../../systems/assets';
@@ -42,8 +43,6 @@ const getIcon = (category: string) => {
 
 interface ItemAppraisalHeaderProps {
   item: Item;
-  actionPoints: number;
-  maxActionPoints: number;
   canInteract: boolean;
   appraising: boolean;
   appraisalEffect: AppraisalEffectType;
@@ -57,8 +56,6 @@ interface ItemAppraisalHeaderProps {
 
 export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
   item,
-  actionPoints,
-  maxActionPoints,
   canInteract,
   appraising,
   appraisalEffect,
@@ -69,6 +66,9 @@ export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
   normalMessage,
   onAppraise,
 }) => {
+  const { state } = useGame();
+  const { actionPoints } = state.stats;
+
   const currentRange = item.currentRange || [0, 0];
   const initialRange = item.initialRange || [0, 0];
 
@@ -143,9 +143,6 @@ export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
              </div>
 
              <div className="flex flex-col items-end gap-1">
-                 <div className="bg-stone-900/90 px-3 py-1 rounded border border-pawn-accent/50 text-pawn-accent font-mono text-xs font-bold shadow-[0_0_10px_rgba(217,119,6,0.2)]">
-                    AP: {actionPoints} / {maxActionPoints}
-                 </div>
                  {feedbackMsg && (
                      <div className={`text-xs px-2 py-1 rounded absolute top-12 right-2 z-50 ${
                          feedbackMsg.type === 'error' ? 'text-red-500 bg-red-950/80 border border-red-800 animate-shake' :

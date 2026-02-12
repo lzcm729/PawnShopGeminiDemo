@@ -280,8 +280,6 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
 
         <ItemAppraisalHeader
           item={item}
-          actionPoints={state.stats.actionPoints}
-          maxActionPoints={state.stats.maxActionPoints}
           canInteract={canInteract}
           appraising={appraising}
           appraisalEffect={appraisalEffect}

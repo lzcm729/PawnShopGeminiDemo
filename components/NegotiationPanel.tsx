@@ -648,6 +648,12 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
   const handleEmpathy = () => {
       if (!currentCustomer || empathyUsed || !insightResult) return;
 
+      // Check AP availability
+      if (state.stats.actionPoints < 1) return;
+
+      // Consume 1 AP (same cost as Insight)
+      dispatch({ type: 'CONSUME_AP', payload: 1 });
+
       setEmpathyUsed(true);
 
       // Determine correctness based on disposition
@@ -895,7 +901,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           canFullInsight={canFullInsight}
           onFullInsightClick={handleFullInsightClick}
           canInteract={canInteract}
-          canUseEmpathy={hasEmpathyInteraction && !empathyUsed}
+          canUseEmpathy={hasEmpathyInteraction && !empathyUsed && state.stats.actionPoints >= 1}
           empathyUsed={empathyUsed}
           onEmpathy={hasEmpathyInteraction ? handleEmpathy : undefined}
           canUseProbe={false /* DISABLED: probe interaction pending redesign */}

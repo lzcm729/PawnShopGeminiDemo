@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { DollarSign, Calendar, Heart, Briefcase, Shield, Package, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2, TrendingDown, TrendingUp, Info, Sparkles, Users } from 'lucide-react';
+import { DollarSign, Calendar, Heart, Briefcase, Shield, Package, Volume2, VolumeX, Activity, HeartPulse, Syringe, CheckCircle2, TrendingDown, TrendingUp, Info, Sparkles, Users, Zap } from 'lucide-react';
 import { ReputationType } from '../systems/core/types';
 import { PhaseIs } from '../systems/core/phases';
 import { Button } from './ui/Button';
@@ -137,6 +137,19 @@ export const Dashboard: React.FC = () => {
                             {hasAppointmentBoard(state.shopUpgrades)
                                 ? `${state.customersServedToday}/${state.maxCustomersPerDay}`
                                 : '??/??'}
+                        </span>
+                    </div>
+                </div>
+            )}
+
+            {/* ACTION POINTS (Business/Negotiation only) */}
+            {isBusiness && (
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded border bg-noir-200 border-noir-400">
+                    <Zap className="w-4 h-4 text-pawn-accent" />
+                    <div className="flex flex-col justify-center">
+                        <span className="text-[9px] uppercase font-bold text-noir-txt-muted tracking-wider leading-none mb-0.5">精力 (AP)</span>
+                        <span className="text-sm font-mono font-bold leading-none tracking-wide text-pawn-accent">
+                            {stats.actionPoints} / {stats.maxActionPoints}
                         </span>
                     </div>
                 </div>
