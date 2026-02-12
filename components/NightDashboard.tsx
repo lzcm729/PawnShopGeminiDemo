@@ -144,7 +144,7 @@ export const NightDashboard: React.FC = () => {
             )}
 
             {/* Background: Pawn Shop Night Interior */}
-            <div className="absolute inset-0 bg-[url('/assets/backgrounds/night_dashboard.png')] bg-cover bg-center opacity-25 blur-[2px] pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[url('/backgrounds/night_dashboard.png')] bg-cover bg-center opacity-25 blur-[2px] pointer-events-none"></div>
             {/* Subtle vignette overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30 pointer-events-none"></div>
 
