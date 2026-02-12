@@ -1,0 +1,52 @@
+## Business
+
+### Features
+
+| # | Design Requirement | Status | Code Reference | Notes |
+|---|-------------------|--------|---------------|-------|
+| 1 | **State Machine (A):** Four item states: ACTIVE, FORFEIT, SOLD, REDEEMED with time-driven transitions | ✅ Implemented | `systems/items/types.ts:8-13` (ItemStatus enum) | Exact match: all four states defined and enforced |
+| 2 | **Flat-Fee Interest (B):** Lump-sum interest locked at contract signing: `interest = principal * rate * (days/7)` | ✅ Implemented | `systems/economy/interest.ts:17-19` (calculateInterest) | Formula matches design exactly; early redemption yields full term interest (`effectiveDays = max(daysPassed, termDays)` in `hooks/usePawnShop.ts:22`) |
+| 3 | **Redemption mandatory (C):** Standard redemption is a one-way obligation; player must accept when NPC comes to redeem | ✅ Implemented | `components/ExpiryEventModal.tsx:77-83`, `components/RedemptionInterface.tsx:225-238` | Green "同意赎回" button is the primary action; player can accept or choose breach |
+| 4 | **Forced Breach / Hostile Takeover (C):** Player can refuse redemption by paying 200% of principal as penalty | ✅ Implemented | `hooks/usePawnShop.ts:35-39` (calculatePenalty: `principal * 2.0`), `store/reducers/inventoryReducer.ts:239-267` (HOSTILE_TAKEOVER) | Penalty = 200% of principal matches design exactly |
+| 5 | **Breach Reputation Impact (E):** Forced breach costs Humanity -15, Credibility -10, Innocence -5 | ✅ Implemented | `store/reducers/expiryReducer.ts:260-263` (redeem_refuse), `store/reducers/inventoryReducer.ts:250-252` (HOSTILE_TAKEOVER) | Values match design: H-15, C-10, I-5 |
+| 6 | **Breach Sale / Violation Sale (desperation):** Player can sell ACTIVE items before expiry ("违约出售") | ✅ Implemented | `hooks/usePawnShop.ts:333-348` (sellActivePawn), `store/reducers/inventoryReducer.ts:169-192` (DEFAULT_SELL_ITEM) | Sells at 80% real value (LIQUIDATION_RATE); item tracked via `breachSaleDay` |
+| 7 | **Breach Discovery:** When customer returns for sold item, penalty triggered | ✅ Implemented | `hooks/usePawnShop.ts:170-212` (SOLD item expiry handling), `store/reducers/expiryReducer.ts:366-384` (breach_discovered) | Deferred penalty on customer return; currently applies H-3, C-1 (lighter than design's H-15/C-10/I-5 — see note) |
+| 8 | **Inventory Check for Expiry (D):** System scans inventory status before settlement | ✅ Implemented | `hooks/usePawnShop.ts:159-295` (checkDailyExpirations) | Checks ACTIVE, SOLD, and NO_SHOW conditions; routes to correct settlement path |
+| 9 | **Expiry Settlement: REDEEM scenario (F):** NPC comes with funds; player can accept (+redeem total, Credibility +2) or refuse (200% penalty) | ⚠️ Partial | `store/reducers/expiryReducer.ts:71-254` (redeem_accept), `config/game.toml:319` | Implemented but **Credibility reward is +1 not +2** as design specifies. Code comment says "#59: 设计文档为 +1" — possible design doc iteration mismatch |
+| 10 | **Expiry Settlement: RENEW scenario (F):** NPC has insufficient funds but hope; accept = collect interest + extend 7 days (Humanity +5); refuse = forfeit | ⚠️ Partial | `store/reducers/expiryReducer.ts:272-306` (renew_accept), `config/game.toml:125-126` | Renewal accept gives H+1/C-1 (from TOML) vs design's H+5. The TOML values deliberately differ from design doc v1.6 |
+| 11 | **Renewal Refusal Escalating Penalty (F, v1.6):** Escalating humanity penalty based on prior renewal count: -10/-15/-20/-25 | 🔄 Divergent | `systems/economy/renewalPenalty.ts:14-19`, `config/game.toml:118-121` | **Infrastructure supports escalation** (`getRenewalRefusalPenalty` reads 4 tiers) but **TOML sets all to -1** (flat penalty). Design says -10/-15/-20/-25 |
+| 12 | **NO_SHOW: Auto-forfeit without player decision (F):** NPC doesn't appear; item automatically forfeits | ✅ Implemented | `hooks/usePawnShop.ts:237-247` (NO_SHOW auto-forfeit), `store/reducers/inventoryReducer.ts:131-147` (EXPIRE_ITEMS) | Matches design: no settlement node triggered; narrative via mail/events |
+| 13 | **Redemption Status Visualization (G):** Show item status (in stock / sold / etc.) before redemption dialogue | ✅ Implemented | `components/RedemptionInterface.tsx:19-46` (TicketPanel shows SOLD stamp), `components/ExpiryEventModal.tsx:51-69` (cost info) | SOLD items show large red "SOLD" overlay; cost details always visible |
+| 14 | **Forfeit Countdown Alert (H):** Visual alert for items expiring within 3 days; morning brief includes expiry reminders | ✅ Implemented | `components/MorningBrief.tsx:23-26` (items expiring in 0-1 days), `components/InventoryModal.tsx:46-48` (items within 2 days), `systems/news/engine.ts:131-146` (expiry reminder news) | Morning brief shows expiring items; inventory highlights them; news system generates reminders. Threshold is 1-2 days rather than design's 3 days |
+| 15 | **Post-Forfeit NPC Return (I):** NPCs return after forfeit with three variants: pleading, angry, resigned | ✅ Implemented | `systems/npc/types.ts:10` (PostForfeitVariant), `components/PostForfeitPanel.tsx:1-166`, `store/reducers/inventoryReducer.ts:311-372` (RESOLVE_POST_FORFEIT) | Three variants with distinct UI styling; player options: sell low (H+10), gift (H+25/C-5), refuse (H-10/C+5) |
+| 16 | **Post-Forfeit: Low-price sell option (I)** | ✅ Implemented | `components/PostForfeitPanel.tsx:61-67` (SELL_LOW), `store/reducers/inventoryReducer.ts:320-327` | Sells at `principal * RESALE_PREMIUM`; Humanity +10 |
+| 17 | **Post-Forfeit: Refuse option with rep consequences (I)** | ✅ Implemented | `components/PostForfeitPanel.tsx:79-86` (REFUSE), `store/reducers/inventoryReducer.ts:335-340` | Humanity -10, Credibility +5 |
+| 18 | **Redemption Resolve Perception (J):** Three-layer perception system: item traits, behavior clues, intuition | ⚠️ Partial | `types/node.ts:81` (redemptionResolve field: Strong/Medium/Weak/None), `systems/negotiation/instinct.ts` (instinct feedback), `systems/items/types.ts:16-30` (traits with discoveryDifficulty) | **Layer 1 (item traits):** trait system exists with discoveryDifficulty. **Layer 2 (behavior clues):** `redemptionResolve` is a customer attribute but behavioral signals during negotiation are limited. **Layer 3 (intuition):** instinct system exists but doesn't explicitly reference redemption resolve patterns |
+| 19 | **Seller Moral Ambiguity (K):** "Forced seller" tragic archetypes (abuse victim, emergency rescuer, naive inheritor) | ❌ Missing | — | No specific tragic seller archetypes implemented. NPC generation doesn't include domestic violence victims, emergency rescuers, or naive inheritors as explicit categories. Post-sale mail revealing truth is not implemented |
+| 20 | **Holding Period Risk: Thief Regret (L.1)** | ✅ Implemented | `systems/police/index.ts:98-137` (checkForHoldingPeriodEvent), `store/reducers/inventoryReducer.ts:411-426` (TRIGGER_HOLDING_PERIOD_EVENT) | 5% chance per day per stolen item after 3 days; player can surrender or refuse |
+| 21 | **Holding Period Risk: Original Owner (L.2)** | ✅ Implemented | `systems/police/index.ts:130-133` (ORIGINAL_OWNER check), `store/reducers/inventoryReducer.ts:428-486` (RESOLVE_HOLDING_PERIOD_EVENT) | 2% chance per day after 3 days; surrender = H+5/C+2, refuse = H-3/C-2 |
+| 22 | **Holding Period Risk: Police Investigation (L.3)** | ✅ Implemented | `systems/police/index.ts:16-83` (checkForPoliceInvestigation), `store/reducers/policeReducer.ts` | 15% base chance per day with innocence modifiers; confiscation possible |
+| 23 | **Holding Period Risk: Customer Cancel Pawn (L.4, v1.6):** Customer withdraws contract during holding period; player can accept (refund principal, no interest, H+3) or refuse (H-5) | ⚠️ Partial | `hooks/usePawnShop.ts:404-421` (processCancelPawn), `store/reducers/inventoryReducer.ts:375-409` (CANCEL_PAWN) | **Accept path implemented** but with slight divergence: charges 5% cancellation fee (CANCEL_FEE_RATE) and gives Credibility +1 instead of design's Humanity +3. **Refuse path NOT implemented** — no `REFUSE_CANCEL_PAWN` action exists. No UI component found for this interaction |
+| 24 | **NPC Expiry Behavior Determination:** Based on funds/hope (narrative) or probability (transient) | ✅ Implemented | `hooks/usePawnShop.ts:120-146` (determineExpiryBehavior), `systems/npc/fillerGenerator.ts` (determineTransientExpiryBehavior) | Narrative chains: funds >= total AND hope >= threshold → REDEEM; funds < total AND hope > threshold → RENEW; else NO_SHOW. Transient chains: probability-based |
+| 25 | **Extension tracking (extensionCount)** for escalating penalties | ✅ Implemented | `systems/items/types.ts:80` (extensionCount in PawnInfo), `store/reducers/expiryReducer.ts:289` (increment on renewal) | Count tracked per item; used by `getRenewalRefusalPenalty` |
+| 26 | **Contract terms locked at signing:** principal, rate, term days, due date recorded in PawnInfo | ✅ Implemented | `systems/items/types.ts:73-81` (PawnInfo interface) | All contract fields immutable after signing; interest calculated from locked values |
+
+### Summary
+- Total features: 26
+- ✅ Implemented: 18
+- ⚠️ Partial: 5
+- ❌ Missing: 1
+- 🔄 Divergent: 2
+- Coverage: 78.8%  (formula: (18 + 0.5 * 5) / 26 * 100)
+
+### Key Divergences
+
+1. **Redemption Credibility Reward (Feature #9):** Design v1.6 specifies Credibility +2 for accepting redemption. Code implements +1, citing "#59: 设计文档为 +1". This may reflect an intermediate design revision not reflected in the v1.6 document.
+
+2. **Renewal Refusal Escalating Penalty (Feature #11):** This is the most significant divergence. Design v1.6 explicitly defines escalating penalties (-10/-15/-20/-25 based on prior renewal count). The code infrastructure fully supports this via `getRenewalRefusalPenalty()` with 4 tiers, but the TOML config sets all tiers to a flat -1. The TOML comment says "设计文档：固定值 Humanity -1, Credibility +1", suggesting a design decision to flatten the penalty that contradicts the v1.6 document.
+
+3. **Renewal Accept Reputation (Feature #10):** Design says Humanity +5 for accepting renewal. Config has H+1/C-1.
+
+4. **Customer Cancel Pawn (Feature #23):** v1.6 design specifies accept → H+3, refuse → H-5. Code implements accept with Credibility +1 and a cancellation fee (not in design). Refuse path is entirely missing.
+
+5. **Breach Discovery Penalty (Feature #7):** The deferred breach discovery (when customer returns for a sold item) applies H-3/C-1, which is significantly lighter than the standard breach penalty of H-15/C-10/I-5 specified in the design.

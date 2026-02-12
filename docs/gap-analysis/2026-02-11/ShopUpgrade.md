@@ -1,0 +1,80 @@
+## ShopUpgrade
+
+### Features
+
+| # | Design Requirement | Status | Code Reference | Notes |
+|---|-------------------|--------|---------------|-------|
+| 1 | Upgrade location split: Backroom (permanent, no maintenance) vs Counter (toggleable, daily maintenance) | ✅ Implemented | systems/upgrades/types.ts:10 (`UpgradeLocation`), systems/upgrades/config.ts | BACKROOM/COUNTER location types correctly configured for all 6 upgrades |
+| 2 | Counter facility toggle: on/off each night | ✅ Implemented | systems/upgrades/utils.ts:189-210 (`toggleUpgrade`), store/reducers/upgradeReducer.ts:67-80, components/FacilityControlModal.tsx | Toggle only works during NIGHT phase as designed |
+| 3 | Maintenance fee deducted at night closing (END_DAY transition) | ✅ Implemented | systems/core/phases/transitions.ts:160-162, systems/core/phases/actions.ts:109-115 | `deductMaintenanceCost` effect fires on END_DAY transition, matches design doc 2.2 timing |
+| 4 | Storage Expansion: 5 levels, costs $500/$1000/$2000/$4000/$8000, cumulative +1 to +5 slots | ✅ Implemented | systems/upgrades/config.ts:13-29 | Costs, levels, and effectValue match design exactly; base capacity 5 |
+| 5 | Storage Expansion Lv3: "Categorized Storage" quality unlock | ⚠️ Partial | systems/upgrades/config.ts:24, components/UpgradeShopModal.tsx:68 | Text mentions it in description and feature hint, but no actual functional implementation of category-based sorting in inventory UI |
+| 6 | Storage Expansion: Tiered visual changes in inventory UI (broken shelves -> glass display -> safe) | ❌ Missing | — | No visual differentiation in inventory based on storage upgrade level; no background changes or shelf imagery |
+| 7 | Storage Expansion: Per-level protagonist monologues (upgrade narrative text) | ✅ Implemented | components/UpgradeShopModal.tsx:22-28 (`PURCHASE_MONOLOGUES.storage_expansion`) | All 5 levels have unique Chinese monologues |
+| 8 | Workshop Expansion: 3 levels, costs $1500/$3000/$6000, +1/+2/+3 energy | ✅ Implemented | systems/upgrades/config.ts:37-51 | Costs and effects match design; renamed from "Precision Bench" per v1.1; energy cap correctly updated in upgradeReducer |
+| 9 | Workshop Expansion Lv3: Unlock new night activity type | ⚠️ Partial | systems/upgrades/config.ts:48, components/UpgradeShopModal.tsx:71 | Text mentions it in description and feature hint, but no functional gate/unlock for a new activity type |
+| 10 | Workshop Expansion: Visual changes in night workbench UI by level | ❌ Missing | — | No visual differentiation of the workshop UI based on upgrade level |
+| 11 | Workshop Expansion: "Workshop equipment helped you discover more details" occasional hint during gewu | ❌ Missing | — | No occasional prompt text referencing workshop upgrade during night activities |
+| 12 | Workshop Expansion: Morning brief occasionally mentions expanded energy | ❌ Missing | — | No morning brief text referencing workshop upgrade benefit |
+| 13 | Tea Set: 3 levels, costs $800/$1500/$3000, patience +1/+2/+3, maintenance $20/$35/$50 | ✅ Implemented | systems/upgrades/config.ts:58-72 | All costs, effects, and maintenance values match design exactly |
+| 14 | Tea Set: Patience bonus applied to customer initial patience | ✅ Implemented | store/reducers/customerReducer.ts:21-24, store/reducers/nodeReducer.ts:23-25 | `getPatienceBonus` called and added to base patience in both customer creation paths |
+| 15 | Spectrometer: 3 levels, costs $2000/$4000/$8000, thresholds 50%/30%/20%, maintenance $30/$50/$80 | ✅ Implemented | systems/upgrades/config.ts:79-93 | All costs, thresholds, and maintenance values match design exactly |
+| 16 | Spectrometer detection formula: deviation = |perceived - real| / real * 100% (real value as denominator) | ✅ Implemented | systems/upgrades/utils.ts:243-260 (`checkItemAnomaly`) | Formula matches: `(difference / realValue) * 100` |
+| 17 | Spectrometer: Does not reveal direction (high/low), only alerts on anomaly | ✅ Implemented | components/item/ItemAppraisalHeader.tsx:126-293 | Alert messages are direction-ambiguous; severity tiers shown without revealing if overvalued or undervalued |
+| 18 | Spectrometer: Balanced positive/negative anomaly messages (at least 40% positive) | ✅ Implemented | assets/data/texts/spectrometer_feedback.csv, systems/upgrades/spectrometerFeedback.ts:7-9 | CSV contains balanced tone distribution: mild (3 neutral, 2 positive, 2 negative), moderate (2 neutral, 3 positive, 3 negative), severe (2 neutral, 2 positive, 2 negative) -- approximately 40%+ positive |
+| 19 | Spectrometer: "Equipment confirms: normal" positive feedback when no anomaly detected | ✅ Implemented | assets/data/texts/spectrometer_feedback.csv:23-28, components/item/ItemAppraisalHeader.tsx:287-293 | 6 "normal" messages loaded from CSV, shown in green when anomaly threshold active but no anomaly |
+| 20 | Spectrometer: Graded severity visual feedback (mild=yellow, moderate=orange, severe=red) | ✅ Implemented | components/item/ItemAppraisalHeader.tsx:126-286 | Three severity tiers with distinct colors and styling: mild (amber pulse), moderate (orange flash), severe (red flash + animate-pulse) |
+| 21 | Spectrometer: Anomaly recorded in item log for nighttime review | ❌ Missing | — | No evidence of anomaly alerts being persisted to item.logs for later review |
+| 22 | Appointment Board: 5 levels with correct costs $1000/$2000/$4000/$7000/$12000 | ✅ Implemented | systems/upgrades/config.ts:100-116 | All costs match design |
+| 23 | Appointment Board: Level-gated info layers (Lv1=appearance, Lv2=emotion, Lv3=background+news, Lv5=preference) | ✅ Implemented | systems/upgrades/config.ts:145-151, systems/appointment/index.ts:155-195 | `APPOINTMENT_BOARD_LEVELS` matches design table; candidate generation respects showEmotion/showBackground/showNewsLink/hasPreference flags |
+| 24 | Appointment Board: Candidate count (Lv1=2, Lv2-4=3, Lv5=4) and invite limits (Lv1-3=1, Lv4-5=2) | ✅ Implemented | systems/upgrades/config.ts:145-151 | candidateCount and maxInvites match design exactly |
+| 25 | Appointment Board: Three urgency categories (high/medium/low) affecting behavior | ✅ Implemented | systems/appointment/index.ts:26-27, systems/appointment/customerGenerator.ts:253 | Urgency affects patience (high=2, medium=3, low=4) |
+| 26 | Appointment Board: Mystery Visitor (low probability) with vague info | ✅ Implemented | systems/appointment/index.ts:109-142, config/game.toml:594 (`mystery_visitor_chance = 0.15`) | Mystery visitor generation with intentionally vague descriptions, replaces one candidate slot |
+| 27 | Appointment Board: "Old face revisit" (event chain NPC return) | ❌ Missing | — | No implementation of event-chain NPC appearing in candidate pool; only a generic filler generator reference exists |
+| 28 | Appointment Board: "Surprise item" (invited customer brings unexpected extra item) | ❌ Missing | — | No mechanism for appointed customers to carry additional items beyond their template |
+| 29 | Appointment Board: Lv5 preference filter (needy/balanced/casual) | ✅ Implemented | systems/appointment/index.ts:203-232, store/reducers/appointmentReducer.ts:50-58 | Filter correctly biases template pool by urgency; SET_APPOINTMENT_PREFERENCE action in reducer |
+| 30 | Appointment Board: Upgrade "discovery moment" (first-use highlight + protagonist monologue per level) | ⚠️ Partial | components/UpgradeShopModal.tsx:48-54 | Purchase monologues exist for all 5 levels, but no "first time opening board at new level" highlight with new info glowing |
+| 31 | Appointment Board: Visual differentiation per info layer (sketch style, color overlay, file card, newspaper clip) | ❌ Missing | — | Appointment board UI shows text-only info, no visual style differentiation between appearance/emotion/background/news layers |
+| 32 | Appointment Board: Invited customer guaranteed to visit next day | ✅ Implemented | store/reducers/appointmentReducer.ts:69-83 (`PREPARE_DAILY_APPOINTMENTS`), systems/appointment/customerGenerator.ts:195-280 | Selected candidates copied to pendingAppointedCandidates and converted to full Customer objects |
+| 33 | Appointment Board: Night-only UI access | ✅ Implemented | components/night/AppointmentBoardPanel.tsx, components/NightDashboard.tsx | Panel accessible from night dashboard |
+| 34 | Black Market Contact: 5 levels with costs $1000/$2500/$5000/$8000/$15000 | ✅ Implemented | systems/upgrades/config.ts:124-140 | All costs match design exactly |
+| 35 | Black Market Contact: Daily purchase limits (3/4/5/6/8) per level | ✅ Implemented | systems/upgrades/config.ts:171-177, systems/blackmarket/blackmarketService.ts:179-183 | `BLACK_MARKET_LEVELS` dailyPurchaseLimit values match; used in `getDailyPurchaseLimit` |
+| 36 | Black Market Contact: Heat decay rates (1/1/2/2/3) per level | ✅ Implemented | systems/upgrades/config.ts:171-177, systems/blackmarket/blackmarketService.ts:200-204 | heatDecay values match design; used in `applyHeatDecay` |
+| 37 | Black Market Contact: Purchase price bonus (+0%/+0%/+5%/+5%/+10%) per level | ✅ Implemented | systems/upgrades/config.ts:171-177, systems/blackmarket/blackmarketService.ts:190-194 | purchasePriceBonus values match; applied in `calculatePurchasePrice` |
+| 38 | Facility Control Panel: Night-only interface for toggling counter facilities | ✅ Implemented | components/FacilityControlModal.tsx:22-24, components/night/NightActionBar.tsx | Toggle disabled outside night phase; panel shows daily maintenance total and per-facility costs |
+| 39 | Facility Control Panel: Maintenance fee total display | ✅ Implemented | components/FacilityControlModal.tsx:77-92 | Shows `$totalMaintenanceCost/day` prominently at top |
+| 40 | Facility Control Panel: Current effect preview (patience bonus, detection threshold) | ✅ Implemented | components/FacilityControlModal.tsx:94-110 | Shows active effects as pill badges when enabled |
+| 41 | Facility Control: Differentiated toggle visuals between Tea Set (warm) and Spectrometer (cold/tech) | ✅ Implemented | components/FacilityControlModal.tsx:116-160 | Tea set uses amber colors with "tea brewing" text; spectrometer uses cyan colors with "equipment preheated" text |
+| 42 | Facility Control: Tea set toggle animation (grinding tea, boiling water, arranging cups) | ❌ Missing | — | Only static text descriptions ("沁茶中...柜台飘来淡淡茶香"), no animated visual sequence |
+| 43 | Facility Control: Spectrometer toggle animation (preheat, calibration LEDs lighting up) | ❌ Missing | — | Only static text descriptions ("设备已预热，指示灯亮起"), no animated visual sequence |
+| 44 | Purchase feedback: Visual effect (installation/renovation animation) | ⚠️ Partial | components/UpgradeShopModal.tsx:94-128 (`PurchaseFlash`) | Flash overlay with Sparkles icon + monologue text shown for 3 seconds; no upgrade-type-specific installation animation |
+| 45 | Purchase feedback: Sound effect differentiated by upgrade type | ⚠️ Partial | store/reducers/upgradeReducer.ts:32 | Single `playSfx('SUCCESS')` for all upgrades; not differentiated by type (design wants metal wrench, ceramic, cash register sounds) |
+| 46 | Purchase feedback: Protagonist monologue (one-line reflection) | ✅ Implemented | components/UpgradeShopModal.tsx:20-62 (`PURCHASE_MONOLOGUES`) | All 6 upgrades have per-level monologues displayed in PurchaseFlash overlay |
+| 47 | Purchase feedback: Visual residual (purchased upgrades visible in scene backgrounds) | ❌ Missing | — | No persistent visual changes in day/night scene backgrounds reflecting owned upgrades |
+| 48 | Upgrade Shop UI: Night panel entry via "Upgrade" button | ✅ Implemented | components/night/NightActionBar.tsx:207-211 | Button labeled "扩展仓库与设施" in night action bar |
+| 49 | Upgrade Shop UI: Left/right column layout (Backroom / Counter) | ✅ Implemented | components/UpgradeShopModal.tsx:362-524 | Two sections with purple (Backroom) and blue (Counter) headers |
+| 50 | Upgrade Shop UI: Arc progress indicator for current level | ✅ Implemented | components/UpgradeShopModal.tsx:131-211 (`LevelArcRing`) | SVG arc ring showing filled/empty segments, green for max level, purple for active |
+| 51 | Upgrade Shop UI: Hover-triggered breathing animation on upgradeable items (not always-on) | ✅ Implemented | components/UpgradeShopModal.tsx:180, 192-198 | `animate-arc-breathe` CSS class applied only when `isRecommended`, triggered on the "next level" arc; design says hover-only, implementation is on recommended item |
+| 52 | Upgrade Shop UI: Cost/effect preview for next level | ✅ Implemented | components/UpgradeShopModal.tsx:455-478 | Next level description, maintenance cost, and feature hint all shown |
+| 53 | Upgrade Shop UI: Purchase confirmation with amount and effect | ⚠️ Partial | components/UpgradeShopModal.tsx:480-510 | Shows price and upgrade button, but no explicit confirmation dialog before deducting; purchases are one-click |
+| 54 | Upgrade Shop UI: Locked state display (lock icon, unlock conditions on hover) | ⚠️ Partial | components/UpgradeShopModal.tsx:504-508 | Lock icon shown with `purchaseReason` text (e.g., "Insufficient funds"), but no hover tooltip for unlock conditions; insufficient-funds shown inline |
+| 55 | Facility Control UI: Lock icon on unpurchased facility button in night bar | ✅ Implemented | components/night/NightActionBar.tsx:311-313, 338 | Lock icon + "需要柜台设施升级" overlay on hover; "未解锁" shown when no counter facilities |
+| 56 | Upgrade integration: Inventory capacity respects storage upgrade | ✅ Implemented | components/InventoryModal.tsx, hooks/useGameEngine.ts | `getEffectiveInventoryCapacity` used to determine max inventory |
+| 57 | Upgrade integration: Night energy respects workshop upgrade | ✅ Implemented | store/reducers/upgradeReducer.ts:35-37, store/reducers/abilityReducer.ts | `getEffectiveNightEnergy` called on purchase; energy cap updated |
+| 58 | Upgrade integration: Tea set patience bonus applied to customer generation | ✅ Implemented | store/reducers/customerReducer.ts:21-24 | `getPatienceBonus` added to base patience |
+| 59 | Upgrade integration: Spectrometer anomaly detection during appraisal | ✅ Implemented | components/ItemPanel.tsx:200-208 | `checkItemAnomaly` + severity-based UI feedback with messages from CSV |
+| 60 | Upgrade integration: Maintenance costs included in daily expenses | ✅ Implemented | store/reducers/upgradeReducer.ts:47-54 | `dailyExpenses` recalculated as `DAILY_EXPENSES + totalMaintenanceCost` on purchase/toggle |
+| 61 | Upgrade integration: Black market level affects daily generation (limits, decay, price bonus) | ✅ Implemented | store/reducers/blackmarketReducer.ts:224, systems/blackmarket/blackmarketService.ts:179-204 | `getBlackMarketContactLevel` used in all blackmarket daily refresh and end-of-day processing |
+| 62 | Total investment for all upgrades sums to ~$102,800 | ✅ Implemented | systems/upgrades/config.ts | Storage=$15,500 + Workshop=$10,500 + Tea=$5,300 + Spectrometer=$14,000 + Appointment=$26,000 + BlackMarket=$31,500 = $102,800 |
+| 63 | Maintenance fee: Cumulative cost = sum of all enabled counter facilities | ✅ Implemented | systems/upgrades/utils.ts:214-218 | `getTotalMaintenanceCost` sums all enabled COUNTER upgrade maintenance |
+| 64 | Data-driven: Spectrometer feedback texts in CSV | ✅ Implemented | assets/data/texts/spectrometer_feedback.csv, systems/upgrades/spectrometerFeedback.ts | Messages loaded from CSV with key/text/tone columns |
+| 65 | Data-driven: Appointment candidate data in CSV | ✅ Implemented | assets/data/texts/appointment_candidates.csv, assets/data/texts/appointment_customers.csv | Both candidate preview templates and full customer templates loaded from CSV |
+| 66 | Data-driven: Purchase monologues should be in CSV (not hardcoded in TS) | 🔄 Divergent | components/UpgradeShopModal.tsx:20-62 | PURCHASE_MONOLOGUES and UPGRADE_FEATURE_HINTS are hardcoded in TypeScript, violating data-driven principle; should be in CSV per CLAUDE.md rules |
+
+### Summary
+- Total features: 66
+- ✅ Implemented: 42
+- ⚠️ Partial: 8
+- ❌ Missing: 12
+- 🔄 Divergent: 1
+- Coverage: 69.7%  (formula: (42 + 0.5 * 8) / 66 * 100)

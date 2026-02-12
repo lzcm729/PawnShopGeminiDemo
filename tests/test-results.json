@@ -1,0 +1,10 @@
+{
+  "passed": [
+    "Test 1: Game startup - Start screen displays correctly",
+    "Test 2: Start New Game - Game started successfully",
+    "Test 3: Morning Brief - Progressed through morning brief",
+    "Test 4: Business Phase - Game UI elements found"
+  ],
+  "failed": [],
+  "errors": []
+}

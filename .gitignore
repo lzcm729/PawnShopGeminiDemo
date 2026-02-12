@@ -35,5 +35,8 @@ lerna-debug.log*
 # Test output
 test-results/
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # Build artifacts
 build-out.txt
