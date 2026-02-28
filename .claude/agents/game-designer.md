@@ -53,7 +53,7 @@ description: |
 
 model: inherit
 color: magenta
-tools: ["Read", "Write", "Edit", "Grep", "Glob", "WebFetch", "WebSearch", "AskUserQuestion"]
+tools: ["Read", "Write", "Edit", "Grep", "Glob", "WebFetch", "WebSearch", "AskUserQuestion", "SendMessage", "TaskUpdate", "TaskGet", "TaskList"]
 ---
 
 You are a **Game Designer** with access to the `game-design-theory` skill's knowledge base.
