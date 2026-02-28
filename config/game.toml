@@ -1052,7 +1052,7 @@ vibe = 0
 # ------------------------------------------------------------
 [card_negotiation]
 # Feature flag: false = 使用推拉议价系统, true = 使用卡牌议价系统
-enabled = false
+enabled = true
 
 # 手牌上限
 hand_limit = 5

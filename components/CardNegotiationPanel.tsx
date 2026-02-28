@@ -238,7 +238,21 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
           </div>
         </div>
 
-        {/* Chat Log area */}
+        {/* Drift bar */}
+        <div className="shrink-0">
+          <DriftBar ratePercent={negState.currentRate} />
+        </div>
+
+        {/* Deck info */}
+        <div className="shrink-0">
+          <DeckInfo
+            drawPileCount={negState.deck.drawPile.length}
+            discardPileCount={negState.deck.discardPile.length}
+            exhaustedCount={negState.deck.exhausted.length}
+          />
+        </div>
+
+        {/* Chat Log area — flex-1 fills remaining space, must come after fixed-height elements */}
         <CardChatLog
           customer={customer}
           customerType={customerType}
@@ -248,16 +262,6 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
           rateThresholdKey={rateThresholdKey}
           dropHint={dropHint}
           roundNumber={negState.roundNumber}
-        />
-
-        {/* Drift bar */}
-        <DriftBar ratePercent={negState.currentRate} />
-
-        {/* Deck info */}
-        <DeckInfo
-          drawPileCount={negState.deck.drawPile.length}
-          discardPileCount={negState.deck.discardPile.length}
-          exhaustedCount={negState.deck.exhausted.length}
         />
 
         {/* Insert decision overlay */}
