@@ -562,6 +562,36 @@ interface TomlDriftMeter {
   severe_drift_threshold: number;
 }
 
+interface TomlCardNegotiation {
+  enabled: boolean;
+  hand_limit: number;
+  extra_retain_slots: number;
+  initial_appraisal_cards: number;
+  initial_insight_cards: number;
+  small_price_cut_percent: number;
+  medium_price_cut_percent: number;
+  price_boost_percent: number;
+  rate_step: number;
+  showdown_price_cut_percent: number;
+  showdown_patience_cost: number;
+  appraisal_shrink_rate: number;
+  basic_observation_shrink_rate: number;
+  intuition_success_chance: number;
+  appraisal_ceiling_threshold: number;
+  precision_patience_threshold: number;
+  probing_patience_multiplier: number;
+  wait_concession_chance: number;
+  wait_no_reaction_chance: number;
+  wait_impatient_chance: number;
+  dynamic_drop_price_threshold: number;
+  dynamic_drop_rate_threshold: number;
+  dynamic_drop_passive_rounds: number;
+  insult_threshold: number;
+  insult_patience_cost: number;
+  refuse_insert_cost: number;
+  conscience_economic_penalty: number;
+}
+
 interface TomlEssenceTierGain {
   craft: number;
   time: number;
@@ -597,6 +627,7 @@ interface GameConfigToml {
   reputation_milestones: Record<string, TomlMilestoneTrigger>;
   essence: TomlEssence;
   drift_meter: TomlDriftMeter;
+  card_negotiation: TomlCardNegotiation;
 }
 
 // Cast TOML import to typed interface
@@ -1164,6 +1195,37 @@ export const GAME_CONFIG = {
   DRIFT_METER: {
     DRIFT_THRESHOLD: tomlConfig.drift_meter.drift_threshold,
     SEVERE_DRIFT_THRESHOLD: tomlConfig.drift_meter.severe_drift_threshold,
+  },
+
+  // --- CARD NEGOTIATION (卡牌议价系统) ---
+  CARD_NEGOTIATION: {
+    ENABLED: tomlConfig.card_negotiation.enabled,
+    HAND_LIMIT: tomlConfig.card_negotiation.hand_limit,
+    EXTRA_RETAIN_SLOTS: tomlConfig.card_negotiation.extra_retain_slots,
+    INITIAL_APPRAISAL_CARDS: tomlConfig.card_negotiation.initial_appraisal_cards,
+    INITIAL_INSIGHT_CARDS: tomlConfig.card_negotiation.initial_insight_cards,
+    SMALL_PRICE_CUT_PERCENT: tomlConfig.card_negotiation.small_price_cut_percent,
+    MEDIUM_PRICE_CUT_PERCENT: tomlConfig.card_negotiation.medium_price_cut_percent,
+    PRICE_BOOST_PERCENT: tomlConfig.card_negotiation.price_boost_percent,
+    RATE_STEP: tomlConfig.card_negotiation.rate_step,
+    SHOWDOWN_PRICE_CUT_PERCENT: tomlConfig.card_negotiation.showdown_price_cut_percent,
+    SHOWDOWN_PATIENCE_COST: tomlConfig.card_negotiation.showdown_patience_cost,
+    APPRAISAL_SHRINK_RATE: tomlConfig.card_negotiation.appraisal_shrink_rate,
+    BASIC_OBSERVATION_SHRINK_RATE: tomlConfig.card_negotiation.basic_observation_shrink_rate,
+    INTUITION_SUCCESS_CHANCE: tomlConfig.card_negotiation.intuition_success_chance,
+    APPRAISAL_CEILING_THRESHOLD: tomlConfig.card_negotiation.appraisal_ceiling_threshold,
+    PRECISION_PATIENCE_THRESHOLD: tomlConfig.card_negotiation.precision_patience_threshold,
+    PROBING_PATIENCE_MULTIPLIER: tomlConfig.card_negotiation.probing_patience_multiplier,
+    WAIT_CONCESSION_CHANCE: tomlConfig.card_negotiation.wait_concession_chance,
+    WAIT_NO_REACTION_CHANCE: tomlConfig.card_negotiation.wait_no_reaction_chance,
+    WAIT_IMPATIENT_CHANCE: tomlConfig.card_negotiation.wait_impatient_chance,
+    DYNAMIC_DROP_PRICE_THRESHOLD: tomlConfig.card_negotiation.dynamic_drop_price_threshold,
+    DYNAMIC_DROP_RATE_THRESHOLD: tomlConfig.card_negotiation.dynamic_drop_rate_threshold,
+    DYNAMIC_DROP_PASSIVE_ROUNDS: tomlConfig.card_negotiation.dynamic_drop_passive_rounds,
+    INSULT_THRESHOLD: tomlConfig.card_negotiation.insult_threshold,
+    INSULT_PATIENCE_COST: tomlConfig.card_negotiation.insult_patience_cost,
+    REFUSE_INSERT_COST: tomlConfig.card_negotiation.refuse_insert_cost,
+    CONSCIENCE_ECONOMIC_PENALTY: tomlConfig.card_negotiation.conscience_economic_penalty,
   },
 
 };

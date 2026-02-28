@@ -11,6 +11,8 @@ import { Dashboard } from './components/Dashboard';
 import { CustomerView } from './components/CustomerView';
 import { ItemPanel } from './components/ItemPanel';
 import { NegotiationPanel } from './components/NegotiationPanel';
+import { CardNegotiationPanel } from './components/CardNegotiationPanel';
+import { useCardNegotiation } from './hooks/useCardNegotiation';
 import { SettlementInterface } from './components/RedemptionInterface';
 import { RenewalRequestPanel, RenewalTicketPanel } from './components/RenewalRequestPanel';
 import { PostForfeitPanel } from './components/PostForfeitPanel';
@@ -55,7 +57,14 @@ const GameContent: React.FC = () => {
   const moraleNegotiationModifier = state.moraleBuff?.negotiationModifier ?? 1.0;
   const newsStolenRisk = useMemo(() => getNewsStolenRiskModifier(state.dailyNews || []), [state.dailyNews]);
   const negotiation = useNegotiation(state.currentCustomer, insightConcessionModifier, itemUncertainty, moraleNegotiationModifier, newsStolenRisk, state.reputation[ReputationType.HUMANITY], state.reputation[ReputationType.CREDIBILITY]);
-  
+
+  // Card negotiation (feature-flagged)
+  const useCardSystem = GAME_CONFIG.CARD_NEGOTIATION.ENABLED;
+  const cardNegotiation = useCardNegotiation(
+    useCardSystem ? state.currentCustomer : null,
+    itemUncertainty,
+  );
+
   // Transition State
   const prevPhaseType = useRef<string>(state.phase.type);
   const [showDayToNight, setShowDayToNight] = useState(false);
@@ -371,7 +380,9 @@ const GameContent: React.FC = () => {
                             {/* Right Panel */}
                             <div className="lg:col-span-6 h-full overflow-hidden relative">
                                 {isNegotiating ? (
-                                <NegotiationPanel negotiation={negotiation} appraisalFeedbacks={appraisalFeedbacks} />
+                                  useCardSystem
+                                    ? <CardNegotiationPanel cardNegotiation={cardNegotiation} />
+                                    : <NegotiationPanel negotiation={negotiation} appraisalFeedbacks={appraisalFeedbacks} />
                                 ) : (
                                     <div className="h-full flex flex-col items-center justify-center text-stone-600 font-mono text-center p-8 bg-[#1c1917]">
                                         {isShopClosed ? (

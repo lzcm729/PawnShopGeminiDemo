@@ -1045,3 +1045,84 @@ severe_drift_threshold = 15
 craft = 0
 time = 2
 vibe = 0
+
+# ------------------------------------------------------------
+# 卡牌议价系统 (Card Negotiation)
+# 与推拉议价系统并行存在，通过 feature flag 切换
+# ------------------------------------------------------------
+[card_negotiation]
+# Feature flag: false = 使用推拉议价系统, true = 使用卡牌议价系统
+enabled = false
+
+# 手牌上限
+hand_limit = 5
+
+# 额外保留位（回合末可额外保留的卡牌数）
+extra_retain_slots = 1
+
+# 鉴定消耗卡初始数量
+initial_appraisal_cards = 3
+
+# 洞察消耗卡初始数量
+initial_insight_cards = 2
+
+# --- 经济卡效果参数 ---
+# 压价·小 当金百分比调整
+small_price_cut_percent = 5
+# 压价·中 当金百分比调整
+medium_price_cut_percent = 10
+# 让利 当金百分比增加
+price_boost_percent = 5
+# 利率调整步长（百分点）
+rate_step = 1
+# 底价摊牌 当金百分比调整
+showdown_price_cut_percent = 15
+# 底价摊牌 耐心消耗
+showdown_patience_cost = 2
+
+# --- 鉴定卡参数 ---
+# 消耗卡估值收窄率
+appraisal_shrink_rate = 15
+# 弱化版（基础观察）估值收窄率
+basic_observation_shrink_rate = 5
+# 弱化版直觉判断成功概率
+intuition_success_chance = 0.50
+# 鉴定精度天花板（u <= 此值时鉴定效果归零）
+appraisal_ceiling_threshold = 0.12
+
+# --- 精度收益联动 (A2: 耐心消耗修正) ---
+# u <= 此值时经济卡耐心消耗减半
+precision_patience_threshold = 0.30
+
+# --- 试探期修正 ---
+# 第1轮经济卡耐心消耗减半系数
+probing_patience_multiplier = 0.50
+
+# --- 客户掉落概率 ---
+# 基础让步概率（"等待"机制）
+wait_concession_chance = 0.50
+# 基础无反应概率
+wait_no_reaction_chance = 0.30
+# 基础不耐烦概率
+wait_impatient_chance = 0.20
+
+# --- 当金被压低/利率过高的动态掉牌阈值 ---
+# 当金被压低超过此比例时，叙事牌概率上升
+dynamic_drop_price_threshold = 0.15
+# 利率超过此百分点时，绝望牌出现
+dynamic_drop_rate_threshold = 10
+# 连续未打经济卡轮数，触发情绪缓和
+dynamic_drop_passive_rounds = 2
+
+# --- 侮辱阈值 ---
+# 当金低于期望价的此比例视为侮辱
+insult_threshold = 0.70
+# 侮辱耐心消耗
+insult_patience_cost = 2
+
+# --- 拒绝塞牌耐心消耗 ---
+refuse_insert_cost = 1
+
+# --- 良心发现效果 ---
+# 使用后本次议价经济卡效果减半系数
+conscience_economic_penalty = 0.50

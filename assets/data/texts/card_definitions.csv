@@ -1,0 +1,16 @@
+﻿id,name,description,card_type,category,effect_type,effect_params
+price_cut_small,压价·小,稍微压低当金,permanent,economic,economic,pawnPercent:-5
+price_cut_medium,压价·中,显著压低当金,permanent,economic,economic,pawnPercent:-10
+price_boost,让利,提升当金以示诚意,permanent,economic,economic,pawnPercent:5
+rate_up,+1%利率,增加一个百分点的利率,permanent,economic,economic,rateAdjust:1
+rate_up_2,+2%利率,增加两个百分点的利率,permanent,economic,economic,rateAdjust:2
+showdown_price,底价摊牌,大幅压低当金但消耗耐心,permanent,economic,economic;patience,pawnPercent:-15;patienceCost:2
+lock_rate,一锤定音,锁定当前利率不可再调,permanent,economic,economic,lockRate:true
+conscience,良心发现,利率归零但经济效果减半,permanent,economic,economic;narrative,resetRate:true;humanityDelta:1
+appraisal,鉴定,精确评估物品价值,consumable,information,information,shrinkPercent:15;canDiscoverTrait:true
+appraisal_2,鉴定·精,更精确的评估,consumable,information,information,shrinkPercent:15;canDiscoverTrait:true
+appraisal_3,鉴定·极,极致精确评估,consumable,information,information,shrinkPercent:15;canDiscoverTrait:true
+insight,赎回意愿测试,探测客户的赎回意愿,consumable,information,information,showRedemptionIntent:true;generateInsightCards:true
+insight_2,洞察·深,深层洞察客户,consumable,information,information,showRedemptionIntent:true;generateInsightCards:true
+basic_observation,基础观察,粗略观察物品,permanent,information,information,shrinkPercent:5;canDiscoverTrait:false
+intuition,直觉判断,凭直觉判断客户意图,permanent,information,information,vagueInfo:true;successChance:0.50

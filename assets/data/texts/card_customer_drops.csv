@@ -1,0 +1,14 @@
+﻿customer_type,card_id,name,description,drop_category,effect_type,effect_params,weight
+HARD,hard_pressure,施压,强硬客户的施压,disruption,patience,patienceCost:1,30
+HARD,hard_resist,坚持己见,拒绝让步的态度,disruption,economic,pawnPercent:3,25
+HARD,hard_story_late,强硬外壳,表面强硬下的脆弱,narrative,narrative,triggerDialogue:hard_vulnerable,10
+SOFT,soft_plea,苦苦哀求,恳求的目光,temptation,economic,rateAdjust:1,25
+SOFT,soft_story,孩子的照片,她把照片放在柜台上,narrative,narrative;economic,triggerDialogue:soft_child;lockPriceCut:true,20
+SOFT,soft_tears,泪水,眼眶泛红,temptation,economic,pawnPercent:-5,20
+SOFT,soft_despair,绝望倾诉,诉说困境,narrative,narrative,triggerDialogue:soft_despair,15
+SLY,sly_trick,虚报价值,试图混淆视听,disruption,information,addUncertainty:0.05,30
+SLY,sly_bait,诱饵,看似有利的条件,temptation,economic,rateAdjust:2;pawnPercent:5,20
+SLY,sly_story_late,狡猾的理由,背后的生存困境,narrative,narrative,triggerDialogue:sly_survival,10
+CALM,calm_reason,理性分析,冷静的市场分析,disruption,patience,patienceCost:0,25
+CALM,calm_patience,耐心等待,不急不缓的态度,temptation,economic,pawnPercent:-3,20
+CALM,calm_story,意外深意,平静表面下的暗流,narrative,narrative,triggerDialogue:calm_depth,15
