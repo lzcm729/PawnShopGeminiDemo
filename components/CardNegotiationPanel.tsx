@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { cn } from '../lib/utils';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
@@ -11,7 +11,7 @@ import { StatusBar } from './cardNegotiation/StatusBar';
 import { DriftBar } from './cardNegotiation/DriftBar';
 import { DeckInfo } from './cardNegotiation/DeckInfo';
 import { CardHandArea } from './cardNegotiation/CardHandArea';
-import { FeedbackArea } from './cardNegotiation/FeedbackArea';
+import { CardChatLog } from './cardNegotiation/CardChatLog';
 import { ActionButtons } from './cardNegotiation/ActionButtons';
 import { InsertDecision } from './cardNegotiation/InsertDecision';
 import type { CardPlayResult, WaitResult } from '../systems/cardNegotiation/types';
@@ -215,6 +215,18 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
             )}
           </div>
 
+          {/* Drop hint indicator */}
+          {dropHint !== 'none' && (
+            <span className={cn(
+              'shrink-0 text-xs font-bold font-mono w-5 h-5 flex items-center justify-center rounded',
+              dropHint === 'disruption' && 'text-red-400 bg-red-950/30 animate-pulse',
+              dropHint === 'temptation' && 'text-purple-400 bg-purple-950/30 animate-pulse',
+              dropHint === 'narrative' && 'text-blue-400 bg-blue-950/30',
+            )}>
+              {dropHint === 'disruption' ? '!' : dropHint === 'temptation' ? '*' : '#'}
+            </span>
+          )}
+
           {/* Phase indicator (compact) */}
           <div className={cn(
             'shrink-0 px-2 py-1 rounded text-[10px] font-mono font-bold',
@@ -226,13 +238,16 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
           </div>
         </div>
 
-        {/* Feedback / Log area */}
-        <FeedbackArea
+        {/* Chat Log area */}
+        <CardChatLog
+          customer={customer}
+          customerType={customerType}
           lastPlayResult={lastPlayResult}
           lastCustomerResult={lastCustomerResult}
           lastWaitResult={lastWaitResult}
           rateThresholdKey={rateThresholdKey}
           dropHint={dropHint}
+          roundNumber={negState.roundNumber}
         />
 
         {/* Drift bar */}

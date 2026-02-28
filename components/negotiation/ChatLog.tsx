@@ -17,8 +17,8 @@ export interface LogEntry {
 
 interface ChatLogProps {
     chatLog: LogEntry[];
-    offerHistory: OfferRecord[];
-    isBinaryChoice: boolean;
+    offerHistory?: OfferRecord[];
+    isBinaryChoice?: boolean;
     scrollRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -137,7 +137,7 @@ export const ChatLog: React.FC<ChatLogProps> = ({ chatLog, offerHistory, isBinar
                 );
             })}
 
-            {!isBinaryChoice && <NegotiationHistory history={offerHistory} />}
+            {offerHistory && offerHistory.length > 0 && !isBinaryChoice && <NegotiationHistory history={offerHistory} />}
         </div>
     );
 };
