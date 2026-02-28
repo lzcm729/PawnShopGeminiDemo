@@ -48,7 +48,7 @@ function getFeedbackMap(): Map<string, string> {
 // Exports
 // ============================================================================
 
-export type AppraisalTemplateKey = 'MISHAP' | 'RANGE_NARROWED' | 'IMPATIENT' | 'ALREADY_KNOWN' | 'BREAKTHROUGH';
+export type AppraisalTemplateKey = 'MISHAP' | 'RANGE_NARROWED' | 'IMPATIENT' | 'ALREADY_KNOWN' | 'BREAKTHROUGH' | 'MASTERED';
 
 /**
  * Backward-compatible APPRAISAL_TEMPLATES accessor.

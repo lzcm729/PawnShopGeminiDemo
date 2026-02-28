@@ -9,7 +9,7 @@ import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
 import { XCircle, Flame } from 'lucide-react';
 import { Customer, TransactionResult, InterestRate, RejectionLines, ItemStatus } from '../types';
-import { ActionLog, OfferRecord, PatienceWarningLevel, UltimatumState } from '../hooks/useNegotiation';
+import { ActionLog, OfferRecord, PatienceWarningLevel, UltimatumState, PatiencePhase } from '../hooks/useNegotiation';
 import { getMerchantInstinct } from '../systems/negotiation/instinct';
 import { playSfx } from '../systems/game/audio';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
@@ -71,6 +71,8 @@ interface NegotiationStateProps {
         patienceWarningLevel: PatienceWarningLevel;
         ultimatum: UltimatumState | null;
         warningDialogue: string | null;
+        // E-3: Patience decision gradient
+        patiencePhase: PatiencePhase;
     };
     appraisalFeedbacks?: AppraisalFeedback[];
 }
@@ -190,6 +192,8 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
     patienceWarningLevel,
     ultimatum,
     warningDialogue,
+    // E-3: Patience decision gradient
+    patiencePhase,
   } = negotiation;
 
   const [chatLog, setChatLog] = useState<LogEntry[]>([]);
@@ -199,6 +203,9 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
 
   // #6: Screen shake state on insult offers
   const [isShaking, setIsShaking] = useState(false);
+
+  // E-UI-1: Golden glow on 0% charity deal
+  const [showCharityGlow, setShowCharityGlow] = useState(false);
 
   // #32: Push-pull instinct overlay text
   const [pushPullOverlay, setPushPullOverlay] = useState<{ text: string; color: string } | null>(null);
@@ -815,6 +822,11 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
         }
 
         setIsSubmitting(true);
+        // E-UI-1: Trigger golden glow for 0% charity deals
+        if (selectedRate === 0) {
+            setShowCharityGlow(true);
+            setTimeout(() => setShowCharityGlow(false), 2000);
+        }
         const txResult = evaluateTransaction(offerPrincipal, selectedRate, currentAskPrice);
         setTimeout(() => {
             send({ type: 'TRANSACTION_COMPLETE' });
@@ -830,6 +842,11 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       handleStolenItemDecision(true);
 
       setIsSubmitting(true);
+      // E-UI-1: Trigger golden glow for 0% charity deals
+      if (selectedRate === 0) {
+          setShowCharityGlow(true);
+          setTimeout(() => setShowCharityGlow(false), 2000);
+      }
       const txResult = evaluateTransaction(offerPrincipal, selectedRate, currentAskPrice);
       setTimeout(() => {
           send({ type: 'TRANSACTION_COMPLETE' });
@@ -884,6 +901,40 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
       "flex flex-col h-full relative bg-noir-100 border-l border-noir-400",
       isShaking && "animate-shake"
     )}>
+      {/* E-UI-1: Golden glow overlay for 0% charity deal */}
+      {showCharityGlow && (
+          <div className="absolute inset-0 z-[70] pointer-events-none">
+              <style>
+                  {`
+                      @keyframes charityGlowPulse {
+                          0% { opacity: 0; box-shadow: inset 0 0 30px rgba(251, 191, 36, 0); }
+                          20% { opacity: 1; box-shadow: inset 0 0 80px rgba(251, 191, 36, 0.4), 0 0 60px rgba(251, 191, 36, 0.2); }
+                          50% { opacity: 0.8; box-shadow: inset 0 0 60px rgba(251, 191, 36, 0.3), 0 0 40px rgba(251, 191, 36, 0.15); }
+                          100% { opacity: 0; box-shadow: inset 0 0 0px rgba(251, 191, 36, 0); }
+                      }
+                      @keyframes charityRing {
+                          0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.8; }
+                          100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+                      }
+                  `}
+              </style>
+              {/* Full-panel golden border glow */}
+              <div
+                  className="absolute inset-0 rounded"
+                  style={{ animation: 'charityGlowPulse 2s ease-out forwards' }}
+              />
+              {/* Central expanding ring */}
+              <div
+                  className="absolute top-1/2 left-1/2 w-32 h-32 rounded-full border-2 border-amber-400/60"
+                  style={{ animation: 'charityRing 1.5s ease-out forwards' }}
+              />
+              <div
+                  className="absolute top-1/2 left-1/2 w-32 h-32 rounded-full border border-amber-300/40"
+                  style={{ animation: 'charityRing 1.5s ease-out 0.2s forwards', opacity: 0 }}
+              />
+          </div>
+      )}
+
       <CustomerHeader
           customer={currentCustomer}
           patience={patience}
@@ -1107,6 +1158,7 @@ export const NegotiationPanel: React.FC<NegotiationStateProps> = ({ negotiation,
           probeReveal={probeReveal}
           liveConcessionTier={liveConcessionTier}
           concessionTier={concessionTier}
+          patiencePhase={patiencePhase}
           onOffer={handleOffer}
           onManualReject={handleManualReject}
           onBinaryAccept={handleBinaryAccept}

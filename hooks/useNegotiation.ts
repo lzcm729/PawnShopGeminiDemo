@@ -12,6 +12,9 @@ export type NegotiationMood = 'Happy' | 'Neutral' | 'Annoyed' | 'Angry';
 
 export type PatienceWarningLevel = 'normal' | 'caution' | 'danger';
 
+/** E-3: Patience decision gradient phases */
+export type PatiencePhase = 'normal' | 'last_chance' | 'final_adjustment' | 'locked';
+
 export type NegotiationStatus = 'ACCEPTED' | 'PRINCIPAL_TOO_LOW' | 'INSULT' | 'TOTAL_REPAYMENT_EXCEEDED' | 'WALK_AWAY' | 'LEVERAGE' | 'COUNTER' | 'ULTIMATUM';
 
 export interface UltimatumState {
@@ -116,6 +119,9 @@ interface UseNegotiationReturn {
   patienceWarningLevel: PatienceWarningLevel;
   ultimatum: UltimatumState | null;
   warningDialogue: string | null;
+
+  // E-3: Patience decision gradient
+  patiencePhase: PatiencePhase;
 }
 
 const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number, insultPrecisionModifier: number = 1.0) => {
@@ -817,6 +823,15 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     return 'normal';
   }, [patience]);
 
+  // E-3: Patience decision gradient phase
+  const patiencePhase = useMemo((): PatiencePhase => {
+    if (isWalkedAway) return 'locked';
+    if (ultimatumActive) return 'locked';
+    if (patience === 0) return 'final_adjustment';
+    if (patience === 1) return 'last_chance';
+    return 'normal';
+  }, [patience, isWalkedAway, ultimatumActive]);
+
   // Warning dialogue: pick a random line from CSV based on warning level
   const warningDialogue = useMemo((): string | null => {
     if (patienceWarningLevel === 'normal') return null;
@@ -889,5 +904,7 @@ export const useNegotiation = (customer: Customer | null, insightConcessionModif
     patienceWarningLevel,
     ultimatum: ultimatumActive ? { active: true, price: ultimatumPrice } : null,
     warningDialogue,
+    // E-3: Patience decision gradient
+    patiencePhase,
   };
 };
