@@ -331,7 +331,8 @@ export interface EventChainState {
   // === 新增字段 ===
   chainType?: ChainType;                        // 'NARRATIVE' | 'TRANSIENT'，默认 'NARRATIVE'
   redemptionResolve?: 'Strong' | 'Medium' | 'Weak' | 'None'; // TRANSIENT 用于概率计算
-  contractType?: ContractType;                  // 签订的合同类型
+  contractType?: ContractType;                  // 签订的合同类型（legacy, 兼容旧存档）
+  transactionRate?: number;                     // 实际成交利率（小数形式，如 0.15 = 15%）用于连续赎回率公式
   renewalCount?: number;                        // 已续当次数（TRANSIENT）
 }
 
@@ -408,8 +409,8 @@ export type { BehaviorTag };
 // === 事件链类型 ===
 export type ChainType = 'NARRATIVE' | 'TRANSIENT';
 
-// === 合同类型 ===
-export type ContractType = 'CHARITY' | 'AID' | 'STANDARD' | 'SHARK';
+// === 合同类型（六区间映射） ===
+export type ContractType = 'CHARITY' | 'AID' | 'STANDARD' | 'ELEVATED' | 'HIGH' | 'SHARK';
 
 export interface CustomerTemplate {
     name: string;

@@ -92,6 +92,9 @@ export function uiReducer(state: GameState, action: Action): GameState {
         case 'DEBUG_TOGGLE_FILLER':
             return { ...state, debugDisableFiller: !state.debugDisableFiller };
 
+        case 'SET_MORAL_QUAKE':
+            return { ...state, moralQuakeTriggered: action.payload };
+
         default:
             return state;
     }

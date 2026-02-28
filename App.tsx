@@ -36,6 +36,7 @@ import { Moon } from 'lucide-react';
 import { DayToNightTransition } from './components/transitions/DayToNightTransition';
 import { NightToDayTransition } from './components/transitions/NightToDayTransition';
 import { ConsequenceFlash } from './components/ConsequenceFlash';
+import { MoralQuakeOverlay } from './components/MoralQuakeOverlay';
 import { ReputationType } from './types';
 import { RateDisplayProvider } from './components/ui/RateDisplayContext';
 import { getNewsStolenRiskModifier } from './systems/news/engine';
@@ -409,6 +410,9 @@ const GameContent: React.FC = () => {
 
       {/* Consequence Flash - 因果自见效果 */}
       <ConsequenceFlash />
+
+      {/* Moral Quake - 道德地震效果 (首次跨越 HIGH/SHARK 利率阈值) */}
+      <MoralQuakeOverlay />
 
       {/* Debug Panel - 始终渲染在最顶层 */}
       <DebugPanel />

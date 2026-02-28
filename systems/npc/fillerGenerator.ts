@@ -145,6 +145,8 @@ export const CONTRACT_MODIFIERS: Record<ContractType, { redeemMod: number; noSho
     'CHARITY': { redeemMod: 0.15, noShowMod: -0.15 },
     'AID': { redeemMod: 0.05, noShowMod: -0.05 },
     'STANDARD': { redeemMod: 0, noShowMod: 0 },
+    'ELEVATED': { redeemMod: -0.05, noShowMod: 0.05 },
+    'HIGH': { redeemMod: -0.12, noShowMod: 0.20 },
     'SHARK': { redeemMod: -0.20, noShowMod: 0.50 }
 };
 
@@ -355,9 +357,11 @@ export function getPawnRatioCategory(pawnRatio: number): PawnRatioCategory {
  */
 const CONTRACT_LABEL_FALLBACKS: Record<ContractType, string> = {
     'CHARITY': '慈善 (0%)',
-    'AID': '援助 (5%)',
-    'STANDARD': '标准 (10%)',
-    'SHARK': '鲨鱼 (20%)'
+    'AID': '援助 (1-4%)',
+    'STANDARD': '标准 (5-9%)',
+    'ELEVATED': '偏高 (10-14%)',
+    'HIGH': '高利 (15-19%)',
+    'SHARK': '鲨鱼 (20%+)'
 };
 
 function getContractLabel(type: ContractType): string {
@@ -473,6 +477,8 @@ export function getFillerMonologuesByContract(): Record<ContractType, string[]> 
         'CHARITY': getMonologuesByContract('CHARITY'),
         'AID': getMonologuesByContract('AID'),
         'STANDARD': getMonologuesByContract('STANDARD'),
+        'ELEVATED': getMonologuesByContract('ELEVATED'),
+        'HIGH': getMonologuesByContract('HIGH'),
         'SHARK': getMonologuesByContract('SHARK'),
     };
 }
@@ -621,20 +627,41 @@ export function getFillerMerchantMonologue(
 }
 
 /**
- * Calculate expiry probabilities based on redemptionResolve, contractType, and pawnRatio
+ * Calculate expiry probabilities based on redemptionResolve, interest rate, and pawnRatio.
  *
- * v2.1 two-layer system:
- *   Final rate = redemptionResolve base + transaction modifiers (contract + pawnRatio)
+ * v2.5 continuous redemption formula:
+ *   redeemRate = baseRate * (1 - ratePercent * 0.02)
+ *   where ratePercent is the continuous interest rate (0-25%)
+ *
+ * Falls back to v2.1 discrete CONTRACT_MODIFIERS when transactionRate is not available
+ * (legacy save compatibility).
+ *
+ * Design doc: 声誉系统.md section "赎回率"
  */
 export function calculateExpiryProbabilities(
     redemptionResolve: RedemptionResolve,
     contractType?: ContractType,
-    pawnRatio?: number
+    pawnRatio?: number,
+    transactionRate?: number
 ): ExpiryProbabilities {
     const base = { ...BASE_EXPIRY_PROBABILITIES[redemptionResolve] };
 
-    // Apply contract type modifier
-    if (contractType) {
+    if (transactionRate !== undefined) {
+        // v2.5: Continuous redemption formula
+        // transactionRate is decimal (0.15 = 15%), convert to percentage for formula
+        const ratePercent = transactionRate * 100;
+        // Formula: baseRate * (1 - rate * 0.02)
+        // At 0%: multiplier = 1.0 (no change)
+        // At 10%: multiplier = 0.8
+        // At 20%: multiplier = 0.6 (40% reduction)
+        // At 25%: multiplier = 0.5 (50% reduction)
+        const multiplier = Math.max(0, 1 - ratePercent * 0.02);
+        const originalRedeem = base.redeem;
+        base.redeem = originalRedeem * multiplier;
+        // Redistribute lost redeem probability to noShow
+        base.noShow += (originalRedeem - base.redeem);
+    } else if (contractType) {
+        // v2.1 legacy: discrete contract type modifier
         const mod = CONTRACT_MODIFIERS[contractType];
         base.redeem += mod.redeemMod;
         base.noShow += mod.noShowMod;
@@ -674,8 +701,9 @@ export function determineTransientExpiryBehavior(
     const redemptionResolve = chain.redemptionResolve || 'Medium';
     const contractType = chain.contractType;
     const pawnRatio = chain.variables?.pawnRatio as number | undefined;
+    const transactionRate = chain.transactionRate;
 
-    const probs = calculateExpiryProbabilities(redemptionResolve, contractType, pawnRatio);
+    const probs = calculateExpiryProbabilities(redemptionResolve, contractType, pawnRatio, transactionRate);
     const roll = Math.random();
 
     if (roll < probs.redeem) {
@@ -1758,7 +1786,8 @@ export function createTransientChain(
     customer: Customer,
     item: Item,
     contractType: ContractType,
-    askPrice?: number
+    askPrice?: number,
+    interestRate?: number
 ): EventChainState {
     const chainId = `transient_${item.id}`;
     const denominator = askPrice && askPrice > 0 ? askPrice : customer.desiredAmount;
@@ -1783,6 +1812,7 @@ export function createTransientChain(
         chainType: 'TRANSIENT',
         redemptionResolve: customer.redemptionResolve,
         contractType,
+        transactionRate: interestRate,  // v2.5: continuous rate for redemption formula
         renewalCount: 0
     };
 }
@@ -1795,12 +1825,15 @@ export function isTransientChain(chain: EventChainState): boolean {
 }
 
 /**
- * Get the contract type from an interest rate
+ * Get the contract type from an interest rate (six-tier mapping).
+ * Rate is in decimal form (0.15 = 15%).
  */
 export function getContractTypeFromRate(rate: number): ContractType {
-    if (rate === 0) return 'CHARITY';
-    if (rate <= 0.05) return 'AID';
-    if (rate <= 0.10) return 'STANDARD';
+    if (rate <= 0) return 'CHARITY';
+    if (rate < 0.05) return 'AID';
+    if (rate < 0.10) return 'STANDARD';
+    if (rate < 0.15) return 'ELEVATED';
+    if (rate < 0.20) return 'HIGH';
     return 'SHARK';
 }
 

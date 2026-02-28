@@ -153,6 +153,8 @@ const initialState: GameState = {
     pendingReferralCustomer: false,
     // === CULTIVATION LOCK (修行锁定) ===
     cultivationLocked: true,
+    // === MORAL QUAKE (道德地震) ===
+    moralQuakeTriggered: { HIGH: false, SHARK: false },
     // === DEBUG FLAGS ===
     debugRevealFloor: false,
     debugDisableFiller: false

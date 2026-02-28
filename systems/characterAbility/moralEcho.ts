@@ -92,7 +92,11 @@ export function createHeartStrikeEchoes(
 }
 
 /**
- * Create moral echo from shark deal (20% interest rate).
+ * Create moral echo from high-rate deal (interest rate >= 15%).
+ *
+ * Triggers for both HIGH (15%-19%) and SHARK (20%+) tiers.
+ * Design doc v2.5: moral echo threshold lowered from 20% to 15%,
+ * aligning with the reputation system's "道德偏移" critical point.
  *
  * Immediate: monologue change
  * Delayed: possible anonymous warning mail next day

@@ -451,25 +451,27 @@ export function generateForesightResult(
 // ============================================================================
 
 /**
- * Generate contract tier color hints for hover preview.
- * Shows gold/none/dark-red based on how the tier affects the NPC.
+ * @deprecated v0.2: "决策前命运预兆" has been removed.
+ * The original design was based on hovering over discrete contract tiers,
+ * which no longer exist with the continuous interest rate card system.
+ * Returns all-NONE hints for backward compatibility.
+ * v0.3 will implement card-boundary foresight (边界预兆) instead.
  *
  * @param npcHope Current NPC hope value
  * @param isDesperateTag Whether NPC has DESPERATE tag
  */
 export function generateContractTierHints(
-  npcHope: number | undefined,
-  isDesperateTag: boolean
+  _npcHope: number | undefined,
+  _isDesperateTag: boolean
 ): ContractTierHint[] {
-  const isVulnerable = isDesperateTag || (npcHope !== undefined && npcHope <= 30);
-  // Default hints based on general impact direction
+  // v0.2: all hints are NONE (feature disabled)
   return [
-    { tier: 'CHARITY', hintColor: 'GOLD' },
-    { tier: 'AID', hintColor: 'GOLD' },
+    { tier: 'CHARITY', hintColor: 'NONE' },
+    { tier: 'AID', hintColor: 'NONE' },
     { tier: 'STANDARD', hintColor: 'NONE' },
     { tier: 'ELEVATED', hintColor: 'NONE' },
-    { tier: 'HIGH', hintColor: isVulnerable ? 'DARK_RED' : 'NONE' },
-    { tier: 'SHARK', hintColor: isVulnerable ? 'DARK_RED' : 'NONE' },
+    { tier: 'HIGH', hintColor: 'NONE' },
+    { tier: 'SHARK', hintColor: 'NONE' },
   ];
 }
 
@@ -571,14 +573,15 @@ export function calculateComfortEffect(
 
 /**
  * Check if extra care can be used.
- * Requires current transaction to be charity (0%) or aid (5%) tier.
+ * Requires current transaction to be charity (0%) or aid (<=4%) tier.
+ * Design doc v1.5 section 4.5: trigger condition is rate <= 4%.
  */
 export function canUseExtraCare(
   interestRate: number
 ): boolean {
-  // InterestRate is a decimal fraction (0, 0.05, 0.10, 0.20)
-  // Extra care only available for charity (0%) and aid (5%) tiers
-  return interestRate <= 0.05;
+  // InterestRate is a decimal fraction (0, 0.04 = 4%)
+  // Extra care only available for charity (0%) and aid (1%-4%) tiers
+  return interestRate <= 0.04;
 }
 
 /**

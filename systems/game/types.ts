@@ -167,6 +167,10 @@ export interface GameState {
   // === CULTIVATION LOCK (修行锁定) ===
   cultivationLocked: boolean;  // true = 技能树可查看但不可学习
 
+  // === MORAL QUAKE (道德地震) ===
+  /** Tracks first-time rate tier crossings for moral quake events */
+  moralQuakeTriggered: { HIGH: boolean; SHARK: boolean };
+
   // === DEBUG FLAGS ===
   debugRevealFloor: boolean;  // 调试：显示客户底价
   debugDisableFiller: boolean;  // 调试：禁用填充客户生成

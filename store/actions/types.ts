@@ -279,6 +279,9 @@ export type Action =
     // Word of Mouth referral
     | { type: 'SET_PENDING_REFERRAL'; payload: boolean }
 
+    // Moral Quake (道德地震)
+    | { type: 'SET_MORAL_QUAKE'; payload: { HIGH: boolean; SHARK: boolean } }
+
     // Debug flags
     | { type: 'DEBUG_TOGGLE_FLOOR' }
     | { type: 'DEBUG_TOGGLE_FILLER' };

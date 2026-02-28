@@ -31,9 +31,10 @@ import { detectSimConsequences, dispatchConsequence, createChannelTimingState } 
 import type { DispatchAction } from '../systems/narrative/consequenceDispatcher';
 import { processExternalTrigger } from '../systems/narrative/externalTrigger';
 import type { ExternalChainTrigger } from '../systems/narrative/externalTrigger';
-import { getEchoesForDay } from '../systems/characterAbility/moralEcho';
+import { getEchoesForDay, createSharkDealEchoes } from '../systems/characterAbility/moralEcho';
 import { getEchoText } from '../systems/characterAbility/moralEchoTexts';
 import { calculateTransactionEssenceGain, calculateStolenGoodsEssenceGain } from '../systems/characterAbility/essenceSystem';
+import { checkMoralQuake, applyMoralQuake } from '../systems/reputation/visibility';
 import { processWordOfMouthChecks } from '../systems/characterAbility/abilityEngine';
 import { generateTrainingResult, determineDisposition } from '../systems/customerInsight';
 import { registerRuntimeMailTemplate } from '../systems/narrative/mailRegistry';
@@ -1650,7 +1651,8 @@ export const useGameEngine = () => {
                      currentCust!,
                      result.item,
                      contractType,
-                     finalAsk
+                     finalAsk,
+                     result.terms.rate
                  );
                  // Store age/gender in chain variables for redemption visit dialogue
                  const ageTag = currentCust!.identityTags?.find(t => ['young', 'middle', 'elderly'].includes(t));
@@ -1705,6 +1707,25 @@ export const useGameEngine = () => {
         [ReputationType.INNOCENCE]: currentRep[ReputationType.INNOCENCE] + (result.reputationDelta[ReputationType.INNOCENCE] || 0)
     };
     checkMilestones(projectedRep);
+
+    // Moral echo for high-rate deals (rate >= 15%)
+    // Design doc v2.5: moral echo threshold is 15% (贪婪区间及以上)
+    if (result.success && result.terms && result.terms.rate >= 0.15) {
+        const innocence = projectedRep[ReputationType.INNOCENCE];
+        const echoes = createSharkDealEchoes(state.stats.day, innocence);
+        dispatch({ type: 'ENQUEUE_MORAL_ECHOES', payload: echoes });
+    }
+
+    // Moral quake: first-time crossing of HIGH (15%) or SHARK (20%) threshold
+    if (result.success && result.terms) {
+        const ratePercent = result.terms.rate * 100;
+        const quakeState = state.moralQuakeTriggered ?? { HIGH: false, SHARK: false };
+        const quakeEvent = checkMoralQuake(ratePercent, quakeState);
+        if (quakeEvent) {
+            const updatedQuakeState = applyMoralQuake(quakeState, quakeEvent);
+            dispatch({ type: 'SET_MORAL_QUAKE', payload: updatedQuakeState });
+        }
+    }
 
     // #3: Record departure attitude to item log
     if (result.success && result.item && !result.item.isVirtual && currentCust) {
