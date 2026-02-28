@@ -35,7 +35,7 @@ export const TraitList: React.FC<TraitListProps> = ({
   const totalCount = hiddenTraits.length + revealedTraits.length + 1;
 
   return (
-    <div className="flex-1 bg-[#e7e5e4] text-stone-900 flex flex-col relative shadow-[inset_0_10px_20px_rgba(0,0,0,0.1)] min-h-[60%]">
+    <div className="flex-1 min-h-0 bg-[#e7e5e4] text-stone-900 flex flex-col relative shadow-[inset_0_10px_20px_rgba(0,0,0,0.1)]">
          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] opacity-40 pointer-events-none mix-blend-multiply"></div>
 
          <div className="p-3 border-b-2 border-stone-400/50 relative z-10 flex justify-between items-center bg-[#d6d3d1]/50 backdrop-blur-sm">

@@ -116,7 +116,7 @@ export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
   const uncertaintyRisk = getUncertaintyRisk(currentMin, currentMax);
 
   return (
-    <div className="bg-[#0c0a09] relative flex flex-col border-b border-[#292524] min-h-[40%]">
+    <div className="bg-[#0c0a09] relative flex flex-col border-b border-[#292524]">
 
         <div className="p-3 flex justify-between items-start z-20">
              <div className="flex items-center gap-2">
@@ -159,8 +159,8 @@ export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
              </div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-            <div className={`transition-all duration-500 w-32 h-32 border border-stone-800 rounded-lg bg-stone-900/50 mb-2 overflow-hidden flex items-center justify-center cursor-game-look ${appraising ? 'blur-sm opacity-50 scale-110' : ''}`}>
+        <div className="flex flex-col items-center justify-center p-4">
+            <div className={`transition-all duration-500 w-28 h-28 border border-stone-800 rounded-lg bg-stone-900/50 mb-2 overflow-hidden flex items-center justify-center cursor-game-look ${appraising ? 'blur-sm opacity-50 scale-110' : ''}`}>
                 <img
                   src={getItemIcon(item)}
                   alt={item.name}
