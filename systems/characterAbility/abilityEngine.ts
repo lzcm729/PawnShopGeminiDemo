@@ -461,17 +461,15 @@ export function generateContractTierHints(
   npcHope: number | undefined,
   isDesperateTag: boolean
 ): ContractTierHint[] {
+  const isVulnerable = isDesperateTag || (npcHope !== undefined && npcHope <= 30);
   // Default hints based on general impact direction
   return [
     { tier: 'CHARITY', hintColor: 'GOLD' },
     { tier: 'AID', hintColor: 'GOLD' },
     { tier: 'STANDARD', hintColor: 'NONE' },
-    {
-      tier: 'SHARK',
-      hintColor: (isDesperateTag || (npcHope !== undefined && npcHope <= 30))
-        ? 'DARK_RED'
-        : 'NONE',
-    },
+    { tier: 'ELEVATED', hintColor: 'NONE' },
+    { tier: 'HIGH', hintColor: isVulnerable ? 'DARK_RED' : 'NONE' },
+    { tier: 'SHARK', hintColor: isVulnerable ? 'DARK_RED' : 'NONE' },
   ];
 }
 

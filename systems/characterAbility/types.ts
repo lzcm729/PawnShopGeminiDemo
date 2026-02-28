@@ -217,7 +217,7 @@ export interface ConsequenceFlashResult {
 
 /** Contract tier color hint for 因果自见 hover preview */
 export interface ContractTierHint {
-  tier: 'CHARITY' | 'AID' | 'STANDARD' | 'SHARK';
+  tier: 'CHARITY' | 'AID' | 'STANDARD' | 'ELEVATED' | 'HIGH' | 'SHARK';
   hintColor: 'GOLD' | 'NONE' | 'DARK_RED';
 }
 

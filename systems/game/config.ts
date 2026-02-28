@@ -182,16 +182,28 @@ interface TomlAppraisal {
 }
 
 interface TomlReputationDeltas {
-  // 慈善档(0%)
-  charity_generous_humanity: number;
-  charity_normal_humanity: number;
-  // 援助档(5%)
+  // CHARITY 恩惠档(0%)
+  charity_humanity: number;
+  charity_credibility: number;
+  charity_innocence: number;
+  // AID 公道档(1%-4%)
+  aid_humanity_generous: number;
+  aid_humanity_normal: number;
   aid_credibility: number;
-  aid_extra_credibility: number;
-  aid_generous_humanity: number;
-  // 标准档(10%)
+  aid_innocence: number;
+  // STANDARD 精明档(5%-9%)
+  standard_humanity: number;
   standard_credibility: number;
-  // 高利贷档(20%)
+  standard_innocence: number;
+  // ELEVATED 偏高档(10%-14%)
+  elevated_humanity: number;
+  elevated_credibility: number;
+  elevated_innocence: number;
+  // HIGH 贪婪档(15%-19%)
+  high_humanity: number;
+  high_credibility: number;
+  high_innocence: number;
+  // SHARK 掠夺档(20%+)
   shark_humanity: number;
   shark_credibility: number;
   shark_innocence: number;
@@ -762,14 +774,30 @@ export const GAME_CONFIG = {
     PRECISION_BM_PURCHASE_WORST: tomlConfig.appraisal.precision_bm_purchase_worst,
   },
 
-  // --- REPUTATION DELTAS (声誉增减表) ---
+  // --- REPUTATION DELTAS (声誉增减表 — 六区间) ---
   REPUTATION_DELTAS: {
-    CHARITY_GENEROUS_HUMANITY: tomlConfig.reputation_deltas.charity_generous_humanity,
-    CHARITY_NORMAL_HUMANITY: tomlConfig.reputation_deltas.charity_normal_humanity,
+    // CHARITY 恩惠档(0%)
+    CHARITY_HUMANITY: tomlConfig.reputation_deltas.charity_humanity,
+    CHARITY_CREDIBILITY: tomlConfig.reputation_deltas.charity_credibility,
+    CHARITY_INNOCENCE: tomlConfig.reputation_deltas.charity_innocence,
+    // AID 公道档(1%-4%)
+    AID_HUMANITY_GENEROUS: tomlConfig.reputation_deltas.aid_humanity_generous,
+    AID_HUMANITY_NORMAL: tomlConfig.reputation_deltas.aid_humanity_normal,
     AID_CREDIBILITY: tomlConfig.reputation_deltas.aid_credibility,
-    AID_EXTRA_CREDIBILITY: tomlConfig.reputation_deltas.aid_extra_credibility,
-    AID_GENEROUS_HUMANITY: tomlConfig.reputation_deltas.aid_generous_humanity,
+    AID_INNOCENCE: tomlConfig.reputation_deltas.aid_innocence,
+    // STANDARD 精明档(5%-9%)
+    STANDARD_HUMANITY: tomlConfig.reputation_deltas.standard_humanity,
     STANDARD_CREDIBILITY: tomlConfig.reputation_deltas.standard_credibility,
+    STANDARD_INNOCENCE: tomlConfig.reputation_deltas.standard_innocence,
+    // ELEVATED 偏高档(10%-14%)
+    ELEVATED_HUMANITY: tomlConfig.reputation_deltas.elevated_humanity,
+    ELEVATED_CREDIBILITY: tomlConfig.reputation_deltas.elevated_credibility,
+    ELEVATED_INNOCENCE: tomlConfig.reputation_deltas.elevated_innocence,
+    // HIGH 贪婪档(15%-19%)
+    HIGH_HUMANITY: tomlConfig.reputation_deltas.high_humanity,
+    HIGH_CREDIBILITY: tomlConfig.reputation_deltas.high_credibility,
+    HIGH_INNOCENCE: tomlConfig.reputation_deltas.high_innocence,
+    // SHARK 掠夺档(20%+)
     SHARK_HUMANITY: tomlConfig.reputation_deltas.shark_humanity,
     SHARK_CREDIBILITY: tomlConfig.reputation_deltas.shark_credibility,
     SHARK_INNOCENCE: tomlConfig.reputation_deltas.shark_innocence,

@@ -18,19 +18,28 @@ import essenceTextsCsv from '@/assets/data/texts/essence_system.csv?raw';
 // ============================================================================
 
 /**
- * Contract interest rate tiers that affect essence gain.
- * These correspond to the game's InterestRate type.
+ * Contract interest rate tiers that affect essence gain and reputation.
+ * Six tiers from charitable to predatory, supporting continuous interest rates.
  */
-export type ContractTier = 'CHARITY' | 'AID' | 'STANDARD' | 'SHARK';
+export type ContractTier = 'CHARITY' | 'AID' | 'STANDARD' | 'ELEVATED' | 'HIGH' | 'SHARK';
 
 /**
  * Map interest rate percentage to contract tier.
- * 0% = Charity, 5% = Aid, 10% = Standard, 20% = Shark
+ * interestRate is in percentage form (e.g., 5 = 5%, not 0.05).
+ *
+ * 0%     = CHARITY  (恩惠)
+ * 1%-4%  = AID      (公道)
+ * 5%-9%  = STANDARD (精明)
+ * 10%-14% = ELEVATED (偏高)
+ * 15%-19% = HIGH     (贪婪)
+ * 20%+   = SHARK    (掠夺)
  */
 export function getContractTier(interestRate: number): ContractTier {
   if (interestRate <= 0) return 'CHARITY';
-  if (interestRate <= 5) return 'AID';
-  if (interestRate <= 10) return 'STANDARD';
+  if (interestRate < 5) return 'AID';
+  if (interestRate < 10) return 'STANDARD';
+  if (interestRate < 15) return 'ELEVATED';
+  if (interestRate < 20) return 'HIGH';
   return 'SHARK';
 }
 
@@ -75,6 +84,8 @@ const TIER_NAME_KEYS: Record<ContractTier, string> = {
   CHARITY: 'CHARITY_NAME',
   AID: 'AID_NAME',
   STANDARD: 'STANDARD_NAME',
+  ELEVATED: 'ELEVATED_NAME',
+  HIGH: 'HIGH_NAME',
   SHARK: 'SHARK_NAME',
 };
 

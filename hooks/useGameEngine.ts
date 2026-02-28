@@ -1326,24 +1326,37 @@ export const useGameEngine = () => {
 
     const repDelta: any = { [ReputationType.HUMANITY]: 0, [ReputationType.CREDIBILITY]: 0, [ReputationType.INNOCENCE]: 0 };
 
-    // Contract tier reputation effects (design doc - 声誉系统):
+    // Six-tier contract reputation effects (rate is decimal: 0.05 = 5%)
     // Generous = offer exceeds customer's ask price (desiredAmount)
     const isGenerous = offer > desiredAmount;
-    if (rate === 0) {
-        // 0% Charity: flat +5 Humanity (generous/normal values both 5 in TOML)
-        repDelta[ReputationType.HUMANITY] += isGenerous ? GAME_CONFIG.REPUTATION_DELTAS.CHARITY_GENEROUS_HUMANITY : GAME_CONFIG.REPUTATION_DELTAS.CHARITY_NORMAL_HUMANITY;
-    } else if (rate > 0 && rate < 0.10) {
-        // 5% Aid: neutral — no reputation changes (all values 0 in TOML)
+    const ratePercent = rate * 100;
+    if (ratePercent <= 0) {
+        // CHARITY 恩惠档(0%): +2 人情（统一值，后续卡牌系统区分主动/被动）
+        repDelta[ReputationType.HUMANITY] += GAME_CONFIG.REPUTATION_DELTAS.CHARITY_HUMANITY;
+        repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.CHARITY_CREDIBILITY;
+        repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.CHARITY_INNOCENCE;
+    } else if (ratePercent < 5) {
+        // AID 公道档(1%-4%): 慷慨时 +1 人情，商誉 +1
+        repDelta[ReputationType.HUMANITY] += isGenerous ? GAME_CONFIG.REPUTATION_DELTAS.AID_HUMANITY_GENEROUS : GAME_CONFIG.REPUTATION_DELTAS.AID_HUMANITY_NORMAL;
         repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.AID_CREDIBILITY;
-        repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.AID_EXTRA_CREDIBILITY;
-        if (isGenerous) {
-            repDelta[ReputationType.HUMANITY] += GAME_CONFIG.REPUTATION_DELTAS.AID_GENEROUS_HUMANITY;
-        }
-    } else if (rate >= 0.10 && rate < 0.20) {
-        // 10% Standard: Credibility (no humanity bonus even if generous)
+        repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.AID_INNOCENCE;
+    } else if (ratePercent < 10) {
+        // STANDARD 精明档(5%-9%): 商誉 +1
+        repDelta[ReputationType.HUMANITY] += GAME_CONFIG.REPUTATION_DELTAS.STANDARD_HUMANITY;
         repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.STANDARD_CREDIBILITY;
-    } else if (rate >= 0.20) {
-        // >=20% Shark: Humanity, Credibility, Innocence penalties (generous doesn't help)
+        repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.STANDARD_INNOCENCE;
+    } else if (ratePercent < 15) {
+        // ELEVATED 偏高档(10%-14%): 商誉 +1
+        repDelta[ReputationType.HUMANITY] += GAME_CONFIG.REPUTATION_DELTAS.ELEVATED_HUMANITY;
+        repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.ELEVATED_CREDIBILITY;
+        repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.ELEVATED_INNOCENCE;
+    } else if (ratePercent < 20) {
+        // HIGH 贪婪档(15%-19%): 人情 -1，清白 -1
+        repDelta[ReputationType.HUMANITY] += GAME_CONFIG.REPUTATION_DELTAS.HIGH_HUMANITY;
+        repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.HIGH_CREDIBILITY;
+        repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.HIGH_INNOCENCE;
+    } else {
+        // SHARK 掠夺档(20%+): 人情 -3，商誉 -2，清白 -2
         repDelta[ReputationType.HUMANITY] += GAME_CONFIG.REPUTATION_DELTAS.SHARK_HUMANITY;
         repDelta[ReputationType.CREDIBILITY] += GAME_CONFIG.REPUTATION_DELTAS.SHARK_CREDIBILITY;
         repDelta[ReputationType.INNOCENCE] += GAME_CONFIG.REPUTATION_DELTAS.SHARK_INNOCENCE;

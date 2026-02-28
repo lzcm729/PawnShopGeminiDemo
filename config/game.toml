@@ -320,21 +320,34 @@ precision_bm_purchase_worst = 0.85
 
 # ------------------------------------------------------------
 # 声誉增减表 (Reputation Deltas)
+# 六区间利率声誉映射（卡牌议价系统）
 # ------------------------------------------------------------
 [reputation_deltas]
-# 慈善档(0%)
-charity_generous_humanity = 5         # 慈善 +5 人情（设计文档: 固定+5）
-charity_normal_humanity = 5           # 慈善 +5 人情（设计文档: 固定+5）
-# 援助档(5%)（设计文档: 中性，无声誉变化）
-aid_credibility = 0                   # 援助 无声誉变化
-aid_extra_credibility = 0             # 援助 无声誉变化
-aid_generous_humanity = 0             # 援助 无声誉变化
-# 标准档(10%)
-standard_credibility = 1              # 标准 +商誉
-# 高利贷档(20%)
-shark_humanity = -3                   # 高利贷 -人情
-shark_credibility = -2                # 高利贷 -商誉
-shark_innocence = -2                  # 高利贷 -清白
+# CHARITY 恩惠档(0%) — 主动善良 +2 / 被动善良 +1（当前统一为 +2，后续卡牌系统区分）
+charity_humanity = 2                  # 恩惠 +2 人情
+charity_credibility = 0               # 恩惠 无商誉变化
+charity_innocence = 0                 # 恩惠 无清白变化
+# AID 公道档(1%-4%) — 慷慨时 +1 人情，普通 0；商誉 +1
+aid_humanity_generous = 1             # 公道+慷慨 +1 人情
+aid_humanity_normal = 0               # 公道 无人情变化
+aid_credibility = 1                   # 公道 +1 商誉
+aid_innocence = 0                     # 公道 无清白变化
+# STANDARD 精明档(5%-9%) — 商誉 +1
+standard_humanity = 0                 # 精明 无人情变化
+standard_credibility = 1              # 精明 +1 商誉
+standard_innocence = 0                # 精明 无清白变化
+# ELEVATED 偏高档(10%-14%) — 商誉 +1
+elevated_humanity = 0                 # 偏高 无人情变化
+elevated_credibility = 1              # 偏高 +1 商誉
+elevated_innocence = 0                # 偏高 无清白变化
+# HIGH 贪婪档(15%-19%) — 人情 -1，清白 -1
+high_humanity = -1                    # 贪婪 -1 人情
+high_credibility = 0                  # 贪婪 无商誉变化
+high_innocence = -1                   # 贪婪 -1 清白
+# SHARK 掠夺档(20%+) — 人情 -3，商誉 -2，清白 -2
+shark_humanity = -3                   # 掠夺 -3 人情
+shark_credibility = -2                # 掠夺 -2 商誉
+shark_innocence = -2                  # 掠夺 -2 清白
 # 赃物相关
 stolen_known_leverage_innocence = -3  # 已知赃物+压价 -清白
 stolen_known_no_leverage_innocence = -2 # 已知赃物未压价 -清白
@@ -972,6 +985,7 @@ trigger_operator = "<="
 
 # ------------------------------------------------------------
 # 精魄获取表 (Essence Gains)
+# 六区间利率精魄映射（卡牌议价系统）
 # ------------------------------------------------------------
 [essence.tier_gains.CHARITY]
 craft = 0
@@ -986,6 +1000,16 @@ vibe = 2
 [essence.tier_gains.STANDARD]
 craft = 2
 time = 0
+vibe = 0
+
+[essence.tier_gains.ELEVATED]
+craft = 1
+time = 0
+vibe = 0
+
+[essence.tier_gains.HIGH]
+craft = 0
+time = 2
 vibe = 0
 
 [essence.tier_gains.SHARK]

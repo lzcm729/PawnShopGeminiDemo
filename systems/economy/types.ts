@@ -3,7 +3,7 @@ import { ReputationProfile } from '../core/types';
 import { Item } from '../items/types';
 import { GAME_CONFIG } from '../game/config';
 
-export type InterestRate = 0 | 0.05 | 0.10 | 0.20;
+export type InterestRate = number;
 
 export interface TransactionResult {
   success: boolean;
