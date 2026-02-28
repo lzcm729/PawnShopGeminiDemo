@@ -3,10 +3,11 @@ import React, { useMemo, useRef } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { RollingNumber } from '../ui/RollingNumber';
-import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack, ArrowDown, ArrowRight, ArrowUp, Crosshair } from 'lucide-react';
+import { Stamp, XCircle, TrendingUp, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, DollarSign, ArrowUpFromLine, Calculator, Calendar, TrendingDown, Lock, Zap, HeartCrack, ArrowDown, ArrowRight, ArrowUp, Crosshair, AlertTriangle, HandMetal } from 'lucide-react';
 import { InterestRate, Customer, Item } from '../../types';
 import { ContractTierHint } from '../../systems/characterAbility/types';
 import type { ProbeRevealResult, ConcessionTier } from '../../systems/negotiation/probeEffects';
+import type { PatiencePhase } from '../../hooks/useNegotiation';
 import { getConcessionTierLabel } from '../../systems/negotiation/empathyProbeFeedback';
 import { playSfx } from '../../systems/game/audio';
 
@@ -71,6 +72,9 @@ interface ControlDeckProps {
     // B-10: Hook-computed concession tier (always available)
     concessionTier?: ConcessionTier;
 
+    // E-3: Patience decision gradient
+    patiencePhase?: PatiencePhase;
+
     // Handlers
     onOffer: () => void;
     onManualReject: () => void;
@@ -112,6 +116,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
     probeReveal,
     liveConcessionTier,
     concessionTier,
+    patiencePhase = 'normal',
     onOffer,
     onManualReject,
     onBinaryAccept,
@@ -334,6 +339,160 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                         )}
                    </div>
 
+                   {/* E-UI-3: Last Chance Warning Banner (patience = 1) */}
+                   {patiencePhase === 'last_chance' && (
+                       <div className="flex items-center gap-3 bg-red-950/30 border border-red-900/50 rounded p-3 animate-in fade-in duration-300">
+                           <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 animate-pulse" />
+                           <div className="flex-1">
+                               <div className="text-xs font-bold text-red-400 uppercase tracking-wider">
+                                   Last Chance
+                               </div>
+                               <div className="text-[10px] text-red-300/70 mt-0.5">
+                                   再失去耐心就要走了
+                               </div>
+                           </div>
+                           <div className="flex gap-2">
+                               <button
+                                   onClick={() => {
+                                       playSfx('CLICK');
+                                       // Concede: lower rate by one tier
+                                       const rateTiers: InterestRate[] = [0, 0.05, 0.10, 0.20];
+                                       const currentIdx = rateTiers.indexOf(selectedRate);
+                                       if (currentIdx > 0) {
+                                           setSelectedRate(rateTiers[currentIdx - 1]);
+                                       }
+                                   }}
+                                   disabled={!canInteract || selectedRate === 0}
+                                   className={cn(
+                                       "px-3 py-2 rounded border text-[11px] font-bold transition-all",
+                                       selectedRate === 0
+                                           ? "bg-noir-400/30 border-noir-400 text-noir-txt-muted opacity-50 cursor-not-allowed"
+                                           : "bg-emerald-950/40 border-emerald-800/60 text-emerald-400 hover:bg-emerald-900/50 active:scale-95"
+                                   )}
+                               >
+                                   让步
+                               </button>
+                               <button
+                                   onClick={() => {
+                                       playSfx('CLICK');
+                                       // Stand firm: do nothing, just acknowledge
+                                   }}
+                                   disabled={!canInteract}
+                                   className="px-3 py-2 rounded border bg-amber-950/40 border-amber-800/60 text-amber-400 hover:bg-amber-900/50 text-[11px] font-bold transition-all active:scale-95"
+                               >
+                                   坚持
+                               </button>
+                           </div>
+                       </div>
+                   )}
+
+                   {/* E-UI-3: Final Adjustment Panel (patience = 0) */}
+                   {patiencePhase === 'final_adjustment' ? (
+                       <div className="space-y-3 animate-in fade-in duration-300">
+                           <div className="flex items-center gap-3 bg-red-950/40 border border-red-700/60 rounded p-3">
+                               <HandMetal className="w-5 h-5 text-red-400 shrink-0" />
+                               <div className="flex-1">
+                                   <div className="text-xs font-bold text-red-400 uppercase tracking-wider">
+                                       Final Adjustment
+                                   </div>
+                                   <div className="text-[10px] text-red-300/70 mt-0.5">
+                                       对方耐心已尽 -- 只能做最后微调
+                                   </div>
+                               </div>
+                           </div>
+
+                           {/* Simplified adjustment: principal +/-5% */}
+                           <div className="flex items-center gap-3">
+                               <span className="text-[10px] text-noir-txt-muted uppercase tracking-wider w-16 shrink-0">当金</span>
+                               <button
+                                   onClick={() => {
+                                       playSfx('CLICK');
+                                       const delta = Math.max(1, Math.round(offerPrincipal * 0.05));
+                                       setOfferPrincipal(prev => Math.max(0, prev - delta));
+                                   }}
+                                   disabled={!canInteract}
+                                   className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-red-400 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold"
+                               >
+                                   -5%
+                               </button>
+                               <div className="flex-1 bg-black border border-red-900/50 h-10 flex items-center justify-center rounded overflow-hidden">
+                                   <span className="text-2xl font-mono font-bold text-amber-500 tracking-widest">
+                                       <RollingNumber value={offerPrincipal} prefix="$" />
+                                   </span>
+                               </div>
+                               <button
+                                   onClick={() => {
+                                       playSfx('CLICK');
+                                       const delta = Math.max(1, Math.round(offerPrincipal * 0.05));
+                                       setOfferPrincipal(prev => Math.min(cashAvailable, prev + delta));
+                                   }}
+                                   disabled={!canInteract}
+                                   className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-pawn-green active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold"
+                               >
+                                   +5%
+                               </button>
+                           </div>
+
+                           {/* Simplified adjustment: rate +/-1 tier */}
+                           <div className="flex items-center gap-3">
+                               <span className="text-[10px] text-noir-txt-muted uppercase tracking-wider w-16 shrink-0">利率</span>
+                               <button
+                                   onClick={() => {
+                                       playSfx('CLICK');
+                                       const rateTiers: InterestRate[] = [0, 0.05, 0.10, 0.20];
+                                       const idx = rateTiers.indexOf(selectedRate);
+                                       if (idx > 0) setSelectedRate(rateTiers[idx - 1]);
+                                   }}
+                                   disabled={!canInteract || selectedRate === 0}
+                                   className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-red-400 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold"
+                               >
+                                   -1
+                               </button>
+                               <div className="flex-1 bg-black border border-red-900/50 h-10 flex items-center justify-center rounded overflow-hidden">
+                                   <span className="text-lg font-mono font-bold text-amber-500">
+                                       {formatRate(selectedRate)}{unitLabel}
+                                   </span>
+                               </div>
+                               <button
+                                   onClick={() => {
+                                       playSfx('CLICK');
+                                       const rateTiers: InterestRate[] = [0, 0.05, 0.10, 0.20];
+                                       const idx = rateTiers.indexOf(selectedRate);
+                                       if (idx < rateTiers.length - 1) setSelectedRate(rateTiers[idx + 1]);
+                                   }}
+                                   disabled={!canInteract || selectedRate === 0.20}
+                                   className="w-10 h-10 bg-noir-300 border border-noir-400 rounded flex items-center justify-center hover:bg-noir-400 text-pawn-green active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold"
+                               >
+                                   +1
+                               </button>
+                           </div>
+
+                           {/* Final action: only Reject + Offer */}
+                           <div className="flex gap-3">
+                               <Button
+                                   variant="danger"
+                                   onClick={onManualReject}
+                                   disabled={!canInteract}
+                                   className="w-16 h-14 border-2 border-red-900/50 hover:bg-red-950/50 flex items-center justify-center"
+                                   title="Reject"
+                               >
+                                   <XCircle className="w-5 h-5"/>
+                               </Button>
+                               <Button
+                                   variant="primary"
+                                   onClick={onOffer}
+                                   disabled={!canInteract || !canAfford}
+                                   className="flex-1 h-14 relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center bg-red-700 hover:bg-red-600"
+                               >
+                                   <div className="flex items-center gap-2">
+                                       <Stamp className="w-4 h-4" />
+                                       <span className="text-sm font-bold tracking-[0.2em]">Final Offer</span>
+                                   </div>
+                               </Button>
+                           </div>
+                       </div>
+                   ) : (
+                   <>
                    {/* Rate Selectors */}
                        <div className="flex gap-2">
                           <RateToggle rate={0} label="Charity" />
@@ -499,7 +658,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                           </Button>
 
                           {/* Pressure Skill Button */}
-                          {onPressure && (
+                          {onPressure && patiencePhase === 'normal' && (
                               <button
                                   onClick={() => {
                                       if (!pressureUsed && canUsePressure && canInteract) {
@@ -526,7 +685,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                           )}
 
                           {/* Heart Strike Skill Button */}
-                          {onHeartStrike && (
+                          {onHeartStrike && patiencePhase === 'normal' && (
                               <button
                                   onClick={() => {
                                       if (!heartStrikeUsed && canUseHeartStrike && canInteract) {
@@ -573,6 +732,8 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                              )}
                           </Button>
                        </div>
+                   </>
+                   )}
                </div>
            )}
         </div>

@@ -162,6 +162,7 @@ interface TomlAppraisal {
   normal_convergence_speed: number;
   trait_discovery_uncertainty: number;
   mishap_range_expansion: number;
+  appraisal_mastery_threshold: number;
   skew_min: number;
   skew_range: number;
   // Precision payoff parameters
@@ -291,6 +292,13 @@ interface TomlNegotiation {
   patience_caution_threshold: number;
   patience_danger_threshold: number;
   ultimatum_chance: number;
+  // E-4: Patience consumption rules
+  passive_decay_per_round: number;
+  refuse_card_cost: number;
+  // E-3: Patience decision gradient
+  last_chance_rate_adjustment: number;
+  final_adjustment_principal_ratio: number;
+  final_adjustment_rate_step: number;
 }
 
 interface TomlBlackmarket {
@@ -549,6 +557,11 @@ interface TomlMilestoneTrigger {
   trigger_operator: string;
 }
 
+interface TomlDriftMeter {
+  drift_threshold: number;
+  severe_drift_threshold: number;
+}
+
 interface TomlEssenceTierGain {
   craft: number;
   time: number;
@@ -583,6 +596,7 @@ interface GameConfigToml {
   workshop: TomlWorkshop;
   reputation_milestones: Record<string, TomlMilestoneTrigger>;
   essence: TomlEssence;
+  drift_meter: TomlDriftMeter;
 }
 
 // Cast TOML import to typed interface
@@ -755,6 +769,7 @@ export const GAME_CONFIG = {
     NORMAL_CONVERGENCE_SPEED: tomlConfig.appraisal.normal_convergence_speed,
     TRAIT_DISCOVERY_UNCERTAINTY: tomlConfig.appraisal.trait_discovery_uncertainty,
     MISHAP_RANGE_EXPANSION: tomlConfig.appraisal.mishap_range_expansion,
+    APPRAISAL_MASTERY_THRESHOLD: tomlConfig.appraisal.appraisal_mastery_threshold,
     SKEW_MIN: tomlConfig.appraisal.skew_min,
     SKEW_RANGE: tomlConfig.appraisal.skew_range,
     // Precision payoff
@@ -892,6 +907,13 @@ export const GAME_CONFIG = {
     PATIENCE_CAUTION_THRESHOLD: tomlConfig.negotiation.patience_caution_threshold,
     PATIENCE_DANGER_THRESHOLD: tomlConfig.negotiation.patience_danger_threshold,
     ULTIMATUM_CHANCE: tomlConfig.negotiation.ultimatum_chance,
+    // E-4: Patience consumption rules
+    PASSIVE_DECAY_PER_ROUND: tomlConfig.negotiation.passive_decay_per_round,
+    REFUSE_CARD_COST: tomlConfig.negotiation.refuse_card_cost,
+    // E-3: Patience decision gradient
+    LAST_CHANCE_RATE_ADJUSTMENT: tomlConfig.negotiation.last_chance_rate_adjustment,
+    FINAL_ADJUSTMENT_PRINCIPAL_RATIO: tomlConfig.negotiation.final_adjustment_principal_ratio,
+    FINAL_ADJUSTMENT_RATE_STEP: tomlConfig.negotiation.final_adjustment_rate_step,
   },
 
   // --- BLACKMARKET (黑市系统) ---
@@ -1136,6 +1158,12 @@ export const GAME_CONFIG = {
   ESSENCE: {
     TIER_GAINS: tomlConfig.essence.tier_gains,
     STOLEN_GOODS_GAIN: tomlConfig.essence.stolen_goods_gain,
+  },
+
+  // --- DRIFT METER (道德滑坡回望) ---
+  DRIFT_METER: {
+    DRIFT_THRESHOLD: tomlConfig.drift_meter.drift_threshold,
+    SEVERE_DRIFT_THRESHOLD: tomlConfig.drift_meter.severe_drift_threshold,
   },
 
 };

@@ -21,6 +21,7 @@ import { useSettlementCeremony } from '../hooks/useFinancialProjection';
 import { Tooltip } from './ui/Tooltip';
 import { ReputationType } from '../systems/core/types';
 import { getNarrativeAnchor } from '../systems/reputation';
+import { getDriftSummary, type DriftLevel } from '../systems/reputation/driftMeter';
 import { getEffectiveInventoryCapacity, BASE_INVENTORY_CAPACITY, hasAppointmentBoard, getAppointmentBoardLevel, getCounterUpgradesForToggle, getTotalMaintenanceCost, hasBlackMarketContact, hasPrecisionBench, getUpgradeLevel, getEffectiveNightEnergy, getBlackMarketContactLevel, hasCultivationRoom } from '../systems/upgrades';
 import { GAME_CONFIG } from '../systems/game/config';
 import { NightHeader } from './night/NightHeader';
@@ -284,6 +285,66 @@ export const NightDashboard: React.FC = () => {
                             </div>
                         </Tooltip>
                     </div>
+
+                    {/* E-UI-2: Drift Meter */}
+                    {(() => {
+                        const drift = getDriftSummary();
+                        if (drift.level === 'none') return null;
+
+                        const getDriftColor = (level: DriftLevel) => {
+                            if (level === 'severe') return { bar: 'bg-red-500', text: 'text-red-400', border: 'border-red-900/50', bg: 'bg-red-950/20' };
+                            if (level === 'mild') return { bar: 'bg-amber-500', text: 'text-amber-400', border: 'border-amber-900/50', bg: 'bg-amber-950/20' };
+                            return { bar: 'bg-blue-400', text: 'text-blue-400', border: 'border-blue-900/50', bg: 'bg-blue-950/20' };
+                        };
+
+                        const colors = getDriftColor(drift.level);
+                        const driftLabel = drift.level === 'severe' ? 'SEVERE'
+                            : drift.level === 'mild' ? 'MILD'
+                            : 'CHARITY';
+
+                        // Normalize avgRate for bar display (0-20% range mapped to 0-100%)
+                        const barPercent = Math.min(100, (drift.avgRate / 20) * 100);
+
+                        return (
+                            <div className={cn("w-full max-w-[200px] mb-4 border rounded-lg p-3 animate-in fade-in duration-500", colors.border, colors.bg)}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[9px] uppercase tracking-widest text-stone-600">Moral Drift</span>
+                                    <span className={cn("text-[9px] font-bold uppercase tracking-wider", colors.text)}>
+                                        {driftLabel}
+                                    </span>
+                                </div>
+
+                                {/* Drift bar */}
+                                <div className="h-1.5 bg-stone-800 rounded-full overflow-hidden mb-1.5">
+                                    <div
+                                        className={cn("h-full rounded-full transition-all duration-500", colors.bar)}
+                                        style={{ width: `${barPercent}%` }}
+                                    />
+                                </div>
+
+                                <div className="flex justify-between text-[9px] font-mono text-stone-500">
+                                    <span>{drift.count} deals</span>
+                                    <span>avg {drift.avgRate.toFixed(1)}%</span>
+                                </div>
+
+                                {/* Summary text */}
+                                {drift.summaryText && (
+                                    <div className={cn("text-[10px] mt-2", colors.text)}>
+                                        {drift.summaryText}
+                                    </div>
+                                )}
+
+                                {/* Monologue text (inner reflection) */}
+                                {drift.monologueText && (
+                                    <div className="mt-2 bg-black/30 rounded p-2">
+                                        <p className="text-[10px] font-serif italic text-stone-400 leading-relaxed">
+                                            "{drift.monologueText}"
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     <Button
                         onClick={handleSleep}

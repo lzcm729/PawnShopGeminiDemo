@@ -1,0 +1,11 @@
+﻿key,text
+drift_mild,"今天的交易...利率好像比平时高了一些。"
+drift_mild,"回想起来，今天的条件确实偏向了自己。"
+drift_mild,"客户们付出的利息...加起来可不少啊。"
+drift_severe,"今天简直像高利贷。每个客户都被狠狠宰了一刀。"
+drift_severe,"手上沾满了墨汁般的利息。这还是当铺吗，还是陷阱？"
+drift_severe,"一天下来，平均利率高得吓人。我在变成自己最讨厌的那种人。"
+drift_charity,"今天几乎没赚到钱。善良是美德，但账单不接受美德。"
+drift_charity,"一整天的慈善...妈的手术费离目标又远了一步。"
+drift_charity,"帮了那么多人，但帮不了自己。这是正确的选择吗？"
+drift_summary,"今日{count}笔交易，平均利率{avgRate}%。"

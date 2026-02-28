@@ -4,6 +4,8 @@ import { INSTINCT_MATRIX, getMatrixKey, getRandomText, getInstinctTexts, Instinc
 import { getUncertaintyRisk } from '../items/utils';
 import { GAME_CONFIG } from '../game/config';
 import { normalizeUncertainty } from '../appraisal/precision';
+import { getContractTier, type ContractTier } from '../characterAbility/essenceSystem';
+import { getInstinctToneTexts } from './instinctTones';
 
 /**
  * Map behaviorTags to the legacy InstinctNpcStyle for flavor text selection
@@ -16,6 +18,15 @@ const mapBehaviorTagsToStyle = (behaviorTags: BehaviorTag[]): InstinctNpcStyle =
     if (behaviorTags.includes('SAVVY')) return 'Professional';
     if (behaviorTags.includes('SENTIMENTAL')) return 'Professional';
     return 'Professional';
+};
+
+/**
+ * Map behaviorTags to an instinct tone modifier string (or undefined for no modifier).
+ * Used for tone+modifier CSV lookup in the six-tier instinct system.
+ */
+const getToneModifier = (behaviorTags: BehaviorTag[]): string | undefined => {
+    if (behaviorTags.includes('DESPERATE')) return 'desperate';
+    return undefined;
 };
 
 const getInsultThreshold = (behaviorTags: BehaviorTag[], minPrincipal: number) => {
@@ -38,6 +49,16 @@ const getRateZone = (rate: number): InstinctRateZone => {
     if (rate === 0.05) return 'aid';
     if (rate >= 0.20) return 'shark';
     return 'standard';
+};
+
+/** Map six-tier ContractTier to tone color for instinct display */
+const TIER_TONE_COLORS: Record<ContractTier, string> = {
+    CHARITY: 'text-green-400',
+    AID: 'text-emerald-400',
+    STANDARD: 'text-stone-400',
+    ELEVATED: 'text-amber-400',
+    HIGH: 'text-orange-400',
+    SHARK: 'text-red-500',
 };
 
 const getPriceZone = (offer: number, minPrincipal: number, desiredAmount: number, behaviorTags: BehaviorTag[]): InstinctPriceZone => {
@@ -94,6 +115,25 @@ export const getMerchantInstinct = (
     };
   }
 
+  // --- Six-tier tone system (E-1) ---
+  // Convert decimal rate to percentage for tier lookup
+  const ratePercent = Math.round(rate * 100);
+  const tier = getContractTier(ratePercent);
+  const toneModifier = getToneModifier(customer.behaviorTags);
+
+  // ~40% chance to use the six-tier tone text instead of legacy matrix
+  const toneRoll = ((seed * 11 + 7) % 100) / 100;
+  if (toneRoll < 0.4) {
+    const toneTexts = getInstinctToneTexts(tier, toneModifier);
+    if (toneTexts && toneTexts.length > 0) {
+      return {
+        text: getRandomText(toneTexts, seed),
+        color: TIER_TONE_COLORS[tier],
+      };
+    }
+  }
+
+  // --- Legacy matrix fallback ---
   const rateZone = getRateZone(rate);
   const style = mapBehaviorTagsToStyle(customer.behaviorTags);
   const priceZone = getPriceZone(offer, customer.minimumAmount, customer.desiredAmount, customer.behaviorTags);
@@ -101,10 +141,8 @@ export const getMerchantInstinct = (
   const specificKey = getMatrixKey(rateZone, priceZone, style);
   let texts = INSTINCT_MATRIX[specificKey];
 
-  let toneColor = "text-stone-500";
+  let toneColor = TIER_TONE_COLORS[tier]; // Use six-tier color even for legacy texts
   if (priceZone === 'insult') toneColor = "text-red-500";
-  else if (rateZone === 'shark') toneColor = "text-purple-400";
-  else if (rateZone === 'charity') toneColor = "text-green-400";
   else if (priceZone === 'premium') toneColor = "text-amber-400";
   else if (priceZone === 'haggling') toneColor = "text-stone-400";
 

@@ -28,6 +28,7 @@ interface AppraisalResult {
     senseHiddenHint?: 'HAS_HIDDEN' | 'NO_HIDDEN';  // From SENSE_HIDDEN skill
     pierceIllusionTriggered?: boolean;  // True when PIERCE_ILLUSION auto-revealed a trait
     revealedHiddenTag?: ItemTag;  // G2 tag revealed through appraisal
+    isMastered?: boolean;  // E-2: True when uncertainty <= mastery threshold (diminishing returns)
 }
 
 export const useAppraisal = () => {
@@ -360,6 +361,10 @@ export const useAppraisal = () => {
             }
         });
 
+        // E-2: Mastery check — item is "seen through" when uncertainty is very low
+        const masteryThreshold = GAME_CONFIG.APPRAISAL.APPRAISAL_MASTERY_THRESHOLD;
+        const isMastered = newUncertainty <= masteryThreshold;
+
         return {
             success: true,
             newTraitsFound: uniqueNewTraits,
@@ -370,6 +375,7 @@ export const useAppraisal = () => {
             isBreakthrough,
             pierceIllusionTriggered,
             revealedHiddenTag,
+            isMastered,
         };
 
     }, [customer, state.stats.actionPoints, dispatch, abilityState]);

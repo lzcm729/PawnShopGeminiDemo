@@ -291,6 +291,8 @@ normal_convergence_speed = 0.15
 trait_discovery_uncertainty = 0.10
 # 失误范围扩张
 mishap_range_expansion = 0.05
+# 鉴定收益天花板：uncertainty <= 此值时显示"已看透"提示
+appraisal_mastery_threshold = 0.12
 # 估价非对称偏斜最小值
 skew_min = 0.2
 # 估价非对称偏斜范围
@@ -408,6 +410,18 @@ patience_caution_threshold = 0.6
 patience_danger_threshold = 0.3
 # 耐心归零时触发最后通牒的概率
 ultimatum_chance = 0.5
+
+# --- 耐心消耗规则 (E-4) ---
+# 被动消耗：每回合自然流逝
+passive_decay_per_round = 0          # 0 = 被动消耗禁用（当前通过push-pull概率消耗）
+# 拒绝客户塞牌的耐心消耗
+refuse_card_cost = 1
+# 耐心=1 特殊决策窗口：最后让步利率调整量
+last_chance_rate_adjustment = 0.01
+# 耐心=0 最终修正：当金可调整比例
+final_adjustment_principal_ratio = 0.05
+# 耐心=0 最终修正：利率可调整量
+final_adjustment_rate_step = 0.01
 
 # 近Ask耐心减免：出价接近NPC Ask价格时减少耐心消耗概率 (#41)
 near_ask_ratio = 0.90                     # offer >= ask * 此值 视为"接近Ask"
@@ -1016,6 +1030,16 @@ vibe = 0
 craft = 0
 time = 4
 vibe = 0
+
+# ------------------------------------------------------------
+# 道德滑坡回望 (Drift Meter)
+# 追踪玩家一天内的利率偏移，夜间触发独白反思
+# ------------------------------------------------------------
+[drift_meter]
+# 平均利率超过此阈值时触发夜间独白（百分比形式，如 10 = 10%）
+drift_threshold = 10
+# 严重偏移阈值（触发更强烈的独白）
+severe_drift_threshold = 15
 
 [essence.stolen_goods_gain]
 craft = 0
