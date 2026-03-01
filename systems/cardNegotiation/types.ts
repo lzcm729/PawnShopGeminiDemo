@@ -188,6 +188,16 @@ export interface CardPlayResult {
   rateReset: boolean;
   /** Whether this was an insult */
   isInsult: boolean;
+  /** All traits discovered (names) */
+  traitsDiscovered?: string[];
+  /** Appraisal event type from d100 roll */
+  appraisalEvent?: string;
+  /** Whether a breakthrough event occurred */
+  isBreakthrough?: boolean;
+  /** Value jump type when FAKE or JACKPOT trait discovered */
+  valueJump?: 'FAKE' | 'JACKPOT';
+  /** Whether the item is fully mastered */
+  isMastered?: boolean;
 }
 
 // ============================================================================

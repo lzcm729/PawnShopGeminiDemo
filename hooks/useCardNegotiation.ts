@@ -17,14 +17,32 @@ import type {
   CardCustomerType,
 } from '@/systems/cardNegotiation/types';
 import { createDeck, drawCards, applyRetentionRules } from '@/systems/cardNegotiation/deck';
+import { addTemporaryCard } from '@/systems/cardNegotiation/deck';
 import { resolveCardEffect, canPlayCard } from '@/systems/cardNegotiation/effects';
 import { getNegotiationPhase, checkRateThreshold } from '@/systems/cardNegotiation/roundProgression';
 import { executeCustomerTurn, mapBehaviorToCustomerType, type CustomerTurnResult } from '@/systems/cardNegotiation/customerTurn';
-import { buildInitialDeck } from '@/systems/cardNegotiation/definitions';
+import { buildInitialDeck, createTraitCard } from '@/systems/cardNegotiation/definitions';
 import { getContractTier, type ContractTier } from '@/systems/characterAbility/essenceSystem';
 import { updateDriftMeter } from '@/systems/reputation/driftMeter';
 import { GAME_CONFIG } from '@/systems/game/config';
+import { generateValuationRange } from '@/systems/items/utils';
+import { performAppraisalCore } from '@/systems/items/appraisalCore';
 import type { Customer } from '@/types';
+import type { AbilityState } from '@/systems/characterAbility/types';
+import type { ActiveNewsInstance } from '@/systems/news/types';
+
+// ============================================================================
+// Dependencies for external integrations
+// ============================================================================
+
+export interface CardNegotiationDeps {
+  dispatch: (action: any) => void;
+  abilityState: AbilityState;
+  moraleBuff?: { appraisalModifier: number; expiresDay: number } | null;
+  currentDay: number;
+  motherHealth: number;
+  dailyNews: ActiveNewsInstance[];
+}
 
 // ============================================================================
 // Hook Return Type
@@ -93,10 +111,12 @@ export interface CardNegotiationHookReturn {
  *
  * @param customer - The current customer being served
  * @param itemUncertainty - Current item uncertainty from appraisal system
+ * @param deps - External dependencies for appraisal integration
  */
 export function useCardNegotiation(
   customer: Customer | null,
   itemUncertainty: number = 0.5,
+  deps?: CardNegotiationDeps,
 ): CardNegotiationHookReturn {
   // Determine customer type from behavior tags
   const customerType = useMemo<CardCustomerType>(() => {
@@ -144,22 +164,100 @@ export function useCardNegotiation(
     if (!canPlayCard(card, state)) return null;
 
     const previousRate = state.currentRate;
-    const { newState, result } = resolveCardEffect(card, state, choiceId);
+    let { newState, result } = resolveCardEffect(card, state, choiceId);
 
     // Check rate threshold crossing
     const thresholdKey = checkRateThreshold(newState.currentRate, previousRate);
     setRateThresholdKey(thresholdKey);
 
-    // Track economic card usage for passive rounds counter
-    const hasEconomicEffect = card.effects.some(e => e.type === 'economic');
-    if (!hasEconomicEffect) {
-      // Not an economic card - increment passive rounds counter
-      // (This is handled per-round in endTurn, not per-card)
+    // --- Appraisal card integration: run full appraisal logic ---
+    const hasAppraisalEffect = card.effects.some(
+      e => e.type === 'information' && e.canDiscoverTrait,
+    );
+
+    if (hasAppraisalEffect && customer && deps) {
+      // Build item with card system's appraisalCount (effects.ts already incremented it)
+      const itemForAppraisal = {
+        ...customer.item,
+        appraisalCount: newState.appraisalCount - 1, // undo the +1 from effects.ts line 146
+      };
+
+      const appraisalResult = performAppraisalCore({
+        item: itemForAppraisal,
+        abilityState: deps.abilityState,
+        moraleBuff: deps.moraleBuff,
+        currentDay: deps.currentDay,
+        motherHealth: deps.motherHealth,
+        dailyNews: deps.dailyNews,
+      });
+
+      // Override uncertainty with the core calculation
+      newState = { ...newState, currentUncertainty: appraisalResult.newUncertainty };
+
+      // Sync to Redux
+      deps.dispatch({
+        type: 'UPDATE_ITEM_KNOWLEDGE',
+        payload: {
+          itemId: customer.item.id,
+          newRange: appraisalResult.newRange,
+          revealedTraits: appraisalResult.updatedRevealed,
+          hiddenTraits: appraisalResult.updatedHidden,
+          newUncertainty: appraisalResult.newUncertainty,
+          newPerceived: appraisalResult.finalPerceived,
+          incrementAppraisalCount: true,
+          hasNegativeEvent: appraisalResult.hasNegativeEvent ? true : undefined,
+          ...(appraisalResult.initialRange && { initialRange: appraisalResult.initialRange }),
+          ...(appraisalResult.revealedHiddenTag && { revealedHiddenTag: appraisalResult.revealedHiddenTag }),
+        },
+      });
+
+      // Generate trait cards for discovered traits
+      for (const trait of appraisalResult.newTraitsFound) {
+        const traitCard = createTraitCard(
+          trait.type as 'FLAW' | 'FAKE' | 'STORY' | 'STOLEN' | 'JACKPOT',
+          trait.name,
+          trait.description,
+          trait.valueImpact,
+        );
+        newState = addTemporaryCard(newState, traitCard);
+        result.generatedCards.push(traitCard);
+      }
+
+      // Populate result fields
+      if (appraisalResult.newTraitsFound.length > 0) {
+        result.traitDiscovered = appraisalResult.newTraitsFound[0].name;
+      }
+      result.traitsDiscovered = appraisalResult.newTraitsFound.map(t => t.name);
+      result.appraisalEvent = appraisalResult.event.type;
+      result.isBreakthrough = appraisalResult.isBreakthrough;
+      result.valueJump = appraisalResult.valueJump;
+      result.isMastered = appraisalResult.isMastered;
+    }
+
+    // --- Basic observation Redux sync (non-appraisal info cards) ---
+    const hasBasicInfoEffect = card.effects.some(
+      e => e.type === 'information' && e.shrinkPercent !== undefined && e.shrinkPercent > 0 && !e.canDiscoverTrait,
+    );
+
+    if (hasBasicInfoEffect && result.estimateRangeShrunk && customer && deps) {
+      deps.dispatch({
+        type: 'UPDATE_ITEM_KNOWLEDGE',
+        payload: {
+          itemId: customer.item.id,
+          newRange: generateValuationRange(
+            customer.item.realValue,
+            customer.item.perceivedValue,
+            newState.currentUncertainty,
+          ),
+          revealedTraits: customer.item.revealedTraits || [],
+          newUncertainty: newState.currentUncertainty,
+        },
+      });
     }
 
     setState(newState);
     return result;
-  }, [state]);
+  }, [state, customer, deps]);
 
   const endTurn = useCallback((retainedCardInstanceId?: string): CustomerTurnResult | null => {
     if (!state.isActive || state.isLocked) return null;

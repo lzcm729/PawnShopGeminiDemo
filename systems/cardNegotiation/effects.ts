@@ -275,15 +275,21 @@ function applyInformationEffect(
 
   // Shrink estimate range
   if (effect.shrinkPercent !== undefined && effect.shrinkPercent > 0) {
-    const shrinkFactor = effect.shrinkPercent / 100;
-    const newUncertainty = Math.max(0, newState.currentUncertainty * (1 - shrinkFactor));
-
-    // Check ceiling
-    if (newState.currentUncertainty <= GAME_CONFIG.CARD_NEGOTIATION.APPRAISAL_CEILING_THRESHOLD) {
-      // No further shrinkage
-    } else {
-      newState = { ...newState, currentUncertainty: newUncertainty };
+    if (effect.canDiscoverTrait) {
+      // Appraisal cards: uncertainty handled by performAppraisalCore in the hook
       result.estimateRangeShrunk = true;
+    } else {
+      // Basic observation: simple shrink
+      const shrinkFactor = effect.shrinkPercent / 100;
+      const newUncertainty = Math.max(0, newState.currentUncertainty * (1 - shrinkFactor));
+
+      // Check ceiling
+      if (newState.currentUncertainty <= GAME_CONFIG.CARD_NEGOTIATION.APPRAISAL_CEILING_THRESHOLD) {
+        // No further shrinkage
+      } else {
+        newState = { ...newState, currentUncertainty: newUncertainty };
+        result.estimateRangeShrunk = true;
+      }
     }
   }
 

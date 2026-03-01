@@ -42,6 +42,8 @@ import { MoralQuakeOverlay } from './components/MoralQuakeOverlay';
 import { ReputationType } from './types';
 import { RateDisplayProvider } from './components/ui/RateDisplayContext';
 import { getNewsStolenRiskModifier } from './systems/news/engine';
+import { SKILL_DEFINITIONS } from './systems/characterAbility/skillDefinitions';
+import type { AbilityState } from './systems/characterAbility/types';
 
 const GameContent: React.FC = () => {
   const { state, dispatch } = useGame();
@@ -60,9 +62,27 @@ const GameContent: React.FC = () => {
 
   // Card negotiation (feature-flagged)
   const useCardSystem = GAME_CONFIG.CARD_NEGOTIATION.ENABLED;
+  const cardAbilityState: AbilityState = state.abilityState ?? {
+    skills: Object.fromEntries(
+      Object.keys(SKILL_DEFINITIONS).map(id => [id, { unlocked: false, useCount: 0 }])
+    ),
+    moralEchoQueue: [],
+    wordOfMouth: { failStreak: 0, pendingChecks: [] },
+    foresightFatigue: { totalFlashes: 0, fatigued: false },
+    skillsUsedThisNegotiation: [],
+    extraCareUsedThisDeparture: false,
+  } as AbilityState;
   const cardNegotiation = useCardNegotiation(
     useCardSystem ? state.currentCustomer : null,
     itemUncertainty,
+    {
+      dispatch,
+      abilityState: cardAbilityState,
+      moraleBuff: state.moraleBuff,
+      currentDay: state.stats.day,
+      motherHealth: state.stats.motherStatus.health,
+      dailyNews: state.dailyNews || [],
+    },
   );
 
   // Transition State

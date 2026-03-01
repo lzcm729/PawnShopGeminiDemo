@@ -126,6 +126,8 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
       // Inner monologue for information cards
       const subtextParts: string[] = [];
       if (lastPlayResult.estimateRangeShrunk) subtextParts.push('范围收缩');
+      if (lastPlayResult.isBreakthrough) subtextParts.push('灵光一闪');
+      if (lastPlayResult.appraisalEvent === 'MISHAP') subtextParts.push('鉴定失误');
 
       addEntry(setChatLog, {
         id: nextId(entryIdRef),
@@ -140,8 +142,46 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
         },
       });
 
-      // Extra entry for trait discovery
-      if (lastPlayResult.traitDiscovered) {
+      // BREAKTHROUGH event
+      if (lastPlayResult.isBreakthrough) {
+        addEntry(setChatLog, {
+          id: nextId(entryIdRef),
+          sender: 'player',
+          type: 'INNER_MONOLOGUE',
+          text: txt('inner_breakthrough'),
+          sentiment: 'positive',
+          data: { feedbackType: 'BREAKTHROUGH' },
+        });
+      }
+
+      // MISHAP event
+      if (lastPlayResult.appraisalEvent === 'MISHAP') {
+        addEntry(setChatLog, {
+          id: nextId(entryIdRef),
+          sender: 'player',
+          type: 'INNER_MONOLOGUE',
+          text: txt('inner_mishap'),
+          sentiment: 'negative',
+          data: { feedbackType: 'MISHAP' },
+        });
+      }
+
+      // Value jump (FAKE or JACKPOT)
+      if (lastPlayResult.valueJump) {
+        addEntry(setChatLog, {
+          id: nextId(entryIdRef),
+          sender: 'player',
+          type: 'INNER_MONOLOGUE',
+          text: txt(`inner_value_jump_${lastPlayResult.valueJump}`),
+          sentiment: lastPlayResult.valueJump === 'JACKPOT' ? 'positive' : 'negative',
+          data: { feedbackType: `VALUE_JUMP_${lastPlayResult.valueJump}` },
+        });
+      }
+
+      // Trait discovery (use new traitsDiscovered array with fallback to legacy traitDiscovered)
+      const traits = lastPlayResult.traitsDiscovered ??
+        (lastPlayResult.traitDiscovered ? [lastPlayResult.traitDiscovered] : []);
+      if (traits.length > 0) {
         addEntry(setChatLog, {
           id: nextId(entryIdRef),
           sender: 'player',
@@ -150,8 +190,20 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
           sentiment: 'positive',
           data: {
             feedbackType: 'TRAIT_DISCOVERED',
-            traitName: lastPlayResult.traitDiscovered,
+            traitName: traits.join('\u3001'),
           },
+        });
+      }
+
+      // Mastered (fully appraised)
+      if (lastPlayResult.isMastered) {
+        addEntry(setChatLog, {
+          id: nextId(entryIdRef),
+          sender: 'player',
+          type: 'INNER_MONOLOGUE',
+          text: txt('inner_mastered'),
+          sentiment: 'positive',
+          data: { feedbackType: 'MASTERED' },
         });
       }
     } else if (hasNarrative) {
