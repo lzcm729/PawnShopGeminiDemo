@@ -1098,14 +1098,6 @@ precision_patience_threshold = 0.30
 # 第1轮经济卡耐心消耗减半系数
 probing_patience_multiplier = 0.50
 
-# --- 客户掉落概率 ---
-# 基础让步概率（"等待"机制）
-wait_concession_chance = 0.50
-# 基础无反应概率
-wait_no_reaction_chance = 0.30
-# 基础不耐烦概率
-wait_impatient_chance = 0.20
-
 # --- 当金被压低/利率过高的动态掉牌阈值 ---
 # 当金被压低超过此比例时，叙事牌概率上升
 dynamic_drop_price_threshold = 0.15

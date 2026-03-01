@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
-import { Check, XCircle, Clock, Pause } from 'lucide-react';
+import { Check, XCircle, Clock } from 'lucide-react';
 import type { Card } from '../../systems/cardNegotiation/types';
 import { playSfx } from '../../systems/game/audio';
 
@@ -14,7 +14,6 @@ interface ActionButtonsProps {
   onAcceptDeal: () => void;
   onDismissCustomer: () => void;
   onEndTurn: (retainedCardInstanceId?: string) => void;
-  onWait: () => void;
 }
 
 /**
@@ -78,7 +77,6 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onAcceptDeal,
   onDismissCustomer,
   onEndTurn,
-  onWait,
 }) => {
   const [showRetention, setShowRetention] = useState(false);
 
@@ -133,18 +131,6 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           className="flex-1"
         >
           End Turn
-        </Button>
-
-        {/* Wait - player turn only */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onWait}
-          disabled={!isPlayerTurn || !isActive || isLocked}
-          leftIcon={<Pause className="w-3.5 h-3.5" />}
-          className="flex-none"
-        >
-          Wait
         </Button>
       </div>
 

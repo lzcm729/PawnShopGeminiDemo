@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatLog, type LogEntry } from '../negotiation/ChatLog';
 import { createTextRegistry } from '../../systems/utils/textRegistry';
-import type { CardPlayResult, WaitResult, CardCustomerType } from '../../systems/cardNegotiation/types';
+import type { CardPlayResult, CardCustomerType } from '../../systems/cardNegotiation/types';
 import type { CustomerTurnResult } from '../../systems/cardNegotiation/customerTurn';
 import type { Customer } from '../../types';
 
@@ -19,7 +19,6 @@ interface CardChatLogProps {
   customerType: CardCustomerType;
   lastPlayResult: CardPlayResult | null;
   lastCustomerResult: CustomerTurnResult | null;
-  lastWaitResult: WaitResult | null;
   rateThresholdKey: string | null;
   dropHint: 'narrative' | 'disruption' | 'temptation' | 'none';
   roundNumber: number;
@@ -57,7 +56,6 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
   customerType,
   lastPlayResult,
   lastCustomerResult,
-  lastWaitResult,
   rateThresholdKey,
   dropHint,
   roundNumber,
@@ -182,44 +180,7 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
     }
   }, [lastPlayResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // --- 3. Wait result ---
-  useEffect(() => {
-    if (!lastWaitResult) return;
-
-    switch (lastWaitResult.outcome) {
-      case 'concession': {
-        const subtext = lastWaitResult.droppedCard
-          ? `${lastWaitResult.droppedCard.name}`
-          : undefined;
-        addEntry(setChatLog, {
-          id: nextId(entryIdRef),
-          sender: 'customer',
-          text: txt(`wait_concession_${customerType}`),
-          subtext,
-          sentiment: 'positive',
-        });
-        break;
-      }
-      case 'impatient':
-        addEntry(setChatLog, {
-          id: nextId(entryIdRef),
-          sender: 'customer',
-          text: txt(`wait_impatient_${customerType}`),
-          sentiment: 'negative',
-        });
-        break;
-      case 'no_reaction':
-        addEntry(setChatLog, {
-          id: nextId(entryIdRef),
-          sender: 'system',
-          text: txt('wait_no_reaction'),
-          sentiment: 'neutral',
-        });
-        break;
-    }
-  }, [lastWaitResult]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // --- 4. Customer turn result ---
+  // --- 3. Customer turn result ---
   useEffect(() => {
     if (!lastCustomerResult) return;
     if (lastCustomerResult.insertedCards.length === 0) return;
@@ -235,7 +196,7 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
     });
   }, [lastCustomerResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // --- 5. Round transition ---
+  // --- 4. Round transition ---
   useEffect(() => {
     if (roundNumber <= 1) return;
     addEntry(setChatLog, {
@@ -246,7 +207,7 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
     });
   }, [roundNumber]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // --- 6. Rate threshold crossing ---
+  // --- 5. Rate threshold crossing ---
   useEffect(() => {
     if (!rateThresholdKey) return;
     addEntry(setChatLog, {

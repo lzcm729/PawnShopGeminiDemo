@@ -580,9 +580,6 @@ interface TomlCardNegotiation {
   appraisal_ceiling_threshold: number;
   precision_patience_threshold: number;
   probing_patience_multiplier: number;
-  wait_concession_chance: number;
-  wait_no_reaction_chance: number;
-  wait_impatient_chance: number;
   dynamic_drop_price_threshold: number;
   dynamic_drop_rate_threshold: number;
   dynamic_drop_passive_rounds: number;
@@ -1216,9 +1213,6 @@ export const GAME_CONFIG = {
     APPRAISAL_CEILING_THRESHOLD: tomlConfig.card_negotiation.appraisal_ceiling_threshold,
     PRECISION_PATIENCE_THRESHOLD: tomlConfig.card_negotiation.precision_patience_threshold,
     PROBING_PATIENCE_MULTIPLIER: tomlConfig.card_negotiation.probing_patience_multiplier,
-    WAIT_CONCESSION_CHANCE: tomlConfig.card_negotiation.wait_concession_chance,
-    WAIT_NO_REACTION_CHANCE: tomlConfig.card_negotiation.wait_no_reaction_chance,
-    WAIT_IMPATIENT_CHANCE: tomlConfig.card_negotiation.wait_impatient_chance,
     DYNAMIC_DROP_PRICE_THRESHOLD: tomlConfig.card_negotiation.dynamic_drop_price_threshold,
     DYNAMIC_DROP_RATE_THRESHOLD: tomlConfig.card_negotiation.dynamic_drop_rate_threshold,
     DYNAMIC_DROP_PASSIVE_ROUNDS: tomlConfig.card_negotiation.dynamic_drop_passive_rounds,

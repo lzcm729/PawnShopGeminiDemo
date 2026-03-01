@@ -161,20 +161,6 @@ export interface InsertedCardDecision {
 }
 
 // ============================================================================
-// Wait/Persistence Result
-// ============================================================================
-
-export type WaitOutcome = 'concession' | 'no_reaction' | 'impatient';
-
-export interface WaitResult {
-  outcome: WaitOutcome;
-  /** Card dropped on concession */
-  droppedCard?: Card;
-  /** Patience change on impatient */
-  patienceChange?: number;
-}
-
-// ============================================================================
 // Card Play Result
 // ============================================================================
 

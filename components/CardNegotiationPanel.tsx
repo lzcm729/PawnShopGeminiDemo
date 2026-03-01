@@ -14,7 +14,7 @@ import { CardHandArea } from './cardNegotiation/CardHandArea';
 import { CardChatLog } from './cardNegotiation/CardChatLog';
 import { ActionButtons } from './cardNegotiation/ActionButtons';
 import { InsertDecision } from './cardNegotiation/InsertDecision';
-import type { CardPlayResult, WaitResult } from '../systems/cardNegotiation/types';
+import type { CardPlayResult } from '../systems/cardNegotiation/types';
 import type { CustomerTurnResult } from '../systems/cardNegotiation/customerTurn';
 
 // ============================================================================
@@ -49,8 +49,6 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
   // Track results for feedback display
   const [lastPlayResult, setLastPlayResult] = useState<CardPlayResult | null>(null);
   const [lastCustomerResult, setLastCustomerResult] = useState<CustomerTurnResult | null>(null);
-  const [lastWaitResult, setLastWaitResult] = useState<WaitResult | null>(null);
-
   // Charity glow effect
   const [showCharityGlow, setShowCharityGlow] = useState(false);
 
@@ -73,13 +71,6 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
     const result = actions.endTurn(retainedCardInstanceId);
     if (result) {
       setLastCustomerResult(result);
-    }
-  };
-
-  const handleWait = () => {
-    const result = actions.waitAction();
-    if (result) {
-      setLastWaitResult(result);
     }
   };
 
@@ -258,7 +249,6 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
           customerType={customerType}
           lastPlayResult={lastPlayResult}
           lastCustomerResult={lastCustomerResult}
-          lastWaitResult={lastWaitResult}
           rateThresholdKey={rateThresholdKey}
           dropHint={dropHint}
           roundNumber={negState.roundNumber}
@@ -291,7 +281,6 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
           onAcceptDeal={handleAcceptDeal}
           onDismissCustomer={handleDismissCustomer}
           onEndTurn={handleEndTurn}
-          onWait={handleWait}
         />
       </div>
 

@@ -13,15 +13,13 @@ import type {
   CardNegotiationState,
   CardPlayResult,
   InsertedCardDecision,
-  WaitResult,
   NegotiationMacroPhase,
   CardCustomerType,
 } from '@/systems/cardNegotiation/types';
-import { createDeck, drawCards, applyRetentionRules, addTemporaryCard } from '@/systems/cardNegotiation/deck';
+import { createDeck, drawCards, applyRetentionRules } from '@/systems/cardNegotiation/deck';
 import { resolveCardEffect, canPlayCard } from '@/systems/cardNegotiation/effects';
 import { getNegotiationPhase, checkRateThreshold } from '@/systems/cardNegotiation/roundProgression';
 import { executeCustomerTurn, mapBehaviorToCustomerType, type CustomerTurnResult } from '@/systems/cardNegotiation/customerTurn';
-import { executeWait } from '@/systems/cardNegotiation/persistence';
 import { buildInitialDeck } from '@/systems/cardNegotiation/definitions';
 import { getContractTier, type ContractTier } from '@/systems/characterAbility/essenceSystem';
 import { updateDriftMeter } from '@/systems/reputation/driftMeter';
@@ -37,8 +35,6 @@ export interface CardNegotiationActions {
   playCard: (cardInstanceId: string, choiceId?: string) => CardPlayResult | null;
   /** End the player's turn -> retention rules -> customer turn -> draw */
   endTurn: (retainedCardInstanceId?: string) => CustomerTurnResult | null;
-  /** Use the "wait" mechanic instead of playing cards */
-  waitAction: () => WaitResult | null;
   /** Accept the current conditions and close the deal */
   acceptDeal: () => DealResult;
   /** Dismiss the customer without a deal */
@@ -211,46 +207,6 @@ export function useCardNegotiation(
     return customerResult;
   }, [state, customerType]);
 
-  const waitAction = useCallback((): WaitResult | null => {
-    if (!state.isActive || state.isLocked) return null;
-
-    const result = executeWait(state, customerType);
-
-    let newState = { ...state };
-
-    switch (result.outcome) {
-      case 'concession':
-        if (result.droppedCard) {
-          newState = addTemporaryCard(newState, result.droppedCard);
-        }
-        break;
-      case 'impatient':
-        newState = {
-          ...newState,
-          patience: Math.max(0, newState.patience + (result.patienceChange || 0)),
-        };
-        if (newState.patience <= 0) {
-          newState = { ...newState, isLocked: true };
-        }
-        break;
-      case 'no_reaction':
-        // Nothing happens
-        break;
-    }
-
-    // Increment passive rounds
-    newState = {
-      ...newState,
-      modifiers: {
-        ...newState.modifiers,
-        passiveRounds: newState.modifiers.passiveRounds + 1,
-      },
-    };
-
-    setState(newState);
-    return result;
-  }, [state, customerType]);
-
   const acceptDeal = useCallback((): DealResult => {
     const ratePercent = state.currentRate;
     const rateDecimal = ratePercent / 100;
@@ -353,7 +309,6 @@ export function useCardNegotiation(
     actions: {
       playCard,
       endTurn,
-      waitAction,
       acceptDeal,
       dismissCustomer,
       acceptInsertedCard,

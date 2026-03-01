@@ -18,8 +18,6 @@ export type {
   CardCustomerType,
   DropCategory,
   InsertedCardDecision,
-  WaitOutcome,
-  WaitResult,
   CardPlayResult,
   SessionModifiers,
   CardNegotiationState,
@@ -72,11 +70,6 @@ export {
   executeCustomerTurn,
   mapBehaviorToCustomerType,
 } from './customerTurn';
-
-// Persistence
-export {
-  executeWait,
-} from './persistence';
 
 // Instinct texts
 export {
