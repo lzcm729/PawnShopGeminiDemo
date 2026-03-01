@@ -15,6 +15,7 @@ import type {
   InsertedCardDecision,
   NegotiationMacroPhase,
   CardCustomerType,
+  InformationEffect,
 } from '@/systems/cardNegotiation/types';
 import { createDeck, drawCards, applyRetentionRules } from '@/systems/cardNegotiation/deck';
 import { addTemporaryCard } from '@/systems/cardNegotiation/deck';
@@ -30,6 +31,10 @@ import { performAppraisalCore } from '@/systems/items/appraisalCore';
 import type { Customer } from '@/types';
 import type { AbilityState } from '@/systems/characterAbility/types';
 import type { ActiveNewsInstance } from '@/systems/news/types';
+import { generateCustomerInsight } from '@/systems/customerInsight/generator';
+import { getEmpathyFeedback, getProbeFeedback } from '@/systems/negotiation/empathyProbeFeedback';
+import { generateProbeReveal } from '@/systems/negotiation/probeEffects';
+import type { ConcessionTier } from '@/systems/negotiation/probeEffects';
 
 // ============================================================================
 // Dependencies for external integrations
@@ -255,6 +260,85 @@ export function useCardNegotiation(
       });
     }
 
+    // --- Insight card integration ---
+    const insightEffect = card.effects.find(
+      e => e.type === 'information' && e.generateInsightCards,
+    );
+    if (insightEffect && customer) {
+      const layer = ((insightEffect as InformationEffect).insightLayer ?? 1) as 1 | 2;
+      const insightResult = generateCustomerInsight(customer, layer);
+
+      // Apply patience cost
+      if (insightResult.patienceCost > 0) {
+        newState = {
+          ...newState,
+          patience: Math.max(0, newState.patience - insightResult.patienceCost),
+        };
+        result.patienceChange = (result.patienceChange || 0) - insightResult.patienceCost;
+      }
+
+      // Store in state
+      newState = {
+        ...newState,
+        insightResult,
+        dispositionRevealed: true,
+      };
+
+      // Enrich result
+      result.insightResult = {
+        disposition: insightResult.disposition,
+        dispositionText: insightResult.dispositionText,
+        floorHint: insightResult.floorHint,
+        patienceCost: insightResult.patienceCost,
+        patienceTriggered: insightResult.patienceTriggered,
+        layer,
+      };
+    }
+
+    // --- Empathy card integration ---
+    if (card.id === 'empathy' && newState.insightResult && customer) {
+      const disposition = newState.insightResult.disposition;
+      const isCorrect = disposition === 'desperate' || disposition === 'sincere';
+      const feedback = getEmpathyFeedback(disposition, isCorrect);
+
+      if (isCorrect) {
+        // Success: +1 patience recovery
+        newState = {
+          ...newState,
+          patience: Math.min(newState.maxPatience, newState.patience + 1),
+        };
+        result.patienceChange = (result.patienceChange || 0) + 1;
+      }
+
+      result.empathyResult = { isSuccess: isCorrect, feedback };
+    }
+
+    // --- Probe card integration ---
+    if (card.id === 'probe' && newState.insightResult && customer) {
+      const disposition = newState.insightResult.disposition;
+      const isCorrect = disposition === 'bluffing' || disposition === 'firm';
+      const feedback = getProbeFeedback(disposition, isCorrect);
+
+      let floorPrice: number | undefined;
+      let concessionTier: ConcessionTier | undefined;
+
+      if (isCorrect) {
+        const probeReveal = generateProbeReveal(
+          customer.minimumAmount,
+          customer.behaviorTags,
+          newState.currentPawnAmount,
+          0, // persistCount (no push-pull in card system)
+          0, // concessionCount
+        );
+        floorPrice = probeReveal.floorPrice;
+        concessionTier = probeReveal.concessionTier;
+
+        newState = { ...newState, revealedFloorPrice: floorPrice };
+      }
+
+      result.probeResult = { isSuccess: isCorrect, feedback, floorPrice, concessionTier };
+    }
+
     setState(newState);
     return result;
   }, [state, customer, deps]);
@@ -460,6 +544,9 @@ function createInitialState(
     currentUncertainty: itemUncertainty,
     cardsPlayedThisRound: [],
     appraisalCount: 0,
+    insightResult: undefined,
+    dispositionRevealed: false,
+    revealedFloorPrice: undefined,
     isActive: true,
     isLocked: false,
     appraisalCardsRemaining: appraisalTotal,

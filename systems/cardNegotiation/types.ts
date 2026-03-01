@@ -6,6 +6,10 @@
  * switchable via feature flag.
  */
 
+import type { Disposition, CustomerInsightResult } from '../customerInsight/types';
+import type { SkillFeedback } from '../negotiation/empathyProbeFeedback';
+import type { ConcessionTier } from '../negotiation/probeEffects';
+
 // ============================================================================
 // Card Effect Types
 // ============================================================================
@@ -45,6 +49,8 @@ export interface InformationEffect {
   successChance?: number;
   /** Add uncertainty to estimate */
   addUncertainty?: number;
+  /** Insight reveal layer (1 = disposition only, 2 = + floor hint) */
+  insightLayer?: 1 | 2;
 }
 
 /** Narrative sub-effects */
@@ -198,6 +204,27 @@ export interface CardPlayResult {
   valueJump?: 'FAKE' | 'JACKPOT';
   /** Whether the item is fully mastered */
   isMastered?: boolean;
+  /** Insight result (when playing insight card) */
+  insightResult?: {
+    disposition: Disposition;
+    dispositionText: string;
+    floorHint: string;
+    patienceCost: number;
+    patienceTriggered: boolean;
+    layer: 1 | 2;
+  };
+  /** Empathy result (when playing empathy card) */
+  empathyResult?: {
+    isSuccess: boolean;
+    feedback: SkillFeedback;
+  };
+  /** Probe result (when playing probe card) */
+  probeResult?: {
+    isSuccess: boolean;
+    feedback: SkillFeedback;
+    floorPrice?: number;
+    concessionTier?: ConcessionTier;
+  };
 }
 
 // ============================================================================
@@ -252,6 +279,14 @@ export interface CardNegotiationState {
 
   // Appraisal count for FAKE guarantee
   appraisalCount: number;
+
+  // Insight state
+  /** Insight result from playing insight card */
+  insightResult?: CustomerInsightResult;
+  /** Whether disposition has been revealed */
+  dispositionRevealed: boolean;
+  /** Revealed floor price from successful probe */
+  revealedFloorPrice?: number;
 
   // Whether the negotiation is still active
   isActive: boolean;

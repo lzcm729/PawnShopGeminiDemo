@@ -86,7 +86,136 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
     const hasInformation = card.effects.some(e => e.type === 'information');
     const hasNarrative = card.effects.some(e => e.type === 'narrative');
 
-    if (hasEconomic) {
+    // --- Insight result ---
+    if (lastPlayResult.insightResult) {
+      const { layer, dispositionText, floorHint, patienceTriggered } = lastPlayResult.insightResult;
+
+      // Layer announcement (inner monologue)
+      addEntry(setChatLog, {
+        id: nextId(entryIdRef),
+        sender: 'player',
+        type: 'INNER_MONOLOGUE',
+        text: txt(layer === 1 ? 'play_insight_layer1' : 'play_insight_layer2'),
+        sentiment: 'neutral',
+        data: { feedbackType: 'INSIGHT' },
+      });
+
+      // Disposition text (from the insight generator)
+      addEntry(setChatLog, {
+        id: nextId(entryIdRef),
+        sender: 'player',
+        type: 'INNER_MONOLOGUE',
+        text: dispositionText,
+        sentiment: 'positive',
+        data: { feedbackType: 'INSIGHT_DISPOSITION' },
+      });
+
+      // Layer 2: Floor hint
+      if (layer >= 2 && floorHint) {
+        addEntry(setChatLog, {
+          id: nextId(entryIdRef),
+          sender: 'player',
+          type: 'INNER_MONOLOGUE',
+          text: floorHint,
+          sentiment: 'positive',
+          data: { feedbackType: 'INSIGHT_FLOOR_HINT' },
+        });
+      }
+
+      // Patience trigger warning
+      if (patienceTriggered) {
+        addEntry(setChatLog, {
+          id: nextId(entryIdRef),
+          sender: 'player',
+          type: 'INNER_MONOLOGUE',
+          text: txt('play_insight_patience_trigger'),
+          sentiment: 'negative',
+        });
+      }
+    }
+    // --- Empathy result ---
+    else if (lastPlayResult.empathyResult) {
+      const { isSuccess, feedback } = lastPlayResult.empathyResult;
+
+      // Player action
+      addEntry(setChatLog, {
+        id: nextId(entryIdRef),
+        sender: 'player',
+        text: `[${card.name}]`,
+        sentiment: 'neutral',
+      });
+
+      // Inner monologue: success/failure feedback
+      addEntry(setChatLog, {
+        id: nextId(entryIdRef),
+        sender: 'player',
+        type: 'INNER_MONOLOGUE',
+        text: isSuccess ? txt('play_empathy_success') : txt('play_empathy_failure'),
+        sentiment: isSuccess ? 'positive' : 'negative',
+        subtext: feedback.subtext || undefined,
+        data: { feedbackType: isSuccess ? 'EMPATHY_SUCCESS' : 'EMPATHY_FAILURE' },
+      });
+
+      // Patience recovery notification
+      if (isSuccess) {
+        addEntry(setChatLog, {
+          id: nextId(entryIdRef),
+          sender: 'player',
+          type: 'INNER_MONOLOGUE',
+          text: txt('play_empathy_patience_up'),
+          sentiment: 'positive',
+        });
+      }
+    }
+    // --- Probe result ---
+    else if (lastPlayResult.probeResult) {
+      const { isSuccess, feedback, floorPrice, concessionTier } = lastPlayResult.probeResult;
+
+      // Player action
+      addEntry(setChatLog, {
+        id: nextId(entryIdRef),
+        sender: 'player',
+        text: `[${card.name}]`,
+        sentiment: 'neutral',
+      });
+
+      // Inner monologue: success/failure feedback
+      addEntry(setChatLog, {
+        id: nextId(entryIdRef),
+        sender: 'player',
+        type: 'INNER_MONOLOGUE',
+        text: isSuccess ? txt('play_probe_success') : txt('play_probe_failure'),
+        sentiment: isSuccess ? 'positive' : 'negative',
+        subtext: feedback.subtext || undefined,
+        data: { feedbackType: isSuccess ? 'PROBE_SUCCESS' : 'PROBE_FAILURE' },
+      });
+
+      // Floor price reveal
+      if (isSuccess && floorPrice !== undefined) {
+        addEntry(setChatLog, {
+          id: nextId(entryIdRef),
+          sender: 'player',
+          type: 'INNER_MONOLOGUE',
+          text: txt('play_probe_floor_hint', { floor: String(Math.round(floorPrice)) }),
+          sentiment: 'positive',
+          data: { feedbackType: 'PROBE_FLOOR' },
+        });
+      }
+
+      // Concession tier
+      if (isSuccess && concessionTier) {
+        addEntry(setChatLog, {
+          id: nextId(entryIdRef),
+          sender: 'player',
+          type: 'INNER_MONOLOGUE',
+          text: txt(`play_probe_concession_${concessionTier}`),
+          sentiment: 'positive',
+          data: { feedbackType: 'PROBE_CONCESSION' },
+        });
+      }
+    }
+    // --- Economic card ---
+    else if (hasEconomic) {
       // Player economic action log
       const parts: string[] = [];
       if (lastPlayResult.pawnAmountDelta !== 0) {

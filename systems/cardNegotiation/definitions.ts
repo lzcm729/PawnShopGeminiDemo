@@ -111,6 +111,7 @@ function buildEffect(effectType: CardEffectType, params: Record<string, string>)
         vagueInfo: params.vagueInfo === 'true' ? true : undefined,
         successChance: params.successChance ? Number(params.successChance) : undefined,
         addUncertainty: params.addUncertainty ? Number(params.addUncertainty) : undefined,
+        insightLayer: params.insightLayer ? Number(params.insightLayer) as 1 | 2 : undefined,
       };
     case 'narrative':
       return {
@@ -151,7 +152,7 @@ function parseEffects(effectTypeStr: string, effectParamsStr: string): CardEffec
       // Assign params to the right effect type based on known param names
       if (t === 'economic' && ['pawnPercent', 'rateAdjust', 'lockRate', 'resetRate', 'lockPriceCut'].includes(key)) {
         effectParams[key] = value;
-      } else if (t === 'information' && ['shrinkPercent', 'canDiscoverTrait', 'showRedemptionIntent', 'generateInsightCards', 'vagueInfo', 'successChance', 'addUncertainty'].includes(key)) {
+      } else if (t === 'information' && ['shrinkPercent', 'canDiscoverTrait', 'showRedemptionIntent', 'generateInsightCards', 'vagueInfo', 'successChance', 'addUncertainty', 'insightLayer'].includes(key)) {
         effectParams[key] = value;
       } else if (t === 'narrative' && ['triggerDialogue', 'humanityDelta', 'credibilityDelta', 'innocenceDelta'].includes(key)) {
         effectParams[key] = value;
@@ -428,9 +429,7 @@ export function createInsightCards(): [Card, Card] {
     description: '尝试理解客户的处境和感受',
     cardType: 'temporary',
     category: 'narrative',
-    effects: [
-      { type: 'narrative', triggerDialogue: 'empathy_dialogue', humanityDelta: 1 },
-    ],
+    effects: [],  // Mechanical effects handled by hook
     temporarySource: 'insight_unlock',
     temporaryRetention: 'retain',
   };
@@ -441,10 +440,8 @@ export function createInsightCards(): [Card, Card] {
     name: '试探',
     description: '试探客户的底线和弱点',
     cardType: 'temporary',
-    category: 'temptation',
-    effects: [
-      { type: 'information', showRedemptionIntent: true },
-    ],
+    category: 'information',
+    effects: [],  // Mechanical effects handled by hook
     temporarySource: 'insight_unlock',
     temporaryRetention: 'retain',
   };

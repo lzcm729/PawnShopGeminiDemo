@@ -10,7 +10,7 @@ conscience,良心发现,利率归零但经济效果减半,permanent,economic,eco
 appraisal,鉴定,精确评估物品价值,consumable,information,information,shrinkPercent:15;canDiscoverTrait:true
 appraisal_2,鉴定·精,更精确的评估,consumable,information,information,shrinkPercent:15;canDiscoverTrait:true
 appraisal_3,鉴定·极,极致精确评估,consumable,information,information,shrinkPercent:15;canDiscoverTrait:true
-insight,赎回意愿测试,探测客户的赎回意愿,consumable,information,information,showRedemptionIntent:true;generateInsightCards:true
-insight_2,洞察·深,深层洞察客户,consumable,information,information,showRedemptionIntent:true;generateInsightCards:true
+insight,赎回意愿测试,初步洞察客户心理,consumable,information,information,generateInsightCards:true;insightLayer:1
+insight_2,洞察·深,深入洞察客户心理与底线,consumable,information,information,generateInsightCards:true;insightLayer:2
 basic_observation,基础观察,粗略观察物品,permanent,information,information,shrinkPercent:5;canDiscoverTrait:false
 intuition,直觉判断,凭直觉判断客户意图,permanent,information,information,vagueInfo:true;successChance:0.50
