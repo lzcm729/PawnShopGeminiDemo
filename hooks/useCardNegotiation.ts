@@ -7,7 +7,7 @@
  * This is the primary interface for the card negotiation UI.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type {
   Card,
   CardNegotiationState,
@@ -118,6 +118,17 @@ export function useCardNegotiation(
   const [dealCompleted, setDealCompleted] = useState(false);
   const [dealResult, setDealResult] = useState<DealResult | null>(null);
 
+  // Reset state when customer changes (BUG FIX: useState initializer only runs on mount)
+  useEffect(() => {
+    if (!customer) return;
+    setState(createInitialState(customer, itemUncertainty));
+    setRateThresholdKey(null);
+    setDropHint('none');
+    setDealCompleted(false);
+    setDealResult(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customer?.id]);
+
   // Derived state
   const macroPhase = useMemo(
     () => getNegotiationPhase(state.roundNumber, state.patience),
@@ -182,12 +193,13 @@ export function useCardNegotiation(
     };
 
     // Step 4: Advance round
+    const nextRound = newState.roundNumber + 1;
     newState = {
       ...newState,
-      roundNumber: newState.roundNumber + 1,
+      roundNumber: nextRound,
       roundPhase: 'player_draw',
       cardsPlayedThisRound: [],
-      macroPhase: getNegotiationPhase(newState.roundNumber + 1, newState.patience),
+      macroPhase: getNegotiationPhase(nextRound, newState.patience),
     };
 
     // Step 5: Draw cards (after inserts are resolved, done separately)

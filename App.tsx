@@ -156,8 +156,9 @@ const GameContent: React.FC = () => {
     }
   }, [state.phase, state.isLoading, state.currentCustomer, state.currentItemDerivedEvent, state.customersServedToday, state.narrativeCustomersServedToday, state.maxCustomersPerDay, generateDailyEvent]);
 
-  // Sync Customer Status
+  // Sync Customer Status (push-pull negotiation only; card system manages its own state)
   useEffect(() => {
+    if (useCardSystem) return;
     if (state.currentCustomer && state.currentCustomer.interactionType === 'PAWN') {
         const needsUpdate =
             !Object.is(state.currentCustomer.patience, negotiation.patience) ||
