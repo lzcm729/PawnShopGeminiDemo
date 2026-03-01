@@ -12,7 +12,6 @@ import type {
   Card,
   CardNegotiationState,
   CardPlayResult,
-  InsertedCardDecision,
   NegotiationMacroPhase,
   CardCustomerType,
   InformationEffect,
@@ -62,10 +61,6 @@ export interface CardNegotiationActions {
   acceptDeal: () => DealResult;
   /** Dismiss the customer without a deal */
   dismissCustomer: () => void;
-  /** Accept a customer-inserted card */
-  acceptInsertedCard: (cardInstanceId: string) => void;
-  /** Reject a customer-inserted card (costs patience) */
-  rejectInsertedCard: (cardInstanceId: string) => void;
   /** Check if a specific card can be played */
   canPlay: (card: Card) => boolean;
 }
@@ -92,8 +87,6 @@ export interface CardNegotiationHookReturn {
   macroPhase: NegotiationMacroPhase;
   /** Current contract tier (for drift meter / instinct) */
   contractTier: ContractTier;
-  /** Pending insert decisions */
-  pendingInserts: InsertedCardDecision[];
   /** Rate threshold instinct key (if just crossed) */
   rateThresholdKey: string | null;
   /** Customer drop hint for UI */
@@ -364,11 +357,17 @@ export function useCardNegotiation(
     // Step 2: Customer turn
     const customerResult = executeCustomerTurn(newState, customerType);
 
-    // Step 3: Process inserted cards (set as pending decisions)
-    newState = {
-      ...newState,
-      pendingInserts: customerResult.insertedCards,
-    };
+    // Step 3: Force-insert customer cards into hand (before drawing)
+    // drawCards() uses handLimit - hand.length, so inserting here reduces draw count naturally
+    if (customerResult.insertedCards.length > 0) {
+      newState = {
+        ...newState,
+        deck: {
+          ...newState.deck,
+          hand: [...newState.deck.hand, ...customerResult.insertedCards],
+        },
+      };
+    }
 
     // Step 4: Advance round
     const nextRound = newState.roundNumber + 1;
@@ -380,8 +379,7 @@ export function useCardNegotiation(
       macroPhase: getNegotiationPhase(nextRound, newState.patience),
     };
 
-    // Step 5: Draw cards (after inserts are resolved, done separately)
-    // Cards are drawn after pending inserts are resolved
+    // Step 5: Draw cards (fills remaining hand slots up to handLimit)
     newState = drawCards(newState);
 
     setDropHint(customerResult.dropHint);
@@ -421,57 +419,6 @@ export function useCardNegotiation(
     setDealResult(null);
   }, []);
 
-  const acceptInsertedCard = useCallback((cardInstanceId: string): void => {
-    setState(prev => {
-      const insertIndex = prev.pendingInserts.findIndex(
-        d => d.card.instanceId === cardInstanceId,
-      );
-      if (insertIndex === -1) return prev;
-
-      const decision = prev.pendingInserts[insertIndex];
-      const newInserts = [...prev.pendingInserts];
-      newInserts[insertIndex] = { ...decision, decided: true, accepted: true };
-
-      // Add card to hand
-      return {
-        ...prev,
-        deck: {
-          ...prev.deck,
-          hand: [...prev.deck.hand, decision.card],
-        },
-        pendingInserts: newInserts,
-      };
-    });
-  }, []);
-
-  const rejectInsertedCard = useCallback((cardInstanceId: string): void => {
-    const config = GAME_CONFIG.CARD_NEGOTIATION;
-
-    setState(prev => {
-      const insertIndex = prev.pendingInserts.findIndex(
-        d => d.card.instanceId === cardInstanceId,
-      );
-      if (insertIndex === -1) return prev;
-
-      const newInserts = [...prev.pendingInserts];
-      newInserts[insertIndex] = {
-        ...newInserts[insertIndex],
-        decided: true,
-        accepted: false,
-      };
-
-      // Rejecting costs patience
-      const newPatience = Math.max(0, prev.patience - config.REFUSE_INSERT_COST);
-
-      return {
-        ...prev,
-        patience: newPatience,
-        isLocked: newPatience <= 0,
-        pendingInserts: newInserts,
-      };
-    });
-  }, []);
-
   const canPlay = useCallback((card: Card): boolean => {
     return canPlayCard(card, state);
   }, [state]);
@@ -483,7 +430,6 @@ export function useCardNegotiation(
     customerType,
     macroPhase,
     contractTier,
-    pendingInserts: state.pendingInserts,
     rateThresholdKey,
     dropHint,
     dealCompleted,
@@ -493,8 +439,6 @@ export function useCardNegotiation(
       endTurn,
       acceptDeal,
       dismissCustomer,
-      acceptInsertedCard,
-      rejectInsertedCard,
       canPlay,
     },
   };
@@ -540,7 +484,6 @@ function createInitialState(
       economicEffectHalved: false,
       passiveRounds: 0,
     },
-    pendingInserts: [],
     currentUncertainty: itemUncertainty,
     cardsPlayedThisRound: [],
     appraisalCount: 0,

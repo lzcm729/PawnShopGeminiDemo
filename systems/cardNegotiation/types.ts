@@ -157,14 +157,6 @@ export type CardCustomerType = 'HARD' | 'SOFT' | 'SLY' | 'CALM';
 /** Category of customer-dropped cards */
 export type DropCategory = 'temptation' | 'disruption' | 'narrative';
 
-/** A card being offered to the player (insert decision) */
-export interface InsertedCardDecision {
-  card: Card;
-  /** Whether the player has decided */
-  decided: boolean;
-  /** Player's choice: accept or reject */
-  accepted?: boolean;
-}
 
 // ============================================================================
 // Card Play Result
@@ -267,9 +259,6 @@ export interface CardNegotiationState {
 
   // Session modifiers
   modifiers: SessionModifiers;
-
-  // Customer insert decisions pending
-  pendingInserts: InsertedCardDecision[];
 
   // Item uncertainty (from appraisal system)
   currentUncertainty: number;

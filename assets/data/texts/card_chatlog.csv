@@ -94,3 +94,6 @@ play_probe_floor_hint,"底价估计：约 {floor} 元"
 play_probe_concession_high,"让步可能性：高"
 play_probe_concession_medium,"让步可能性：中"
 play_probe_concession_low,"让步可能性：低"
+customer_force_insert,客户把一张【{card}】塞进了你的手里。
+customer_force_insert,你面前多了一张【{card}】——这是客户的"诚意"。
+customer_force_insert,客户硬是将【{card}】塞到你手中。

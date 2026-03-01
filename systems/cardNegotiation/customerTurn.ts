@@ -10,7 +10,6 @@ import type {
   Card,
   CardNegotiationState,
   CardCustomerType,
-  InsertedCardDecision,
   DropCategory,
 } from './types';
 import { getCustomerDropTable, generateInstanceId, type CustomerDropEntry } from './definitions';
@@ -129,8 +128,8 @@ function weightedRandomSelect(
 // ============================================================================
 
 export interface CustomerTurnResult {
-  /** Cards being inserted (require player accept/reject) */
-  insertedCards: InsertedCardDecision[];
+  /** Cards to be force-inserted into the player's hand */
+  insertedCards: Card[];
   /** Drop probability hint signal for UI */
   dropHint: 'narrative' | 'disruption' | 'temptation' | 'none';
 }
@@ -166,7 +165,7 @@ export function executeCustomerTurn(
     dropCount = 0;
   }
 
-  const insertedCards: InsertedCardDecision[] = [];
+  const insertedCards: Card[] = [];
   const usedCardIds = new Set<string>();
 
   for (let i = 0; i < dropCount; i++) {
@@ -181,10 +180,7 @@ export function executeCustomerTurn(
         instanceId: generateInstanceId(selected.card.id),
       };
 
-      insertedCards.push({
-        card: instanceCard,
-        decided: false,
-      });
+      insertedCards.push(instanceCard);
     }
   }
 

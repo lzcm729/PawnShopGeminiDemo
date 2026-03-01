@@ -1112,9 +1112,6 @@ insult_threshold = 0.70
 # 侮辱耐心消耗
 insult_patience_cost = 2
 
-# --- 拒绝塞牌耐心消耗 ---
-refuse_insert_cost = 1
-
 # --- 良心发现效果 ---
 # 使用后本次议价经济卡效果减半系数
 conscience_economic_penalty = 0.50

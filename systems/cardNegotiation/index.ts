@@ -17,7 +17,6 @@ export type {
   NegotiationMacroPhase,
   CardCustomerType,
   DropCategory,
-  InsertedCardDecision,
   CardPlayResult,
   SessionModifiers,
   CardNegotiationState,

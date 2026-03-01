@@ -13,7 +13,6 @@ import { DeckInfo } from './cardNegotiation/DeckInfo';
 import { CardHandArea } from './cardNegotiation/CardHandArea';
 import { CardChatLog } from './cardNegotiation/CardChatLog';
 import { ActionButtons } from './cardNegotiation/ActionButtons';
-import { InsertDecision } from './cardNegotiation/InsertDecision';
 import { IntelStrip } from './cardNegotiation/IntelStrip';
 import type { CardPlayResult } from '../systems/cardNegotiation/types';
 import type { CustomerTurnResult } from '../systems/cardNegotiation/customerTurn';
@@ -39,7 +38,6 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
     customerType,
     macroPhase,
     contractTier,
-    pendingInserts,
     rateThresholdKey,
     dropHint,
     dealCompleted,
@@ -265,12 +263,6 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
           roundNumber={negState.roundNumber}
         />
 
-        {/* Insert decision overlay */}
-        <InsertDecision
-          pendingInserts={pendingInserts}
-          onAccept={actions.acceptInsertedCard}
-          onReject={actions.rejectInsertedCard}
-        />
       </div>
 
       {/* ================= BOTTOM: Hand + Actions ================= */}

@@ -366,15 +366,26 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
     if (!lastCustomerResult) return;
     if (lastCustomerResult.insertedCards.length === 0) return;
 
+    // Drop hint flavor text (if applicable)
     const hintKey = dropHint !== 'none' ? `customer_drop_${dropHint}` : null;
-    const text = hintKey ? txt(hintKey) : '...';
+    if (hintKey) {
+      addEntry(setChatLog, {
+        id: nextId(entryIdRef),
+        sender: 'customer',
+        text: txt(hintKey),
+        sentiment: 'neutral',
+      });
+    }
 
-    addEntry(setChatLog, {
-      id: nextId(entryIdRef),
-      sender: 'customer',
-      text,
-      sentiment: 'neutral',
-    });
+    // Force-insert message per card
+    for (const card of lastCustomerResult.insertedCards) {
+      addEntry(setChatLog, {
+        id: nextId(entryIdRef),
+        sender: 'system',
+        text: txt('customer_force_insert', { card: card.name }),
+        sentiment: 'neutral',
+      });
+    }
   }, [lastCustomerResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- 4. Round transition ---

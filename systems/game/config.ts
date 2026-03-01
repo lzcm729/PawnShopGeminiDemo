@@ -585,7 +585,6 @@ interface TomlCardNegotiation {
   dynamic_drop_passive_rounds: number;
   insult_threshold: number;
   insult_patience_cost: number;
-  refuse_insert_cost: number;
   conscience_economic_penalty: number;
 }
 
@@ -1218,7 +1217,6 @@ export const GAME_CONFIG = {
     DYNAMIC_DROP_PASSIVE_ROUNDS: tomlConfig.card_negotiation.dynamic_drop_passive_rounds,
     INSULT_THRESHOLD: tomlConfig.card_negotiation.insult_threshold,
     INSULT_PATIENCE_COST: tomlConfig.card_negotiation.insult_patience_cost,
-    REFUSE_INSERT_COST: tomlConfig.card_negotiation.refuse_insert_cost,
     CONSCIENCE_ECONOMIC_PENALTY: tomlConfig.card_negotiation.conscience_economic_penalty,
   },
 
