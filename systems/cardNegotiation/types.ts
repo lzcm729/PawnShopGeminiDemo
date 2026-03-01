@@ -287,6 +287,8 @@ export interface CardNegotiationState {
   dispositionRevealed: boolean;
   /** Revealed floor price from successful probe */
   revealedFloorPrice?: number;
+  /** Revealed concession tier from successful probe */
+  revealedConcessionTier?: ConcessionTier;
 
   // Whether the negotiation is still active
   isActive: boolean;

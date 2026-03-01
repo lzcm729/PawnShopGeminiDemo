@@ -14,6 +14,7 @@ import { CardHandArea } from './cardNegotiation/CardHandArea';
 import { CardChatLog } from './cardNegotiation/CardChatLog';
 import { ActionButtons } from './cardNegotiation/ActionButtons';
 import { InsertDecision } from './cardNegotiation/InsertDecision';
+import { IntelStrip } from './cardNegotiation/IntelStrip';
 import type { CardPlayResult } from '../systems/cardNegotiation/types';
 import type { CustomerTurnResult } from '../systems/cardNegotiation/customerTurn';
 
@@ -240,6 +241,16 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
             drawPileCount={negState.deck.drawPile.length}
             discardPileCount={negState.deck.discardPile.length}
             exhaustedCount={negState.deck.exhausted.length}
+          />
+        </div>
+
+        {/* Intel strip (persistent insight info) */}
+        <div className="shrink-0">
+          <IntelStrip
+            dispositionRevealed={negState.dispositionRevealed}
+            insightResult={negState.insightResult}
+            revealedFloorPrice={negState.revealedFloorPrice}
+            concessionTier={negState.revealedConcessionTier}
           />
         </div>
 

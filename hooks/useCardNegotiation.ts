@@ -333,7 +333,7 @@ export function useCardNegotiation(
         floorPrice = probeReveal.floorPrice;
         concessionTier = probeReveal.concessionTier;
 
-        newState = { ...newState, revealedFloorPrice: floorPrice };
+        newState = { ...newState, revealedFloorPrice: floorPrice, revealedConcessionTier: concessionTier };
       }
 
       result.probeResult = { isSuccess: isCorrect, feedback, floorPrice, concessionTier };
@@ -547,6 +547,7 @@ function createInitialState(
     insightResult: undefined,
     dispositionRevealed: false,
     revealedFloorPrice: undefined,
+    revealedConcessionTier: undefined,
     isActive: true,
     isLocked: false,
     appraisalCardsRemaining: appraisalTotal,
