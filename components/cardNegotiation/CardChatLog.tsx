@@ -20,7 +20,6 @@ interface CardChatLogProps {
   lastPlayResult: CardPlayResult | null;
   lastCustomerResult: CustomerTurnResult | null;
   rateThresholdKey: string | null;
-  dropHint: 'narrative' | 'disruption' | 'temptation' | 'none';
   roundNumber: number;
 }
 
@@ -57,7 +56,6 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
   lastPlayResult,
   lastCustomerResult,
   rateThresholdKey,
-  dropHint,
   roundNumber,
 }) => {
   const [chatLog, setChatLog] = useState<LogEntry[]>([]);
@@ -361,21 +359,10 @@ export const CardChatLog: React.FC<CardChatLogProps> = ({
     }
   }, [lastPlayResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // --- 3. Customer turn result ---
+  // --- 3. Customer turn result (force-inserted cards) ---
   useEffect(() => {
     if (!lastCustomerResult) return;
     if (lastCustomerResult.insertedCards.length === 0) return;
-
-    // Drop hint flavor text (if applicable)
-    const hintKey = dropHint !== 'none' ? `customer_drop_${dropHint}` : null;
-    if (hintKey) {
-      addEntry(setChatLog, {
-        id: nextId(entryIdRef),
-        sender: 'customer',
-        text: txt(hintKey),
-        sentiment: 'neutral',
-      });
-    }
 
     // Force-insert message per card
     for (const card of lastCustomerResult.insertedCards) {

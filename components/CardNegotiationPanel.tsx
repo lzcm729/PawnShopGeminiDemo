@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../lib/utils';
 import { useGame } from '../store/GameContext';
@@ -8,6 +8,7 @@ import { useGameMachine } from '../hooks/useGameMachine';
 import type { CardNegotiationHookReturn, DealResult } from '../hooks/useCardNegotiation';
 import { getCharacterPortraitPath, PORTRAIT_PLACEHOLDER } from '../systems/assets';
 import { playSfx } from '../systems/game/audio';
+import { createTextRegistry } from '../systems/utils/textRegistry';
 import { StatusBar } from './cardNegotiation/StatusBar';
 import { DriftBar } from './cardNegotiation/DriftBar';
 import { DeckInfo } from './cardNegotiation/DeckInfo';
@@ -18,6 +19,10 @@ import { IntelStrip } from './cardNegotiation/IntelStrip';
 import type { CardPlayResult } from '../systems/cardNegotiation/types';
 import type { CustomerTurnResult } from '../systems/cardNegotiation/customerTurn';
 import { calculateEffectiveFocus } from '../systems/cardNegotiation/focus';
+
+import cardChatlogCsv from '../assets/data/texts/card_chatlog.csv?raw';
+
+const dropHintRegistry = createTextRegistry('card_chatlog_drop', cardChatlogCsv);
 
 // ============================================================================
 // Main Panel
@@ -47,11 +52,33 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
     actions,
   } = cardNegotiation;
 
+  // Portal target — resolve after DOM commit to avoid render-phase timing issues
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setPortalTarget(document.getElementById('card-hand-portal'));
+    return () => setPortalTarget(null);
+  }, []);
+
   // Track results for feedback display
   const [lastPlayResult, setLastPlayResult] = useState<CardPlayResult | null>(null);
   const [lastCustomerResult, setLastCustomerResult] = useState<CustomerTurnResult | null>(null);
   // Charity glow effect
   const [showCharityGlow, setShowCharityGlow] = useState(false);
+
+  // Drop hint banner in hand area
+  const [dropHintText, setDropHintText] = useState<string | null>(null);
+  const [dropHintType, setDropHintType] = useState<'disruption' | 'temptation' | 'narrative'>('narrative');
+  useEffect(() => {
+    if (dropHint === 'none') {
+      setDropHintText(null);
+      return;
+    }
+    const text = dropHintRegistry.getRandom(`customer_drop_${dropHint}`) ?? '...';
+    setDropHintType(dropHint);
+    setDropHintText(text);
+    const timer = setTimeout(() => setDropHintText(null), 4000);
+    return () => clearTimeout(timer);
+  }, [dropHint]);
 
   // Determine if it's player's turn
   const isPlayerTurn = negState.roundPhase === 'player_play' || negState.roundPhase === 'player_draw';
@@ -212,20 +239,6 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
           </div>
         </div>
 
-        {/* Drift bar */}
-        <div className="shrink-0">
-          <DriftBar ratePercent={negState.currentRate} />
-        </div>
-
-        {/* Deck info */}
-        <div className="shrink-0">
-          <DeckInfo
-            drawPileCount={negState.deck.drawPile.length}
-            discardPileCount={negState.deck.discardPile.length}
-            exhaustedCount={negState.deck.exhausted.length}
-          />
-        </div>
-
         {/* Intel strip (persistent insight info) */}
         <div className="shrink-0">
           <IntelStrip
@@ -243,79 +256,103 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
           lastPlayResult={lastPlayResult}
           lastCustomerResult={lastCustomerResult}
           rateThresholdKey={rateThresholdKey}
-          dropHint={dropHint}
           roundNumber={negState.roundNumber}
         />
 
       </div>
 
       {/* ================= BOTTOM: Hand + Actions (via Portal to full-width area) ================= */}
-      {(() => {
-        const portalTarget = document.getElementById('card-hand-portal');
-        if (!portalTarget) return null;
-        return createPortal(
-          <div className="shrink-0 max-w-4xl mx-auto w-full">
-            {/* Status bar — moved from top panel to bottom full-width area */}
-            <StatusBar
-              currentPawnAmount={negState.currentPawnAmount}
-              originalDesiredAmount={negState.originalDesiredAmount}
-              ratePercent={negState.currentRate}
-              patience={negState.patience}
-              maxPatience={negState.maxPatience}
-              roundNumber={negState.roundNumber}
-              macroPhase={macroPhase}
-              contractTier={contractTier}
-              appraisalCardsRemaining={negState.appraisalCardsRemaining}
-              appraisalCardsTotal={negState.appraisalCardsTotal}
-              insightCardsRemaining={negState.insightCardsRemaining}
-              insightCardsTotal={negState.insightCardsTotal}
-              rateLocked={negState.modifiers.rateLocked}
-              priceCutLocked={negState.modifiers.priceCutLocked}
-            />
+      {portalTarget && createPortal(
+        <div className="shrink-0 max-w-4xl mx-auto w-full">
+          {/* Status bar — moved from top panel to bottom full-width area */}
+          <StatusBar
+            currentPawnAmount={negState.currentPawnAmount}
+            originalDesiredAmount={negState.originalDesiredAmount}
+            ratePercent={negState.currentRate}
+            patience={negState.patience}
+            maxPatience={negState.maxPatience}
+            roundNumber={negState.roundNumber}
+            macroPhase={macroPhase}
+            contractTier={contractTier}
+            appraisalCardsRemaining={negState.appraisalCardsRemaining}
+            appraisalCardsTotal={negState.appraisalCardsTotal}
+            insightCardsRemaining={negState.insightCardsRemaining}
+            insightCardsTotal={negState.insightCardsTotal}
+            rateLocked={negState.modifiers.rateLocked}
+            priceCutLocked={negState.modifiers.priceCutLocked}
+          />
 
-            {/* Focus strip */}
-            <div className="flex items-center justify-center gap-1.5 px-4 py-1 border-b border-noir-400/20 bg-noir-200/30">
-              <span className="text-[10px] text-amber-500/80 font-mono font-bold uppercase">Focus</span>
-              <div className="flex gap-1">
-                {Array.from({ length: calculateEffectiveFocus(negState) }).map((_, i) => (
-                  <span key={i} className={cn(
-                    'w-3 h-3 rounded-full border-2 transition-all duration-300',
-                    i < negState.focusRemaining
-                      ? 'bg-amber-500 border-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.5)]'
-                      : 'bg-noir-300/50 border-noir-500/50',
-                  )} />
-                ))}
-              </div>
-              {negState.modifiers.highRateFocusPenalty && (
-                <span className="text-[10px] text-red-500 font-mono font-bold">-1</span>
-              )}
-              {negState.focusDebuffCount > 0 && (
-                <span className="text-[10px] text-purple-400 font-mono font-bold">-{negState.focusDebuffCount}</span>
-              )}
+          {/* Focus strip */}
+          <div className="flex items-center justify-center gap-1.5 px-4 py-1 border-b border-noir-400/20 bg-noir-200/30">
+            <span className="text-[10px] text-amber-500/80 font-mono font-bold uppercase">Focus</span>
+            <div className="flex gap-1">
+              {Array.from({ length: calculateEffectiveFocus(negState) }).map((_, i) => (
+                <span key={i} className={cn(
+                  'w-3 h-3 rounded-full border-2 transition-all duration-300',
+                  i < negState.focusRemaining
+                    ? 'bg-amber-500 border-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.5)]'
+                    : 'bg-noir-300/50 border-noir-500/50',
+                )} />
+              ))}
             </div>
+            {negState.modifiers.highRateFocusPenalty && (
+              <span className="text-[10px] text-red-500 font-mono font-bold">-1</span>
+            )}
+            {negState.focusDebuffCount > 0 && (
+              <span className="text-[10px] text-purple-400 font-mono font-bold">-{negState.focusDebuffCount}</span>
+            )}
+          </div>
 
-            {/* Hand area */}
+          {/* Drop hint banner — player's observation of customer behavior */}
+          {dropHintText && (
+            <div className={cn(
+              'px-4 py-2 text-center text-sm font-serif italic animate-in fade-in slide-in-from-top-2 duration-500',
+              dropHintType === 'disruption' && 'bg-red-950/40 text-red-400 border-b border-red-800/30',
+              dropHintType === 'temptation' && 'bg-purple-950/40 text-purple-300 border-b border-purple-800/30',
+              dropHintType === 'narrative' && 'bg-blue-950/40 text-blue-300 border-b border-blue-800/30',
+            )}>
+              {dropHintText}
+            </div>
+          )}
+
+          {/* Hand area + locked overlay */}
+          <div className="relative">
             <CardHandArea
               hand={negState.deck.hand}
               canPlay={actions.canPlay}
               onPlayCard={handlePlayCard}
               isPlayerTurn={isPlayerTurn}
+              drawPileCount={negState.deck.drawPile.length}
+              discardPileCount={negState.deck.discardPile.length}
+              exhaustedCount={negState.deck.exhausted.length}
             />
+            {negState.isLocked && negState.isActive && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 animate-in fade-in duration-300">
+                <div className="bg-red-950/90 border border-red-700 rounded-lg px-6 py-3 text-center">
+                  <p className="text-red-400 font-serif font-bold text-base">
+                    Conditions Locked
+                  </p>
+                  <p className="text-red-500/60 text-[10px] font-mono mt-0.5">
+                    Patience exhausted - accept or dismiss
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
-            {/* Action buttons */}
-            <ActionButtons
-              isPlayerTurn={isPlayerTurn}
-              isActive={negState.isActive}
-              isLocked={negState.isLocked}
-              hand={negState.deck.hand}
-              onAcceptDeal={handleAcceptDeal}
-              onDismissCustomer={handleDismissCustomer}
-              onEndTurn={handleEndTurn}
-            />
-          </div>,
-          portalTarget,
-        );
-      })()}
+          {/* Action buttons */}
+          <ActionButtons
+            isPlayerTurn={isPlayerTurn}
+            isActive={negState.isActive}
+            isLocked={negState.isLocked}
+            hand={negState.deck.hand}
+            onAcceptDeal={handleAcceptDeal}
+            onDismissCustomer={handleDismissCustomer}
+            onEndTurn={handleEndTurn}
+          />
+        </div>,
+        portalTarget,
+      )}
 
       {/* ================= Tension overlay for low patience ================= */}
       {negState.patience <= 1 && negState.isActive && (
@@ -325,19 +362,6 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
         </div>
       )}
 
-      {/* ================= Locked overlay ================= */}
-      {negState.isLocked && negState.isActive && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
-          <div className="bg-red-950/80 border border-red-700 rounded-lg px-6 py-3 text-center animate-in zoom-in-50 duration-300">
-            <p className="text-red-400 font-serif font-bold text-lg">
-              Conditions Locked
-            </p>
-            <p className="text-red-500/60 text-xs font-mono mt-1">
-              Patience exhausted - accept or dismiss
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

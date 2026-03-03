@@ -1,14 +1,71 @@
 
 import React, { useState } from 'react';
 import { cn } from '../../lib/utils';
-import type { Card, CardPlayChoice } from '../../systems/cardNegotiation/types';
+import type { Card, CardPlayChoice, CardEffect } from '../../systems/cardNegotiation/types';
 import { playSfx } from '../../systems/game/audio';
+
+/** Generate a compact, human-readable summary of a card's mechanical effects */
+function summarizeEffects(card: Card): string[] {
+  const lines: string[] = [];
+
+  // Negative type costs
+  if (card.negativeType === 'sacrifice') lines.push('丢弃一张手牌');
+  if (card.negativeType === 'occupation') lines.push('占据手牌位');
+  if (card.negativeType === 'debuff') lines.push('Focus -1');
+
+  // Focus cost already shown by top-left badge, skip here
+
+  for (const fx of card.effects) {
+    switch (fx.type) {
+      case 'economic': {
+        if (fx.pawnPercent) {
+          const sign = fx.pawnPercent > 0 ? '+' : '';
+          lines.push(`当金 ${sign}${fx.pawnPercent}%`);
+        }
+        if (fx.rateAdjust) {
+          const sign = fx.rateAdjust > 0 ? '+' : '';
+          lines.push(`利率 ${sign}${fx.rateAdjust}%`);
+        }
+        if (fx.lockRate) lines.push('锁定利率');
+        if (fx.resetRate) lines.push('利率归零');
+        if (fx.lockPriceCut) lines.push('锁定压价');
+        break;
+      }
+      case 'information': {
+        if (fx.shrinkPercent) lines.push(`范围收缩 ${fx.shrinkPercent}%`);
+        if (fx.canDiscoverTrait) lines.push('可能发现特征');
+        if (fx.generateInsightCards) lines.push('生成洞察牌');
+        if (fx.insightLayer) lines.push(`洞察 Lv.${fx.insightLayer}`);
+        if (fx.addUncertainty) lines.push(`不确定性 +${Math.round(fx.addUncertainty * 100)}%`);
+        if (fx.vagueInfo) lines.push('模糊信息');
+        break;
+      }
+      case 'narrative': {
+        if (fx.humanityDelta) lines.push(`人情 ${fx.humanityDelta > 0 ? '+' : ''}${fx.humanityDelta}`);
+        if (fx.credibilityDelta) lines.push(`商誉 ${fx.credibilityDelta > 0 ? '+' : ''}${fx.credibilityDelta}`);
+        if (fx.innocenceDelta) lines.push(`清白 ${fx.innocenceDelta > 0 ? '+' : ''}${fx.innocenceDelta}`);
+        if (fx.triggerDialogue) lines.push('触发对话');
+        break;
+      }
+      case 'patience': {
+        if (fx.patienceCost && fx.patienceCost > 0) lines.push(`耐心 -${fx.patienceCost}`);
+        if (fx.patienceRecover && fx.patienceRecover > 0) lines.push(`耐心 +${fx.patienceRecover}`);
+        break;
+      }
+    }
+  }
+
+  return lines.length > 0 ? lines : ['无特殊效果'];
+}
 
 interface CardHandAreaProps {
   hand: Card[];
   canPlay: (card: Card) => boolean;
   onPlayCard: (cardInstanceId: string, choiceId?: string, sacrificeTargetId?: string) => void;
   isPlayerTurn: boolean;
+  drawPileCount: number;
+  discardPileCount: number;
+  exhaustedCount: number;
 }
 
 // Card type border colors
@@ -113,6 +170,9 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
   canPlay,
   onPlayCard,
   isPlayerTurn,
+  drawPileCount,
+  discardPileCount,
+  exhaustedCount,
 }) => {
   const [choiceCard, setChoiceCard] = useState<Card | null>(null);
   const [sacrificeMode, setSacrificeMode] = useState<{ sourceCard: Card } | null>(null);
@@ -170,18 +230,36 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
         </div>
       )}
 
-      {/* Hand label */}
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-[10px] text-noir-txt-muted font-mono uppercase tracking-widest">
-          Hand
-        </span>
-        <span className="text-[10px] text-noir-txt-muted font-mono">
-          {hand.length}/5
-        </span>
+      {/* Hand label + deck info */}
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-noir-txt-muted font-mono uppercase tracking-widest">
+            Hand
+          </span>
+          <span className="text-[10px] text-noir-txt-muted font-mono">
+            {hand.length}/5
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1" title="Draw pile">
+            <span className="text-[9px] text-amber-500 font-mono font-bold">{drawPileCount}</span>
+            <span className="text-[9px] text-noir-txt-muted font-mono">Draw</span>
+          </div>
+          <div className="flex items-center gap-1" title="Discard pile">
+            <span className="text-[9px] text-noir-txt-muted font-mono font-bold">{discardPileCount}</span>
+            <span className="text-[9px] text-noir-txt-muted font-mono">Disc</span>
+          </div>
+          {exhaustedCount > 0 && (
+            <div className="flex items-center gap-1" title="Used">
+              <span className="text-[9px] text-red-500 font-mono font-bold">{exhaustedCount}</span>
+              <span className="text-[9px] text-red-500/60 font-mono">Used</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Cards — horizontal layout with hover-expand */}
-      <div className="flex gap-2 justify-center items-center min-h-[80px] flex-wrap">
+      <div className="flex gap-2 justify-center items-center min-h-[80px] overflow-visible">
         {hand.length === 0 ? (
           <div className="text-noir-txt-muted text-xs font-mono italic opacity-50 py-4">
             (empty hand)
@@ -210,7 +288,7 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
                 onClick={() => handleCardClick(card)}
                 disabled={!playable && !isSacrificeSource}
                 className={cn(
-                  'group relative flex flex-row h-[72px] rounded-lg border-2 transition-all duration-300 ease-out overflow-visible',
+                  'group relative flex flex-row h-[120px] rounded-lg border-2 transition-all duration-300 ease-out overflow-visible',
                   styles.border,
                   styles.bg,
                   // Sacrifice mode
@@ -234,56 +312,61 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
                   {focusCost}
                 </span>
 
-                {/* === LEFT: Compact summary (always visible) === */}
-                <div className="flex flex-row items-center gap-1.5 px-2.5 py-1.5 w-[130px] shrink-0">
-                  {/* Icon + Name + type badge */}
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm font-bold opacity-60 shrink-0">{categoryIcon}</span>
-                      <span className="text-xs font-serif font-bold text-noir-txt-primary leading-tight truncate">
-                        {card.name}
+                {/* === LEFT: Identity (always visible) === */}
+                <div className="flex flex-col justify-center gap-1 px-3 py-2 w-[150px] shrink-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-bold opacity-60 shrink-0">{categoryIcon}</span>
+                    <span className="text-sm font-serif font-bold text-noir-txt-primary leading-tight truncate">
+                      {card.name}
+                    </span>
+                  </div>
+                  {/* Type / negative badge */}
+                  <div className="flex items-center gap-1">
+                    {card.negativeType ? (
+                      <span className={cn(
+                        'text-[8px] font-mono font-bold px-1 py-0.5 rounded border leading-none',
+                        card.negativeType === 'occupation' && 'bg-gray-900 border-gray-700 text-gray-400',
+                        card.negativeType === 'debuff' && 'bg-purple-950 border-purple-700 text-purple-400',
+                        card.negativeType === 'sacrifice' && 'bg-red-950 border-red-700 text-red-400',
+                      )}>
+                        {negStyles?.icon} {card.negativeType}
                       </span>
-                    </div>
-                    {/* Type / negative badge inline */}
-                    <div className="flex items-center gap-1 mt-0.5">
-                      {card.negativeType ? (
-                        <span className={cn(
-                          'text-[8px] font-mono font-bold px-1 py-0.5 rounded border leading-none',
-                          card.negativeType === 'occupation' && 'bg-gray-900 border-gray-700 text-gray-400',
-                          card.negativeType === 'debuff' && 'bg-purple-950 border-purple-700 text-purple-400',
-                          card.negativeType === 'sacrifice' && 'bg-red-950 border-red-700 text-red-400',
-                        )}>
-                          {negStyles?.icon} {card.negativeType}
-                        </span>
-                      ) : card.cardType !== 'permanent' ? (
-                        <span className={cn(
-                          'text-[8px] font-mono font-bold px-1 py-0.5 rounded border leading-none',
-                          card.cardType === 'consumable'
-                            ? 'bg-red-950/60 border-red-800/60 text-red-400'
-                            : 'bg-purple-950/60 border-purple-800/60 text-purple-400',
-                        )}>
-                          {typeLabel}
-                        </span>
-                      ) : null}
-                      {card.hasChoice && (
-                        <span className="text-[8px] text-amber-500 font-bold">...</span>
-                      )}
-                    </div>
+                    ) : card.cardType !== 'permanent' ? (
+                      <span className={cn(
+                        'text-[8px] font-mono font-bold px-1 py-0.5 rounded border leading-none',
+                        card.cardType === 'consumable'
+                          ? 'bg-red-950/60 border-red-800/60 text-red-400'
+                          : 'bg-purple-950/60 border-purple-800/60 text-purple-400',
+                      )}>
+                        {typeLabel}
+                      </span>
+                    ) : null}
+                    {card.hasChoice && (
+                      <span className="text-[8px] text-amber-500 font-bold">...</span>
+                    )}
+                  </div>
+                  {/* Effect tags */}
+                  <div className="flex flex-wrap gap-x-1.5 gap-y-0.5">
+                    {summarizeEffects(card).map((line, i) => (
+                      <span key={i} className="text-[9px] text-amber-400/70 font-mono leading-tight">
+                        {line}
+                      </span>
+                    ))}
                   </div>
                 </div>
 
-                {/* === RIGHT: Detail panel (hidden, expand on hover) === */}
+                {/* === RIGHT: Description (expand on hover) === */}
                 <div className={cn(
                   'w-0 opacity-0 overflow-hidden transition-all duration-300 ease-out border-l border-transparent',
-                  'group-hover:w-[140px] group-hover:opacity-100 group-hover:border-noir-400/30',
+                  'group-hover:w-[160px] group-hover:opacity-100 group-hover:border-noir-400/30',
                 )}>
-                  <div className="px-2.5 py-1.5 h-full flex flex-col justify-center">
-                    <div className="text-[10px] text-noir-txt-muted font-mono leading-tight line-clamp-3">
+                  <div className="px-3 py-2 h-full flex flex-col justify-center">
+                    <div className="text-[11px] text-noir-txt-muted leading-snug line-clamp-3">
                       {card.description}
                     </div>
                     {card.hasChoice && (
-                      <div className="text-[8px] text-amber-500/80 font-mono mt-1">
-                        Click to choose...
+                      <div className="text-[9px] text-amber-500/80 font-mono mt-1">
+                        点击选择...
                       </div>
                     )}
                   </div>
