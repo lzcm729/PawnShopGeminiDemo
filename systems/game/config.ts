@@ -590,6 +590,7 @@ interface TomlCardNegotiation {
   focus_minimum: number;
   focus_high_rate_threshold: number;
   focus_occupation_remove_cost: number;
+  patience_base_cost_per_round: number;
 }
 
 interface TomlEssenceTierGain {
@@ -1226,6 +1227,7 @@ export const GAME_CONFIG = {
     FOCUS_MINIMUM: tomlConfig.card_negotiation.focus_minimum,
     FOCUS_HIGH_RATE_THRESHOLD: tomlConfig.card_negotiation.focus_high_rate_threshold,
     FOCUS_OCCUPATION_REMOVE_COST: tomlConfig.card_negotiation.focus_occupation_remove_cost,
+    PATIENCE_BASE_COST_PER_ROUND: tomlConfig.card_negotiation.patience_base_cost_per_round,
   },
 
 };

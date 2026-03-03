@@ -1121,3 +1121,7 @@ focus_base = 2
 focus_minimum = 0
 focus_high_rate_threshold = 15
 focus_occupation_remove_cost = 1
+
+# --- 回合耐心自然消耗 ---
+# 每回合结束时基础耐心消耗（代表时间流逝）
+patience_base_cost_per_round = 1

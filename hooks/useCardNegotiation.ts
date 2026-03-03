@@ -385,6 +385,11 @@ export function useCardNegotiation(
       result.probeResult = { isSuccess: isCorrect, feedback, floorPrice, concessionTier };
     }
 
+    // Check if patience hit 0 -> lock negotiation
+    if (newState.patience <= 0) {
+      newState = { ...newState, isLocked: true };
+    }
+
     setState(newState);
     return result;
   }, [state, customer, deps]);
@@ -420,6 +425,18 @@ export function useCardNegotiation(
           hand: [...newState.deck.hand, ...customerResult.insertedCards],
         },
       };
+    }
+
+    // Step 3.5: Base patience cost per round (time passing)
+    const basePatienceCost = GAME_CONFIG.CARD_NEGOTIATION.PATIENCE_BASE_COST_PER_ROUND;
+    newState = {
+      ...newState,
+      patience: Math.max(0, newState.patience - basePatienceCost),
+    };
+
+    // Check if patience hit 0 -> lock negotiation
+    if (newState.patience <= 0) {
+      newState = { ...newState, isLocked: true };
     }
 
     // Step 4: Advance round
