@@ -210,7 +210,7 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
                 onClick={() => handleCardClick(card)}
                 disabled={!playable && !isSacrificeSource}
                 className={cn(
-                  'group relative flex flex-row h-[72px] rounded-lg border-2 transition-all duration-300 ease-out overflow-hidden',
+                  'group relative flex flex-row h-[72px] rounded-lg border-2 transition-all duration-300 ease-out overflow-visible',
                   styles.border,
                   styles.bg,
                   // Sacrifice mode
