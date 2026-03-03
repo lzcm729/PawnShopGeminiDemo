@@ -6,6 +6,7 @@ import { APPRAISAL_TEMPLATES } from '../systems/game/templates/appraisalFeedback
 import type { AppraisalFeedback } from './NegotiationPanel';
 import { ItemTrait } from '../types';
 import { playSfx } from '../systems/game/audio';
+import { GAME_CONFIG } from '../systems/game/config';
 import { checkItemAnomaly, getAnomalyDetectionThreshold } from '../systems/upgrades';
 import { getAnomalyMessage, getAnomalySeverity, getNormalConfirmationMessage } from '../systems/upgrades/spectrometerFeedback';
 import { getAttitudeShift } from '../systems/negotiation/attitudeShift';
@@ -292,6 +293,7 @@ export const ItemPanel: React.FC<ItemPanelProps> = ({ applyLeverage, applyStolen
           anomalyMessageData={anomalyMessageData}
           normalMessage={normalMessage}
           onAppraise={handleAppraiseClick}
+          hideAppraisalButton={GAME_CONFIG.CARD_NEGOTIATION.ENABLED}
         />
 
         {/* B-8: NPC attitude shift quote */}

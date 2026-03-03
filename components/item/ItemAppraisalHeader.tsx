@@ -52,6 +52,7 @@ interface ItemAppraisalHeaderProps {
   anomalyMessageData: { severity: string; message: { text: string } } | null;
   normalMessage: string;
   onAppraise: () => void;
+  hideAppraisalButton?: boolean;
 }
 
 export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
@@ -65,6 +66,7 @@ export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
   anomalyMessageData,
   normalMessage,
   onAppraise,
+  hideAppraisalButton,
 }) => {
   const { state } = useGame();
   const { actionPoints } = state.stats;
@@ -303,20 +305,22 @@ export const ItemAppraisalHeader: React.FC<ItemAppraisalHeaderProps> = ({
 
              </div>
 
-             <Button
-                onClick={onAppraise}
-                disabled={actionPoints <= 0 || !canInteract || appraising}
-                isLoading={appraising}
-                className={`w-full h-12 shadow-lg border-2 font-mono text-sm flex items-center justify-center gap-2 rounded transition-all
-                    ${actionPoints > 0 && canInteract && !appraising
-                        ? 'bg-pawn-accent text-black border-white hover:scale-[1.02] cursor-game-zoom'
-                        : 'bg-stone-800 text-stone-500 border-stone-600'
-                    }
-                `}
-             >
-                <ScanEye className="w-5 h-5" />
-                {appraising ? "ANALYZING..." : `深入鉴定 (COST: 1 AP)`}
-             </Button>
+             {!hideAppraisalButton && (
+               <Button
+                  onClick={onAppraise}
+                  disabled={actionPoints <= 0 || !canInteract || appraising}
+                  isLoading={appraising}
+                  className={`w-full h-12 shadow-lg border-2 font-mono text-sm flex items-center justify-center gap-2 rounded transition-all
+                      ${actionPoints > 0 && canInteract && !appraising
+                          ? 'bg-pawn-accent text-black border-white hover:scale-[1.02] cursor-game-zoom'
+                          : 'bg-stone-800 text-stone-500 border-stone-600'
+                      }
+                  `}
+               >
+                  <ScanEye className="w-5 h-5" />
+                  {appraising ? "ANALYZING..." : `深入鉴定 (COST: 1 AP)`}
+               </Button>
+             )}
         </div>
     </div>
   );
