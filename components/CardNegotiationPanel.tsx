@@ -161,30 +161,6 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
         priceCutLocked={negState.modifiers.priceCutLocked}
       />
 
-      {/* ================= Focus Indicator ================= */}
-      <div className="flex items-center gap-1.5 px-3 py-1 border-b border-noir-400/20 bg-noir-200/20">
-        <span className="text-[10px] text-noir-txt-muted font-mono uppercase tracking-wider">Focus</span>
-        <div className="flex gap-0.5">
-          {Array.from({ length: calculateEffectiveFocus(negState) }).map((_, i) => (
-            <span key={i} className={cn(
-              'w-2.5 h-2.5 rounded-full border transition-all duration-300',
-              i < negState.focusRemaining
-                ? 'bg-amber-500 border-amber-400 shadow-[0_0_4px_rgba(245,158,11,0.4)]'
-                : 'bg-noir-300 border-noir-500',
-            )} />
-          ))}
-        </div>
-        <span className="text-[10px] text-noir-txt-muted font-mono ml-1">
-          {negState.focusRemaining}/{calculateEffectiveFocus(negState)}
-        </span>
-        {negState.modifiers.highRateFocusPenalty && (
-          <span className="text-[9px] text-red-500 font-mono">(-1)</span>
-        )}
-        {negState.focusDebuffCount > 0 && (
-          <span className="text-[9px] text-purple-400 font-mono">(-{negState.focusDebuffCount})</span>
-        )}
-      </div>
-
       {/* ================= MIDDLE: Customer + Feedback ================= */}
       <div className="flex-1 flex flex-col min-h-0 relative">
         {/* Customer info strip */}
@@ -292,6 +268,30 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
 
       {/* ================= BOTTOM: Hand + Actions ================= */}
       <div className="shrink-0 border-t border-noir-400/50 bg-noir-200/50">
+        {/* Focus indicator — directly above cards for visibility */}
+        <div className="flex items-center justify-center gap-2 px-3 py-1.5 border-b border-noir-400/20 bg-noir-200/30">
+          <span className="text-[11px] text-amber-500/80 font-mono font-bold uppercase tracking-wider">Focus</span>
+          <div className="flex gap-1">
+            {Array.from({ length: calculateEffectiveFocus(negState) }).map((_, i) => (
+              <span key={i} className={cn(
+                'w-3.5 h-3.5 rounded-full border-2 transition-all duration-300',
+                i < negState.focusRemaining
+                  ? 'bg-amber-500 border-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.5)]'
+                  : 'bg-noir-300/50 border-noir-500/50',
+              )} />
+            ))}
+          </div>
+          <span className="text-[11px] text-noir-txt-muted font-mono">
+            {negState.focusRemaining}/{calculateEffectiveFocus(negState)}
+          </span>
+          {negState.modifiers.highRateFocusPenalty && (
+            <span className="text-[10px] text-red-500 font-mono font-bold">(-1)</span>
+          )}
+          {negState.focusDebuffCount > 0 && (
+            <span className="text-[10px] text-purple-400 font-mono font-bold">(-{negState.focusDebuffCount})</span>
+          )}
+        </div>
+
         {/* Hand area */}
         <CardHandArea
           hand={negState.deck.hand}
