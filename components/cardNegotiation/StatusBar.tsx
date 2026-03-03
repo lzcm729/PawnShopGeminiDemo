@@ -72,10 +72,6 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 }) => {
   const phaseInfo = PHASE_DISPLAY[macroPhase];
   const tierInfo = TIER_DISPLAY[contractTier];
-  const pawnDelta = currentPawnAmount - originalDesiredAmount;
-  const pawnDeltaPercent = originalDesiredAmount > 0
-    ? Math.round((pawnDelta / originalDesiredAmount) * 100)
-    : 0;
   const patienceLow = patience <= 1;
 
   return (
@@ -113,42 +109,31 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 
       {/* Main stats row */}
       <div className="flex items-center gap-3 px-3 py-2">
-        {/* Pawn amount */}
+        {/* Pawn amount + Rate + Expected income */}
         <div className="flex-1 min-w-0">
-          <div className="text-[9px] text-noir-txt-muted font-mono uppercase tracking-wider mb-0.5">
-            Pawn
-          </div>
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[9px] text-noir-txt-muted font-mono uppercase tracking-wider">Pawn</span>
             <span className="text-lg font-bold font-mono text-amber-400">
               ${currentPawnAmount.toLocaleString()}
             </span>
-            {pawnDelta !== 0 && (
-              <span className={cn(
-                'text-xs font-mono',
-                pawnDelta < 0 ? 'text-green-400' : 'text-red-400',
-              )}>
-                {pawnDeltaPercent > 0 ? '+' : ''}{pawnDeltaPercent}%
-              </span>
-            )}
+            <span className="text-[9px] text-noir-txt-muted font-mono">×</span>
+            <span className={cn(
+              'text-sm font-bold font-mono',
+              ratePercent === 0 ? 'text-amber-300' :
+              ratePercent < 5 ? 'text-green-400' :
+              ratePercent < 10 ? 'text-blue-400' :
+              ratePercent < 15 ? 'text-orange-400' :
+              ratePercent < 20 ? 'text-red-400' :
+              'text-red-600',
+            )}>
+              {ratePercent}%
+            </span>
+            <span className="text-[9px] text-noir-txt-muted font-mono">=</span>
+            <span className="text-sm font-bold font-mono text-green-400">
+              ${Math.round(currentPawnAmount * ratePercent / 100).toLocaleString()}
+            </span>
+            <span className="text-[9px] text-noir-txt-muted font-mono uppercase">profit</span>
           </div>
-        </div>
-
-        {/* Rate */}
-        <div className="shrink-0 text-center px-2">
-          <div className="text-[9px] text-noir-txt-muted font-mono uppercase tracking-wider mb-0.5">
-            Rate
-          </div>
-          <span className={cn(
-            'text-lg font-bold font-mono',
-            ratePercent === 0 ? 'text-amber-300' :
-            ratePercent < 5 ? 'text-green-400' :
-            ratePercent < 10 ? 'text-blue-400' :
-            ratePercent < 15 ? 'text-orange-400' :
-            ratePercent < 20 ? 'text-red-400' :
-            'text-red-600',
-          )}>
-            {ratePercent}%
-          </span>
         </div>
 
         {/* Patience */}
