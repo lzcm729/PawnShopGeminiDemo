@@ -165,7 +165,7 @@ You are the UI specialist. You create and maintain the visual layer that exposes
 
 ## Game UI Design Reference
 
-**游戏 UI 设计参考：** `.agents/skills/game-ui-design/references/`
+**游戏 UI 设计参考：** `.claude/skills/game-ui-design/references/`
 
 当创建或修改 UI 组件时，**必须**参考以下文件：
 - **创建新组件时** → 读取 `references/patterns.md`（设计模式：渐进信息展示、通知队列、HUD 可见性等）
