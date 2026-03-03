@@ -1115,3 +1115,9 @@ insult_patience_cost = 2
 # --- 良心发现效果 ---
 # 使用后本次议价经济卡效果减半系数
 conscience_economic_penalty = 0.50
+
+# --- 专注力 (Focus) 系统 ---
+focus_base = 2
+focus_minimum = 0
+focus_high_rate_threshold = 15
+focus_occupation_remove_cost = 1

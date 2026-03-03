@@ -19,6 +19,7 @@ import { exhaustCard } from './deck';
 import { addTemporaryCard } from './deck';
 import { createInsightCards, createTraitCard } from './definitions';
 import { getNegotiationPhase, getPhaseModifiers } from './roundProgression';
+import { canAffordFocus, deductFocus } from './focus';
 import { GAME_CONFIG } from '../game/config';
 
 // ============================================================================
@@ -61,9 +62,20 @@ export function resolveCardEffect(
     rateLocked: false,
     rateReset: false,
     isInsult: false,
+    focusCost: 0,
   };
 
   let newState = { ...state };
+
+  // --- Focus deduction ---
+  let actualFocusCost = card.focusCost ?? 0;
+  if (card.negativeType === 'occupation') {
+    actualFocusCost = config.FOCUS_OCCUPATION_REMOVE_COST;
+  } else if (card.negativeType === 'debuff' || card.negativeType === 'sacrifice') {
+    actualFocusCost = 0;
+  }
+  newState = deductFocus(newState, actualFocusCost);
+  result.focusCost = actualFocusCost;
 
   // Get phase modifiers for patience calculations
   const macroPhase = getNegotiationPhase(newState.roundNumber, newState.patience);
@@ -400,6 +412,9 @@ export function canPlayCard(card: Card, state: CardNegotiationState): boolean {
       if (card.cardType !== 'consumable') return false;
     }
   }
+
+  // Check focus affordability
+  if (!canAffordFocus(card, state)) return false;
 
   return true;
 }

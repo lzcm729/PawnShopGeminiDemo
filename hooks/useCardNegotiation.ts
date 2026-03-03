@@ -22,6 +22,7 @@ import { resolveCardEffect, canPlayCard } from '@/systems/cardNegotiation/effect
 import { getNegotiationPhase, checkRateThreshold } from '@/systems/cardNegotiation/roundProgression';
 import { executeCustomerTurn, mapBehaviorToCustomerType, type CustomerTurnResult } from '@/systems/cardNegotiation/customerTurn';
 import { buildInitialDeck, createTraitCard } from '@/systems/cardNegotiation/definitions';
+import { refreshFocus, countDebuffsInHand } from '@/systems/cardNegotiation/focus';
 import { getContractTier, type ContractTier } from '@/systems/characterAbility/essenceSystem';
 import { updateDriftMeter } from '@/systems/reputation/driftMeter';
 import { GAME_CONFIG } from '@/systems/game/config';
@@ -54,7 +55,7 @@ export interface CardNegotiationDeps {
 
 export interface CardNegotiationActions {
   /** Play a card from hand */
-  playCard: (cardInstanceId: string, choiceId?: string) => CardPlayResult | null;
+  playCard: (cardInstanceId: string, choiceId?: string, sacrificeTargetId?: string) => CardPlayResult | null;
   /** End the player's turn -> retention rules -> customer turn -> draw */
   endTurn: (retainedCardInstanceId?: string) => CustomerTurnResult | null;
   /** Accept the current conditions and close the deal */
@@ -156,13 +157,65 @@ export function useCardNegotiation(
 
   // ---- Actions ----
 
-  const playCard = useCallback((cardInstanceId: string, choiceId?: string): CardPlayResult | null => {
+  const playCard = useCallback((cardInstanceId: string, choiceId?: string, sacrificeTargetId?: string): CardPlayResult | null => {
     const card = state.deck.hand.find(c => c.instanceId === cardInstanceId);
     if (!card) return null;
     if (!canPlayCard(card, state)) return null;
 
     const previousRate = state.currentRate;
     let { newState, result } = resolveCardEffect(card, state, choiceId);
+
+    // --- Negative card special handling ---
+    if (card.negativeType) {
+      switch (card.negativeType) {
+        case 'occupation':
+          // Card already removed by resolveCardEffect (temporary card lifecycle)
+          // Focus already deducted by resolveCardEffect
+          break;
+        case 'debuff':
+          // Card already removed, recalculate debuff count
+          // Note: focusRemaining is NOT restored this round even after removing debuff
+          newState = {
+            ...newState,
+            focusDebuffCount: countDebuffsInHand(newState.deck.hand),
+          };
+          break;
+        case 'sacrifice': {
+          // Must sacrifice another card from hand
+          if (sacrificeTargetId) {
+            const sacrificedCard = newState.deck.hand.find(c => c.instanceId === sacrificeTargetId);
+            if (sacrificedCard) {
+              newState = {
+                ...newState,
+                deck: {
+                  ...newState.deck,
+                  hand: newState.deck.hand.filter(c => c.instanceId !== sacrificeTargetId),
+                  discardPile: [...newState.deck.discardPile, sacrificedCard],
+                },
+              };
+              result.sacrificedCard = sacrificedCard;
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    // --- High rate focus penalty check ---
+    const hasRateEffect = card.effects.some(
+      e => e.type === 'economic' && e.rateAdjust !== undefined && e.rateAdjust > 0,
+    );
+    if (hasRateEffect &&
+        newState.currentRate >= GAME_CONFIG.CARD_NEGOTIATION.FOCUS_HIGH_RATE_THRESHOLD &&
+        !newState.modifiers.highRateFocusPenalty) {
+      newState = {
+        ...newState,
+        modifiers: {
+          ...newState.modifiers,
+          highRateFocusPenalty: true,
+        },
+      };
+    }
 
     // Check rate threshold crossing
     const thresholdKey = checkRateThreshold(newState.currentRate, previousRate);
@@ -382,6 +435,14 @@ export function useCardNegotiation(
     // Step 5: Draw cards (fills remaining hand slots up to handLimit)
     newState = drawCards(newState);
 
+    // Step 6: Refresh focus for next round
+    // Recalculate debuff count from current hand (customer may have inserted new debuffs)
+    newState = {
+      ...newState,
+      focusDebuffCount: countDebuffsInHand(newState.deck.hand),
+    };
+    newState = refreshFocus(newState);
+
     setDropHint(customerResult.dropHint);
     setState(newState);
     return customerResult;
@@ -483,10 +544,16 @@ function createInitialState(
       priceCutLocked: false,
       economicEffectHalved: false,
       passiveRounds: 0,
+      highRateFocusPenalty: false,
     },
     currentUncertainty: itemUncertainty,
     cardsPlayedThisRound: [],
     appraisalCount: 0,
+    // Focus system
+    focusRemaining: config.FOCUS_BASE,
+    focusBase: config.FOCUS_BASE,
+    focusDebuffCount: 0,
+    focusTempBonus: 0,
     insightResult: undefined,
     dispositionRevealed: false,
     revealedFloorPrice: undefined,

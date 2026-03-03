@@ -586,6 +586,10 @@ interface TomlCardNegotiation {
   insult_threshold: number;
   insult_patience_cost: number;
   conscience_economic_penalty: number;
+  focus_base: number;
+  focus_minimum: number;
+  focus_high_rate_threshold: number;
+  focus_occupation_remove_cost: number;
 }
 
 interface TomlEssenceTierGain {
@@ -1218,6 +1222,10 @@ export const GAME_CONFIG = {
     INSULT_THRESHOLD: tomlConfig.card_negotiation.insult_threshold,
     INSULT_PATIENCE_COST: tomlConfig.card_negotiation.insult_patience_cost,
     CONSCIENCE_ECONOMIC_PENALTY: tomlConfig.card_negotiation.conscience_economic_penalty,
+    FOCUS_BASE: tomlConfig.card_negotiation.focus_base,
+    FOCUS_MINIMUM: tomlConfig.card_negotiation.focus_minimum,
+    FOCUS_HIGH_RATE_THRESHOLD: tomlConfig.card_negotiation.focus_high_rate_threshold,
+    FOCUS_OCCUPATION_REMOVE_COST: tomlConfig.card_negotiation.focus_occupation_remove_cost,
   },
 
 };

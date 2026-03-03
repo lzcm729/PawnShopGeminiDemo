@@ -18,6 +18,7 @@ import type {
   CardCustomerType,
   DropCategory,
   TemporaryRetention,
+  NegativeCardType,
 } from './types';
 
 // ============================================================================
@@ -32,6 +33,7 @@ interface CardDefRow {
   category: string;
   effectType: string;
   effectParams: string;
+  focusCost: string;
 }
 
 const CARD_DEF_SCHEMA: CSVSchema = {
@@ -42,6 +44,7 @@ const CARD_DEF_SCHEMA: CSVSchema = {
   'category': stringCol('category'),
   'effect_type': stringCol('effectType'),
   'effect_params': stringCol('effectParams'),
+  'focus_cost': stringCol('focusCost'),
 };
 
 interface CustomerDropRow {
@@ -53,6 +56,8 @@ interface CustomerDropRow {
   effectType: string;
   effectParams: string;
   weight: string;
+  focusCost: string;
+  negativeType: string;
 }
 
 const CUSTOMER_DROP_SCHEMA: CSVSchema = {
@@ -64,6 +69,8 @@ const CUSTOMER_DROP_SCHEMA: CSVSchema = {
   'effect_type': stringCol('effectType'),
   'effect_params': stringCol('effectParams'),
   'weight': stringCol('weight'),
+  'focus_cost': stringCol('focusCost'),
+  'negative_type': stringCol('negativeType'),
 };
 
 // ============================================================================
@@ -191,6 +198,7 @@ function getCardDefinitions(): Map<string, Card> {
         cardType: row.cardType as CardType,
         category: row.category as CardCategory,
         effects,
+        focusCost: Number(row.focusCost) || 0,
       };
       _cardDefs.set(row.id, card);
     }
@@ -246,6 +254,8 @@ function getDropTables(): Map<CardCustomerType, CustomerDropEntry[]> {
         effects,
         temporarySource: 'customer_drop',
         temporaryRetention: row.dropCategory === 'narrative' ? 'retain' : 'discard',
+        focusCost: Number(row.focusCost) || 0,
+        negativeType: row.negativeType ? row.negativeType as NegativeCardType : undefined,
       };
 
       const entry: CustomerDropEntry = {
@@ -415,6 +425,7 @@ export function createTraitCard(
     temporarySource: 'trait_discovery',
     temporaryRetention: retention,
     hasChoice: traitType === 'FLAW' || traitType === 'FAKE' || traitType === 'JACKPOT',
+    focusCost: 0,
   };
 }
 
@@ -432,6 +443,7 @@ export function createInsightCards(): [Card, Card] {
     effects: [],  // Mechanical effects handled by hook
     temporarySource: 'insight_unlock',
     temporaryRetention: 'retain',
+    focusCost: 0,
   };
 
   const probe: Card = {
@@ -444,6 +456,7 @@ export function createInsightCards(): [Card, Card] {
     effects: [],  // Mechanical effects handled by hook
     temporarySource: 'insight_unlock',
     temporaryRetention: 'retain',
+    focusCost: 1,
   };
 
   return [empathy, probe];

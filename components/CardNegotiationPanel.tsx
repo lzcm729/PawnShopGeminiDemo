@@ -16,6 +16,7 @@ import { ActionButtons } from './cardNegotiation/ActionButtons';
 import { IntelStrip } from './cardNegotiation/IntelStrip';
 import type { CardPlayResult } from '../systems/cardNegotiation/types';
 import type { CustomerTurnResult } from '../systems/cardNegotiation/customerTurn';
+import { calculateEffectiveFocus } from '../systems/cardNegotiation/focus';
 
 // ============================================================================
 // Main Panel
@@ -56,8 +57,8 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
 
   // --- Action Handlers ---
 
-  const handlePlayCard = (cardInstanceId: string, choiceId?: string) => {
-    const result = actions.playCard(cardInstanceId, choiceId);
+  const handlePlayCard = (cardInstanceId: string, choiceId?: string, sacrificeTargetId?: string) => {
+    const result = actions.playCard(cardInstanceId, choiceId, sacrificeTargetId);
     if (result) {
       setLastPlayResult(result);
       if (result.isInsult) {
@@ -159,6 +160,30 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
         rateLocked={negState.modifiers.rateLocked}
         priceCutLocked={negState.modifiers.priceCutLocked}
       />
+
+      {/* ================= Focus Indicator ================= */}
+      <div className="flex items-center gap-1.5 px-3 py-1 border-b border-noir-400/20 bg-noir-200/20">
+        <span className="text-[10px] text-noir-txt-muted font-mono uppercase tracking-wider">Focus</span>
+        <div className="flex gap-0.5">
+          {Array.from({ length: calculateEffectiveFocus(negState) }).map((_, i) => (
+            <span key={i} className={cn(
+              'w-2.5 h-2.5 rounded-full border transition-all duration-300',
+              i < negState.focusRemaining
+                ? 'bg-amber-500 border-amber-400 shadow-[0_0_4px_rgba(245,158,11,0.4)]'
+                : 'bg-noir-300 border-noir-500',
+            )} />
+          ))}
+        </div>
+        <span className="text-[10px] text-noir-txt-muted font-mono ml-1">
+          {negState.focusRemaining}/{calculateEffectiveFocus(negState)}
+        </span>
+        {negState.modifiers.highRateFocusPenalty && (
+          <span className="text-[9px] text-red-500 font-mono">(-1)</span>
+        )}
+        {negState.focusDebuffCount > 0 && (
+          <span className="text-[9px] text-purple-400 font-mono">(-{negState.focusDebuffCount})</span>
+        )}
+      </div>
 
       {/* ================= MIDDLE: Customer + Feedback ================= */}
       <div className="flex-1 flex flex-col min-h-0 relative">

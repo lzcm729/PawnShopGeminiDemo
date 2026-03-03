@@ -93,6 +93,9 @@ export type TemporaryRetention = 'retain' | 'discard';
 /** Source of temporary cards */
 export type TemporaryCardSource = 'customer_drop' | 'trait_discovery' | 'insight_unlock';
 
+/** Negative card sub-type (customer-dropped cards that hinder the player) */
+export type NegativeCardType = 'occupation' | 'debuff' | 'sacrifice';
+
 /** A card definition */
 export interface Card {
   id: string;
@@ -113,6 +116,11 @@ export interface Card {
   hasChoice?: boolean;
   /** Available choices when played */
   choices?: CardPlayChoice[];
+
+  /** Focus cost to play this card (0/1/2, defaults to 0) */
+  focusCost?: number;
+  /** Negative card type (for customer-dropped negative cards) */
+  negativeType?: NegativeCardType;
 }
 
 /** A choice available when playing a card with multiple options */
@@ -217,6 +225,10 @@ export interface CardPlayResult {
     floorPrice?: number;
     concessionTier?: ConcessionTier;
   };
+  /** Focus cost paid for this card play */
+  focusCost: number;
+  /** Card sacrificed when playing a sacrifice-type negative card */
+  sacrificedCard?: Card;
 }
 
 // ============================================================================
@@ -233,6 +245,8 @@ export interface SessionModifiers {
   economicEffectHalved: boolean;
   /** Number of consecutive rounds without playing economic cards */
   passiveRounds: number;
+  /** High interest rate (>=15%) triggered focus penalty (irreversible per session) */
+  highRateFocusPenalty: boolean;
 }
 
 /** Complete state for a card negotiation session */
@@ -268,6 +282,16 @@ export interface CardNegotiationState {
 
   // Appraisal count for FAKE guarantee
   appraisalCount: number;
+
+  // Focus system
+  /** Remaining focus for the current round */
+  focusRemaining: number;
+  /** Base focus value */
+  focusBase: number;
+  /** Focus reduction from debuff cards in hand */
+  focusDebuffCount: number;
+  /** Temporary focus bonus (from customer drops) */
+  focusTempBonus: number;
 
   // Insight state
   /** Insight result from playing insight card */
