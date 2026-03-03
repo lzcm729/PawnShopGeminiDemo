@@ -96,7 +96,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   return (
     <>
-      <div className="px-3 py-2 border-t border-noir-400/30 bg-noir-100/50">
+      <div className="px-3 py-2 border-t border-noir-400/30 bg-noir-100/50 max-w-lg mx-auto">
         {/* Primary: End Turn — most frequent action, prominent */}
         <Button
           variant="secondary"
