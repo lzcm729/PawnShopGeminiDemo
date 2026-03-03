@@ -96,42 +96,48 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   return (
     <>
-      <div className="flex items-center gap-2 px-3 py-2 border-t border-noir-400/30 bg-noir-100/50">
-        {/* Accept Deal - always available */}
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={onAcceptDeal}
-          disabled={!isActive}
-          leftIcon={<Check className="w-3.5 h-3.5" />}
-          className="flex-1"
-        >
-          Accept
-        </Button>
-
-        {/* Dismiss - always available */}
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={onDismissCustomer}
-          disabled={!isActive}
-          leftIcon={<XCircle className="w-3.5 h-3.5" />}
-          className="flex-1"
-        >
-          Dismiss
-        </Button>
-
-        {/* End Turn - player turn only */}
+      <div className="px-3 py-2 border-t border-noir-400/30 bg-noir-100/50">
+        {/* Primary: End Turn — most frequent action, prominent */}
         <Button
           variant="secondary"
           size="sm"
           onClick={handleEndTurn}
           disabled={!isPlayerTurn || !isActive || isLocked}
           leftIcon={<Clock className="w-3.5 h-3.5" />}
-          className="flex-1"
+          className="w-full mb-1.5"
         >
           End Turn
         </Button>
+
+        {/* Secondary row: Accept + Dismiss — deal-ending decisions, subdued */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={onAcceptDeal}
+            disabled={!isActive}
+            className={cn(
+              'flex items-center gap-1 px-2 py-1 text-[11px] font-mono rounded transition-all duration-200',
+              isActive
+                ? 'text-green-400 hover:text-green-300 hover:bg-green-950/30'
+                : 'text-noir-txt-muted/30 cursor-not-allowed',
+            )}
+          >
+            <Check className="w-3 h-3" />
+            Accept Deal
+          </button>
+          <button
+            onClick={onDismissCustomer}
+            disabled={!isActive}
+            className={cn(
+              'flex items-center gap-1 px-2 py-1 text-[11px] font-mono rounded transition-all duration-200',
+              isActive
+                ? 'text-red-500/60 hover:text-red-400 hover:bg-red-950/20'
+                : 'text-noir-txt-muted/30 cursor-not-allowed',
+            )}
+          >
+            <XCircle className="w-3 h-3" />
+            Dismiss
+          </button>
+        </div>
       </div>
 
       {/* Retention selector modal */}
