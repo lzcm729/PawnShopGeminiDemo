@@ -224,18 +224,18 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
                 )}
                 title={card.description}
               >
-                {/* === LEFT: Compact summary (always visible) === */}
-                <div className="flex flex-row items-center gap-2 px-2.5 py-1.5 w-[130px] shrink-0">
-                  {/* Focus cost badge */}
-                  <span className={cn(
-                    'w-5 h-5 flex items-center justify-center text-[10px] font-mono font-bold rounded-full border shrink-0',
-                    focusCost === 0 && 'bg-noir-300 border-noir-500 text-noir-txt-muted',
-                    focusCost === 1 && 'bg-blue-950 border-blue-700 text-blue-400',
-                    focusCost >= 2 && 'bg-amber-950 border-amber-700 text-amber-400',
-                  )}>
-                    {focusCost}
-                  </span>
+                {/* Focus cost badge (top-left, overlapping border) */}
+                <span className={cn(
+                  'absolute -top-2 -left-2 w-5 h-5 flex items-center justify-center text-[10px] font-mono font-bold rounded-full border z-10',
+                  focusCost === 0 && 'bg-noir-300 border-noir-500 text-noir-txt-muted',
+                  focusCost === 1 && 'bg-blue-950 border-blue-700 text-blue-400',
+                  focusCost >= 2 && 'bg-amber-950 border-amber-700 text-amber-400',
+                )}>
+                  {focusCost}
+                </span>
 
+                {/* === LEFT: Compact summary (always visible) === */}
+                <div className="flex flex-row items-center gap-1.5 px-2.5 py-1.5 w-[130px] shrink-0">
                   {/* Icon + Name + type badge */}
                   <div className="flex flex-col min-w-0 flex-1">
                     <div className="flex items-center gap-1">
