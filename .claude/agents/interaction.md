@@ -163,6 +163,23 @@ You are the UI specialist. You create and maintain the visual layer that exposes
 - 考虑玩家体验时 → 读取 `schell-interest-curve.md`（兴趣曲线）
 - 设计信息展示时 → 读取 `sylvester-decisions.md`（信息平衡）
 
+## Game UI Design Reference
+
+**游戏 UI 设计参考：** `.agents/skills/game-ui-design/references/`
+
+当创建或修改 UI 组件时，**必须**参考以下文件：
+- **创建新组件时** → 读取 `references/patterns.md`（设计模式：渐进信息展示、通知队列、HUD 可见性等）
+- **排查 UI 问题时** → 读取 `references/sharp_edges.md`（常见陷阱：安全区域、文字可读性、色盲无障碍等）
+- **UI 审查/验证时** → 读取 `references/validations.md`（自动验证规则：字体大小、触摸目标、动画时长等）
+
+**核心原则：**
+1. 玩家注意到 UI = 出了问题
+2. 每个元素必须赚得它的屏幕空间
+3. 动画是沟通，不是装饰
+4. 颜色永远不能是唯一的信息载体（色盲无障碍）
+5. 文字必须有描边或阴影保证可读性
+6. 触摸目标最小 44x44pt
+
 ### Quick UI Design Check（快速 UI 设计检查）
 
 **触发条件：** 创建新组件或修改核心 UI 时，在开始编码前执行。

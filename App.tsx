@@ -331,15 +331,15 @@ const GameContent: React.FC = () => {
             <PoliceInvestigationModal />
             <ItemDerivedEventModal />
 
-            <main className="flex-1 overflow-hidden relative">
+            <main className="flex-1 overflow-hidden relative flex flex-col">
                 {isDeparture && (
                     <div className="absolute inset-0 z-40 animate-in fade-in duration-500">
                         <DepartureView />
                     </div>
                 )}
 
-                <div className="h-full grid grid-cols-1 lg:grid-cols-12 bg-black/20">
-                    
+                <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 bg-black/20">
+
                     {isSettlement ? (
                         <SettlementInterface />
                     ) : (isRenewal || isPostForfeit) ? (
@@ -385,7 +385,7 @@ const GameContent: React.FC = () => {
                                 ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-stone-700 font-mono relative bg-[#0c0a09]">
                                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
-                                    
+
                                     {isShopClosed ? (
                                         <div className="z-10 p-8 border-4 border-stone-700 rounded opacity-80 transform -rotate-6 backdrop-blur-sm bg-black/60 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
                                             <h2 className="text-6xl font-black text-stone-500 uppercase tracking-widest border-b-4 border-stone-500 pb-2 mb-2">CLOSED</h2>
@@ -412,9 +412,9 @@ const GameContent: React.FC = () => {
                                                     <h3 className="text-2xl font-serif text-white mb-2">本日营业结束</h3>
                                                     <p className="text-xs uppercase tracking-widest text-stone-500">Daily Operations Complete</p>
                                                 </div>
-                                                
-                                                <Button 
-                                                    onClick={handleStartNight} 
+
+                                                <Button
+                                                    onClick={handleStartNight}
                                                     className="h-20 w-full text-xl tracking-[0.3em] shadow-[0_0_30px_rgba(217,119,6,0.3)] animate-pulse-slow"
                                                     variant="primary"
                                                 >
@@ -422,7 +422,7 @@ const GameContent: React.FC = () => {
                                                         <Moon className="w-6 h-6" /> 打 烊 (CLOSE)
                                                     </span>
                                                 </Button>
-                                                
+
                                                 <div className="text-stone-600 text-[10px] uppercase mt-4 border-t border-stone-800 pt-4 w-full">
                                                     Proceed to Night Shift for Accounting & Mail
                                                 </div>
@@ -436,6 +436,11 @@ const GameContent: React.FC = () => {
                         </>
                     )}
                 </div>
+
+                {/* Portal target for card hand area - full-width below the two panels */}
+                {useCardSystem && isNegotiating && (
+                  <div id="card-hand-portal" className="shrink-0 border-t border-noir-400/50 bg-noir-200/50" />
+                )}
             </main>
         </>
       )}

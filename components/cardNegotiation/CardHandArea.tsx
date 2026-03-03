@@ -180,10 +180,10 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
         </span>
       </div>
 
-      {/* Cards */}
-      <div className="flex gap-2.5 justify-center items-end min-h-[160px]">
+      {/* Cards — horizontal layout with hover-expand */}
+      <div className="flex gap-2 justify-center items-center min-h-[80px] flex-wrap">
         {hand.length === 0 ? (
-          <div className="text-noir-txt-muted text-xs font-mono italic opacity-50 py-8">
+          <div className="text-noir-txt-muted text-xs font-mono italic opacity-50 py-4">
             (empty hand)
           </div>
         ) : (
@@ -210,75 +210,84 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
                 onClick={() => handleCardClick(card)}
                 disabled={!playable && !isSacrificeSource}
                 className={cn(
-                  'relative flex flex-col w-[135px] min-h-[145px] rounded-lg border-2 p-2.5 transition-all duration-200',
+                  'group relative flex flex-row h-[72px] rounded-lg border-2 transition-all duration-300 ease-out overflow-hidden',
                   styles.border,
                   styles.bg,
-                  // Sacrifice mode: source card pulses red, targets get dashed border, blocked cards dim
+                  // Sacrifice mode
                   isSacrificeSource && 'border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)] animate-pulse',
-                  isSacrificeTarget && 'border-dashed border-red-600/80 hover:border-red-400 cursor-pointer hover:scale-105 hover:-translate-y-1',
+                  isSacrificeTarget && 'border-dashed border-red-600/80 hover:border-red-400 cursor-pointer',
                   isSacrificeBlocked && 'opacity-30 cursor-not-allowed',
                   // Normal mode
                   !sacrificeMode && playable
-                    ? 'cursor-pointer hover:scale-105 hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-900/20 active:scale-100'
+                    ? 'cursor-pointer hover:shadow-lg hover:shadow-amber-900/20 active:scale-[0.98]'
                     : !sacrificeMode ? 'opacity-50 cursor-not-allowed' : '',
                 )}
                 title={card.description}
               >
-                {/* Focus cost badge (top-left) */}
-                <span className={cn(
-                  'absolute -top-2 -left-2 w-6 h-6 flex items-center justify-center text-[10px] font-mono font-bold rounded-full border',
-                  focusCost === 0 && 'bg-noir-300 border-noir-500 text-noir-txt-muted',
-                  focusCost === 1 && 'bg-blue-950 border-blue-700 text-blue-400',
-                  focusCost >= 2 && 'bg-amber-950 border-amber-700 text-amber-400',
-                )}>
-                  {focusCost}
-                </span>
-
-                {/* Type badge (top-right) */}
-                {card.cardType !== 'permanent' && !card.negativeType && (
+                {/* === LEFT: Compact summary (always visible) === */}
+                <div className="flex flex-row items-center gap-2 px-2.5 py-1.5 w-[130px] shrink-0">
+                  {/* Focus cost badge */}
                   <span className={cn(
-                    'absolute -top-1.5 -right-1.5 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-full border',
-                    card.cardType === 'consumable'
-                      ? 'bg-red-950 border-red-800 text-red-400'
-                      : 'bg-purple-950 border-purple-800 text-purple-400',
+                    'w-5 h-5 flex items-center justify-center text-[10px] font-mono font-bold rounded-full border shrink-0',
+                    focusCost === 0 && 'bg-noir-300 border-noir-500 text-noir-txt-muted',
+                    focusCost === 1 && 'bg-blue-950 border-blue-700 text-blue-400',
+                    focusCost >= 2 && 'bg-amber-950 border-amber-700 text-amber-400',
                   )}>
-                    {typeLabel}
+                    {focusCost}
                   </span>
-                )}
 
-                {/* Negative type badge (top-right, replaces normal type badge) */}
-                {card.negativeType && (
-                  <span className={cn(
-                    'absolute -top-1.5 -right-1.5 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-full border',
-                    card.negativeType === 'occupation' && 'bg-gray-900 border-gray-700 text-gray-400',
-                    card.negativeType === 'debuff' && 'bg-purple-950 border-purple-700 text-purple-400',
-                    card.negativeType === 'sacrifice' && 'bg-red-950 border-red-700 text-red-400',
-                  )}>
-                    {negStyles?.icon}
-                  </span>
-                )}
-
-                {/* Category icon */}
-                <div className="text-xl font-bold text-center mb-0.5 opacity-60">
-                  {categoryIcon}
-                </div>
-
-                {/* Card name */}
-                <div className="text-sm font-serif font-bold text-center text-noir-txt-primary leading-tight mb-1 line-clamp-2">
-                  {card.name}
-                </div>
-
-                {/* Description */}
-                <div className="text-[10px] text-noir-txt-muted font-mono leading-tight line-clamp-3 mt-auto">
-                  {card.description}
-                </div>
-
-                {/* Choice indicator */}
-                {card.hasChoice && (
-                  <div className="absolute bottom-1 right-1 text-[8px] text-amber-500 font-bold">
-                    ...
+                  {/* Icon + Name + type badge */}
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-bold opacity-60 shrink-0">{categoryIcon}</span>
+                      <span className="text-xs font-serif font-bold text-noir-txt-primary leading-tight truncate">
+                        {card.name}
+                      </span>
+                    </div>
+                    {/* Type / negative badge inline */}
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {card.negativeType ? (
+                        <span className={cn(
+                          'text-[8px] font-mono font-bold px-1 py-0.5 rounded border leading-none',
+                          card.negativeType === 'occupation' && 'bg-gray-900 border-gray-700 text-gray-400',
+                          card.negativeType === 'debuff' && 'bg-purple-950 border-purple-700 text-purple-400',
+                          card.negativeType === 'sacrifice' && 'bg-red-950 border-red-700 text-red-400',
+                        )}>
+                          {negStyles?.icon} {card.negativeType}
+                        </span>
+                      ) : card.cardType !== 'permanent' ? (
+                        <span className={cn(
+                          'text-[8px] font-mono font-bold px-1 py-0.5 rounded border leading-none',
+                          card.cardType === 'consumable'
+                            ? 'bg-red-950/60 border-red-800/60 text-red-400'
+                            : 'bg-purple-950/60 border-purple-800/60 text-purple-400',
+                        )}>
+                          {typeLabel}
+                        </span>
+                      ) : null}
+                      {card.hasChoice && (
+                        <span className="text-[8px] text-amber-500 font-bold">...</span>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
+
+                {/* === RIGHT: Detail panel (hidden, expand on hover) === */}
+                <div className={cn(
+                  'w-0 opacity-0 overflow-hidden transition-all duration-300 ease-out border-l border-transparent',
+                  'group-hover:w-[140px] group-hover:opacity-100 group-hover:border-noir-400/30',
+                )}>
+                  <div className="px-2.5 py-1.5 h-full flex flex-col justify-center">
+                    <div className="text-[10px] text-noir-txt-muted font-mono leading-tight line-clamp-3">
+                      {card.description}
+                    </div>
+                    {card.hasChoice && (
+                      <div className="text-[8px] text-amber-500/80 font-mono mt-1">
+                        Click to choose...
+                      </div>
+                    )}
+                  </div>
+                </div>
               </button>
             );
           })

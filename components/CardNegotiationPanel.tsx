@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../lib/utils';
 import { useGame } from '../store/GameContext';
 import { useGameEngine } from '../hooks/useGameEngine';
@@ -266,83 +267,90 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
 
       </div>
 
-      {/* ================= BOTTOM: Hand + Actions ================= */}
-      <div className="shrink-0 border-t border-noir-400/50 bg-noir-200/50">
-        {/* Quick-glance strip — pawn, rate, focus directly above cards */}
-        <div className="flex items-center justify-between px-3 py-1.5 border-b border-noir-400/20 bg-noir-200/30">
-          {/* Pawn amount */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-noir-txt-muted font-mono uppercase">Pawn</span>
-            <span className="text-sm font-bold font-mono text-amber-400">
-              ${negState.currentPawnAmount.toLocaleString()}
-            </span>
-            {negState.currentPawnAmount !== negState.originalDesiredAmount && (
-              <span className={cn(
-                'text-[10px] font-mono',
-                negState.currentPawnAmount < negState.originalDesiredAmount ? 'text-green-400' : 'text-red-400',
-              )}>
-                {Math.round(((negState.currentPawnAmount - negState.originalDesiredAmount) / negState.originalDesiredAmount) * 100)}%
-              </span>
-            )}
-          </div>
+      {/* ================= BOTTOM: Hand + Actions (via Portal to full-width area) ================= */}
+      {(() => {
+        const portalTarget = document.getElementById('card-hand-portal');
+        if (!portalTarget) return null;
+        return createPortal(
+          <div className="shrink-0">
+            {/* Quick-glance strip — pawn, rate, focus directly above cards */}
+            <div className="flex items-center justify-between px-4 py-1.5 border-b border-noir-400/20 bg-noir-200/30">
+              {/* Pawn amount */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-noir-txt-muted font-mono uppercase">Pawn</span>
+                <span className="text-sm font-bold font-mono text-amber-400">
+                  ${negState.currentPawnAmount.toLocaleString()}
+                </span>
+                {negState.currentPawnAmount !== negState.originalDesiredAmount && (
+                  <span className={cn(
+                    'text-[10px] font-mono',
+                    negState.currentPawnAmount < negState.originalDesiredAmount ? 'text-green-400' : 'text-red-400',
+                  )}>
+                    {Math.round(((negState.currentPawnAmount - negState.originalDesiredAmount) / negState.originalDesiredAmount) * 100)}%
+                  </span>
+                )}
+              </div>
 
-          {/* Rate */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-noir-txt-muted font-mono uppercase">Rate</span>
-            <span className={cn(
-              'text-sm font-bold font-mono',
-              negState.currentRate === 0 ? 'text-amber-300' :
-              negState.currentRate < 10 ? 'text-blue-400' :
-              negState.currentRate < 15 ? 'text-orange-400' : 'text-red-400',
-            )}>
-              {negState.currentRate}%
-            </span>
-            {negState.modifiers.rateLocked && (
-              <span className="text-[8px] text-red-500 font-mono border border-red-900/50 px-1 rounded">LOCK</span>
-            )}
-          </div>
+              {/* Rate */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-noir-txt-muted font-mono uppercase">Rate</span>
+                <span className={cn(
+                  'text-sm font-bold font-mono',
+                  negState.currentRate === 0 ? 'text-amber-300' :
+                  negState.currentRate < 10 ? 'text-blue-400' :
+                  negState.currentRate < 15 ? 'text-orange-400' : 'text-red-400',
+                )}>
+                  {negState.currentRate}%
+                </span>
+                {negState.modifiers.rateLocked && (
+                  <span className="text-[8px] text-red-500 font-mono border border-red-900/50 px-1 rounded">LOCK</span>
+                )}
+              </div>
 
-          {/* Focus */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-amber-500/80 font-mono font-bold uppercase">Focus</span>
-            <div className="flex gap-1">
-              {Array.from({ length: calculateEffectiveFocus(negState) }).map((_, i) => (
-                <span key={i} className={cn(
-                  'w-3 h-3 rounded-full border-2 transition-all duration-300',
-                  i < negState.focusRemaining
-                    ? 'bg-amber-500 border-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.5)]'
-                    : 'bg-noir-300/50 border-noir-500/50',
-                )} />
-              ))}
+              {/* Focus */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-amber-500/80 font-mono font-bold uppercase">Focus</span>
+                <div className="flex gap-1">
+                  {Array.from({ length: calculateEffectiveFocus(negState) }).map((_, i) => (
+                    <span key={i} className={cn(
+                      'w-3 h-3 rounded-full border-2 transition-all duration-300',
+                      i < negState.focusRemaining
+                        ? 'bg-amber-500 border-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.5)]'
+                        : 'bg-noir-300/50 border-noir-500/50',
+                    )} />
+                  ))}
+                </div>
+                {negState.modifiers.highRateFocusPenalty && (
+                  <span className="text-[10px] text-red-500 font-mono font-bold">-1</span>
+                )}
+                {negState.focusDebuffCount > 0 && (
+                  <span className="text-[10px] text-purple-400 font-mono font-bold">-{negState.focusDebuffCount}</span>
+                )}
+              </div>
             </div>
-            {negState.modifiers.highRateFocusPenalty && (
-              <span className="text-[10px] text-red-500 font-mono font-bold">-1</span>
-            )}
-            {negState.focusDebuffCount > 0 && (
-              <span className="text-[10px] text-purple-400 font-mono font-bold">-{negState.focusDebuffCount}</span>
-            )}
-          </div>
-        </div>
 
-        {/* Hand area */}
-        <CardHandArea
-          hand={negState.deck.hand}
-          canPlay={actions.canPlay}
-          onPlayCard={handlePlayCard}
-          isPlayerTurn={isPlayerTurn}
-        />
+            {/* Hand area */}
+            <CardHandArea
+              hand={negState.deck.hand}
+              canPlay={actions.canPlay}
+              onPlayCard={handlePlayCard}
+              isPlayerTurn={isPlayerTurn}
+            />
 
-        {/* Action buttons */}
-        <ActionButtons
-          isPlayerTurn={isPlayerTurn}
-          isActive={negState.isActive}
-          isLocked={negState.isLocked}
-          hand={negState.deck.hand}
-          onAcceptDeal={handleAcceptDeal}
-          onDismissCustomer={handleDismissCustomer}
-          onEndTurn={handleEndTurn}
-        />
-      </div>
+            {/* Action buttons */}
+            <ActionButtons
+              isPlayerTurn={isPlayerTurn}
+              isActive={negState.isActive}
+              isLocked={negState.isLocked}
+              hand={negState.deck.hand}
+              onAcceptDeal={handleAcceptDeal}
+              onDismissCustomer={handleDismissCustomer}
+              onEndTurn={handleEndTurn}
+            />
+          </div>,
+          portalTarget,
+        );
+      })()}
 
       {/* ================= Tension overlay for low patience ================= */}
       {negState.patience <= 1 && negState.isActive && (
