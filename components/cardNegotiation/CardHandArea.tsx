@@ -181,7 +181,7 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
       </div>
 
       {/* Cards */}
-      <div className="flex gap-2 justify-center items-end min-h-[120px]">
+      <div className="flex gap-2.5 justify-center items-end min-h-[160px]">
         {hand.length === 0 ? (
           <div className="text-noir-txt-muted text-xs font-mono italic opacity-50 py-8">
             (empty hand)
@@ -210,7 +210,7 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
                 onClick={() => handleCardClick(card)}
                 disabled={!playable && !isSacrificeSource}
                 className={cn(
-                  'relative flex flex-col w-[110px] min-h-[100px] rounded-lg border-2 p-2 transition-all duration-200',
+                  'relative flex flex-col w-[135px] min-h-[145px] rounded-lg border-2 p-2.5 transition-all duration-200',
                   styles.border,
                   styles.bg,
                   // Sacrifice mode: source card pulses red, targets get dashed border, blocked cards dim
@@ -226,7 +226,7 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
               >
                 {/* Focus cost badge (top-left) */}
                 <span className={cn(
-                  'absolute -top-1.5 -left-1.5 w-5 h-5 flex items-center justify-center text-[9px] font-mono font-bold rounded-full border',
+                  'absolute -top-2 -left-2 w-6 h-6 flex items-center justify-center text-[10px] font-mono font-bold rounded-full border',
                   focusCost === 0 && 'bg-noir-300 border-noir-500 text-noir-txt-muted',
                   focusCost === 1 && 'bg-blue-950 border-blue-700 text-blue-400',
                   focusCost >= 2 && 'bg-amber-950 border-amber-700 text-amber-400',
@@ -259,17 +259,17 @@ export const CardHandArea: React.FC<CardHandAreaProps> = ({
                 )}
 
                 {/* Category icon */}
-                <div className="text-lg font-bold text-center mb-0.5 opacity-60">
+                <div className="text-xl font-bold text-center mb-0.5 opacity-60">
                   {categoryIcon}
                 </div>
 
                 {/* Card name */}
-                <div className="text-xs font-serif font-bold text-center text-noir-txt-primary leading-tight mb-1 line-clamp-2">
+                <div className="text-sm font-serif font-bold text-center text-noir-txt-primary leading-tight mb-1 line-clamp-2">
                   {card.name}
                 </div>
 
-                {/* Description (abbreviated) */}
-                <div className="text-[9px] text-noir-txt-muted font-mono leading-tight line-clamp-2 mt-auto">
+                {/* Description */}
+                <div className="text-[10px] text-noir-txt-muted font-mono leading-tight line-clamp-3 mt-auto">
                   {card.description}
                 </div>
 
