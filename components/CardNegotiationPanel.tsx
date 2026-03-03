@@ -274,7 +274,7 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
         return createPortal(
           <div className="shrink-0">
             {/* Quick-glance strip — pawn, rate, focus directly above cards */}
-            <div className="flex items-center justify-between px-4 py-1.5 border-b border-noir-400/20 bg-noir-200/30">
+            <div className="flex items-center justify-center gap-8 px-4 py-1.5 border-b border-noir-400/20 bg-noir-200/30">
               {/* Pawn amount */}
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-noir-txt-muted font-mono uppercase">Pawn</span>
