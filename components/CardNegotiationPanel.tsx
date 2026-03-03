@@ -254,7 +254,7 @@ export const CardNegotiationPanel: React.FC<CardNegotiationPanelProps> = ({
         const portalTarget = document.getElementById('card-hand-portal');
         if (!portalTarget) return null;
         return createPortal(
-          <div className="shrink-0">
+          <div className="shrink-0 max-w-4xl mx-auto w-full">
             {/* Status bar — moved from top panel to bottom full-width area */}
             <StatusBar
               currentPawnAmount={negState.currentPawnAmount}
